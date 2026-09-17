@@ -60,6 +60,7 @@ nav:
   - Getting Started: getting-started.md
   - "Part 0 -- Why Multi-GPU, and the Hardware Underneath It":
       - "1. Why One GPU Is Not Enough": part0/01-why-one-gpu-is-not-enough.md
+      - "2. Multi-GPU Hardware Topology: PCIe, NVLink, and NVSwitch": part0/02-multi-gpu-hardware-topology.md
 
 extra:
   social: []
