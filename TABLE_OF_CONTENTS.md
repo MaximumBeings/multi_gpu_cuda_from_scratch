@@ -59,4 +59,5 @@ This is the full planned outline. Check this file first before starting any new 
 - G. Common Failure Modes: Deadlocks, Silent Corruption From Missed Synchronization, and Topology Mismatches
 
 ## Status
-Scaffolded 2026-09-17: mkdocs.yml, docs/index.md, docs/getting-started.md, this file. No chapters written yet. Next: Chapter 1.
+Scaffolded 2026-09-17: mkdocs.yml, docs/index.md, docs/getting-started.md, this file.
+Chapter 1 ("Why One GPU Is Not Enough") written 2026-09-17: docs/part0/01-why-one-gpu-is-not-enough.md, with code in docs/part0/code/ (01_device_query.cu, 02_memory_wall.cpp, 03_compute_wall.cpp). All three genuinely compiled and run (nvcc 12.0 via `apt-get install nvidia-cuda-toolkit` -- the pip nvcc route does not actually provide a working nvcc binary, see the corrected getting-started.md). Next: Chapter 2 (Multi-GPU Hardware Topology: PCIe, NVLink, and NVSwitch).

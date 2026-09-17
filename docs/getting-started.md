@@ -4,13 +4,9 @@ This book targets CUDA C++ compiled with `nvcc` for real NVIDIA GPU architecture
 
 ## Installing a toolchain
 
-A full NVIDIA CUDA Toolkit install (from developer.nvidia.com) gives you `nvcc`, `ptxas`, and every header this book uses. If you only need to compile and read compiler diagnostics -- not run kernels -- a much lighter option exists and is exactly what this book's own examples were authored and verified with:
+A full NVIDIA CUDA Toolkit install (from developer.nvidia.com, or via your platform's package manager, e.g. `apt-get install nvidia-cuda-toolkit` on Debian/Ubuntu) gives you a genuine, working `nvcc`, `ptxas`, `cicc`, and every header this book uses, with no GPU or driver required to *compile* -- only to run device code. This is what this book's own examples are authored and verified with.
 
-```bash
-pip install --break-system-packages nvidia-cuda-nvcc-cu12
-```
-
-This installs a genuine, working `nvcc` (bundled CUDA Runtime headers and `libcudart` included) without requiring a GPU, a driver, or a full toolkit install. For Part 5's MPI material, an ordinary OpenMPI install (`apt-get install libopenmpi-dev openmpi-bin` or your platform's equivalent) is enough to compile and run real, multi-rank MPI programs on one machine -- CUDA-aware MPI specifically (an OpenMPI build configured `--with-cuda`) is the one piece of this book's own toolchain that a driver-less, device-less environment cannot exercise for real, and Chapter 20 and Appendix A both say exactly which parts of that chapter's code are genuinely run as ordinary MPI ranks versus checked by simulation for that reason.
+The lighter-weight `pip install nvidia-cuda-nvcc-cu12` route some CUDA guides suggest is **verified here not to work as a drop-in `nvcc` replacement**: as of the versions checked while writing this book (12.9.86 and 12.4.131, on both x86_64 and aarch64), that wheel installs only `ptxas`, the `nvvm` backend, and CUDA C++ headers -- it does *not* include the `nvcc` driver script or the `cicc` front-end compiler, so there is no `nvcc` binary to invoke afterward. This matches multiple reports on NVIDIA's own developer forums of the same gap. If a lighter-than-full-toolkit option matters to you, check for an `nvcc` binary under the installed package's `bin/` directory before relying on it -- don't assume the package name implies a working compiler. For Part 5's MPI material, an ordinary OpenMPI install (`apt-get install libopenmpi-dev openmpi-bin` or your platform's equivalent) is enough to compile and run real, multi-rank MPI programs on one machine -- CUDA-aware MPI specifically (an OpenMPI build configured `--with-cuda`) is the one piece of this book's own toolchain that a driver-less, device-less environment cannot exercise for real, and Chapter 20 and Appendix A both say exactly which parts of that chapter's code are genuinely run as ordinary MPI ranks versus checked by simulation for that reason.
 
 ```bash
 nvcc --version   # compiler, needed to build anything
