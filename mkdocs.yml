@@ -1,0 +1,109 @@
+site_name: Multi-GPU Programming in CUDA C++ -- Under Development
+site_description: From Peer-to-Peer Memory to Distributed Training Across the Cluster
+site_author: Oluwaseyi Awoga
+copyright: Copyright &copy; 2026 Oluwaseyi Awoga
+
+theme:
+  name: material
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/weather-night
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to light mode
+  features:
+    - navigation.instant
+    - navigation.tracking
+    - navigation.sections
+    - navigation.expand
+    - navigation.top
+    - navigation.footer
+    - toc.follow
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+    - content.code.annotate
+  icon:
+    logo: material/server-network
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.tabbed:
+      alternate_style: true
+  - tables
+  - toc:
+      permalink: true
+  - attr_list
+  - md_in_html
+  - footnotes
+
+plugins:
+  - search
+
+nav:
+  - Home: index.md
+  - Getting Started: getting-started.md
+  - "Part 0 -- Why Multi-GPU, and the Hardware Underneath It":
+      - "1. Why One GPU Is Not Enough": part0/01-why-one-gpu-is-not-enough.md
+      - "2. Multi-GPU Hardware Topology: PCIe, NVLink, and NVSwitch": part0/02-multi-gpu-hardware-topology.md
+      - "3. The CUDA Multi-GPU Programming Model: Devices, Contexts, and Streams Across Them": part0/03-the-cuda-multi-gpu-programming-model.md
+  - "Part 1 -- Getting Data Between GPUs":
+      - "4. Peer-to-Peer Memory Access and Unified Virtual Addressing": part1/04-peer-to-peer-memory-access-and-uva.md
+      - "5. Explicit Transfers: cudaMemcpyPeer, Staged Host Transfers, and When Each Wins": part1/05-explicit-transfers-cudamemcpypeer.md
+      - "6. Streams, Events, and Cross-Device Synchronization": part1/06-streams-events-and-cross-device-sync.md
+      - "7. CUDA Inter-Process Communication: Sharing Memory and Events Across Processes": part1/07-cuda-inter-process-communication.md
+  - "Part 2 -- Collective Communication, Built From Scratch":
+      - "8. Broadcast and Reduce: The First Two Collectives, By Hand": part2/08-broadcast-and-reduce.md
+      - "9. Ring All-Reduce: The Algorithm Behind Every Multi-GPU Training Job": part2/09-ring-all-reduce.md
+      - "10. All-Gather, Reduce-Scatter, and All-to-All": part2/10-allgather-reduce-scatter-and-alltoall.md
+      - "11. NCCL: What It Actually Does Differently From What You Just Built": part2/11-nccl.md
+  - "Part 3 -- Parallelization Strategies":
+      - "12. Data Parallelism: Replicated Model, Sharded Data": part3/12-data-parallelism.md
+      - "13. Model Parallelism: When One GPU Can't Hold the Weights": part3/13-model-parallelism.md
+      - "14. Tensor Parallelism: Splitting a Single Matrix Multiply Across Devices": part3/14-tensor-parallelism.md
+      - "15. Pipeline Parallelism: Splitting Layers Across Devices, and the Bubble That Costs You": part3/15-pipeline-parallelism.md
+      - "16. Domain Decomposition for Scientific Computing: Halo Exchange and Distributed Stencils": part3/16-domain-decomposition-and-halo-exchange.md
+  - "Part 4 -- Synchronization, Load Balancing, and Failure":
+      - "17. Barriers and Global Synchronization Across Devices": part4/17-barriers-and-global-synchronization.md
+      - "18. Load Balancing Across Heterogeneous GPUs": part4/18-load-balancing-heterogeneous-gpus.md
+      - "19. Stragglers, Failures, and Fault-Tolerant Collectives": part4/19-stragglers-failures-and-fault-tolerant-collectives.md
+  - "Part 5 -- Scaling Beyond One Node":
+      - "20. MPI From Scratch, Then CUDA-Aware MPI: Scaling Beyond One Node": part5/20-multi-node-cuda-and-cuda-aware-mpi.md
+      - "21. GPUDirect RDMA: Bypassing the Host Entirely": part5/21-gpudirect-rdma.md
+      - "22. NVSHMEM and GPU-Initiated Communication": part5/22-nvshmem-and-gpu-initiated-communication.md
+      - "23. CUDA Graphs Across Multiple GPUs and Multiple Nodes": part5/23-cuda-graphs-across-multiple-gpus.md
+  - "Part 6 -- Case Studies":
+      - "24. Multi-GPU Dense Matrix Multiplication at Scale": part6/24-multi-gpu-dense-matrix-multiplication.md
+      - "25. Distributed Training of a Neural Network: Data Parallelism and Ring All-Reduce": part6/25-distributed-training-data-parallel-allreduce.md
+      - "26. Multi-GPU LLM Inference: Tensor and Pipeline Parallelism in Practice": part6/26-multi-gpu-llm-inference-tensor-pipeline-parallelism.md
+      - "27. Multi-GPU N-Body Simulation": part6/27-multi-gpu-n-body-simulation.md
+      - "28. Multi-GPU Graph Processing: Distributed Breadth-First Search": part6/28-multi-gpu-distributed-bfs.md
+      - "29. A Distributed Jacobi Solver: Multi-GPU Scientific Computing With Halo Exchange": part6/29-distributed-jacobi-solver-halo-exchange.md
+      - "30. Multi-GPU Ray Tracing and Rendering": part6/30-multi-gpu-ray-tracing-and-rendering.md
+      - "31. Multi-GPU Monte Carlo Risk Simulation": part6/31-multi-gpu-monte-carlo-risk-simulation.md
+  - "Appendices":
+      - "A. Installation and Setup -- Multi-GPU Development Without a Multi-GPU Machine": appendix/a-installation-and-setup.md
+      - "B. Practice Quiz": appendix/b-practice-quiz.md
+      - "C. NCCL and NVSHMEM: The Standard Libraries You Get for Free": appendix/c-nccl-and-nvshmem.md
+      - "D. CUDA Graphs and Cooperative Multi-Device Kernels": appendix/d-cuda-graphs-and-cooperative-multi-device-kernels.md
+      - "E. Profiling and Benchmarking Multi-GPU Communication": appendix/e-profiling-and-benchmarking-multi-gpu-communication.md
+      - "F. From PyTorch Distributed and DeepSpeed to C++: A Rosetta Stone": appendix/f-pytorch-distributed-to-cuda-rosetta-stone.md
+      - "G. Common Failure Modes: Deadlocks, Silent Corruption, and Topology Mismatches": appendix/g-common-failure-modes.md
+
+extra:
+  social: []

@@ -1,0 +1,62 @@
+# Multi-GPU Programming in CUDA C++ -- Table of Contents (planning document)
+
+Subtitle: From Peer-to-Peer Memory to Distributed Training Across the Cluster
+
+This is the full planned outline. Check this file first before starting any new chapter or appendix. Mirrors the sibling books' own build-verify-lock discipline (see getting-started.md for this book's own specific honesty discipline around no real multi-GPU hardware).
+
+## Part 0 -- Why Multi-GPU, and the Hardware Underneath It
+1. Why One GPU Is Not Enough
+2. Multi-GPU Hardware Topology: PCIe, NVLink, and NVSwitch
+3. The CUDA Multi-GPU Programming Model: Devices, Contexts, and Streams Across Them
+
+## Part 1 -- Getting Data Between GPUs
+4. Peer-to-Peer Memory Access and Unified Virtual Addressing
+5. Explicit Transfers: cudaMemcpyPeer, Staged Host Transfers, and When Each Wins
+6. Streams, Events, and Cross-Device Synchronization
+7. CUDA Inter-Process Communication: Sharing Memory and Events Across Processes
+
+## Part 2 -- Collective Communication, Built From Scratch
+8. Broadcast and Reduce: The First Two Collectives, By Hand
+9. Ring All-Reduce: The Algorithm Behind Every Multi-GPU Training Job
+10. All-Gather, Reduce-Scatter, and All-to-All
+11. NCCL: What It Actually Does Differently From What You Just Built
+
+## Part 3 -- Parallelization Strategies
+12. Data Parallelism: Replicated Model, Sharded Data
+13. Model Parallelism: When One GPU Can't Hold the Weights
+14. Tensor Parallelism: Splitting a Single Matrix Multiply Across Devices
+15. Pipeline Parallelism: Splitting Layers Across Devices, and the Bubble That Costs You
+16. Domain Decomposition for Scientific Computing: Halo Exchange and Distributed Stencils
+
+## Part 4 -- Synchronization, Load Balancing, and Failure
+17. Barriers and Global Synchronization Across Devices
+18. Load Balancing Across Heterogeneous GPUs
+19. Stragglers, Failures, and Fault-Tolerant Collectives
+
+## Part 5 -- Scaling Beyond One Node
+20. MPI From Scratch, Then CUDA-Aware MPI: Scaling Beyond One Node
+21. GPUDirect RDMA: Bypassing the Host Entirely
+22. NVSHMEM and GPU-Initiated Communication
+23. CUDA Graphs Across Multiple GPUs and Multiple Nodes
+
+## Part 6 -- Case Studies
+24. Multi-GPU Dense Matrix Multiplication at Scale
+25. Distributed Training of a Neural Network: Data Parallelism and Ring All-Reduce
+26. Multi-GPU LLM Inference: Tensor and Pipeline Parallelism in Practice
+27. Multi-GPU N-Body Simulation
+28. Multi-GPU Graph Processing: Distributed Breadth-First Search
+29. A Distributed Jacobi Solver: Multi-GPU Scientific Computing With Halo Exchange
+30. Multi-GPU Ray Tracing and Rendering
+31. Multi-GPU Monte Carlo Risk Simulation
+
+## Appendices
+- A. Installation and Setup -- Multi-GPU Development Without a Multi-GPU Machine
+- B. Practice Quiz
+- C. NCCL and NVSHMEM: The Standard Libraries You Get for Free
+- D. CUDA Graphs and Cooperative Multi-Device Kernels
+- E. Profiling and Benchmarking Multi-GPU Communication
+- F. From PyTorch Distributed and DeepSpeed to C++: A Rosetta Stone
+- G. Common Failure Modes: Deadlocks, Silent Corruption From Missed Synchronization, and Topology Mismatches
+
+## Status
+Scaffolded 2026-09-17: mkdocs.yml, docs/index.md, docs/getting-started.md, this file. No chapters written yet. Next: Chapter 1.
