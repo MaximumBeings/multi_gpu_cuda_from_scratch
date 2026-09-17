@@ -62,6 +62,8 @@ nav:
       - "1. Why One GPU Is Not Enough": part0/01-why-one-gpu-is-not-enough.md
       - "2. Multi-GPU Hardware Topology: PCIe, NVLink, and NVSwitch": part0/02-multi-gpu-hardware-topology.md
       - "3. The CUDA Multi-GPU Programming Model: Devices, Contexts, and Streams Across Them": part0/03-the-cuda-multi-gpu-programming-model.md
+  - "Part 1 -- Getting Data Between GPUs":
+      - "4. Peer-to-Peer Memory Access and Unified Virtual Addressing": part1/04-peer-to-peer-memory-access-and-uva.md
 
 extra:
   social: []
