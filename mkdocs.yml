@@ -64,6 +64,7 @@ nav:
       - "3. The CUDA Multi-GPU Programming Model: Devices, Contexts, and Streams Across Them": part0/03-the-cuda-multi-gpu-programming-model.md
   - "Part 1 -- Getting Data Between GPUs":
       - "4. Peer-to-Peer Memory Access and Unified Virtual Addressing": part1/04-peer-to-peer-memory-access-and-uva.md
+      - "5. Explicit Transfers: cudaMemcpyPeer, Staged Host Transfers, and When Each Wins": part1/05-explicit-transfers-cudamemcpypeer-staged-host-transfers.md
 
 extra:
   social: []
