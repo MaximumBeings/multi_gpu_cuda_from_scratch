@@ -96,6 +96,8 @@ nav:
       - "29. Distributed Jacobi Solver": part6/29-distributed-jacobi-solver.md
       - "30. Multi-GPU Ray Tracing and Rendering": part6/30-multi-gpu-ray-tracing-and-rendering.md
       - "31. Multi-GPU Monte Carlo Risk Simulation": part6/31-multi-gpu-monte-carlo-risk-simulation.md
+  - "Part 7 -- Cutting-Edge Industrial Case Studies":
+      - "32. Mixture-of-Experts at Scale: Expert Parallelism and GPU-Initiated All-to-All (DeepEP)": part7/32-mixture-of-experts-at-scale.md
 
 extra:
   social: []
