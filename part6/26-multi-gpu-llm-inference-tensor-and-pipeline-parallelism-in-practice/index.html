@@ -1,0 +1,2478 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="From Peer-to-Peer Memory to Distributed Training Across the Cluster">
+      
+      
+        <meta name="author" content="Oluwaseyi Awoga">
+      
+      
+      
+        <link rel="prev" href="../25-distributed-training-of-a-neural-network-data-parallelism-and-ring-all-reduce/">
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+    
+    
+      
+        <title>26. Multi-GPU LLM Inference: Tensor and Pipeline Parallelism in Practice - Multi-GPU Programming in CUDA C++ -- Under Development</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#chapter-26-multi-gpu-llm-inference-tensor-and-pipeline-parallelism-in-practice" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="Multi-GPU Programming in CUDA C++ -- Under Development" class="md-header__button md-logo" aria-label="Multi-GPU Programming in CUDA C++ -- Under Development" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 19h1a1 1 0 0 1 1 1h7v2h-7a1 1 0 0 1-1 1h-4a1 1 0 0 1-1-1H2v-2h7a1 1 0 0 1 1-1h1v-2H4a1 1 0 0 1-1-1v-4a1 1 0 0 1 1-1h16a1 1 0 0 1 1 1v4a1 1 0 0 1-1 1h-7zM4 3h16a1 1 0 0 1 1 1v4a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1m5 4h1V5H9zm0 8h1v-2H9zM5 5v2h2V5zm0 8v2h2v-2z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Multi-GPU Programming in CUDA C++ -- Under Development
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              26. Multi-GPU LLM Inference: Tensor and Pipeline Parallelism in Practice
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m17.75 4.09-2.53 1.94.91 3.06-2.63-1.81-2.63 1.81.91-3.06-2.53-1.94L12.44 4l1.06-3 1.06 3zm3.5 6.91-1.64 1.25.59 1.98-1.7-1.17-1.7 1.17.59-1.98L15.75 11l2.06-.05L18.5 9l.69 1.95zm-2.28 4.95c.83-.08 1.72 1.1 1.19 1.85-.32.45-.66.87-1.08 1.27C15.17 23 8.84 23 4.94 19.07c-3.91-3.9-3.91-10.24 0-14.14.4-.4.82-.76 1.27-1.08.75-.53 1.93.36 1.85 1.19-.27 2.86.69 5.83 2.89 8.02a9.96 9.96 0 0 0 8.02 2.89m-1.64 2.02a12.08 12.08 0 0 1-7.8-3.47c-2.17-2.19-3.33-5-3.49-7.82-2.81 3.14-2.7 7.96.31 10.98 3.02 3.01 7.84 3.12 10.98.31"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 7a5 5 0 0 1 5 5 5 5 0 0 1-5 5 5 5 0 0 1-5-5 5 5 0 0 1 5-5m0 2a3 3 0 0 0-3 3 3 3 0 0 0 3 3 3 3 0 0 0 3-3 3 3 0 0 0-3-3m0-7 2.39 3.42C13.65 5.15 12.84 5 12 5s-1.65.15-2.39.42zM3.34 7l4.16-.35A7.2 7.2 0 0 0 5.94 8.5c-.44.74-.69 1.5-.83 2.29zm.02 10 1.76-3.77a7.131 7.131 0 0 0 2.38 4.14zM20.65 7l-1.77 3.79a7.02 7.02 0 0 0-2.38-4.15zm-.01 10-4.14.36c.59-.51 1.12-1.14 1.54-1.86.42-.73.69-1.5.83-2.29zM12 22l-2.41-3.44c.74.27 1.55.44 2.41.44.82 0 1.63-.17 2.37-.44z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="Multi-GPU Programming in CUDA C++ -- Under Development" class="md-nav__button md-logo" aria-label="Multi-GPU Programming in CUDA C++ -- Under Development" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 19h1a1 1 0 0 1 1 1h7v2h-7a1 1 0 0 1-1 1h-4a1 1 0 0 1-1-1H2v-2h7a1 1 0 0 1 1-1h1v-2H4a1 1 0 0 1-1-1v-4a1 1 0 0 1 1-1h16a1 1 0 0 1 1 1v4a1 1 0 0 1-1 1h-7zM4 3h16a1 1 0 0 1 1 1v4a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1m5 4h1V5H9zm0 8h1v-2H9zM5 5v2h2V5zm0 8v2h2v-2z"/></svg>
+
+    </a>
+    Multi-GPU Programming in CUDA C++ -- Under Development
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Part 0 -- Why Multi-GPU, and the Hardware Underneath It
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Part 0 -- Why Multi-GPU, and the Hardware Underneath It
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part0/01-why-one-gpu-is-not-enough/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    1. Why One GPU Is Not Enough
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part0/02-multi-gpu-hardware-topology/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    2. Multi-GPU Hardware Topology: PCIe, NVLink, and NVSwitch
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part0/03-the-cuda-multi-gpu-programming-model/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    3. The CUDA Multi-GPU Programming Model: Devices, Contexts, and Streams Across Them
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Part 1 -- Getting Data Between GPUs
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Part 1 -- Getting Data Between GPUs
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part1/04-peer-to-peer-memory-access-and-uva/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    4. Peer-to-Peer Memory Access and Unified Virtual Addressing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part1/05-explicit-transfers-cudamemcpypeer-staged-host-transfers/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    5. Explicit Transfers: cudaMemcpyPeer, Staged Host Transfers, and When Each Wins
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part1/06-streams-events-and-cross-device-synchronization/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    6. Streams, Events, and Cross-Device Synchronization
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part1/07-cuda-inter-process-communication/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    7. CUDA Inter-Process Communication: Sharing Memory and Events Across Processes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Part 2 -- Collective Communication, Built From Scratch
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Part 2 -- Collective Communication, Built From Scratch
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part2/08-broadcast-and-reduce-the-first-two-collectives-by-hand/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    8. Broadcast and Reduce: The First Two Collectives, By Hand
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part2/09-ring-all-reduce-the-algorithm-behind-every-multi-gpu-training-job/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    9. Ring All-Reduce: The Algorithm Behind Every Multi-GPU Training Job
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part2/10-all-gather-reduce-scatter-and-all-to-all/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    10. All-Gather, Reduce-Scatter, and All-to-All
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part2/11-nccl-what-it-actually-does-differently/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    11. NCCL: What It Actually Does Differently From What You Just Built
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Part 3 -- Parallelization Strategies
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Part 3 -- Parallelization Strategies
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part3/12-data-parallelism-replicated-model-sharded-data/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    12. Data Parallelism: Replicated Model, Sharded Data
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part3/13-model-parallelism-when-one-gpu-cant-hold-the-weights/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    13. Model Parallelism: When One GPU Can't Hold the Weights
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part3/14-tensor-parallelism-splitting-a-single-matrix-multiply-across-devices/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    14. Tensor Parallelism: Splitting a Single Matrix Multiply Across Devices
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part3/15-pipeline-parallelism-splitting-layers-across-devices-and-the-bubble-that-costs-you/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    15. Pipeline Parallelism: Splitting Layers Across Devices, and the Bubble That Costs You
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part3/16-domain-decomposition-for-scientific-computing-halo-exchange-and-distributed-stencils/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    16. Domain Decomposition for Scientific Computing: Halo Exchange and Distributed Stencils
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_7" >
+        
+          
+          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Part 4 -- Synchronization, Load Balancing, and Failure
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Part 4 -- Synchronization, Load Balancing, and Failure
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part4/17-barriers-and-global-synchronization-across-devices/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    17. Barriers and Global Synchronization Across Devices
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part4/18-load-balancing-across-heterogeneous-gpus/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    18. Load Balancing Across Heterogeneous GPUs
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part4/19-stragglers-failures-and-fault-tolerant-collectives/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    19. Stragglers, Failures, and Fault-Tolerant Collectives
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_8" >
+        
+          
+          <label class="md-nav__link" for="__nav_8" id="__nav_8_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Part 5 -- Scaling Beyond One Node
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_8">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Part 5 -- Scaling Beyond One Node
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part5/20-mpi-from-scratch-then-cuda-aware-mpi-scaling-beyond-one-node/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    20. MPI From Scratch, Then CUDA-Aware MPI: Scaling Beyond One Node
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part5/21-gpudirect-rdma-bypassing-the-host-entirely/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    21. GPUDirect RDMA: Bypassing the Host Entirely
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part5/22-nvshmem-and-gpu-initiated-communication/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    22. NVSHMEM and GPU-Initiated Communication
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part5/23-cuda-graphs-across-multiple-gpus-and-multiple-nodes/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    23. CUDA Graphs Across Multiple GPUs and Multiple Nodes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_9" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_9" id="__nav_9_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Part 6 -- Case Studies
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_9_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_9">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Part 6 -- Case Studies
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../24-multi-gpu-dense-matrix-multiplication-at-scale/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    24. Multi-GPU Dense Matrix Multiplication at Scale
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../25-distributed-training-of-a-neural-network-data-parallelism-and-ring-all-reduce/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    25. Distributed Training of a Neural Network: Data Parallelism and Ring All-Reduce
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    26. Multi-GPU LLM Inference: Tensor and Pipeline Parallelism in Practice
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    26. Multi-GPU LLM Inference: Tensor and Pipeline Parallelism in Practice
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#261-one-real-2d-grid-tensor-parallelism-inside-pipeline-parallelism-across" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        26.1 One Real 2D Grid: Tensor Parallelism Inside, Pipeline Parallelism Across
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="26.1 One Real 2D Grid: Tensor Parallelism Inside, Pipeline Parallelism Across">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#intuition" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Intuition
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#background" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Background
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#262-why-8-way-why-35-way-a-real-530-billion-parameter-config" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        26.2 Why 8-Way, Why 35-Way: A Real 530-Billion-Parameter Config
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="26.2 Why 8-Way, Why 35-Way: A Real 530-Billion-Parameter Config">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#intuition_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Intuition
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#background_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Background
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#263-a-real-super-linear-effect-tensor-parallelism-and-kv-cache-capacity" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        26.3 A Real Super-Linear Effect: Tensor Parallelism and KV Cache Capacity
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="26.3 A Real Super-Linear Effect: Tensor Parallelism and KV Cache Capacity">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#intuition_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Intuition
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#background_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Background
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#chapter-summary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Chapter Summary
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#self-check-questions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Self-Check Questions
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#where-we-go-next" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Where We Go Next
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#worked-solutions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Worked Solutions
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#261-one-real-2d-grid-tensor-parallelism-inside-pipeline-parallelism-across" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        26.1 One Real 2D Grid: Tensor Parallelism Inside, Pipeline Parallelism Across
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="26.1 One Real 2D Grid: Tensor Parallelism Inside, Pipeline Parallelism Across">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#intuition" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Intuition
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#background" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Background
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#262-why-8-way-why-35-way-a-real-530-billion-parameter-config" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        26.2 Why 8-Way, Why 35-Way: A Real 530-Billion-Parameter Config
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="26.2 Why 8-Way, Why 35-Way: A Real 530-Billion-Parameter Config">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#intuition_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Intuition
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#background_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Background
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#263-a-real-super-linear-effect-tensor-parallelism-and-kv-cache-capacity" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        26.3 A Real Super-Linear Effect: Tensor Parallelism and KV Cache Capacity
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="26.3 A Real Super-Linear Effect: Tensor Parallelism and KV Cache Capacity">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#intuition_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Intuition
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#background_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Background
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#chapter-summary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Chapter Summary
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#self-check-questions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Self-Check Questions
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#where-we-go-next" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Where We Go Next
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#worked-solutions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Worked Solutions
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+
+<h1 id="chapter-26-multi-gpu-llm-inference-tensor-and-pipeline-parallelism-in-practice">Chapter 26: Multi-GPU LLM Inference: Tensor and Pipeline Parallelism in Practice<a class="headerlink" href="#chapter-26-multi-gpu-llm-inference-tensor-and-pipeline-parallelism-in-practice" title="Permanent link">&para;</a></h1>
+<p><strong>What you will understand by the end of this chapter:</strong></p>
+<ul>
+<li>Why a real production LLM inference system combines Chapter 14's own tensor parallelism and Chapter 15's own pipeline parallelism over ONE device grid, rather than choosing between them, and a real, quoted rule for exactly where each one is applied.</li>
+<li>A real, verified 2D-grid correctness simulation -- pipeline stages, each itself a tensor-parallel group -- checked bit-exact against a naive, unsplit reference, exposing the real routing property that makes the combination safe: a tensor-parallel all-reduce never crosses a pipeline-stage boundary.</li>
+<li>A genuinely counter-intuitive real finding about WHY tensor parallelism stays bounded to one server's own GPU count: not primarily because of communication volume (which Chapter 9 and 25 already showed stays nearly flat), but because of round count, which does not.</li>
+<li>A real, cited super-linear memory effect from vLLM's own production serving system, and this chapter's own worked model of the mechanism that plausibly produces it -- along with an honest published gap this chapter does not paper over.</li>
+</ul>
+<p><strong>What you need to know first:</strong></p>
+<ul>
+<li>Chapter 14's own Megatron-LM column-parallel/row-parallel tensor-parallel GEMM split.</li>
+<li>Chapter 15's own GPipe pipeline-parallel micro-batch schedule.</li>
+<li>Chapter 9's own ring all-reduce round-count and volume formulas, and Chapter 13's own per-shard capacity model.</li>
+</ul>
+<hr />
+<p>Chapter 14 built tensor parallelism and Chapter 15 built pipeline parallelism as two separate concept demonstrations, each proven correct on its own. A real production LLM inference system does not pick one -- it runs both, over the same physical GPUs, at the same time, and the Megatron-LM paper states exactly where the line between them is drawn: "tensor model parallelism should generally be used up to degree g when using g-GPU servers, and then pipeline model parallelism can be used to scale up to larger models across servers." This chapter builds that combined shape as one real 2D device grid and checks it for correctness (26.1), applies it to a real, named, 530-billion-parameter production model's real configuration to find out why that specific boundary matters (26.2), and closes with a real measured effect from vLLM's own production serving system that neither Chapter 14 nor Chapter 15's own isolated demonstration could have shown (26.3).</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>Chapter 14 (isolated):        Chapter 15 (isolated):        This chapter (combined):
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>  TP split ONE GEMM             PP split LAYERS across         PP_STAGES x TP_DEGREE,
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>  across TP_DEGREE               PIPELINE stages                ONE real 2D grid:
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>  devices, ONE all-reduce                                       TP all-reduce INSIDE
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>        |                              |                        each stage only,
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>        |                              |                        PP handoff BETWEEN
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>        +--------------+---------------+                        stages only
+<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>                       |
+<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>              &quot;tensor model parallelism... up to degree g
+<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>               when using g-GPU servers, and then pipeline
+<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>               model parallelism... to scale... across servers&quot;
+<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>                       |
+<a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>                 this chapter&#39;s own real, combined case study
+</code></pre></div>
+<h2 id="261-one-real-2d-grid-tensor-parallelism-inside-pipeline-parallelism-across">26.1 One Real 2D Grid: Tensor Parallelism Inside, Pipeline Parallelism Across<a class="headerlink" href="#261-one-real-2d-grid-tensor-parallelism-inside-pipeline-parallelism-across" title="Permanent link">&para;</a></h2>
+<h3 id="intuition">Intuition<a class="headerlink" href="#intuition" title="Permanent link">&para;</a></h3>
+<p>Chapter 14's own tensor-parallel MLP split needed exactly one all-reduce, scoped to however many devices were splitting that ONE GEMM. Chapter 15's own pipeline schedule needed exactly one activation handoff, scoped to two ADJACENT stages. Combining them means every device in a real system now plays both roles at once: it belongs to a pipeline STAGE, and within that stage, it belongs to a tensor-parallel GROUP. The real correctness property this creates, and the one this section's own simulation is built to check, is that these two kinds of communication must never cross into each other: a tensor-parallel all-reduce stays inside its own stage's own group, and a pipeline handoff only ever carries a stage's ALREADY-combined result to the next stage -- never a partial, not-yet-reduced tensor-parallel shard. This chapter is about LLM INFERENCE specifically, which changes the pipeline shape from Chapter 15's own training loop in one real way: there is no backward pass, so the pipeline is forward-only, and Chapter 15's own bubble formula, built for a schedule with both a forward AND a backward phase per microbatch, does not apply here unchanged.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>A 2 x 2 grid: PP_STAGES=2, TP_DEGREE=2 (4 devices total)
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>Stage 0                              Stage 1
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>+----------------+----------------+  +----------------+----------------+
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>| TP rank 0      | TP rank 1      |  | TP rank 0      | TP rank 1      |
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>| col-parallel    | col-parallel   |  | col-parallel    | col-parallel   |
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>| GEMM1 (no comm) | GEMM1 (no comm)|  | GEMM1 (no comm) | GEMM1 (no comm)|
+<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>| row-parallel    | row-parallel   |  | row-parallel    | row-parallel   |
+<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>| GEMM2 -+        | GEMM2 -+       |  | GEMM2 -+        | GEMM2 -+       |
+<a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a>+--------|--------+--------|-------+  +--------|--------+--------|-------+
+<a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a>         +--- all-reduce --+                   +--- all-reduce --+
+<a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a>         (stays INSIDE stage 0)                (stays INSIDE stage 1)
+<a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a>                  |
+<a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a>                  +----- PP handoff: stage 0&#39;s own COMBINED result -----&gt;
+<a id="__codelineno-1-15" name="__codelineno-1-15" href="#__codelineno-1-15"></a>                         (never a partial TP shard)
+</code></pre></div>
+<h3 id="background">Background<a class="headerlink" href="#background" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="c1">// Chapter 26: Multi-GPU LLM Inference: Tensor and Pipeline Parallelism in</span>
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="c1">// Practice</span>
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="c1">// 75_tp_pp_combined_correctness_simulation.cpp</span>
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="c1">//</span>
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="c1">// Chapter 14 built Megatron-LM&#39;s real tensor-parallel MLP split (column-</span>
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a><span class="c1">// parallel GEMM1, no communication, then row-parallel GEMM2, ONE</span>
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a><span class="c1">// ncclAllReduce()) in isolation. Chapter 15 built GPipe&#39;s real pipeline</span>
+<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a><span class="c1">// schedule -- layers split across stages, microbatches flowing through</span>
+<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a><span class="c1">// them -- also in isolation. A real production LLM inference system</span>
+<a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a><span class="c1">// combines BOTH, at the same time, over the SAME device grid: the</span>
+<a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a><span class="c1">// Megatron-LM paper&#39;s own words for why: &quot;tensor model parallelism</span>
+<a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a><span class="c1">// should generally be used up to degree g when using g-GPU servers, and</span>
+<a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a><span class="c1">// then pipeline model parallelism can be used to scale up to larger</span>
+<a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a><span class="c1">// models across servers.&quot; This file builds that combined shape as a</span>
+<a id="__codelineno-2-15" name="__codelineno-2-15" href="#__codelineno-2-15"></a><span class="c1">// real host-side simulation -- a 2D device grid, PP_STAGES x TP_DEGREE</span>
+<a id="__codelineno-2-16" name="__codelineno-2-16" href="#__codelineno-2-16"></a><span class="c1">// -- and checks its ROUTING, the way Chapter 24&#39;s own SUMMA simulation</span>
+<a id="__codelineno-2-17" name="__codelineno-2-17" href="#__codelineno-2-17"></a><span class="c1">// did: using long long INTEGER matrices (Chapter 8&#39;s own non-</span>
+<a id="__codelineno-2-18" name="__codelineno-2-18" href="#__codelineno-2-18"></a><span class="c1">// associativity caution -- this is a correctness check on the routing,</span>
+<a id="__codelineno-2-19" name="__codelineno-2-19" href="#__codelineno-2-19"></a><span class="c1">// not a claim about floating-point summation order), so the combined</span>
+<a id="__codelineno-2-20" name="__codelineno-2-20" href="#__codelineno-2-20"></a><span class="c1">// result can be compared bit-exact against a naive, unsplit reference,</span>
+<a id="__codelineno-2-21" name="__codelineno-2-21" href="#__codelineno-2-21"></a><span class="c1">// with no rounding ambiguity possible.</span>
+<a id="__codelineno-2-22" name="__codelineno-2-22" href="#__codelineno-2-22"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;cstdio&gt;</span>
+<a id="__codelineno-2-23" name="__codelineno-2-23" href="#__codelineno-2-23"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;cstdlib&gt;</span>
+<a id="__codelineno-2-24" name="__codelineno-2-24" href="#__codelineno-2-24"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;vector&gt;</span>
+<a id="__codelineno-2-25" name="__codelineno-2-25" href="#__codelineno-2-25"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;cassert&gt;</span>
+<a id="__codelineno-2-26" name="__codelineno-2-26" href="#__codelineno-2-26"></a>
+<a id="__codelineno-2-27" name="__codelineno-2-27" href="#__codelineno-2-27"></a><span class="k">const</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">D</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">4</span><span class="p">;</span><span class="w">             </span><span class="c1">// per-layer input/output dimension</span>
+<a id="__codelineno-2-28" name="__codelineno-2-28" href="#__codelineno-2-28"></a><span class="k">const</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">H_TOTAL</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">8</span><span class="p">;</span><span class="w">       </span><span class="c1">// per-layer hidden dimension</span>
+<a id="__codelineno-2-29" name="__codelineno-2-29" href="#__codelineno-2-29"></a><span class="k">const</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">NUM_LAYERS</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">4</span><span class="p">;</span><span class="w">    </span><span class="c1">// total MLP layers in this toy model</span>
+<a id="__codelineno-2-30" name="__codelineno-2-30" href="#__codelineno-2-30"></a><span class="k">const</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">TP_DEGREE</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">2</span><span class="p">;</span><span class="w">     </span><span class="c1">// tensor-parallel devices PER stage</span>
+<a id="__codelineno-2-31" name="__codelineno-2-31" href="#__codelineno-2-31"></a><span class="k">const</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">PP_STAGES</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">2</span><span class="p">;</span><span class="w">     </span><span class="c1">// pipeline stages</span>
+<a id="__codelineno-2-32" name="__codelineno-2-32" href="#__codelineno-2-32"></a><span class="k">const</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">LAYERS_PER_STAGE</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">NUM_LAYERS</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="n">PP_STAGES</span><span class="p">;</span>
+<a id="__codelineno-2-33" name="__codelineno-2-33" href="#__codelineno-2-33"></a><span class="k">const</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">H_PER_TP</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">H_TOTAL</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="n">TP_DEGREE</span><span class="p">;</span>
+<a id="__codelineno-2-34" name="__codelineno-2-34" href="#__codelineno-2-34"></a><span class="k">const</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">M</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">4</span><span class="p">;</span><span class="w">             </span><span class="c1">// microbatches (this chapter is INFERENCE --</span>
+<a id="__codelineno-2-35" name="__codelineno-2-35" href="#__codelineno-2-35"></a><span class="w">                              </span><span class="c1">// forward passes only, no backward pass)</span>
+<a id="__codelineno-2-36" name="__codelineno-2-36" href="#__codelineno-2-36"></a>
+<a id="__codelineno-2-37" name="__codelineno-2-37" href="#__codelineno-2-37"></a><span class="k">using</span><span class="w"> </span><span class="n">Vec</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">long</span><span class="w"> </span><span class="kt">long</span><span class="o">&gt;</span><span class="p">;</span>
+<a id="__codelineno-2-38" name="__codelineno-2-38" href="#__codelineno-2-38"></a><span class="k">using</span><span class="w"> </span><span class="n">Mat</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">long</span><span class="w"> </span><span class="kt">long</span><span class="o">&gt;</span><span class="p">;</span><span class="w"> </span><span class="c1">// row-major</span>
+<a id="__codelineno-2-39" name="__codelineno-2-39" href="#__codelineno-2-39"></a>
+<a id="__codelineno-2-40" name="__codelineno-2-40" href="#__codelineno-2-40"></a><span class="kt">long</span><span class="w"> </span><span class="kt">long</span><span class="w"> </span><span class="nf">relu</span><span class="p">(</span><span class="kt">long</span><span class="w"> </span><span class="kt">long</span><span class="w"> </span><span class="n">x</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="n">x</span><span class="w"> </span><span class="o">&gt;</span><span class="w"> </span><span class="mi">0</span><span class="w"> </span><span class="o">?</span><span class="w"> </span><span class="n">x</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span><span class="w"> </span><span class="p">}</span>
+<a id="__codelineno-2-41" name="__codelineno-2-41" href="#__codelineno-2-41"></a>
+<a id="__codelineno-2-42" name="__codelineno-2-42" href="#__codelineno-2-42"></a><span class="c1">// Deterministic real-valued (integer) weights for layer l -- Chapter</span>
+<a id="__codelineno-2-43" name="__codelineno-2-43" href="#__codelineno-2-43"></a><span class="c1">// 14&#39;s own W1 (D x H_TOTAL, column-parallel) and W2 (H_TOTAL x D,</span>
+<a id="__codelineno-2-44" name="__codelineno-2-44" href="#__codelineno-2-44"></a><span class="c1">// row-parallel) shapes, reused unchanged.</span>
+<a id="__codelineno-2-45" name="__codelineno-2-45" href="#__codelineno-2-45"></a><span class="n">Mat</span><span class="w"> </span><span class="nf">makeW1</span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">l</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-2-46" name="__codelineno-2-46" href="#__codelineno-2-46"></a><span class="w">    </span><span class="n">Mat</span><span class="w"> </span><span class="n">W</span><span class="p">(</span><span class="n">D</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="n">H_TOTAL</span><span class="p">);</span>
+<a id="__codelineno-2-47" name="__codelineno-2-47" href="#__codelineno-2-47"></a><span class="w">    </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="n">D</span><span class="p">;</span><span class="w"> </span><span class="n">i</span><span class="o">++</span><span class="p">)</span>
+<a id="__codelineno-2-48" name="__codelineno-2-48" href="#__codelineno-2-48"></a><span class="w">        </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">h</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span><span class="w"> </span><span class="n">h</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="n">H_TOTAL</span><span class="p">;</span><span class="w"> </span><span class="n">h</span><span class="o">++</span><span class="p">)</span>
+<a id="__codelineno-2-49" name="__codelineno-2-49" href="#__codelineno-2-49"></a><span class="w">            </span><span class="n">W</span><span class="p">[</span><span class="n">i</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="n">H_TOTAL</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">h</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">((</span><span class="n">l</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="p">)</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="mi">13</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="mi">7</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">h</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="mi">3</span><span class="p">)</span><span class="w"> </span><span class="o">%</span><span class="w"> </span><span class="mi">7</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="mi">3</span><span class="p">;</span>
+<a id="__codelineno-2-50" name="__codelineno-2-50" href="#__codelineno-2-50"></a><span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="n">W</span><span class="p">;</span>
+<a id="__codelineno-2-51" name="__codelineno-2-51" href="#__codelineno-2-51"></a><span class="p">}</span>
+<a id="__codelineno-2-52" name="__codelineno-2-52" href="#__codelineno-2-52"></a><span class="n">Mat</span><span class="w"> </span><span class="nf">makeW2</span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">l</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-2-53" name="__codelineno-2-53" href="#__codelineno-2-53"></a><span class="w">    </span><span class="n">Mat</span><span class="w"> </span><span class="n">W</span><span class="p">(</span><span class="n">H_TOTAL</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="n">D</span><span class="p">);</span>
+<a id="__codelineno-2-54" name="__codelineno-2-54" href="#__codelineno-2-54"></a><span class="w">    </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">h</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span><span class="w"> </span><span class="n">h</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="n">H_TOTAL</span><span class="p">;</span><span class="w"> </span><span class="n">h</span><span class="o">++</span><span class="p">)</span>
+<a id="__codelineno-2-55" name="__codelineno-2-55" href="#__codelineno-2-55"></a><span class="w">        </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">j</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span><span class="w"> </span><span class="n">j</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="n">D</span><span class="p">;</span><span class="w"> </span><span class="n">j</span><span class="o">++</span><span class="p">)</span>
+<a id="__codelineno-2-56" name="__codelineno-2-56" href="#__codelineno-2-56"></a><span class="w">            </span><span class="n">W</span><span class="p">[</span><span class="n">h</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="n">D</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">j</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">((</span><span class="n">l</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="p">)</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="mi">17</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">h</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="mi">5</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">j</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="mi">11</span><span class="p">)</span><span class="w"> </span><span class="o">%</span><span class="w"> </span><span class="mi">7</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="mi">3</span><span class="p">;</span>
+<a id="__codelineno-2-57" name="__codelineno-2-57" href="#__codelineno-2-57"></a><span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="n">W</span><span class="p">;</span>
+<a id="__codelineno-2-58" name="__codelineno-2-58" href="#__codelineno-2-58"></a><span class="p">}</span>
+<a id="__codelineno-2-59" name="__codelineno-2-59" href="#__codelineno-2-59"></a>
+<a id="__codelineno-2-60" name="__codelineno-2-60" href="#__codelineno-2-60"></a><span class="c1">// --- Naive reference: one process, no TP, no PP, one flat pass through</span>
+<a id="__codelineno-2-61" name="__codelineno-2-61" href="#__codelineno-2-61"></a><span class="c1">// every layer, exactly the way an unsplit forward pass would run. ---</span>
+<a id="__codelineno-2-62" name="__codelineno-2-62" href="#__codelineno-2-62"></a><span class="n">Vec</span><span class="w"> </span><span class="nf">naiveForward</span><span class="p">(</span><span class="n">Vec</span><span class="w"> </span><span class="n">x</span><span class="p">,</span><span class="w"> </span><span class="k">const</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">Mat</span><span class="o">&gt;</span><span class="w"> </span><span class="o">&amp;</span><span class="n">W1s</span><span class="p">,</span><span class="w"> </span><span class="k">const</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">Mat</span><span class="o">&gt;</span><span class="w"> </span><span class="o">&amp;</span><span class="n">W2s</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-2-63" name="__codelineno-2-63" href="#__codelineno-2-63"></a><span class="w">    </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">l</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span><span class="w"> </span><span class="n">l</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="n">NUM_LAYERS</span><span class="p">;</span><span class="w"> </span><span class="n">l</span><span class="o">++</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-2-64" name="__codelineno-2-64" href="#__codelineno-2-64"></a><span class="w">        </span><span class="n">Vec</span><span class="w"> </span><span class="n">hidden</span><span class="p">(</span><span class="n">H_TOTAL</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">);</span>
+<a id="__codelineno-2-65" name="__codelineno-2-65" href="#__codelineno-2-65"></a><span class="w">        </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">h</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span><span class="w"> </span><span class="n">h</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="n">H_TOTAL</span><span class="p">;</span><span class="w"> </span><span class="n">h</span><span class="o">++</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-2-66" name="__codelineno-2-66" href="#__codelineno-2-66"></a><span class="w">            </span><span class="kt">long</span><span class="w"> </span><span class="kt">long</span><span class="w"> </span><span class="n">s</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
+<a id="__codelineno-2-67" name="__codelineno-2-67" href="#__codelineno-2-67"></a><span class="w">            </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="n">D</span><span class="p">;</span><span class="w"> </span><span class="n">i</span><span class="o">++</span><span class="p">)</span><span class="w"> </span><span class="n">s</span><span class="w"> </span><span class="o">+=</span><span class="w"> </span><span class="n">x</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="n">W1s</span><span class="p">[</span><span class="n">l</span><span class="p">][</span><span class="n">i</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="n">H_TOTAL</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">h</span><span class="p">];</span>
+<a id="__codelineno-2-68" name="__codelineno-2-68" href="#__codelineno-2-68"></a><span class="w">            </span><span class="n">hidden</span><span class="p">[</span><span class="n">h</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">relu</span><span class="p">(</span><span class="n">s</span><span class="p">);</span>
+<a id="__codelineno-2-69" name="__codelineno-2-69" href="#__codelineno-2-69"></a><span class="w">        </span><span class="p">}</span>
+<a id="__codelineno-2-70" name="__codelineno-2-70" href="#__codelineno-2-70"></a><span class="w">        </span><span class="n">Vec</span><span class="w"> </span><span class="n">out</span><span class="p">(</span><span class="n">D</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">);</span>
+<a id="__codelineno-2-71" name="__codelineno-2-71" href="#__codelineno-2-71"></a><span class="w">        </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">j</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span><span class="w"> </span><span class="n">j</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="n">D</span><span class="p">;</span><span class="w"> </span><span class="n">j</span><span class="o">++</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-2-72" name="__codelineno-2-72" href="#__codelineno-2-72"></a><span class="w">            </span><span class="kt">long</span><span class="w"> </span><span class="kt">long</span><span class="w"> </span><span class="n">s</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
+<a id="__codelineno-2-73" name="__codelineno-2-73" href="#__codelineno-2-73"></a><span class="w">            </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">h</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span><span class="w"> </span><span class="n">h</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="n">H_TOTAL</span><span class="p">;</span><span class="w"> </span><span class="n">h</span><span class="o">++</span><span class="p">)</span><span class="w"> </span><span class="n">s</span><span class="w"> </span><span class="o">+=</span><span class="w"> </span><span class="n">hidden</span><span class="p">[</span><span class="n">h</span><span class="p">]</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="n">W2s</span><span class="p">[</span><span class="n">l</span><span class="p">][</span><span class="n">h</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="n">D</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">j</span><span class="p">];</span>
+<a id="__codelineno-2-74" name="__codelineno-2-74" href="#__codelineno-2-74"></a><span class="w">            </span><span class="n">out</span><span class="p">[</span><span class="n">j</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">s</span><span class="p">;</span>
+<a id="__codelineno-2-75" name="__codelineno-2-75" href="#__codelineno-2-75"></a><span class="w">        </span><span class="p">}</span>
+<a id="__codelineno-2-76" name="__codelineno-2-76" href="#__codelineno-2-76"></a><span class="w">        </span><span class="n">x</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">out</span><span class="p">;</span>
+<a id="__codelineno-2-77" name="__codelineno-2-77" href="#__codelineno-2-77"></a><span class="w">    </span><span class="p">}</span>
+<a id="__codelineno-2-78" name="__codelineno-2-78" href="#__codelineno-2-78"></a><span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="n">x</span><span class="p">;</span>
+<a id="__codelineno-2-79" name="__codelineno-2-79" href="#__codelineno-2-79"></a><span class="p">}</span>
+<a id="__codelineno-2-80" name="__codelineno-2-80" href="#__codelineno-2-80"></a>
+<a id="__codelineno-2-81" name="__codelineno-2-81" href="#__codelineno-2-81"></a><span class="c1">// --- Combined TP+PP: one layer&#39;s real Megatron-style TP split, run</span>
+<a id="__codelineno-2-82" name="__codelineno-2-82" href="#__codelineno-2-82"></a><span class="c1">// entirely within ONE pipeline stage&#39;s own TP group. Column-parallel</span>
+<a id="__codelineno-2-83" name="__codelineno-2-83" href="#__codelineno-2-83"></a><span class="c1">// GEMM1 needs NO communication (each TP rank computes its own hidden</span>
+<a id="__codelineno-2-84" name="__codelineno-2-84" href="#__codelineno-2-84"></a><span class="c1">// shard); row-parallel GEMM2 needs exactly ONE all-reduce, SCOPED TO</span>
+<a id="__codelineno-2-85" name="__codelineno-2-85" href="#__codelineno-2-85"></a><span class="c1">// THIS STAGE&#39;S OWN TP GROUP ONLY -- never crossing a pipeline-stage</span>
+<a id="__codelineno-2-86" name="__codelineno-2-86" href="#__codelineno-2-86"></a><span class="c1">// boundary, which is the real property this file&#39;s own COMMON TRAP is</span>
+<a id="__codelineno-2-87" name="__codelineno-2-87" href="#__codelineno-2-87"></a><span class="c1">// built around. ---</span>
+<a id="__codelineno-2-88" name="__codelineno-2-88" href="#__codelineno-2-88"></a><span class="n">Vec</span><span class="w"> </span><span class="nf">layerForwardTP</span><span class="p">(</span><span class="n">Vec</span><span class="w"> </span><span class="n">x</span><span class="p">,</span><span class="w"> </span><span class="k">const</span><span class="w"> </span><span class="n">Mat</span><span class="w"> </span><span class="o">&amp;</span><span class="n">W1</span><span class="p">,</span><span class="w"> </span><span class="k">const</span><span class="w"> </span><span class="n">Mat</span><span class="w"> </span><span class="o">&amp;</span><span class="n">W2</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-2-89" name="__codelineno-2-89" href="#__codelineno-2-89"></a><span class="w">    </span><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">Vec</span><span class="o">&gt;</span><span class="w"> </span><span class="n">localOut</span><span class="p">(</span><span class="n">TP_DEGREE</span><span class="p">,</span><span class="w"> </span><span class="n">Vec</span><span class="p">(</span><span class="n">D</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">));</span>
+<a id="__codelineno-2-90" name="__codelineno-2-90" href="#__codelineno-2-90"></a><span class="w">    </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">r</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span><span class="w"> </span><span class="n">r</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="n">TP_DEGREE</span><span class="p">;</span><span class="w"> </span><span class="n">r</span><span class="o">++</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-2-91" name="__codelineno-2-91" href="#__codelineno-2-91"></a><span class="w">        </span><span class="c1">// Column-parallel GEMM1: rank r owns hidden columns</span>
+<a id="__codelineno-2-92" name="__codelineno-2-92" href="#__codelineno-2-92"></a><span class="w">        </span><span class="c1">// [r*H_PER_TP, (r+1)*H_PER_TP) -- no communication needed here.</span>
+<a id="__codelineno-2-93" name="__codelineno-2-93" href="#__codelineno-2-93"></a><span class="w">        </span><span class="n">Vec</span><span class="w"> </span><span class="n">hiddenShard</span><span class="p">(</span><span class="n">H_PER_TP</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">);</span>
+<a id="__codelineno-2-94" name="__codelineno-2-94" href="#__codelineno-2-94"></a><span class="w">        </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">hh</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span><span class="w"> </span><span class="n">hh</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="n">H_PER_TP</span><span class="p">;</span><span class="w"> </span><span class="n">hh</span><span class="o">++</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-2-95" name="__codelineno-2-95" href="#__codelineno-2-95"></a><span class="w">            </span><span class="kt">int</span><span class="w"> </span><span class="n">h</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">r</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="n">H_PER_TP</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">hh</span><span class="p">;</span>
+<a id="__codelineno-2-96" name="__codelineno-2-96" href="#__codelineno-2-96"></a><span class="w">            </span><span class="kt">long</span><span class="w"> </span><span class="kt">long</span><span class="w"> </span><span class="n">s</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
+<a id="__codelineno-2-97" name="__codelineno-2-97" href="#__codelineno-2-97"></a><span class="w">            </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="n">D</span><span class="p">;</span><span class="w"> </span><span class="n">i</span><span class="o">++</span><span class="p">)</span><span class="w"> </span><span class="n">s</span><span class="w"> </span><span class="o">+=</span><span class="w"> </span><span class="n">x</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="n">W1</span><span class="p">[</span><span class="n">i</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="n">H_TOTAL</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">h</span><span class="p">];</span>
+<a id="__codelineno-2-98" name="__codelineno-2-98" href="#__codelineno-2-98"></a><span class="w">            </span><span class="n">hiddenShard</span><span class="p">[</span><span class="n">hh</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">relu</span><span class="p">(</span><span class="n">s</span><span class="p">);</span>
+<a id="__codelineno-2-99" name="__codelineno-2-99" href="#__codelineno-2-99"></a><span class="w">        </span><span class="p">}</span>
+<a id="__codelineno-2-100" name="__codelineno-2-100" href="#__codelineno-2-100"></a><span class="w">        </span><span class="c1">// Row-parallel GEMM2: rank r owns the H_PER_TP rows of W2</span>
+<a id="__codelineno-2-101" name="__codelineno-2-101" href="#__codelineno-2-101"></a><span class="w">        </span><span class="c1">// matching its own hidden shard, producing a PARTIAL D-vector.</span>
+<a id="__codelineno-2-102" name="__codelineno-2-102" href="#__codelineno-2-102"></a><span class="w">        </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">j</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span><span class="w"> </span><span class="n">j</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="n">D</span><span class="p">;</span><span class="w"> </span><span class="n">j</span><span class="o">++</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-2-103" name="__codelineno-2-103" href="#__codelineno-2-103"></a><span class="w">            </span><span class="kt">long</span><span class="w"> </span><span class="kt">long</span><span class="w"> </span><span class="n">s</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
+<a id="__codelineno-2-104" name="__codelineno-2-104" href="#__codelineno-2-104"></a><span class="w">            </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">hh</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span><span class="w"> </span><span class="n">hh</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="n">H_PER_TP</span><span class="p">;</span><span class="w"> </span><span class="n">hh</span><span class="o">++</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-2-105" name="__codelineno-2-105" href="#__codelineno-2-105"></a><span class="w">                </span><span class="kt">int</span><span class="w"> </span><span class="n">h</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">r</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="n">H_PER_TP</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">hh</span><span class="p">;</span>
+<a id="__codelineno-2-106" name="__codelineno-2-106" href="#__codelineno-2-106"></a><span class="w">                </span><span class="n">s</span><span class="w"> </span><span class="o">+=</span><span class="w"> </span><span class="n">hiddenShard</span><span class="p">[</span><span class="n">hh</span><span class="p">]</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="n">W2</span><span class="p">[</span><span class="n">h</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="n">D</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">j</span><span class="p">];</span>
+<a id="__codelineno-2-107" name="__codelineno-2-107" href="#__codelineno-2-107"></a><span class="w">            </span><span class="p">}</span>
+<a id="__codelineno-2-108" name="__codelineno-2-108" href="#__codelineno-2-108"></a><span class="w">            </span><span class="n">localOut</span><span class="p">[</span><span class="n">r</span><span class="p">][</span><span class="n">j</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">s</span><span class="p">;</span>
+<a id="__codelineno-2-109" name="__codelineno-2-109" href="#__codelineno-2-109"></a><span class="w">        </span><span class="p">}</span>
+<a id="__codelineno-2-110" name="__codelineno-2-110" href="#__codelineno-2-110"></a><span class="w">    </span><span class="p">}</span>
+<a id="__codelineno-2-111" name="__codelineno-2-111" href="#__codelineno-2-111"></a><span class="w">    </span><span class="c1">// ONE real all-reduce (SUM), scoped to this stage&#39;s TP group of</span>
+<a id="__codelineno-2-112" name="__codelineno-2-112" href="#__codelineno-2-112"></a><span class="w">    </span><span class="c1">// TP_DEGREE ranks -- Chapter 14&#39;s own real row-parallel pattern,</span>
+<a id="__codelineno-2-113" name="__codelineno-2-113" href="#__codelineno-2-113"></a><span class="w">    </span><span class="c1">// reused unchanged.</span>
+<a id="__codelineno-2-114" name="__codelineno-2-114" href="#__codelineno-2-114"></a><span class="w">    </span><span class="n">Vec</span><span class="w"> </span><span class="n">combined</span><span class="p">(</span><span class="n">D</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">);</span>
+<a id="__codelineno-2-115" name="__codelineno-2-115" href="#__codelineno-2-115"></a><span class="w">    </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">r</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span><span class="w"> </span><span class="n">r</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="n">TP_DEGREE</span><span class="p">;</span><span class="w"> </span><span class="n">r</span><span class="o">++</span><span class="p">)</span>
+<a id="__codelineno-2-116" name="__codelineno-2-116" href="#__codelineno-2-116"></a><span class="w">        </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">j</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span><span class="w"> </span><span class="n">j</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="n">D</span><span class="p">;</span><span class="w"> </span><span class="n">j</span><span class="o">++</span><span class="p">)</span><span class="w"> </span><span class="n">combined</span><span class="p">[</span><span class="n">j</span><span class="p">]</span><span class="w"> </span><span class="o">+=</span><span class="w"> </span><span class="n">localOut</span><span class="p">[</span><span class="n">r</span><span class="p">][</span><span class="n">j</span><span class="p">];</span>
+<a id="__codelineno-2-117" name="__codelineno-2-117" href="#__codelineno-2-117"></a><span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="n">combined</span><span class="p">;</span>
+<a id="__codelineno-2-118" name="__codelineno-2-118" href="#__codelineno-2-118"></a><span class="p">}</span>
+<a id="__codelineno-2-119" name="__codelineno-2-119" href="#__codelineno-2-119"></a>
+<a id="__codelineno-2-120" name="__codelineno-2-120" href="#__codelineno-2-120"></a><span class="n">Vec</span><span class="w"> </span><span class="nf">combinedForward</span><span class="p">(</span><span class="n">Vec</span><span class="w"> </span><span class="n">x</span><span class="p">,</span><span class="w"> </span><span class="k">const</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">Mat</span><span class="o">&gt;</span><span class="w"> </span><span class="o">&amp;</span><span class="n">W1s</span><span class="p">,</span><span class="w"> </span><span class="k">const</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">Mat</span><span class="o">&gt;</span><span class="w"> </span><span class="o">&amp;</span><span class="n">W2s</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-2-121" name="__codelineno-2-121" href="#__codelineno-2-121"></a><span class="w">    </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">stage</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span><span class="w"> </span><span class="n">stage</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="n">PP_STAGES</span><span class="p">;</span><span class="w"> </span><span class="n">stage</span><span class="o">++</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-2-122" name="__codelineno-2-122" href="#__codelineno-2-122"></a><span class="w">        </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">li</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span><span class="w"> </span><span class="n">li</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="n">LAYERS_PER_STAGE</span><span class="p">;</span><span class="w"> </span><span class="n">li</span><span class="o">++</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-2-123" name="__codelineno-2-123" href="#__codelineno-2-123"></a><span class="w">            </span><span class="kt">int</span><span class="w"> </span><span class="n">l</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">stage</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="n">LAYERS_PER_STAGE</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">li</span><span class="p">;</span>
+<a id="__codelineno-2-124" name="__codelineno-2-124" href="#__codelineno-2-124"></a><span class="w">            </span><span class="n">x</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">layerForwardTP</span><span class="p">(</span><span class="n">x</span><span class="p">,</span><span class="w"> </span><span class="n">W1s</span><span class="p">[</span><span class="n">l</span><span class="p">],</span><span class="w"> </span><span class="n">W2s</span><span class="p">[</span><span class="n">l</span><span class="p">]);</span>
+<a id="__codelineno-2-125" name="__codelineno-2-125" href="#__codelineno-2-125"></a><span class="w">        </span><span class="p">}</span>
+<a id="__codelineno-2-126" name="__codelineno-2-126" href="#__codelineno-2-126"></a><span class="w">        </span><span class="c1">// PP handoff: the stage&#39;s OWN fully-combined activation (every</span>
+<a id="__codelineno-2-127" name="__codelineno-2-127" href="#__codelineno-2-127"></a><span class="w">        </span><span class="c1">// TP rank in this stage already holds the identical value,</span>
+<a id="__codelineno-2-128" name="__codelineno-2-128" href="#__codelineno-2-128"></a><span class="w">        </span><span class="c1">// after the all-reduce above) is what crosses to the next</span>
+<a id="__codelineno-2-129" name="__codelineno-2-129" href="#__codelineno-2-129"></a><span class="w">        </span><span class="c1">// stage -- Chapter 13&#39;s own cudaMemcpyPeer()-style activation</span>
+<a id="__codelineno-2-130" name="__codelineno-2-130" href="#__codelineno-2-130"></a><span class="w">        </span><span class="c1">// transfer, simulated here as a plain array copy. No partial,</span>
+<a id="__codelineno-2-131" name="__codelineno-2-131" href="#__codelineno-2-131"></a><span class="w">        </span><span class="c1">// not-yet-all-reduced value ever crosses a stage boundary.</span>
+<a id="__codelineno-2-132" name="__codelineno-2-132" href="#__codelineno-2-132"></a><span class="w">    </span><span class="p">}</span>
+<a id="__codelineno-2-133" name="__codelineno-2-133" href="#__codelineno-2-133"></a><span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="n">x</span><span class="p">;</span>
+<a id="__codelineno-2-134" name="__codelineno-2-134" href="#__codelineno-2-134"></a><span class="p">}</span>
+<a id="__codelineno-2-135" name="__codelineno-2-135" href="#__codelineno-2-135"></a>
+<a id="__codelineno-2-136" name="__codelineno-2-136" href="#__codelineno-2-136"></a><span class="kt">int</span><span class="w"> </span><span class="nf">main</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-2-137" name="__codelineno-2-137" href="#__codelineno-2-137"></a><span class="w">    </span><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">Mat</span><span class="o">&gt;</span><span class="w"> </span><span class="n">W1s</span><span class="p">(</span><span class="n">NUM_LAYERS</span><span class="p">),</span><span class="w"> </span><span class="n">W2s</span><span class="p">(</span><span class="n">NUM_LAYERS</span><span class="p">);</span>
+<a id="__codelineno-2-138" name="__codelineno-2-138" href="#__codelineno-2-138"></a><span class="w">    </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">l</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span><span class="w"> </span><span class="n">l</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="n">NUM_LAYERS</span><span class="p">;</span><span class="w"> </span><span class="n">l</span><span class="o">++</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">W1s</span><span class="p">[</span><span class="n">l</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">makeW1</span><span class="p">(</span><span class="n">l</span><span class="p">);</span><span class="w"> </span><span class="n">W2s</span><span class="p">[</span><span class="n">l</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">makeW2</span><span class="p">(</span><span class="n">l</span><span class="p">);</span><span class="w"> </span><span class="p">}</span>
+<a id="__codelineno-2-139" name="__codelineno-2-139" href="#__codelineno-2-139"></a>
+<a id="__codelineno-2-140" name="__codelineno-2-140" href="#__codelineno-2-140"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;Grid: PP_STAGES=%d x TP_DEGREE=%d = %d total simulated devices, &quot;</span>
+<a id="__codelineno-2-141" name="__codelineno-2-141" href="#__codelineno-2-141"></a><span class="w">           </span><span class="s">&quot;%d layers (%d per stage), %d microbatches (inference: forward only)</span><span class="se">\n\n</span><span class="s">&quot;</span><span class="p">,</span>
+<a id="__codelineno-2-142" name="__codelineno-2-142" href="#__codelineno-2-142"></a><span class="w">           </span><span class="n">PP_STAGES</span><span class="p">,</span><span class="w"> </span><span class="n">TP_DEGREE</span><span class="p">,</span><span class="w"> </span><span class="n">PP_STAGES</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="n">TP_DEGREE</span><span class="p">,</span><span class="w"> </span><span class="n">NUM_LAYERS</span><span class="p">,</span>
+<a id="__codelineno-2-143" name="__codelineno-2-143" href="#__codelineno-2-143"></a><span class="w">           </span><span class="n">LAYERS_PER_STAGE</span><span class="p">,</span><span class="w"> </span><span class="n">M</span><span class="p">);</span>
+<a id="__codelineno-2-144" name="__codelineno-2-144" href="#__codelineno-2-144"></a>
+<a id="__codelineno-2-145" name="__codelineno-2-145" href="#__codelineno-2-145"></a><span class="w">    </span><span class="kt">bool</span><span class="w"> </span><span class="n">allExact</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nb">true</span><span class="p">;</span>
+<a id="__codelineno-2-146" name="__codelineno-2-146" href="#__codelineno-2-146"></a><span class="w">    </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">m</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span><span class="w"> </span><span class="n">m</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="n">M</span><span class="p">;</span><span class="w"> </span><span class="n">m</span><span class="o">++</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-2-147" name="__codelineno-2-147" href="#__codelineno-2-147"></a><span class="w">        </span><span class="n">Vec</span><span class="w"> </span><span class="n">x0</span><span class="p">(</span><span class="n">D</span><span class="p">);</span>
+<a id="__codelineno-2-148" name="__codelineno-2-148" href="#__codelineno-2-148"></a><span class="w">        </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">d</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span><span class="w"> </span><span class="n">d</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="n">D</span><span class="p">;</span><span class="w"> </span><span class="n">d</span><span class="o">++</span><span class="p">)</span><span class="w"> </span><span class="n">x0</span><span class="p">[</span><span class="n">d</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="n">m</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="mi">3</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">d</span><span class="p">)</span><span class="w"> </span><span class="o">%</span><span class="w"> </span><span class="mi">5</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="mi">2</span><span class="p">;</span>
+<a id="__codelineno-2-149" name="__codelineno-2-149" href="#__codelineno-2-149"></a>
+<a id="__codelineno-2-150" name="__codelineno-2-150" href="#__codelineno-2-150"></a><span class="w">        </span><span class="n">Vec</span><span class="w"> </span><span class="n">refOut</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">naiveForward</span><span class="p">(</span><span class="n">x0</span><span class="p">,</span><span class="w"> </span><span class="n">W1s</span><span class="p">,</span><span class="w"> </span><span class="n">W2s</span><span class="p">);</span>
+<a id="__codelineno-2-151" name="__codelineno-2-151" href="#__codelineno-2-151"></a><span class="w">        </span><span class="n">Vec</span><span class="w"> </span><span class="n">combOut</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">combinedForward</span><span class="p">(</span><span class="n">x0</span><span class="p">,</span><span class="w"> </span><span class="n">W1s</span><span class="p">,</span><span class="w"> </span><span class="n">W2s</span><span class="p">);</span>
+<a id="__codelineno-2-152" name="__codelineno-2-152" href="#__codelineno-2-152"></a>
+<a id="__codelineno-2-153" name="__codelineno-2-153" href="#__codelineno-2-153"></a><span class="w">        </span><span class="kt">bool</span><span class="w"> </span><span class="n">exact</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="n">refOut</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="n">combOut</span><span class="p">);</span>
+<a id="__codelineno-2-154" name="__codelineno-2-154" href="#__codelineno-2-154"></a><span class="w">        </span><span class="n">allExact</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">allExact</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="n">exact</span><span class="p">;</span>
+<a id="__codelineno-2-155" name="__codelineno-2-155" href="#__codelineno-2-155"></a><span class="w">        </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;Microbatch %d: naive=[&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">m</span><span class="p">);</span>
+<a id="__codelineno-2-156" name="__codelineno-2-156" href="#__codelineno-2-156"></a><span class="w">        </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">d</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span><span class="w"> </span><span class="n">d</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="n">D</span><span class="p">;</span><span class="w"> </span><span class="n">d</span><span class="o">++</span><span class="p">)</span><span class="w"> </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;%lld%s&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">refOut</span><span class="p">[</span><span class="n">d</span><span class="p">],</span><span class="w"> </span><span class="n">d</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="n">D</span><span class="w"> </span><span class="o">?</span><span class="w"> </span><span class="s">&quot;,&quot;</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="s">&quot;&quot;</span><span class="p">);</span>
+<a id="__codelineno-2-157" name="__codelineno-2-157" href="#__codelineno-2-157"></a><span class="w">        </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;]  combined-TP+PP=[&quot;</span><span class="p">);</span>
+<a id="__codelineno-2-158" name="__codelineno-2-158" href="#__codelineno-2-158"></a><span class="w">        </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">d</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span><span class="w"> </span><span class="n">d</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="n">D</span><span class="p">;</span><span class="w"> </span><span class="n">d</span><span class="o">++</span><span class="p">)</span><span class="w"> </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;%lld%s&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">combOut</span><span class="p">[</span><span class="n">d</span><span class="p">],</span><span class="w"> </span><span class="n">d</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="n">D</span><span class="w"> </span><span class="o">?</span><span class="w"> </span><span class="s">&quot;,&quot;</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="s">&quot;&quot;</span><span class="p">);</span>
+<a id="__codelineno-2-159" name="__codelineno-2-159" href="#__codelineno-2-159"></a><span class="w">        </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;]  %s</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">exact</span><span class="w"> </span><span class="o">?</span><span class="w"> </span><span class="s">&quot;EXACT MATCH&quot;</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="s">&quot;MISMATCH&quot;</span><span class="p">);</span>
+<a id="__codelineno-2-160" name="__codelineno-2-160" href="#__codelineno-2-160"></a><span class="w">    </span><span class="p">}</span>
+<a id="__codelineno-2-161" name="__codelineno-2-161" href="#__codelineno-2-161"></a>
+<a id="__codelineno-2-162" name="__codelineno-2-162" href="#__codelineno-2-162"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;</span><span class="se">\n</span><span class="s">All %d microbatches EXACT MATCH between naive and combined &quot;</span>
+<a id="__codelineno-2-163" name="__codelineno-2-163" href="#__codelineno-2-163"></a><span class="w">           </span><span class="s">&quot;TP+PP: %s</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">M</span><span class="p">,</span><span class="w"> </span><span class="n">allExact</span><span class="w"> </span><span class="o">?</span><span class="w"> </span><span class="s">&quot;YES&quot;</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="s">&quot;NO&quot;</span><span class="p">);</span>
+<a id="__codelineno-2-164" name="__codelineno-2-164" href="#__codelineno-2-164"></a>
+<a id="__codelineno-2-165" name="__codelineno-2-165" href="#__codelineno-2-165"></a><span class="w">    </span><span class="c1">// A real, direct forward-only pipeline-schedule count (NOT Chapter</span>
+<a id="__codelineno-2-166" name="__codelineno-2-166" href="#__codelineno-2-166"></a><span class="w">    </span><span class="c1">// 15&#39;s own training bubble formula -- see this section&#39;s own COMMON</span>
+<a id="__codelineno-2-167" name="__codelineno-2-167" href="#__codelineno-2-167"></a><span class="w">    </span><span class="c1">// TRAP for why that formula does not apply here): M microbatches</span>
+<a id="__codelineno-2-168" name="__codelineno-2-168" href="#__codelineno-2-168"></a><span class="w">    </span><span class="c1">// through PP_STAGES stages, one stage-slot per microbatch per</span>
+<a id="__codelineno-2-169" name="__codelineno-2-169" href="#__codelineno-2-169"></a><span class="w">    </span><span class="c1">// stage, take exactly M + PP_STAGES - 1 total time steps to drain.</span>
+<a id="__codelineno-2-170" name="__codelineno-2-170" href="#__codelineno-2-170"></a><span class="w">    </span><span class="kt">int</span><span class="w"> </span><span class="n">totalSteps</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">M</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">PP_STAGES</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="mi">1</span><span class="p">;</span>
+<a id="__codelineno-2-171" name="__codelineno-2-171" href="#__codelineno-2-171"></a><span class="w">    </span><span class="kt">int</span><span class="w"> </span><span class="n">totalSlots</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">totalSteps</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="n">PP_STAGES</span><span class="p">;</span>
+<a id="__codelineno-2-172" name="__codelineno-2-172" href="#__codelineno-2-172"></a><span class="w">    </span><span class="kt">int</span><span class="w"> </span><span class="n">busySlots</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">M</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="n">PP_STAGES</span><span class="p">;</span>
+<a id="__codelineno-2-173" name="__codelineno-2-173" href="#__codelineno-2-173"></a><span class="w">    </span><span class="kt">int</span><span class="w"> </span><span class="n">idleSlots</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">totalSlots</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">busySlots</span><span class="p">;</span>
+<a id="__codelineno-2-174" name="__codelineno-2-174" href="#__codelineno-2-174"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;</span><span class="se">\n</span><span class="s">Forward-only inference pipeline schedule: %d microbatches, &quot;</span>
+<a id="__codelineno-2-175" name="__codelineno-2-175" href="#__codelineno-2-175"></a><span class="w">           </span><span class="s">&quot;%d stages -&gt; %d total time steps, %d/%d stage-slots busy, &quot;</span>
+<a id="__codelineno-2-176" name="__codelineno-2-176" href="#__codelineno-2-176"></a><span class="w">           </span><span class="s">&quot;%d idle (%.1f%% bubble)</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span>
+<a id="__codelineno-2-177" name="__codelineno-2-177" href="#__codelineno-2-177"></a><span class="w">           </span><span class="n">M</span><span class="p">,</span><span class="w"> </span><span class="n">PP_STAGES</span><span class="p">,</span><span class="w"> </span><span class="n">totalSteps</span><span class="p">,</span><span class="w"> </span><span class="n">busySlots</span><span class="p">,</span><span class="w"> </span><span class="n">totalSlots</span><span class="p">,</span><span class="w"> </span><span class="n">idleSlots</span><span class="p">,</span>
+<a id="__codelineno-2-178" name="__codelineno-2-178" href="#__codelineno-2-178"></a><span class="w">           </span><span class="mf">100.0</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="n">idleSlots</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="n">totalSlots</span><span class="p">);</span>
+<a id="__codelineno-2-179" name="__codelineno-2-179" href="#__codelineno-2-179"></a>
+<a id="__codelineno-2-180" name="__codelineno-2-180" href="#__codelineno-2-180"></a><span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="n">allExact</span><span class="w"> </span><span class="o">?</span><span class="w"> </span><span class="mi">0</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="mi">1</span><span class="p">;</span>
+<a id="__codelineno-2-181" name="__codelineno-2-181" href="#__codelineno-2-181"></a><span class="p">}</span>
+</code></pre></div>
+<p>Compiled with <code>g++ -O2 75_tp_pp_combined_correctness_simulation.cpp -o 75_tp_pp_combined_correctness_simulation</code> and genuinely run, on both the cloud sandbox and the device (a plain host computation), with byte-identical output on both. Locked output:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>Grid: PP_STAGES=2 x TP_DEGREE=2 = 4 total simulated devices, 4 layers (2 per stage), 4 microbatches (inference: forward only)
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>Microbatch 0: naive=[-1152,128,-384,896]  combined-TP+PP=[-1152,128,-384,896]  EXACT MATCH
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>Microbatch 1: naive=[0,0,0,0]  combined-TP+PP=[0,0,0,0]  EXACT MATCH
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>Microbatch 2: naive=[-6624,736,-2208,5152]  combined-TP+PP=[-6624,736,-2208,5152]  EXACT MATCH
+<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>Microbatch 3: naive=[-576,64,-192,448]  combined-TP+PP=[-576,64,-192,448]  EXACT MATCH
+<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>
+<a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a>All 4 microbatches EXACT MATCH between naive and combined TP+PP: YES
+<a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a>
+<a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a>Forward-only inference pipeline schedule: 4 microbatches, 2 stages -&gt; 5 total time steps, 8/10 stage-slots busy, 2 idle (20.0% bubble)
+</code></pre></div>
+<div class="admonition warning">
+<p class="admonition-title">[COMMON TRAP] Applying Chapter 15's own training bubble formula, <code>(K-1)/(M+K-1)</code>, to an inference pipeline</p>
+<p>Chapter 15's own bubble formula was built for GPipe's real TRAINING schedule, where every microbatch needs both a forward pass AND a backward pass through every stage, and the bubble comes from the ramp-up/ramp-down around that two-phase schedule. A real LLM inference server has no backward pass at all -- every microbatch (or, in a real serving system, every request or batch of requests) only ever flows forward through the pipeline once. This section's own locked output computes the inference-specific version of the SAME idea directly, by counting stage-slots rather than reusing Chapter 15's own formula unchanged: <code>M</code> microbatches through <code>PP_STAGES</code> stages take <code>M + PP_STAGES - 1</code> total time steps to fully drain, of which <code>M * PP_STAGES</code> stage-slots are genuinely busy and the rest -- here, 2 out of 10, 20% -- are idle ramp-up/ramp-down bubble. Reusing Chapter 15's own two-phase formula for this one-phase inference case would silently double-count a backward pass this chapter's own case study never has.</p>
+</div>
+<h2 id="262-why-8-way-why-35-way-a-real-530-billion-parameter-config">26.2 Why 8-Way, Why 35-Way: A Real 530-Billion-Parameter Config<a class="headerlink" href="#262-why-8-way-why-35-way-a-real-530-billion-parameter-config" title="Permanent link">&para;</a></h2>
+<h3 id="intuition_1">Intuition<a class="headerlink" href="#intuition_1" title="Permanent link">&para;</a></h3>
+<p>Section 26.1 proved a small, toy combined grid is correct. The real question a production system has to answer is where, specifically, to draw the line between tensor-parallel degree and pipeline-parallel degree for a real model at real scale. The Megatron-Turing NLG 530B paper (Smith et al.) states its own real answer directly: "each 530 billion parameter model replica spans 280 NVIDIA A100 GPUs, with 8-way tensor-slicing within a node and 35-way pipeline parallelism across nodes" -- and <code>8 x 35 = 280</code>, exactly matching the GPU count. The Megatron-LM paper explains why the line is drawn exactly at the node boundary: "the all-reduce communication required for tensor parallelism needs to go through inter-server links, which are slower than the high-bandwidth NVLink available within a multi-GPU server." This section's own worked model asks what, precisely, would go wrong if tensor parallelism were pushed past that boundary -- and the honest answer, reusing Chapter 9's own real ring all-reduce formula, is more specific than "it would be slower": it is not primarily the data VOLUME moved (which Chapter 9 and Chapter 25 both already showed stays nearly flat as the group grows), but the ROUND COUNT, which grows directly with the group size and does not flatten out at all.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>Real config: TP=8 (within ONE node)      Hypothetical: TP=280 (whole replica,
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>             PP=35 (across nodes)                      no PP at all)
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>  8 GPUs&#39; own ring all-reduce:              280 GPUs&#39; own ring all-reduce:
+<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>  2(N-1) = 14 rounds                        2(N-1) = 558 rounds  (39.9x more)
+<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>  ALL 14 stay on fast NVLink                ALL 558 would cross the SLOWER
+<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a>  (inside one node)                         inter-server link (Megatron-LM&#39;s
+<a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a>                                             own named reason to avoid this)
+<a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a>
+<a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a>  per-rank VOLUME factor: 1.75              per-rank VOLUME factor: 1.9929
+<a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a>  (only 1.14x more than TP=8 -- volume        (nearly flat, same as Ch9/25&#39;s
+<a id="__codelineno-4-12" name="__codelineno-4-12" href="#__codelineno-4-12"></a>   is NOT the driving cost here)              own finding -- ALSO not the point)
+</code></pre></div>
+<h3 id="background_1">Background<a class="headerlink" href="#background_1" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="c1">// Chapter 26: Multi-GPU LLM Inference: Tensor and Pipeline Parallelism in</span>
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="c1">// Practice</span>
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="c1">// 76_tp_pp_scale_cost_model.cpp</span>
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="c1">//</span>
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a><span class="c1">// Section 26.1 proved the combined TP+PP grid&#39;s ROUTING is correct at</span>
+<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a><span class="c1">// toy scale. This section asks the real question that shape answers:</span>
+<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a><span class="c1">// why 8-way tensor parallelism and 35-way pipeline parallelism,</span>
+<a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a><span class="c1">// specifically, for a real 530-billion-parameter model? The Megatron-</span>
+<a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a><span class="c1">// Turing NLG 530B paper (Smith et al.) states its own real config</span>
+<a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a><span class="c1">// directly: &quot;each 530 billion parameter model replica spans 280 NVIDIA</span>
+<a id="__codelineno-5-11" name="__codelineno-5-11" href="#__codelineno-5-11"></a><span class="c1">// A100 GPUs, with 8-way tensor-slicing within a node and 35-way</span>
+<a id="__codelineno-5-12" name="__codelineno-5-12" href="#__codelineno-5-12"></a><span class="c1">// pipeline parallelism across nodes&quot; (8 x 35 = 280). The Megatron-LM</span>
+<a id="__codelineno-5-13" name="__codelineno-5-13" href="#__codelineno-5-13"></a><span class="c1">// paper explains WHY the split is drawn exactly at the node boundary:</span>
+<a id="__codelineno-5-14" name="__codelineno-5-14" href="#__codelineno-5-14"></a><span class="c1">// &quot;the all-reduce communication required for tensor parallelism needs</span>
+<a id="__codelineno-5-15" name="__codelineno-5-15" href="#__codelineno-5-15"></a><span class="c1">// to go through inter-server links, which are slower than the high-</span>
+<a id="__codelineno-5-16" name="__codelineno-5-16" href="#__codelineno-5-16"></a><span class="c1">// bandwidth NVLink available within a multi-GPU server,&quot; and therefore</span>
+<a id="__codelineno-5-17" name="__codelineno-5-17" href="#__codelineno-5-17"></a><span class="c1">// &quot;tensor model parallelism should generally be used up to degree g</span>
+<a id="__codelineno-5-18" name="__codelineno-5-18" href="#__codelineno-5-18"></a><span class="c1">// when using g-GPU servers, and then pipeline model parallelism can be</span>
+<a id="__codelineno-5-19" name="__codelineno-5-19" href="#__codelineno-5-19"></a><span class="c1">// used to scale up to larger models across servers.&quot; This section</span>
+<a id="__codelineno-5-20" name="__codelineno-5-20" href="#__codelineno-5-20"></a><span class="c1">// builds a real closed-form model of exactly WHY that specific</span>
+<a id="__codelineno-5-21" name="__codelineno-5-21" href="#__codelineno-5-21"></a><span class="c1">// boundary matters, reusing Chapter 9&#39;s own ring all-reduce cost</span>
+<a id="__codelineno-5-22" name="__codelineno-5-22" href="#__codelineno-5-22"></a><span class="c1">// formula -- and finds, honestly, that the answer is NOT primarily</span>
+<a id="__codelineno-5-23" name="__codelineno-5-23" href="#__codelineno-5-23"></a><span class="c1">// about communication VOLUME (which Chapter 9/25 already showed stays</span>
+<a id="__codelineno-5-24" name="__codelineno-5-24" href="#__codelineno-5-24"></a><span class="c1">// nearly flat regardless of N), but about ROUND COUNT, which does NOT</span>
+<a id="__codelineno-5-25" name="__codelineno-5-25" href="#__codelineno-5-25"></a><span class="c1">// stay flat, combined with the real fact that every one of those extra</span>
+<a id="__codelineno-5-26" name="__codelineno-5-26" href="#__codelineno-5-26"></a><span class="c1">// rounds would have to cross the slower inter-server link the</span>
+<a id="__codelineno-5-27" name="__codelineno-5-27" href="#__codelineno-5-27"></a><span class="c1">// Megatron-LM paper&#39;s own quote names.</span>
+<a id="__codelineno-5-28" name="__codelineno-5-28" href="#__codelineno-5-28"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;cstdio&gt;</span>
+<a id="__codelineno-5-29" name="__codelineno-5-29" href="#__codelineno-5-29"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;cstdint&gt;</span>
+<a id="__codelineno-5-30" name="__codelineno-5-30" href="#__codelineno-5-30"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;initializer_list&gt;</span>
+<a id="__codelineno-5-31" name="__codelineno-5-31" href="#__codelineno-5-31"></a>
+<a id="__codelineno-5-32" name="__codelineno-5-32" href="#__codelineno-5-32"></a><span class="kt">int</span><span class="w"> </span><span class="nf">main</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-5-33" name="__codelineno-5-33" href="#__codelineno-5-33"></a><span class="w">    </span><span class="c1">// Real Megatron-Turing NLG 530B configuration (Smith et al.):</span>
+<a id="__codelineno-5-34" name="__codelineno-5-34" href="#__codelineno-5-34"></a><span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="kt">uint64_t</span><span class="w"> </span><span class="n">PARAMS</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">530000000000ULL</span><span class="p">;</span><span class="w"> </span><span class="c1">// 530 billion</span>
+<a id="__codelineno-5-35" name="__codelineno-5-35" href="#__codelineno-5-35"></a><span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">TP_DEGREE</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">8</span><span class="p">;</span><span class="w">   </span><span class="c1">// real: within a node</span>
+<a id="__codelineno-5-36" name="__codelineno-5-36" href="#__codelineno-5-36"></a><span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">PP_DEGREE</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">35</span><span class="p">;</span><span class="w">  </span><span class="c1">// real: across nodes</span>
+<a id="__codelineno-5-37" name="__codelineno-5-37" href="#__codelineno-5-37"></a><span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">TOTAL_GPUS</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">TP_DEGREE</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="n">PP_DEGREE</span><span class="p">;</span><span class="w"> </span><span class="c1">// 280, matches the paper</span>
+<a id="__codelineno-5-38" name="__codelineno-5-38" href="#__codelineno-5-38"></a>
+<a id="__codelineno-5-39" name="__codelineno-5-39" href="#__codelineno-5-39"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;Megatron-Turing NLG 530B (Smith et al.): %llu params, &quot;</span>
+<a id="__codelineno-5-40" name="__codelineno-5-40" href="#__codelineno-5-40"></a><span class="w">           </span><span class="s">&quot;TP=%d (within a node), PP=%d (across nodes), TOTAL=%d GPUs &quot;</span>
+<a id="__codelineno-5-41" name="__codelineno-5-41" href="#__codelineno-5-41"></a><span class="w">           </span><span class="s">&quot;per model replica</span><span class="se">\n\n</span><span class="s">&quot;</span><span class="p">,</span>
+<a id="__codelineno-5-42" name="__codelineno-5-42" href="#__codelineno-5-42"></a><span class="w">           </span><span class="p">(</span><span class="kt">unsigned</span><span class="w"> </span><span class="kt">long</span><span class="w"> </span><span class="kt">long</span><span class="p">)</span><span class="n">PARAMS</span><span class="p">,</span><span class="w"> </span><span class="n">TP_DEGREE</span><span class="p">,</span><span class="w"> </span><span class="n">PP_DEGREE</span><span class="p">,</span><span class="w"> </span><span class="n">TOTAL_GPUS</span><span class="p">);</span>
+<a id="__codelineno-5-43" name="__codelineno-5-43" href="#__codelineno-5-43"></a>
+<a id="__codelineno-5-44" name="__codelineno-5-44" href="#__codelineno-5-44"></a><span class="w">    </span><span class="c1">// --- Capacity: this chapter&#39;s own worked calculation, reusing</span>
+<a id="__codelineno-5-45" name="__codelineno-5-45" href="#__codelineno-5-45"></a><span class="w">    </span><span class="c1">// Chapter 13&#39;s own per-shard memory model. fp16 (2 bytes/param) is</span>
+<a id="__codelineno-5-46" name="__codelineno-5-46" href="#__codelineno-5-46"></a><span class="w">    </span><span class="c1">// this section&#39;s own stated assumption -- a common LLM-serving</span>
+<a id="__codelineno-5-47" name="__codelineno-5-47" href="#__codelineno-5-47"></a><span class="w">    </span><span class="c1">// precision, not itself a number quoted from the paper. ---</span>
+<a id="__codelineno-5-48" name="__codelineno-5-48" href="#__codelineno-5-48"></a><span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="kt">double</span><span class="w"> </span><span class="n">BYTES_PER_PARAM_FP16</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">2.0</span><span class="p">;</span>
+<a id="__codelineno-5-49" name="__codelineno-5-49" href="#__codelineno-5-49"></a><span class="w">    </span><span class="kt">double</span><span class="w"> </span><span class="n">totalBytes</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="kt">double</span><span class="p">)</span><span class="n">PARAMS</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="n">BYTES_PER_PARAM_FP16</span><span class="p">;</span>
+<a id="__codelineno-5-50" name="__codelineno-5-50" href="#__codelineno-5-50"></a><span class="w">    </span><span class="kt">double</span><span class="w"> </span><span class="n">totalGiB</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">totalBytes</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="p">(</span><span class="mf">1024.0</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="mf">1024.0</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="mf">1024.0</span><span class="p">);</span>
+<a id="__codelineno-5-51" name="__codelineno-5-51" href="#__codelineno-5-51"></a><span class="w">    </span><span class="kt">double</span><span class="w"> </span><span class="n">perGpuGiB</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">totalGiB</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="n">TOTAL_GPUS</span><span class="p">;</span>
+<a id="__codelineno-5-52" name="__codelineno-5-52" href="#__codelineno-5-52"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;Total fp16 parameter bytes: %.2f GiB. Sharded evenly across &quot;</span>
+<a id="__codelineno-5-53" name="__codelineno-5-53" href="#__codelineno-5-53"></a><span class="w">           </span><span class="s">&quot;all %d GPUs (TP x PP combined): %.3f GiB/GPU -- this chapter&#39;s &quot;</span>
+<a id="__codelineno-5-54" name="__codelineno-5-54" href="#__codelineno-5-54"></a><span class="w">           </span><span class="s">&quot;own worked calculation, not a number from the paper.</span><span class="se">\n\n</span><span class="s">&quot;</span><span class="p">,</span>
+<a id="__codelineno-5-55" name="__codelineno-5-55" href="#__codelineno-5-55"></a><span class="w">           </span><span class="n">totalGiB</span><span class="p">,</span><span class="w"> </span><span class="n">TOTAL_GPUS</span><span class="p">,</span><span class="w"> </span><span class="n">perGpuGiB</span><span class="p">);</span>
+<a id="__codelineno-5-56" name="__codelineno-5-56" href="#__codelineno-5-56"></a>
+<a id="__codelineno-5-57" name="__codelineno-5-57" href="#__codelineno-5-57"></a><span class="w">    </span><span class="c1">// --- Communication: Chapter 9&#39;s own real ring all-reduce formula,</span>
+<a id="__codelineno-5-58" name="__codelineno-5-58" href="#__codelineno-5-58"></a><span class="w">    </span><span class="c1">// applied to TWO cases -- the REAL TP=8 config, and a HYPOTHETICAL</span>
+<a id="__codelineno-5-59" name="__codelineno-5-59" href="#__codelineno-5-59"></a><span class="w">    </span><span class="c1">// TP=280 (using tensor parallelism for the ENTIRE replica, with no</span>
+<a id="__codelineno-5-60" name="__codelineno-5-60" href="#__codelineno-5-60"></a><span class="w">    </span><span class="c1">// pipeline parallelism at all). K is left symbolic (an arbitrary</span>
+<a id="__codelineno-5-61" name="__codelineno-5-61" href="#__codelineno-5-61"></a><span class="w">    </span><span class="c1">// activation buffer size) since this section compares RATIOS, not</span>
+<a id="__codelineno-5-62" name="__codelineno-5-62" href="#__codelineno-5-62"></a><span class="w">    </span><span class="c1">// absolute bytes -- no fabricated timing, matching this book&#39;s own</span>
+<a id="__codelineno-5-63" name="__codelineno-5-63" href="#__codelineno-5-63"></a><span class="w">    </span><span class="c1">// established practice (Ch21/Ch25). ---</span>
+<a id="__codelineno-5-64" name="__codelineno-5-64" href="#__codelineno-5-64"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;--- Ch9&#39;s own ring all-reduce formula, applied to TWO cases ---</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
+<a id="__codelineno-5-65" name="__codelineno-5-65" href="#__codelineno-5-65"></a><span class="w">    </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">N</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="p">{</span><span class="n">TP_DEGREE</span><span class="p">,</span><span class="w"> </span><span class="n">TOTAL_GPUS</span><span class="p">})</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-5-66" name="__codelineno-5-66" href="#__codelineno-5-66"></a><span class="w">        </span><span class="kt">int</span><span class="w"> </span><span class="n">rounds</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">2</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="p">(</span><span class="n">N</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="mi">1</span><span class="p">);</span>
+<a id="__codelineno-5-67" name="__codelineno-5-67" href="#__codelineno-5-67"></a><span class="w">        </span><span class="kt">double</span><span class="w"> </span><span class="n">volumeRatioToConstant</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">2.0</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="p">(</span><span class="kt">double</span><span class="p">)(</span><span class="n">N</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="mi">1</span><span class="p">)</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="p">(</span><span class="kt">double</span><span class="p">)</span><span class="n">N</span><span class="p">;</span><span class="w"> </span><span class="c1">// -&gt; 2 as N grows</span>
+<a id="__codelineno-5-68" name="__codelineno-5-68" href="#__codelineno-5-68"></a><span class="w">        </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;N=%-4d rounds=2(N-1)=%-4d   per-rank volume factor 2(N-1)/N = %.4f &quot;</span>
+<a id="__codelineno-5-69" name="__codelineno-5-69" href="#__codelineno-5-69"></a><span class="w">               </span><span class="s">&quot;(approaches the constant 2 either way)</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span>
+<a id="__codelineno-5-70" name="__codelineno-5-70" href="#__codelineno-5-70"></a><span class="w">               </span><span class="n">N</span><span class="p">,</span><span class="w"> </span><span class="n">rounds</span><span class="p">,</span><span class="w"> </span><span class="n">volumeRatioToConstant</span><span class="p">);</span>
+<a id="__codelineno-5-71" name="__codelineno-5-71" href="#__codelineno-5-71"></a><span class="w">    </span><span class="p">}</span>
+<a id="__codelineno-5-72" name="__codelineno-5-72" href="#__codelineno-5-72"></a>
+<a id="__codelineno-5-73" name="__codelineno-5-73" href="#__codelineno-5-73"></a><span class="w">    </span><span class="kt">double</span><span class="w"> </span><span class="n">volN8</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">2.0</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="p">(</span><span class="n">TP_DEGREE</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="mi">1</span><span class="p">)</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="p">(</span><span class="kt">double</span><span class="p">)</span><span class="n">TP_DEGREE</span><span class="p">;</span>
+<a id="__codelineno-5-74" name="__codelineno-5-74" href="#__codelineno-5-74"></a><span class="w">    </span><span class="kt">double</span><span class="w"> </span><span class="n">volN280</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">2.0</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="p">(</span><span class="n">TOTAL_GPUS</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="mi">1</span><span class="p">)</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="p">(</span><span class="kt">double</span><span class="p">)</span><span class="n">TOTAL_GPUS</span><span class="p">;</span>
+<a id="__codelineno-5-75" name="__codelineno-5-75" href="#__codelineno-5-75"></a><span class="w">    </span><span class="kt">int</span><span class="w"> </span><span class="n">roundsN8</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">2</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="p">(</span><span class="n">TP_DEGREE</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="mi">1</span><span class="p">);</span>
+<a id="__codelineno-5-76" name="__codelineno-5-76" href="#__codelineno-5-76"></a><span class="w">    </span><span class="kt">int</span><span class="w"> </span><span class="n">roundsN280</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">2</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="p">(</span><span class="n">TOTAL_GPUS</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="mi">1</span><span class="p">);</span>
+<a id="__codelineno-5-77" name="__codelineno-5-77" href="#__codelineno-5-77"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;</span><span class="se">\n</span><span class="s">Communication VOLUME ratio, TP=280 vs TP=8: %.4fx &quot;</span>
+<a id="__codelineno-5-78" name="__codelineno-5-78" href="#__codelineno-5-78"></a><span class="w">           </span><span class="s">&quot;(nearly flat -- Chapter 9/25&#39;s own finding still holds: volume &quot;</span>
+<a id="__codelineno-5-79" name="__codelineno-5-79" href="#__codelineno-5-79"></a><span class="w">           </span><span class="s">&quot;barely grows with N).</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">volN280</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="n">volN8</span><span class="p">);</span>
+<a id="__codelineno-5-80" name="__codelineno-5-80" href="#__codelineno-5-80"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;Communication ROUND-COUNT ratio, TP=280 vs TP=8: %dx / %dx = %.1fx &quot;</span>
+<a id="__codelineno-5-81" name="__codelineno-5-81" href="#__codelineno-5-81"></a><span class="w">           </span><span class="s">&quot;(this does NOT stay flat -- it scales directly with N-1).</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span>
+<a id="__codelineno-5-82" name="__codelineno-5-82" href="#__codelineno-5-82"></a><span class="w">           </span><span class="n">roundsN280</span><span class="p">,</span><span class="w"> </span><span class="n">roundsN8</span><span class="p">,</span><span class="w"> </span><span class="p">(</span><span class="kt">double</span><span class="p">)</span><span class="n">roundsN280</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="p">(</span><span class="kt">double</span><span class="p">)</span><span class="n">roundsN8</span><span class="p">);</span>
+<a id="__codelineno-5-83" name="__codelineno-5-83" href="#__codelineno-5-83"></a>
+<a id="__codelineno-5-84" name="__codelineno-5-84" href="#__codelineno-5-84"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;</span><span class="se">\n</span><span class="s">And critically: EVERY one of TP=8&#39;s %d rounds stays inside &quot;</span>
+<a id="__codelineno-5-85" name="__codelineno-5-85" href="#__codelineno-5-85"></a><span class="w">           </span><span class="s">&quot;one node (real NVLink, per the Megatron-LM paper&#39;s own &quot;</span>
+<a id="__codelineno-5-86" name="__codelineno-5-86" href="#__codelineno-5-86"></a><span class="w">           </span><span class="s">&quot;quote), while ALL %d of TP=280&#39;s rounds would have to cross &quot;</span>
+<a id="__codelineno-5-87" name="__codelineno-5-87" href="#__codelineno-5-87"></a><span class="w">           </span><span class="s">&quot;the slower inter-server link the SAME paper names as the &quot;</span>
+<a id="__codelineno-5-88" name="__codelineno-5-88" href="#__codelineno-5-88"></a><span class="w">           </span><span class="s">&quot;real reason to keep tensor parallelism inside a node.</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span>
+<a id="__codelineno-5-89" name="__codelineno-5-89" href="#__codelineno-5-89"></a><span class="w">           </span><span class="n">roundsN8</span><span class="p">,</span><span class="w"> </span><span class="n">roundsN280</span><span class="p">);</span>
+<a id="__codelineno-5-90" name="__codelineno-5-90" href="#__codelineno-5-90"></a>
+<a id="__codelineno-5-91" name="__codelineno-5-91" href="#__codelineno-5-91"></a><span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
+<a id="__codelineno-5-92" name="__codelineno-5-92" href="#__codelineno-5-92"></a><span class="p">}</span>
+</code></pre></div>
+<p>Compiled with <code>g++ -O2 76_tp_pp_scale_cost_model.cpp -o 76_tp_pp_scale_cost_model</code> and genuinely run, on both the cloud sandbox and the device, with byte-identical output on both. Locked output:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>Megatron-Turing NLG 530B (Smith et al.): 530000000000 params, TP=8 (within a node), PP=35 (across nodes), TOTAL=280 GPUs per model replica
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>Total fp16 parameter bytes: 987.20 GiB. Sharded evenly across all 280 GPUs (TP x PP combined): 3.526 GiB/GPU -- this chapter&#39;s own worked calculation, not a number from the paper.
+<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>
+<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>--- Ch9&#39;s own ring all-reduce formula, applied to TWO cases ---
+<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a>N=8    rounds=2(N-1)=14     per-rank volume factor 2(N-1)/N = 1.7500 (approaches the constant 2 either way)
+<a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a>N=280  rounds=2(N-1)=558    per-rank volume factor 2(N-1)/N = 1.9929 (approaches the constant 2 either way)
+<a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a>
+<a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a>Communication VOLUME ratio, TP=280 vs TP=8: 1.1388x (nearly flat -- Chapter 9/25&#39;s own finding still holds: volume barely grows with N).
+<a id="__codelineno-6-10" name="__codelineno-6-10" href="#__codelineno-6-10"></a>Communication ROUND-COUNT ratio, TP=280 vs TP=8: 558x / 14x = 39.9x (this does NOT stay flat -- it scales directly with N-1).
+<a id="__codelineno-6-11" name="__codelineno-6-11" href="#__codelineno-6-11"></a>
+<a id="__codelineno-6-12" name="__codelineno-6-12" href="#__codelineno-6-12"></a>And critically: EVERY one of TP=8&#39;s 14 rounds stays inside one node (real NVLink, per the Megatron-LM paper&#39;s own quote), while ALL 558 of TP=280&#39;s rounds would have to cross the slower inter-server link the SAME paper names as the real reason to keep tensor parallelism inside a node.
+</code></pre></div>
+<div class="admonition warning">
+<p class="admonition-title">[COMMON TRAP] Assuming ring all-reduce's own near-flat communication VOLUME (Ch9/Ch25) means tensor-parallel degree doesn't matter much for latency</p>
+<p>Chapter 9 and Chapter 25 each showed, correctly, that a ring all-reduce's per-rank communication VOLUME approaches a constant (<code>2K</code>) as the group size <code>N</code> grows -- which is real and true, and this section's own locked output confirms it again: TP=280 moves only 1.14x more data per rank than TP=8. It would be a mistake to conclude from that alone that tensor-parallel degree is nearly free to scale up. The ROUND COUNT -- <code>2(N-1)</code> -- does NOT flatten out; it grows directly with <code>N</code>, and this section's own locked output shows TP=280 needs 39.9x more rounds than TP=8. Each round carries real per-message latency regardless of how little data it moves, and -- the specific reason this matters here -- every one of TP=8's rounds can stay on fast intra-node NVLink, while every one of TP=280's extra rounds would have to cross the Megatron-LM paper's own named slower inter-server link. Ring all-reduce's near-flat volume is real, but it answers a different question than "is a larger tensor-parallel group still fast," and conflating the two would miss the actual reason production configs like Megatron-Turing NLG 530B cap tensor parallelism at a node's own GPU count.</p>
+</div>
+<h2 id="263-a-real-super-linear-effect-tensor-parallelism-and-kv-cache-capacity">26.3 A Real Super-Linear Effect: Tensor Parallelism and KV Cache Capacity<a class="headerlink" href="#263-a-real-super-linear-effect-tensor-parallelism-and-kv-cache-capacity" title="Permanent link">&para;</a></h2>
+<h3 id="intuition_2">Intuition<a class="headerlink" href="#intuition_2" title="Permanent link">&para;</a></h3>
+<p>Sections 26.1 and 26.2 both treated tensor parallelism as a way to split compute and fit a model's weights. A real inference server run by vLLM found tensor parallelism doing something else too, and by more than the obvious amount: "Between TP=1 and TP=2, we are able to increase the amount of KV Cache blocks by 13.9x which allows us to observe 3.9x more token throughput -- much more than the linear 2x we would expect from using 2 GPUs instead of 1." Doubling the GPU count should double available memory, which sounds like it should double the KV cache -- not multiply it by nearly 14. This section does not re-derive vLLM's own internal number; it builds, as its own separate worked model, a simple mechanism that plausibly explains a super-linear gain like this: when a model's weights already occupy a large share of one GPU's memory, splitting those weights across a second GPU frees up memory for the KV cache faster than the GPU count itself grows, because the freed capacity is <code>2C - W</code>, not simply proportional to <code>2C</code>.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>TP=1 (one GPU, capacity C):        TP=2 (two GPUs, capacity C each):
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>+----------------------+           +----------+  +----------+
+<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a>| model weights: W     |           | W/2      |  | W/2      |
+<a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a>+----------------------+           +----------+  +----------+
+<a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a>| KV cache: C - W      |           | KV: C-W/2|  | KV: C-W/2|
+<a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a>+----------------------+           +----------+  +----------+
+<a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a>                                     total KV cache = 2C - W
+<a id="__codelineno-7-9" name="__codelineno-7-9" href="#__codelineno-7-9"></a>
+<a id="__codelineno-7-10" name="__codelineno-7-10" href="#__codelineno-7-10"></a>If W is a LARGE share of C, (2C - W) grows much faster than the
+<a id="__codelineno-7-11" name="__codelineno-7-11" href="#__codelineno-7-11"></a>GPU count (2x) as the second GPU&#39;s own capacity is added --
+<a id="__codelineno-7-12" name="__codelineno-7-12" href="#__codelineno-7-12"></a>this section&#39;s own model of vLLM&#39;s real, cited 13.9x.
+</code></pre></div>
+<h3 id="background_2">Background<a class="headerlink" href="#background_2" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="c1">// Chapter 26: Multi-GPU LLM Inference: Tensor and Pipeline Parallelism in</span>
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a><span class="c1">// Practice</span>
+<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a><span class="c1">// 77_kv_cache_tp_scaling_model.cpp</span>
+<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a><span class="c1">//</span>
+<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a><span class="c1">// Section 26.2 modeled why tensor parallelism stays bounded by a node&#39;s</span>
+<a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a><span class="c1">// own GPU count. This section asks a different real question: within</span>
+<a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a><span class="c1">// that node, why does adding tensor-parallel GPUs to a real inference</span>
+<a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a><span class="c1">// SERVER help by more than the &quot;one more GPU&quot; arithmetic would suggest?</span>
+<a id="__codelineno-8-9" name="__codelineno-8-9" href="#__codelineno-8-9"></a><span class="c1">// vLLM&#39;s own real blog post states a genuinely surprising measured</span>
+<a id="__codelineno-8-10" name="__codelineno-8-10" href="#__codelineno-8-10"></a><span class="c1">// result: &quot;Between TP=1 and TP=2, we are able to increase the amount of</span>
+<a id="__codelineno-8-11" name="__codelineno-8-11" href="#__codelineno-8-11"></a><span class="c1">// KV Cache blocks by 13.9x which allows us to observe 3.9x more token</span>
+<a id="__codelineno-8-12" name="__codelineno-8-12" href="#__codelineno-8-12"></a><span class="c1">// throughput -- much more than the linear 2x we would expect from</span>
+<a id="__codelineno-8-13" name="__codelineno-8-13" href="#__codelineno-8-13"></a><span class="c1">// using 2 GPUs instead of 1.&quot; This file does NOT re-derive vLLM&#39;s own</span>
+<a id="__codelineno-8-14" name="__codelineno-8-14" href="#__codelineno-8-14"></a><span class="c1">// internal accounting -- that real 13.9x/3.9x pair is cited, not</span>
+<a id="__codelineno-8-15" name="__codelineno-8-15" href="#__codelineno-8-15"></a><span class="c1">// computed by this program. What this section DOES build, as its own</span>
+<a id="__codelineno-8-16" name="__codelineno-8-16" href="#__codelineno-8-16"></a><span class="c1">// worked calculation, is a simple closed-form model of the real</span>
+<a id="__codelineno-8-17" name="__codelineno-8-17" href="#__codelineno-8-17"></a><span class="c1">// MECHANISM that can produce a super-linear KV-cache gain from tensor</span>
+<a id="__codelineno-8-18" name="__codelineno-8-18" href="#__codelineno-8-18"></a><span class="c1">// parallelism: at TP=1, one GPU&#39;s model weights (Chapter 13&#39;s own</span>
+<a id="__codelineno-8-19" name="__codelineno-8-19" href="#__codelineno-8-19"></a><span class="c1">// capacity-shard idea) eat into the SAME capacity budget the KV cache</span>
+<a id="__codelineno-8-20" name="__codelineno-8-20" href="#__codelineno-8-20"></a><span class="c1">// draws from; at TP=2, each GPU&#39;s weight shard shrinks, but its TOTAL</span>
+<a id="__codelineno-8-21" name="__codelineno-8-21" href="#__codelineno-8-21"></a><span class="c1">// capacity does not, so the memory freed for KV cache grows faster than</span>
+<a id="__codelineno-8-22" name="__codelineno-8-22" href="#__codelineno-8-22"></a><span class="c1">// linearly whenever the weights already occupy a large fraction of one</span>
+<a id="__codelineno-8-23" name="__codelineno-8-23" href="#__codelineno-8-23"></a><span class="c1">// GPU&#39;s memory. This section solves that model BACKWARD, asking what</span>
+<a id="__codelineno-8-24" name="__codelineno-8-24" href="#__codelineno-8-24"></a><span class="c1">// weight-fraction would reproduce vLLM&#39;s own cited 13.9x under this</span>
+<a id="__codelineno-8-25" name="__codelineno-8-25" href="#__codelineno-8-25"></a><span class="c1">// simplified shape -- an illustration of the mechanism&#39;s plausible</span>
+<a id="__codelineno-8-26" name="__codelineno-8-26" href="#__codelineno-8-26"></a><span class="c1">// scale, explicitly not a claim to have reconstructed vLLM&#39;s own real</span>
+<a id="__codelineno-8-27" name="__codelineno-8-27" href="#__codelineno-8-27"></a><span class="c1">// internal number.</span>
+<a id="__codelineno-8-28" name="__codelineno-8-28" href="#__codelineno-8-28"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;cstdio&gt;</span>
+<a id="__codelineno-8-29" name="__codelineno-8-29" href="#__codelineno-8-29"></a>
+<a id="__codelineno-8-30" name="__codelineno-8-30" href="#__codelineno-8-30"></a><span class="kt">int</span><span class="w"> </span><span class="nf">main</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-8-31" name="__codelineno-8-31" href="#__codelineno-8-31"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;--- Real, cited numbers (vLLM blog post) -- NOT computed by &quot;</span>
+<a id="__codelineno-8-32" name="__codelineno-8-32" href="#__codelineno-8-32"></a><span class="w">           </span><span class="s">&quot;this program ---</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
+<a id="__codelineno-8-33" name="__codelineno-8-33" href="#__codelineno-8-33"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;Between TP=1 and TP=2: KV cache blocks increase 13.9x; &quot;</span>
+<a id="__codelineno-8-34" name="__codelineno-8-34" href="#__codelineno-8-34"></a><span class="w">           </span><span class="s">&quot;measured token throughput increases 3.9x (vs. a naive 2x &quot;</span>
+<a id="__codelineno-8-35" name="__codelineno-8-35" href="#__codelineno-8-35"></a><span class="w">           </span><span class="s">&quot;expectation from doubling GPU count alone).</span><span class="se">\n\n</span><span class="s">&quot;</span><span class="p">);</span>
+<a id="__codelineno-8-36" name="__codelineno-8-36" href="#__codelineno-8-36"></a>
+<a id="__codelineno-8-37" name="__codelineno-8-37" href="#__codelineno-8-37"></a><span class="w">    </span><span class="c1">// --- This section&#39;s own worked model: capacity C per GPU, model</span>
+<a id="__codelineno-8-38" name="__codelineno-8-38" href="#__codelineno-8-38"></a><span class="w">    </span><span class="c1">// weight bytes W (shared across TP ranks at TP=2, full on the one</span>
+<a id="__codelineno-8-39" name="__codelineno-8-39" href="#__codelineno-8-39"></a><span class="w">    </span><span class="c1">// GPU at TP=1). KV-cache-available capacity:</span>
+<a id="__codelineno-8-40" name="__codelineno-8-40" href="#__codelineno-8-40"></a><span class="w">    </span><span class="c1">//   TP=1: C - W                     (one GPU, full weight)</span>
+<a id="__codelineno-8-41" name="__codelineno-8-41" href="#__codelineno-8-41"></a><span class="w">    </span><span class="c1">//   TP=2: 2*(C - W/2) = 2C - W      (two GPUs, each holds W/2)</span>
+<a id="__codelineno-8-42" name="__codelineno-8-42" href="#__codelineno-8-42"></a><span class="w">    </span><span class="c1">// Ratio (TP=2 KV capacity) / (TP=1 KV capacity) = (2C - W) / (C - W).</span>
+<a id="__codelineno-8-43" name="__codelineno-8-43" href="#__codelineno-8-43"></a><span class="w">    </span><span class="c1">// Solve for the weight fraction w = W/C that reproduces vLLM&#39;s own</span>
+<a id="__codelineno-8-44" name="__codelineno-8-44" href="#__codelineno-8-44"></a><span class="w">    </span><span class="c1">// cited 13.9x under this simplified shape. ---</span>
+<a id="__codelineno-8-45" name="__codelineno-8-45" href="#__codelineno-8-45"></a><span class="w">    </span><span class="kt">double</span><span class="w"> </span><span class="n">target</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">13.9</span><span class="p">;</span>
+<a id="__codelineno-8-46" name="__codelineno-8-46" href="#__codelineno-8-46"></a><span class="w">    </span><span class="c1">// (2 - w) / (1 - w) = target  =&gt;  w = (target - 2) / (target - 1)</span>
+<a id="__codelineno-8-47" name="__codelineno-8-47" href="#__codelineno-8-47"></a><span class="w">    </span><span class="kt">double</span><span class="w"> </span><span class="n">w</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="n">target</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="mf">2.0</span><span class="p">)</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="p">(</span><span class="n">target</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="mf">1.0</span><span class="p">);</span>
+<a id="__codelineno-8-48" name="__codelineno-8-48" href="#__codelineno-8-48"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;--- This chapter&#39;s own worked model (illustrative, NOT a &quot;</span>
+<a id="__codelineno-8-49" name="__codelineno-8-49" href="#__codelineno-8-49"></a><span class="w">           </span><span class="s">&quot;reconstruction of vLLM&#39;s real internal accounting) ---</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
+<a id="__codelineno-8-50" name="__codelineno-8-50" href="#__codelineno-8-50"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;Model: KV-cache-available capacity at TP=1 is (C - W); at &quot;</span>
+<a id="__codelineno-8-51" name="__codelineno-8-51" href="#__codelineno-8-51"></a><span class="w">           </span><span class="s">&quot;TP=2 it is (2C - W), where C = one GPU&#39;s capacity, W = full &quot;</span>
+<a id="__codelineno-8-52" name="__codelineno-8-52" href="#__codelineno-8-52"></a><span class="w">           </span><span class="s">&quot;model weight bytes.</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
+<a id="__codelineno-8-53" name="__codelineno-8-53" href="#__codelineno-8-53"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;Solving (2 - w)/(1 - w) = %.1f for w = W/C: w = %.4f</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">target</span><span class="p">,</span><span class="w"> </span><span class="n">w</span><span class="p">);</span>
+<a id="__codelineno-8-54" name="__codelineno-8-54" href="#__codelineno-8-54"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;-&gt; Under this simplified model, vLLM&#39;s own cited 13.9x KV-cache &quot;</span>
+<a id="__codelineno-8-55" name="__codelineno-8-55" href="#__codelineno-8-55"></a><span class="w">           </span><span class="s">&quot;gain is the shape you&#39;d expect if the model&#39;s weights alone &quot;</span>
+<a id="__codelineno-8-56" name="__codelineno-8-56" href="#__codelineno-8-56"></a><span class="w">           </span><span class="s">&quot;were already consuming about %.1f%% of one GPU&#39;s memory at &quot;</span>
+<a id="__codelineno-8-57" name="__codelineno-8-57" href="#__codelineno-8-57"></a><span class="w">           </span><span class="s">&quot;TP=1 -- leaving very little headroom for KV cache until a &quot;</span>
+<a id="__codelineno-8-58" name="__codelineno-8-58" href="#__codelineno-8-58"></a><span class="w">           </span><span class="s">&quot;second GPU&#39;s capacity is added.</span><span class="se">\n\n</span><span class="s">&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">w</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="mf">100.0</span><span class="p">);</span>
+<a id="__codelineno-8-59" name="__codelineno-8-59" href="#__codelineno-8-59"></a>
+<a id="__codelineno-8-60" name="__codelineno-8-60" href="#__codelineno-8-60"></a><span class="w">    </span><span class="c1">// Show the same ratio across a small table of weight fractions, to</span>
+<a id="__codelineno-8-61" name="__codelineno-8-61" href="#__codelineno-8-61"></a><span class="w">    </span><span class="c1">// make the SHAPE of the effect visible, not just the one solved point.</span>
+<a id="__codelineno-8-62" name="__codelineno-8-62" href="#__codelineno-8-62"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;%-12s %-24s</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;W/C&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;(2-w)/(1-w) KV-capacity ratio&quot;</span><span class="p">);</span>
+<a id="__codelineno-8-63" name="__codelineno-8-63" href="#__codelineno-8-63"></a><span class="w">    </span><span class="kt">double</span><span class="w"> </span><span class="n">fractions</span><span class="p">[]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span><span class="mf">0.50</span><span class="p">,</span><span class="w"> </span><span class="mf">0.70</span><span class="p">,</span><span class="w"> </span><span class="mf">0.80</span><span class="p">,</span><span class="w"> </span><span class="mf">0.90</span><span class="p">,</span><span class="w"> </span><span class="n">w</span><span class="p">,</span><span class="w"> </span><span class="mf">0.95</span><span class="p">};</span>
+<a id="__codelineno-8-64" name="__codelineno-8-64" href="#__codelineno-8-64"></a><span class="w">    </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="kt">double</span><span class="w"> </span><span class="n">f</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="n">fractions</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-8-65" name="__codelineno-8-65" href="#__codelineno-8-65"></a><span class="w">        </span><span class="kt">double</span><span class="w"> </span><span class="n">ratio</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="mf">2.0</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">f</span><span class="p">)</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="p">(</span><span class="mf">1.0</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">f</span><span class="p">);</span>
+<a id="__codelineno-8-66" name="__codelineno-8-66" href="#__codelineno-8-66"></a><span class="w">        </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;%-12.4f %-24.2f</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">f</span><span class="p">,</span><span class="w"> </span><span class="n">ratio</span><span class="p">);</span>
+<a id="__codelineno-8-67" name="__codelineno-8-67" href="#__codelineno-8-67"></a><span class="w">    </span><span class="p">}</span>
+<a id="__codelineno-8-68" name="__codelineno-8-68" href="#__codelineno-8-68"></a>
+<a id="__codelineno-8-69" name="__codelineno-8-69" href="#__codelineno-8-69"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;</span><span class="se">\n</span><span class="s">--- The honest gap this section does NOT fill ---</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
+<a id="__codelineno-8-70" name="__codelineno-8-70" href="#__codelineno-8-70"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;No published source found (vLLM docs, TensorRT-LLM docs, or an &quot;</span>
+<a id="__codelineno-8-71" name="__codelineno-8-71" href="#__codelineno-8-71"></a><span class="w">           </span><span class="s">&quot;academic paper) gives a direct, apples-to-apples throughput or &quot;</span>
+<a id="__codelineno-8-72" name="__codelineno-8-72" href="#__codelineno-8-72"></a><span class="w">           </span><span class="s">&quot;latency comparison of a COMBINED TP+PP configuration against &quot;</span>
+<a id="__codelineno-8-73" name="__codelineno-8-73" href="#__codelineno-8-73"></a><span class="w">           </span><span class="s">&quot;TP-only or PP-only at the same total GPU count. TensorRT-LLM&#39;s &quot;</span>
+<a id="__codelineno-8-74" name="__codelineno-8-74" href="#__codelineno-8-74"></a><span class="w">           </span><span class="s">&quot;own public docs describe the two qualitatively instead: TP is &quot;</span>
+<a id="__codelineno-8-75" name="__codelineno-8-75" href="#__codelineno-8-75"></a><span class="w">           </span><span class="s">&quot;</span><span class="se">\&quot;</span><span class="s">Best for: Small batch sizes, memory-constrained scenarios</span><span class="se">\&quot;</span><span class="s">; &quot;</span>
+<a id="__codelineno-8-76" name="__codelineno-8-76" href="#__codelineno-8-76"></a><span class="w">           </span><span class="s">&quot;PP is </span><span class="se">\&quot;</span><span class="s">Best for: Large models that don&#39;t fit in single GPU &quot;</span>
+<a id="__codelineno-8-77" name="__codelineno-8-77" href="#__codelineno-8-77"></a><span class="w">           </span><span class="s">&quot;memory.</span><span class="se">\&quot;</span><span class="s"> This section cites that real qualitative guidance &quot;</span>
+<a id="__codelineno-8-78" name="__codelineno-8-78" href="#__codelineno-8-78"></a><span class="w">           </span><span class="s">&quot;rather than fabricating a number to fill the gap -- the same &quot;</span>
+<a id="__codelineno-8-79" name="__codelineno-8-79" href="#__codelineno-8-79"></a><span class="w">           </span><span class="s">&quot;discipline this book applied in Chapter 21&#39;s own GPUDirect RDMA &quot;</span>
+<a id="__codelineno-8-80" name="__codelineno-8-80" href="#__codelineno-8-80"></a><span class="w">           </span><span class="s">&quot;section and Chapter 25&#39;s own communication-cost model.</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
+<a id="__codelineno-8-81" name="__codelineno-8-81" href="#__codelineno-8-81"></a>
+<a id="__codelineno-8-82" name="__codelineno-8-82" href="#__codelineno-8-82"></a><span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
+<a id="__codelineno-8-83" name="__codelineno-8-83" href="#__codelineno-8-83"></a><span class="p">}</span>
+</code></pre></div>
+<p>Compiled with <code>g++ -O2 77_kv_cache_tp_scaling_model.cpp -o 77_kv_cache_tp_scaling_model</code> and genuinely run, on both the cloud sandbox and the device, with byte-identical output on both. Locked output:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>--- Real, cited numbers (vLLM blog post) -- NOT computed by this program ---
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>Between TP=1 and TP=2: KV cache blocks increase 13.9x; measured token throughput increases 3.9x (vs. a naive 2x expectation from doubling GPU count alone).
+<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>
+<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a>--- This chapter&#39;s own worked model (illustrative, NOT a reconstruction of vLLM&#39;s real internal accounting) ---
+<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a>Model: KV-cache-available capacity at TP=1 is (C - W); at TP=2 it is (2C - W), where C = one GPU&#39;s capacity, W = full model weight bytes.
+<a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a>Solving (2 - w)/(1 - w) = 13.9 for w = W/C: w = 0.9225
+<a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a>-&gt; Under this simplified model, vLLM&#39;s own cited 13.9x KV-cache gain is the shape you&#39;d expect if the model&#39;s weights alone were already consuming about 92.2% of one GPU&#39;s memory at TP=1 -- leaving very little headroom for KV cache until a second GPU&#39;s capacity is added.
+<a id="__codelineno-9-8" name="__codelineno-9-8" href="#__codelineno-9-8"></a>
+<a id="__codelineno-9-9" name="__codelineno-9-9" href="#__codelineno-9-9"></a>W/C          (2-w)/(1-w) KV-capacity ratio
+<a id="__codelineno-9-10" name="__codelineno-9-10" href="#__codelineno-9-10"></a>0.5000       3.00                    
+<a id="__codelineno-9-11" name="__codelineno-9-11" href="#__codelineno-9-11"></a>0.7000       4.33                    
+<a id="__codelineno-9-12" name="__codelineno-9-12" href="#__codelineno-9-12"></a>0.8000       6.00                    
+<a id="__codelineno-9-13" name="__codelineno-9-13" href="#__codelineno-9-13"></a>0.9000       11.00                   
+<a id="__codelineno-9-14" name="__codelineno-9-14" href="#__codelineno-9-14"></a>0.9225       13.90                   
+<a id="__codelineno-9-15" name="__codelineno-9-15" href="#__codelineno-9-15"></a>0.9500       21.00                   
+<a id="__codelineno-9-16" name="__codelineno-9-16" href="#__codelineno-9-16"></a>
+<a id="__codelineno-9-17" name="__codelineno-9-17" href="#__codelineno-9-17"></a>--- The honest gap this section does NOT fill ---
+<a id="__codelineno-9-18" name="__codelineno-9-18" href="#__codelineno-9-18"></a>No published source found (vLLM docs, TensorRT-LLM docs, or an academic paper) gives a direct, apples-to-apples throughput or latency comparison of a COMBINED TP+PP configuration against TP-only or PP-only at the same total GPU count. TensorRT-LLM&#39;s own public docs describe the two qualitatively instead: TP is &quot;Best for: Small batch sizes, memory-constrained scenarios&quot;; PP is &quot;Best for: Large models that don&#39;t fit in single GPU memory.&quot; This section cites that real qualitative guidance rather than fabricating a number to fill the gap -- the same discipline this book applied in Chapter 21&#39;s own GPUDirect RDMA section and Chapter 25&#39;s own communication-cost model.
+</code></pre></div>
+<div class="admonition warning">
+<p class="admonition-title">[COMMON TRAP] Treating this section's own solved weight-fraction (92.2%) as a reconstruction of vLLM's real internal accounting</p>
+<p>This section's own model solved backward for the ONE weight-fraction, <code>W/C = 0.9225</code>, that reproduces vLLM's cited 13.9x under a deliberately simplified shape -- one GPU's capacity, one weight size, no accounting for activation memory, framework overhead, memory fragmentation, or how vLLM's own PagedAttention actually allocates KV-cache blocks. Finding a value that reproduces a real published number under a simplified model is evidence the model's own SHAPE (weights eating disproportionately into a shared capacity budget) is a plausible mechanism -- it is not evidence that vLLM's real production deployment actually runs at 92.2% weight occupancy, which this section has no way to verify. The distinction matters for the same reason Chapter 25's own COMMON TRAP drew a line between a closed-form ratio and a measured efficiency percentage: mixing "a toy model that CAN produce this number" with "the real cause of this number" would overstate what a backward-solved illustration actually proves.</p>
+</div>
+<h2 id="chapter-summary">Chapter Summary<a class="headerlink" href="#chapter-summary" title="Permanent link">&para;</a></h2>
+<p>This chapter combined two techniques Chapter 14 and Chapter 15 each built in isolation into one real production LLM inference case study. Section 26.1 built a real 2D device grid -- pipeline stages, each itself a tensor-parallel group -- and verified its routing bit-exact against a naive reference, isolating the real correctness property that makes the combination safe: tensor-parallel all-reduces stay inside a stage, pipeline handoffs only carry already-combined results between stages, and inference's own forward-only pipeline needs a different bubble accounting than Chapter 15's training-specific formula. Section 26.2 applied that combined shape to a real, named, 530-billion-parameter model's real published configuration (8-way TP within a node, 35-way PP across nodes, 280 GPUs total), and found, honestly, that the real reason tensor parallelism stays bounded to a node's own GPU count is round count -- which grows directly with group size -- not communication volume, which Chapter 9 and Chapter 25 already showed stays nearly flat. Section 26.3 closed with a real, cited super-linear memory effect from vLLM's own production serving system (13.9x more KV cache from TP=1 to TP=2), built a plausible mechanism for it as this chapter's own separate worked model, and named the real published gap -- no combined TP+PP throughput benchmark exists in the sources checked -- rather than fabricating a number to fill it.</p>
+<h2 id="self-check-questions">Self-Check Questions<a class="headerlink" href="#self-check-questions" title="Permanent link">&para;</a></h2>
+<ol>
+<li>What real correctness property does this chapter's own combined TP+PP simulation check, and why does the PP handoff step in file 75 only ever carry an already-all-reduced value?</li>
+<li>Why doesn't Chapter 15's own training bubble formula, <code>(K-1)/(M+K-1)</code>, apply unchanged to this chapter's own inference pipeline?</li>
+<li>What real configuration does the Megatron-Turing NLG 530B paper state for its own 530-billion-parameter model, and what real multiplication confirms the reported total GPU count?</li>
+<li>Section 26.2 found that communication VOLUME is nearly flat between TP=8 and TP=280, but round count is not. Why does that distinction matter for deciding where to draw the tensor-parallel boundary?</li>
+<li>What real quote from the Megatron-LM paper explains why tensor parallelism should stay within a single server's own GPU count?</li>
+<li>What real, cited numbers does vLLM report for going from TP=1 to TP=2, and why is that more than the "naive 2x" a reader might expect from doubling GPU count?</li>
+<li>What specific weight-fraction does Section 26.3's own model solve for, and what does that number prove -- and NOT prove -- about vLLM's real production deployment?</li>
+<li>Why does Section 26.3 explicitly state that no published TP+PP combined throughput benchmark was found, rather than presenting an estimated number instead?</li>
+</ol>
+<h2 id="where-we-go-next">Where We Go Next<a class="headerlink" href="#where-we-go-next" title="Permanent link">&para;</a></h2>
+<p>Chapter 26 combined two of this book's own earlier parallelization strategies into one real, correctness-checked production inference case study, and closed with an honest published gap this chapter chose not to paper over. Chapter 27, "N-Body Simulation at Scale," returns to Part 6's own scientific-computing thread, applying this book's own domain-decomposition and collective-communication techniques (Chapter 16, Chapter 9) to a classic HPC problem with a genuinely different communication shape from anything this book's LLM-focused chapters have built.</p>
+<h2 id="worked-solutions">Worked Solutions<a class="headerlink" href="#worked-solutions" title="Permanent link">&para;</a></h2>
+<p><strong>1.</strong> It checks that a real 2D device grid -- pipeline stages, each itself a tensor-parallel group -- produces the exact same result as a naive, unsplit reference, using long long integer matrices so the comparison has no floating-point rounding ambiguity (the same technique Chapter 24's own SUMMA simulation used). The PP handoff only ever carries an already-all-reduced value because every device within a stage's own TP group has, by the time that stage finishes, already combined its partial row-parallel outputs via the stage-scoped all-reduce -- so there is no partial, not-yet-combined tensor-parallel shard left to accidentally hand off across a stage boundary.</p>
+<p><strong>2.</strong> Chapter 15's own bubble formula was built for GPipe's real training schedule, where every microbatch needs both a forward pass AND a backward pass through every stage. A real inference pipeline has no backward pass -- every microbatch only flows forward once -- so this chapter's own file 75 instead directly counts stage-slots for a one-phase schedule (<code>M + PP_STAGES - 1</code> total time steps), rather than reusing a formula built for a schedule with a phase this chapter's own case study doesn't have.</p>
+<p><strong>3.</strong> The paper states "each 530 billion parameter model replica spans 280 NVIDIA A100 GPUs, with 8-way tensor-slicing within a node and 35-way pipeline parallelism across nodes." The real multiplication confirming this is <code>8 (TP) x 35 (PP) = 280</code>, exactly matching the reported total GPU count.</p>
+<p><strong>4.</strong> Because the two quantities answer different questions. Volume determines how much data crosses the network per round, and Chapter 9/25 already showed it stays nearly flat as the tensor-parallel group grows -- so volume alone would suggest scaling TP up is nearly free. Round count determines how many separate latency-bound round-trips a collective needs, and it grows directly with <code>N</code>; Section 26.2's own locked output showed TP=280 needs 39.9x more rounds than TP=8, and -- the decisive real fact -- every one of those extra rounds would have to cross the slower inter-server link the Megatron-LM paper names, rather than staying on fast intra-node NVLink.</p>
+<p><strong>5.</strong> "The all-reduce communication required for tensor parallelism needs to go through inter-server links, which are slower than the high-bandwidth NVLink available within a multi-GPU server." This is why the paper recommends "tensor model parallelism should generally be used up to degree g when using g-GPU servers, and then pipeline model parallelism can be used to scale up to larger models across servers."</p>
+<p><strong>6.</strong> vLLM reports that going from TP=1 to TP=2 increases KV cache blocks by 13.9x and measured token throughput by 3.9x, "much more than the linear 2x we would expect from using 2 GPUs instead of 1." This is more than naive doubling because splitting the model's weights across a second GPU frees up memory that would otherwise be occupied by weights, and that freed memory becomes available for the KV cache on BOTH GPUs -- so the KV-cache gain is driven by how large a share of one GPU's memory the weights occupied in the first place, not simply by the GPU count doubling.</p>
+<p><strong>7.</strong> It solves for <code>W/C = 0.9225</code> -- the fraction of one GPU's memory the model weights would need to occupy at TP=1 for this section's own simplified capacity model to reproduce vLLM's cited 13.9x exactly. This proves that model weights consuming roughly 90%+ of GPU memory at TP=1 is a PLAUSIBLE mechanism that can produce a gain of this real magnitude. It does NOT prove that vLLM's real production deployment actually runs at that specific occupancy, since the model ignores activation memory, framework overhead, fragmentation, and vLLM's own real PagedAttention block-allocation behavior.</p>
+<p><strong>8.</strong> Because fabricating an estimated number for a comparison that has not actually been published and measured would misrepresent what is known versus what is this chapter's own guess -- the same discipline this book already applied in Chapter 21's GPUDirect RDMA section and Chapter 25's own communication-cost model, both of which declined to invent agreement with an unpublished result rather than cite only what is real and verifiable.</p>
+<hr />
+<p><strong>Sources cited in this chapter:</strong></p>
+<ul>
+<li><a href="https://arxiv.org/abs/2104.04473">Efficient Large-Scale Language Model Training on GPU Clusters Using Megatron-LM (Narayanan et al., arXiv:2104.04473)</a> — the real, verified quotes on why tensor parallelism stays within a node ("the all-reduce communication required for tensor parallelism needs to go through inter-server links, which are slower than the high-bandwidth NVLink available within a multi-GPU server") and the real recommended split ("tensor model parallelism should generally be used up to degree g when using g-GPU servers, and then pipeline model parallelism can be used to scale up to larger models across servers"), independently re-verified against the ar5iv HTML rendering of the same paper.</li>
+<li><a href="https://arxiv.org/abs/2201.11990">Using DeepSpeed and Megatron to Train Megatron-Turing NLG 530B (Smith et al., arXiv:2201.11990)</a> — the real, verified quotes on the model's own real configuration ("each 530 billion parameter model replica spans 280 NVIDIA A100 GPUs, with 8-way tensor-slicing within a node and 35-way pipeline parallelism across nodes") and communication-overhead ranking ("Tensor parallelism has the largest communication overhead of the three strategies, and so we prioritize placing tensor parallel workers within a node"), independently re-verified against the ar5iv HTML rendering of the same paper.</li>
+<li><a href="https://vllm.ai/blog/2025-02-17-distributed-inference">vLLM Blog: "Distributed Inference with vLLM"</a> — the real, verified quotes on when to use TP versus PP across interconnects ("Use pipeline parallelism across nodes and tensor parallelism within nodes when interconnects are slow. If interconnects are efficient (e.g., NVLink, InfiniBand), tensor parallelism can extend across nodes") and the real, verified super-linear KV-cache/throughput numbers ("Between TP=1 and TP=2, we are able to increase the amount of KV Cache blocks by 13.9x which allows us to observe 3.9x more token throughput -- much more than the linear 2x we would expect from using 2 GPUs instead of 1"), independently re-verified against the identical content mirrored at developers.redhat.com/articles/2025/02/06/distributed-inference-with-vllm.</li>
+<li><a href="https://nvidia.github.io/TensorRT-LLM/features/parallel-strategy.html">NVIDIA TensorRT-LLM Documentation: "Parallelism Strategies"</a> — the real, verified qualitative guidance on tensor parallelism ("Best for: Small batch sizes, memory-constrained scenarios") and pipeline parallelism ("Best for: Large models that don't fit in single GPU memory") cited in this chapter's own honest published-gap statement in Section 26.3.</li>
+<li>Chapter 9's own real ring all-reduce round-count and volume formulas, Chapter 13's own real per-shard capacity model, Chapter 14's own real Megatron-LM column-parallel/row-parallel GEMM split, and Chapter 15's own real GPipe micro-batch pipeline schedule — all reused directly in this chapter, not re-derived.</li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+    
+      
+      <nav class="md-footer__inner md-grid" aria-label="Footer" >
+        
+          
+          <a href="../25-distributed-training-of-a-neural-network-data-parallelism-and-ring-all-reduce/" class="md-footer__link md-footer__link--prev" aria-label="Previous: 25. Distributed Training of a Neural Network: Data Parallelism and Ring All-Reduce">
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+            </div>
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Previous
+              </span>
+              <div class="md-ellipsis">
+                25. Distributed Training of a Neural Network: Data Parallelism and Ring All-Reduce
+              </div>
+            </div>
+          </a>
+        
+        
+      </nav>
+    
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      Copyright &copy; 2026 Oluwaseyi Awoga
+    </div>
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.instant", "navigation.tracking", "navigation.sections", "navigation.expand", "navigation.top", "navigation.footer", "toc.follow", "search.suggest", "search.highlight", "content.code.copy", "content.code.annotate"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>
