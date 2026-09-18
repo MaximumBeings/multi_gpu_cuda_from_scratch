@@ -81,6 +81,7 @@ nav:
   - "Part 4 -- Synchronization, Load Balancing, and Failure":
       - "17. Barriers and Global Synchronization Across Devices": part4/17-barriers-and-global-synchronization-across-devices.md
       - "18. Load Balancing Across Heterogeneous GPUs": part4/18-load-balancing-across-heterogeneous-gpus.md
+      - "19. Stragglers, Failures, and Fault-Tolerant Collectives": part4/19-stragglers-failures-and-fault-tolerant-collectives.md
 
 extra:
   social: []
