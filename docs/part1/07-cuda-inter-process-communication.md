@@ -16,11 +16,66 @@
 
 Every chapter since Chapter 4 has quietly assumed one thing: whoever calls `cudaMalloc()`, `cudaEventCreate()`, or any other allocation-style CUDA call is also the only process that will ever touch the result. UVA (Chapter 4) makes a pointer meaningful across *devices* within that one process -- but it says nothing about a second, entirely separate process, with its own private address space and its own CUDA context, that wants to work with memory or synchronization the first process already set up. That's what CUDA's Inter-Process Communication (IPC) support exists for, and it closes out Part 1: everything from here through Chapter 6 was about getting data and coordination *between devices*; this chapter is about getting that same data and coordination *between processes*, which turns out to need its own dedicated, deliberately narrow API.
 
+Here is where this chapter sits relative to everything Part 1 already built:
+
+```text
+Chapter 4 -- within one process, across DEVICES:
+
+    Process A
+    +----------------------------------------+
+    |  [ Device 0 ] <--peer access--> [ Device 1 ]  |
+    +----------------------------------------+
+
+Chapters 5-6 -- moving data and coordinating those devices:
+
+    Process A
+    +--------------------------------------------------+
+    |  [ Device 0 ] --cudaMemcpyPeer()--> [ Device 1 ]  |
+    |  [ Device 0 stream ] --event--> [ Device 1 stream ]  |
+    +--------------------------------------------------+
+
+Chapter 7 (this chapter) -- across PROCESSES entirely:
+
+    Process A                       Process B
+    +----------------+   IPC handle   +----------------+
+    |  [ Device 0 ]  | -------------> |  (same Device 0 |
+    |   owns memory  |   (see 7.1)    |   memory, now   |
+    +----------------+                |   visible here) |
+                                       +----------------+
+```
+
+Everything above the last block was one process reaching across a device boundary it already controlled. This chapter is a process reaching across a boundary it does *not* control at all -- another process's own private address space -- which is why it needs its own explicit hand-off mechanism instead of just another flavor of the calls Chapters 4-6 already used.
+
 ## 7.1 cudaIpcGetMemHandle / cudaIpcOpenMemHandle: Sharing Device Memory Across Processes
 
 ### Intuition
 
 A raw pointer value is just a number, and numbers don't carry any information about which process's address space they're meaningful in. If process A allocates device memory and somehow sends the raw pointer value to process B -- over a pipe, a socket, whatever -- that number means nothing to process B's own CUDA runtime; dereferencing it (directly or through any CUDA call) is simply undefined. What has to cross the process boundary instead is an opaque, driver-issued *handle*: a token process A requests specifically for the purpose of being handed to another process, which process B then presents back to its own CUDA runtime to receive a pointer that *is* valid in its address space, pointing at the exact same underlying physical memory.
+
+```text
+   PROCESS A (exporter)                         PROCESS B (importer)
+   +-------------------------+                  +-------------------------+
+   | address space A         |                  | address space B        |
+   |                         |                  |                        |
+   |  devPtr ----> [ DEVICE MEMORY ]             |                        |
+   |               (A owns this allocation)      |                        |
+   +-------------------------+                  +-------------------------+
+              |                                            ^
+              | cudaIpcGetMemHandle(&handle, devPtr)        |
+              v                                            |
+        +-----------+        OS-level transport       +-----------+
+        |  handle   | -----(pipe / socket / file,----> |  handle   |
+        | (opaque)  |       outside CUDA's scope)      | (opaque)  |
+        +-----------+                                  +-----------+
+                                                               |
+                                            cudaIpcOpenMemHandle(&importedPtr, handle, ...)
+                                                               v
+                                            importedPtr ----> [ SAME DEVICE MEMORY ]
+                                                               (the identical physical bytes
+                                                                A already owns -- not a copy)
+```
+
+The handle itself carries no data -- it is a description the driver can turn back into a pointer, not a snapshot of the memory it describes. Everything below `[ SAME DEVICE MEMORY ]` in the diagram is one physical allocation with two valid pointers now referring to it, one per process.
 
 ### Background
 
@@ -80,6 +135,30 @@ The same honest `cudaErrorNoDevice` this book has reported at every real Runtime
 
 Sharing the memory itself only solves half the problem: process B now has a way to get a valid pointer to process A's data, but nothing yet tells B *when* that data is actually ready to read. Chapter 6 already built the tool for exactly this kind of question -- an event -- but an ordinary event, like an ordinary pointer, is scoped to the process that created it. Making an event shareable across processes isn't automatic; it has to be requested explicitly, at creation time, because supporting cross-process visibility costs the event one specific capability it would otherwise have.
 
+```text
+   PROCESS A                                    PROCESS B
+   +----------------------------+                +----------------------------+
+   | streamA: [ work ] -> event |                |                            |
+   |   (created WITH the two    |                |                            |
+   |    required flags, 7.2)    |                |                            |
+   +----------------------------+                +----------------------------+
+              |                                            ^
+              | cudaIpcGetEventHandle(&handle, event)       |
+              v                                            |
+        +-----------+        OS-level transport       +-----------+
+        |  handle   | ------------------------------->|  handle   |
+        +-----------+                                  +-----------+
+                                                               |
+                                          cudaIpcOpenEventHandle(&importedEvent, handle)
+                                                               v
+                                          streamB: cudaStreamWaitEvent(streamB, importedEvent, 0)
+                                          -- streamB's FUTURE work now waits for process A's
+                                             marker, exactly like Chapter 6's cross-DEVICE case,
+                                             just carried across a process boundary instead.
+```
+
+The bottom line of this diagram is the payoff: once `importedEvent` exists in process B, it is handed to `cudaStreamWaitEvent()` exactly the way Chapter 6, Section 6.2 used a same-process, cross-device event -- nothing about *waiting* on it changes, only how it got there.
+
 ### Background
 
 `cudaEventCreateWithFlags()` is the same event-creation call Chapter 6 used, but with two flags that matter here specifically: the documentation states that `cudaEventInterprocess` "specifies that the created event may be used as an interprocess event by `cudaIpcGetEventHandle()`," and that "`cudaEventInterprocess` must be specified along with `cudaEventDisableTiming`" -- an interprocess event gives up per-event timing data as the cost of being shareable at all. From there, the pattern mirrors Section 7.1 exactly: `cudaIpcGetEventHandle(&handle, event)` exports an opaque handle for an event created with both required flags, and `cudaIpcOpenEventHandle(&importedEvent, handle)`, called in the other process, returns a local `cudaEvent_t` that refers to the same underlying event -- one that can then be handed directly to `cudaStreamWaitEvent()` (Chapter 6, Section 6.2) exactly like any other event, cross-device or not.
@@ -135,6 +214,29 @@ The same `cudaErrorNoDevice` throughout, for the same reason as every device-bou
 ### Intuition
 
 This machine cannot honestly run two real, separate OS processes each initializing their own CUDA context and exchanging real IPC handles over a real pipe -- there's no device for either process's context to initialize against in the first place, so the whole scenario has nothing to attach to. But the *logic* of the handoff -- export produces an opaque token that describes shared memory without copying it; open consumes exactly that token and yields a reference to the same underlying storage; the importer's view and the exporter's view are never two independently-updated copies, they are the same memory -- is exactly the kind of orchestration logic this book already verified honestly once before, in Chapter 4's Section 4.3, using real in-memory stand-ins instead of real hardware.
+
+The one picture that actually distinguishes this chapter's IPC sharing from every transfer this book has written since Chapter 5 is what happens to a LATE mutation -- one made after the hand-off has already happened:
+
+```text
+   IPC-STYLE SHARING (this chapter)          COPY-STYLE TRANSFER (Chapter 5)
+
+   g_table[0].data                           src (device 0) = [100,200,300,400]
+     = [100,200,300,400]                              |
+        ^          ^                            cudaMemcpy() -- copies the BYTES
+        |          |                                  v
+   exporter's   importer's                     dst (device 1) = [100,200,300,400]
+   reference    reference                              (separate storage from here on)
+
+   exporter mutates index 2 -> 9999           src mutates index 2 -> 9999
+        |          |                                  |
+        v          v                                  v
+   BOTH see 9999 immediately --               dst STILL shows 300 --
+   there was only ONE buffer,                 dst is a different allocation;
+   so there was nothing to "update"           reflecting the change needs a
+   in the importer's view at all              SECOND cudaMemcpy() call
+```
+
+Everything Section 7.3's simulation checks reduces to this one picture: the left column has no step where data moves *to* the importer after the initial open, because there is only one underlying buffer to begin with.
 
 ### Background
 
