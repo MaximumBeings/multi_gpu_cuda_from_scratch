@@ -99,6 +99,7 @@ nav:
   - "Part 7 -- Cutting-Edge Industrial Case Studies":
       - "32. Mixture-of-Experts at Scale: Expert Parallelism and GPU-Initiated All-to-All (DeepEP)": part7/32-mixture-of-experts-at-scale.md
       - "33. Disaggregated LLM Inference: Prefill/Decode Splitting (DistServe)": part7/33-disaggregated-llm-inference.md
+      - "34. GPU Recommendation Systems: Hybrid Data-Parallel and Model-Parallel Embeddings (HugeCTR)": part7/34-gpu-recommendation-systems.md
 
 extra:
   social: []
