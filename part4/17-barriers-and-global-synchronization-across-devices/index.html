@@ -1,0 +1,2028 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="From Peer-to-Peer Memory to Distributed Training Across the Cluster">
+      
+      
+        <meta name="author" content="Oluwaseyi Awoga">
+      
+      
+      
+        <link rel="prev" href="../../part3/16-domain-decomposition-for-scientific-computing-halo-exchange-and-distributed-stencils/">
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+    
+    
+      
+        <title>17. Barriers and Global Synchronization Across Devices - Multi-GPU Programming in CUDA C++ -- Under Development</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#chapter-17-barriers-and-global-synchronization-across-devices" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="Multi-GPU Programming in CUDA C++ -- Under Development" class="md-header__button md-logo" aria-label="Multi-GPU Programming in CUDA C++ -- Under Development" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 19h1a1 1 0 0 1 1 1h7v2h-7a1 1 0 0 1-1 1h-4a1 1 0 0 1-1-1H2v-2h7a1 1 0 0 1 1-1h1v-2H4a1 1 0 0 1-1-1v-4a1 1 0 0 1 1-1h16a1 1 0 0 1 1 1v4a1 1 0 0 1-1 1h-7zM4 3h16a1 1 0 0 1 1 1v4a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1m5 4h1V5H9zm0 8h1v-2H9zM5 5v2h2V5zm0 8v2h2v-2z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Multi-GPU Programming in CUDA C++ -- Under Development
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              17. Barriers and Global Synchronization Across Devices
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m17.75 4.09-2.53 1.94.91 3.06-2.63-1.81-2.63 1.81.91-3.06-2.53-1.94L12.44 4l1.06-3 1.06 3zm3.5 6.91-1.64 1.25.59 1.98-1.7-1.17-1.7 1.17.59-1.98L15.75 11l2.06-.05L18.5 9l.69 1.95zm-2.28 4.95c.83-.08 1.72 1.1 1.19 1.85-.32.45-.66.87-1.08 1.27C15.17 23 8.84 23 4.94 19.07c-3.91-3.9-3.91-10.24 0-14.14.4-.4.82-.76 1.27-1.08.75-.53 1.93.36 1.85 1.19-.27 2.86.69 5.83 2.89 8.02a9.96 9.96 0 0 0 8.02 2.89m-1.64 2.02a12.08 12.08 0 0 1-7.8-3.47c-2.17-2.19-3.33-5-3.49-7.82-2.81 3.14-2.7 7.96.31 10.98 3.02 3.01 7.84 3.12 10.98.31"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 7a5 5 0 0 1 5 5 5 5 0 0 1-5 5 5 5 0 0 1-5-5 5 5 0 0 1 5-5m0 2a3 3 0 0 0-3 3 3 3 0 0 0 3 3 3 3 0 0 0 3-3 3 3 0 0 0-3-3m0-7 2.39 3.42C13.65 5.15 12.84 5 12 5s-1.65.15-2.39.42zM3.34 7l4.16-.35A7.2 7.2 0 0 0 5.94 8.5c-.44.74-.69 1.5-.83 2.29zm.02 10 1.76-3.77a7.131 7.131 0 0 0 2.38 4.14zM20.65 7l-1.77 3.79a7.02 7.02 0 0 0-2.38-4.15zm-.01 10-4.14.36c.59-.51 1.12-1.14 1.54-1.86.42-.73.69-1.5.83-2.29zM12 22l-2.41-3.44c.74.27 1.55.44 2.41.44.82 0 1.63-.17 2.37-.44z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="Multi-GPU Programming in CUDA C++ -- Under Development" class="md-nav__button md-logo" aria-label="Multi-GPU Programming in CUDA C++ -- Under Development" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 19h1a1 1 0 0 1 1 1h7v2h-7a1 1 0 0 1-1 1h-4a1 1 0 0 1-1-1H2v-2h7a1 1 0 0 1 1-1h1v-2H4a1 1 0 0 1-1-1v-4a1 1 0 0 1 1-1h16a1 1 0 0 1 1 1v4a1 1 0 0 1-1 1h-7zM4 3h16a1 1 0 0 1 1 1v4a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1m5 4h1V5H9zm0 8h1v-2H9zM5 5v2h2V5zm0 8v2h2v-2z"/></svg>
+
+    </a>
+    Multi-GPU Programming in CUDA C++ -- Under Development
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Part 0 -- Why Multi-GPU, and the Hardware Underneath It
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Part 0 -- Why Multi-GPU, and the Hardware Underneath It
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part0/01-why-one-gpu-is-not-enough/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    1. Why One GPU Is Not Enough
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part0/02-multi-gpu-hardware-topology/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    2. Multi-GPU Hardware Topology: PCIe, NVLink, and NVSwitch
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part0/03-the-cuda-multi-gpu-programming-model/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    3. The CUDA Multi-GPU Programming Model: Devices, Contexts, and Streams Across Them
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Part 1 -- Getting Data Between GPUs
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Part 1 -- Getting Data Between GPUs
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part1/04-peer-to-peer-memory-access-and-uva/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    4. Peer-to-Peer Memory Access and Unified Virtual Addressing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part1/05-explicit-transfers-cudamemcpypeer-staged-host-transfers/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    5. Explicit Transfers: cudaMemcpyPeer, Staged Host Transfers, and When Each Wins
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part1/06-streams-events-and-cross-device-synchronization/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    6. Streams, Events, and Cross-Device Synchronization
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part1/07-cuda-inter-process-communication/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    7. CUDA Inter-Process Communication: Sharing Memory and Events Across Processes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Part 2 -- Collective Communication, Built From Scratch
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Part 2 -- Collective Communication, Built From Scratch
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part2/08-broadcast-and-reduce-the-first-two-collectives-by-hand/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    8. Broadcast and Reduce: The First Two Collectives, By Hand
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part2/09-ring-all-reduce-the-algorithm-behind-every-multi-gpu-training-job/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    9. Ring All-Reduce: The Algorithm Behind Every Multi-GPU Training Job
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part2/10-all-gather-reduce-scatter-and-all-to-all/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    10. All-Gather, Reduce-Scatter, and All-to-All
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part2/11-nccl-what-it-actually-does-differently/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    11. NCCL: What It Actually Does Differently From What You Just Built
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Part 3 -- Parallelization Strategies
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Part 3 -- Parallelization Strategies
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part3/12-data-parallelism-replicated-model-sharded-data/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    12. Data Parallelism: Replicated Model, Sharded Data
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part3/13-model-parallelism-when-one-gpu-cant-hold-the-weights/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    13. Model Parallelism: When One GPU Can't Hold the Weights
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part3/14-tensor-parallelism-splitting-a-single-matrix-multiply-across-devices/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    14. Tensor Parallelism: Splitting a Single Matrix Multiply Across Devices
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part3/15-pipeline-parallelism-splitting-layers-across-devices-and-the-bubble-that-costs-you/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    15. Pipeline Parallelism: Splitting Layers Across Devices, and the Bubble That Costs You
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part3/16-domain-decomposition-for-scientific-computing-halo-exchange-and-distributed-stencils/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    16. Domain Decomposition for Scientific Computing: Halo Exchange and Distributed Stencils
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Part 4 -- Synchronization, Load Balancing, and Failure
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_7">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Part 4 -- Synchronization, Load Balancing, and Failure
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    17. Barriers and Global Synchronization Across Devices
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    17. Barriers and Global Synchronization Across Devices
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#171-the-problem-per-device-synchronization-doesnt-cross-devices" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        17.1 The Problem: Per-Device Synchronization Doesn't Cross Devices
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="17.1 The Problem: Per-Device Synchronization Doesn&#39;t Cross Devices">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#intuition" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Intuition
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#background" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Background
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#172-a-real-barrier-a-throwaway-allreduce-then-a-real-wait" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        17.2 A Real Barrier: A Throwaway AllReduce, Then a Real Wait
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="17.2 A Real Barrier: A Throwaway AllReduce, Then a Real Wait">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#intuition_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Intuition
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#background_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Background
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#173-what-a-barrier-buys-you-and-what-it-costs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        17.3 What a Barrier Buys You, and What It Costs
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="17.3 What a Barrier Buys You, and What It Costs">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#intuition_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Intuition
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#background_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Background
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#chapter-summary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Chapter Summary
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#self-check-questions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Self-Check Questions
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#where-we-go-next" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Where We Go Next
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#worked-solutions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Worked Solutions
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#171-the-problem-per-device-synchronization-doesnt-cross-devices" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        17.1 The Problem: Per-Device Synchronization Doesn't Cross Devices
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="17.1 The Problem: Per-Device Synchronization Doesn&#39;t Cross Devices">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#intuition" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Intuition
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#background" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Background
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#172-a-real-barrier-a-throwaway-allreduce-then-a-real-wait" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        17.2 A Real Barrier: A Throwaway AllReduce, Then a Real Wait
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="17.2 A Real Barrier: A Throwaway AllReduce, Then a Real Wait">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#intuition_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Intuition
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#background_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Background
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#173-what-a-barrier-buys-you-and-what-it-costs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        17.3 What a Barrier Buys You, and What It Costs
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="17.3 What a Barrier Buys You, and What It Costs">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#intuition_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Intuition
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#background_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Background
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#chapter-summary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Chapter Summary
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#self-check-questions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Self-Check Questions
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#where-we-go-next" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Where We Go Next
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#worked-solutions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Worked Solutions
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+
+<h1 id="chapter-17-barriers-and-global-synchronization-across-devices">Chapter 17: Barriers and Global Synchronization Across Devices<a class="headerlink" href="#chapter-17-barriers-and-global-synchronization-across-devices" title="Permanent link">&para;</a></h1>
+<p><strong>What you will understand by the end of this chapter:</strong></p>
+<ul>
+<li>Why Chapter 6's <code>cudaDeviceSynchronize()</code> -- which blocks the calling CPU thread until <em>one</em> device's own queued work finishes -- does not give you what every Part 3 parallelization strategy eventually needs: a guarantee that <em>every</em> device has reached the same point before <em>any</em> of them continues past it.</li>
+<li>Why NCCL, which this book has genuinely linked against since Chapter 11, has no dedicated barrier call at all -- and the real technique distributed training code uses instead: a throwaway <code>ncclAllReduce()</code> call, issued purely for the property that it cannot complete on any rank until every rank has issued it.</li>
+<li>Why that call alone still isn't enough to make the CPU actually wait -- and which real primitive, already in this book since Chapter 6, has to run afterward to close the gap.</li>
+<li>What a barrier actually buys you when devices make progress at different speeds: every rank sees the same, complete shared state at a checkpoint, instead of a race where an early rank reads a still-incomplete view.</li>
+<li>The real, non-zero communication cost a barrier pays every time it's called -- reusing this book's own already-derived round-count formulas, not a new one.</li>
+</ul>
+<p><strong>What you need to know first:</strong></p>
+<ul>
+<li>Chapter 6's real <code>cudaDeviceSynchronize()</code>, <code>cudaStreamSynchronize()</code>, and event-based cross-device wait mechanism.</li>
+<li>Chapter 9's ring all-reduce round-count formula and Chapter 11's tree round-count formula, both reused directly in this chapter's own cost model.</li>
+<li>Chapter 11's real, installed NCCL communicator and the honest failure codes it reports.</li>
+</ul>
+<hr />
+<p>This chapter opens Part 4, and it's a different kind of chapter than any in Part 3. Chapters 12 through 16 each introduced a <em>new way to split work</em> across devices -- a batch, a model, a matrix, a pipeline, a physical grid. This chapter introduces no new way to split anything. Instead, it addresses a concern that applies to <em>every one</em> of those strategies once they're running for real: at some point, every one of them needs every device to agree that a particular point in the computation has been reached by all of them, before any of them is allowed to proceed past it. Chapter 6 already gave this book a synchronization primitive, <code>cudaDeviceSynchronize()</code>, and it's tempting to assume that primitive, called once per device, already solves this. It doesn't -- and understanding exactly why it doesn't is where this chapter starts.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>Per-device sync (Chapter 6):              A global barrier (this chapter):
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>  dev0: [ work ] -- sync -- done?          dev0: [ work ] -- BARRIER -- [ more work ]
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>  dev1: [ work, work, work ] -- sync?        dev1: [ work, work, work ] -- BARRIER -- [ more work ]
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>  dev2: [ work ] -- sync -- done?            dev2: [ work ] -- BARRIER -- [ more work ]
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>  dev3: [ work, work ] -- sync?              dev3: [ work, work ] -- BARRIER -- [ more work ]
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>  Each device&#39;s own queue is checked        NO device&#39;s &quot;more work&quot; starts until
+<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>  independently, one at a time. Nothing     EVERY device has reached the barrier --
+<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>  stops dev0 from racing far ahead of       even the one that got there first has
+<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>  dev3&#39;s own progress.                      to wait for dev3.
+</code></pre></div>
+<h2 id="171-the-problem-per-device-synchronization-doesnt-cross-devices">17.1 The Problem: Per-Device Synchronization Doesn't Cross Devices<a class="headerlink" href="#171-the-problem-per-device-synchronization-doesnt-cross-devices" title="Permanent link">&para;</a></h2>
+<h3 id="intuition">Intuition<a class="headerlink" href="#intuition" title="Permanent link">&para;</a></h3>
+<p><code>cudaDeviceSynchronize()</code>, since Chapter 6, does exactly one thing: it blocks the calling CPU thread until the <em>current</em> device's own command queue is empty -- every kernel and memory operation already launched on it has finished. That's a real, useful guarantee, and this book has used it since Chapter 3's own multi-device loop pattern, calling it once per device in turn. But look closely at what a loop like that actually promises. It promises that, by the time the loop finishes, this one CPU thread has personally confirmed each device's queue was empty <em>at the moment it checked that device</em>. It says nothing at all about whether device 0 and device 3 were at the <em>same point</em> in their own work relative to each other. Device 0 could finish its first ten iterations, get checked and confirmed idle, and start its eleventh iteration -- all before device 3 has even launched its first kernel. A device loop that synchronizes devices one at a time, sequentially, on one thread, never once makes any device wait for any <em>other</em> device. That is precisely the gap a global barrier has to close.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>What the loop from Chapter 3 actually checks, one device at a time:
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>  t=0: cudaSetDevice(0); cudaDeviceSynchronize();  &lt;- dev0&#39;s queue confirmed empty NOW
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>  t=1: cudaSetDevice(1); cudaDeviceSynchronize();  &lt;- dev1&#39;s queue confirmed empty NOW
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>  t=2: cudaSetDevice(2); cudaDeviceSynchronize();  &lt;- dev2&#39;s queue confirmed empty NOW
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>  t=3: cudaSetDevice(3); cudaDeviceSynchronize();  &lt;- dev3&#39;s queue confirmed empty NOW
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>
+<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>  By t=1, dev0 could ALREADY be running its next kernel -- nothing here
+<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>  stopped it, and nothing here checks it again. Each check is a snapshot
+<a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a>  of ONE device, not a joint checkpoint every device waits at together.
+</code></pre></div>
+<h3 id="background">Background<a class="headerlink" href="#background" title="Permanent link">&para;</a></h3>
+<p>The code below runs exactly the loop pattern this book has used since Chapter 3 -- <code>cudaSetDevice()</code> followed by <code>cudaDeviceSynchronize()</code>, once per rank -- and states plainly, in its own output, what that loop does and does not guarantee. There's no new API here; the point of this section is entirely about what the <em>existing</em> primitive's guarantee actually covers, before Section 17.2 introduces something that covers more.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="c1">// Chapter 17: Barriers and Global Synchronization Across Devices</span>
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="c1">// 48_per_device_sync_is_not_a_barrier.cu</span>
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="c1">//</span>
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="c1">// Chapter 6 established cudaDeviceSynchronize(): it blocks the calling</span>
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="c1">// CPU thread until ONE device&#39;s own queued work has finished. Every</span>
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a><span class="c1">// parallelization strategy Part 3 built -- data (Ch12), model (Ch13),</span>
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a><span class="c1">// tensor (Ch14), pipeline (Ch15), domain decomposition (Ch16) -- needs</span>
+<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a><span class="c1">// something stronger at certain points: a guarantee that EVERY device</span>
+<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a><span class="c1">// has reached the same point before ANY of them is allowed to</span>
+<a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a><span class="c1">// continue past it. This section shows, directly, that looping</span>
+<a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a><span class="c1">// cudaDeviceSynchronize() over every device does not provide that</span>
+<a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a><span class="c1">// guarantee, even though it looks like it should.</span>
+<a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a><span class="c1">// Genuinely compiled with a real nvcc and genuinely run.</span>
+<a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;cstdio&gt;</span>
+<a id="__codelineno-2-15" name="__codelineno-2-15" href="#__codelineno-2-15"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;cuda_runtime.h&gt;</span>
+<a id="__codelineno-2-16" name="__codelineno-2-16" href="#__codelineno-2-16"></a>
+<a id="__codelineno-2-17" name="__codelineno-2-17" href="#__codelineno-2-17"></a><span class="kt">int</span><span class="w"> </span><span class="nf">main</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-2-18" name="__codelineno-2-18" href="#__codelineno-2-18"></a><span class="w">    </span><span class="kt">int</span><span class="w"> </span><span class="n">deviceCount</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
+<a id="__codelineno-2-19" name="__codelineno-2-19" href="#__codelineno-2-19"></a><span class="w">    </span><span class="n">cudaGetDeviceCount</span><span class="p">(</span><span class="o">&amp;</span><span class="n">deviceCount</span><span class="p">);</span>
+<a id="__codelineno-2-20" name="__codelineno-2-20" href="#__codelineno-2-20"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;cudaGetDeviceCount(): %d device(s).</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">deviceCount</span><span class="p">);</span>
+<a id="__codelineno-2-21" name="__codelineno-2-21" href="#__codelineno-2-21"></a>
+<a id="__codelineno-2-22" name="__codelineno-2-22" href="#__codelineno-2-22"></a><span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">HYPOTHETICAL_WORLD_SIZE</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">4</span><span class="p">;</span>
+<a id="__codelineno-2-23" name="__codelineno-2-23" href="#__codelineno-2-23"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;</span><span class="se">\n</span><span class="s">Synchronizing %d devices the way every device loop since &quot;</span>
+<a id="__codelineno-2-24" name="__codelineno-2-24" href="#__codelineno-2-24"></a><span class="w">           </span><span class="s">&quot;Chapter 3 has -- one at a time, on this one CPU thread:</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span>
+<a id="__codelineno-2-25" name="__codelineno-2-25" href="#__codelineno-2-25"></a><span class="w">           </span><span class="n">HYPOTHETICAL_WORLD_SIZE</span><span class="p">);</span>
+<a id="__codelineno-2-26" name="__codelineno-2-26" href="#__codelineno-2-26"></a><span class="w">    </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">rank</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span><span class="w"> </span><span class="n">rank</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="n">HYPOTHETICAL_WORLD_SIZE</span><span class="p">;</span><span class="w"> </span><span class="o">++</span><span class="n">rank</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-2-27" name="__codelineno-2-27" href="#__codelineno-2-27"></a><span class="w">        </span><span class="n">cudaError_t</span><span class="w"> </span><span class="n">eSetDevice</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">cudaSetDevice</span><span class="p">(</span><span class="n">rank</span><span class="p">);</span>
+<a id="__codelineno-2-28" name="__codelineno-2-28" href="#__codelineno-2-28"></a><span class="w">        </span><span class="n">cudaError_t</span><span class="w"> </span><span class="n">eSync</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">cudaDeviceSynchronize</span><span class="p">();</span>
+<a id="__codelineno-2-29" name="__codelineno-2-29" href="#__codelineno-2-29"></a><span class="w">        </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;  rank %d: cudaSetDevice(): %s (code %d)   &quot;</span>
+<a id="__codelineno-2-30" name="__codelineno-2-30" href="#__codelineno-2-30"></a><span class="w">               </span><span class="s">&quot;cudaDeviceSynchronize(): %s (code %d)</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span>
+<a id="__codelineno-2-31" name="__codelineno-2-31" href="#__codelineno-2-31"></a><span class="w">               </span><span class="n">rank</span><span class="p">,</span><span class="w"> </span><span class="n">cudaGetErrorString</span><span class="p">(</span><span class="n">eSetDevice</span><span class="p">),</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="p">)</span><span class="n">eSetDevice</span><span class="p">,</span>
+<a id="__codelineno-2-32" name="__codelineno-2-32" href="#__codelineno-2-32"></a><span class="w">               </span><span class="n">cudaGetErrorString</span><span class="p">(</span><span class="n">eSync</span><span class="p">),</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="p">)</span><span class="n">eSync</span><span class="p">);</span>
+<a id="__codelineno-2-33" name="__codelineno-2-33" href="#__codelineno-2-33"></a><span class="w">    </span><span class="p">}</span>
+<a id="__codelineno-2-34" name="__codelineno-2-34" href="#__codelineno-2-34"></a>
+<a id="__codelineno-2-35" name="__codelineno-2-35" href="#__codelineno-2-35"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;</span><span class="se">\n</span><span class="s">Notice what this loop actually guarantees, and what it does</span><span class="se">\n</span><span class="s">&quot;</span>
+<a id="__codelineno-2-36" name="__codelineno-2-36" href="#__codelineno-2-36"></a><span class="w">           </span><span class="s">&quot;NOT: by the time it returns, this CPU thread knows every</span><span class="se">\n</span><span class="s">&quot;</span>
+<a id="__codelineno-2-37" name="__codelineno-2-37" href="#__codelineno-2-37"></a><span class="w">           </span><span class="s">&quot;device&#39;s queue, AS OF THE MOMENT EACH ONE WAS CHECKED, was</span><span class="se">\n</span><span class="s">&quot;</span>
+<a id="__codelineno-2-38" name="__codelineno-2-38" href="#__codelineno-2-38"></a><span class="w">           </span><span class="s">&quot;empty. It says nothing about whether rank 0 and rank 3 were</span><span class="se">\n</span><span class="s">&quot;</span>
+<a id="__codelineno-2-39" name="__codelineno-2-39" href="#__codelineno-2-39"></a><span class="w">           </span><span class="s">&quot;AT THE SAME POINT in their own work relative to each other.</span><span class="se">\n</span><span class="s">&quot;</span>
+<a id="__codelineno-2-40" name="__codelineno-2-40" href="#__codelineno-2-40"></a><span class="w">           </span><span class="s">&quot;Rank 0 could have already raced ten iterations ahead of rank</span><span class="se">\n</span><span class="s">&quot;</span>
+<a id="__codelineno-2-41" name="__codelineno-2-41" href="#__codelineno-2-41"></a><span class="w">           </span><span class="s">&quot;3 by the time rank 3&#39;s own kernels are even launched -- this</span><span class="se">\n</span><span class="s">&quot;</span>
+<a id="__codelineno-2-42" name="__codelineno-2-42" href="#__codelineno-2-42"></a><span class="w">           </span><span class="s">&quot;loop only checks each device&#39;s queue in turn, sequentially,</span><span class="se">\n</span><span class="s">&quot;</span>
+<a id="__codelineno-2-43" name="__codelineno-2-43" href="#__codelineno-2-43"></a><span class="w">           </span><span class="s">&quot;on one CPU thread; it never makes any device wait for any</span><span class="se">\n</span><span class="s">&quot;</span>
+<a id="__codelineno-2-44" name="__codelineno-2-44" href="#__codelineno-2-44"></a><span class="w">           </span><span class="s">&quot;OTHER device. A real global barrier needs every rank to wait</span><span class="se">\n</span><span class="s">&quot;</span>
+<a id="__codelineno-2-45" name="__codelineno-2-45" href="#__codelineno-2-45"></a><span class="w">           </span><span class="s">&quot;for every OTHER rank, not just for its own queue to drain.</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
+<a id="__codelineno-2-46" name="__codelineno-2-46" href="#__codelineno-2-46"></a>
+<a id="__codelineno-2-47" name="__codelineno-2-47" href="#__codelineno-2-47"></a><span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
+<a id="__codelineno-2-48" name="__codelineno-2-48" href="#__codelineno-2-48"></a><span class="p">}</span>
+</code></pre></div>
+<p>Genuinely compiled with a real <code>nvcc</code> and genuinely run. Locked output, deterministic across repeated runs:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>cudaGetDeviceCount(): 0 device(s).
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>Synchronizing 4 devices the way every device loop since Chapter 3 has -- one at a time, on this one CPU thread:
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>  rank 0: cudaSetDevice(): no CUDA-capable device is detected (code 100)   cudaDeviceSynchronize(): no CUDA-capable device is detected (code 100)
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>  rank 1: cudaSetDevice(): no CUDA-capable device is detected (code 100)   cudaDeviceSynchronize(): no CUDA-capable device is detected (code 100)
+<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>  rank 2: cudaSetDevice(): no CUDA-capable device is detected (code 100)   cudaDeviceSynchronize(): no CUDA-capable device is detected (code 100)
+<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>  rank 3: cudaSetDevice(): no CUDA-capable device is detected (code 100)   cudaDeviceSynchronize(): no CUDA-capable device is detected (code 100)
+<a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a>
+<a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a>Notice what this loop actually guarantees, and what it does
+<a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a>NOT: by the time it returns, this CPU thread knows every
+<a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a>device&#39;s queue, AS OF THE MOMENT EACH ONE WAS CHECKED, was
+<a id="__codelineno-3-12" name="__codelineno-3-12" href="#__codelineno-3-12"></a>empty. It says nothing about whether rank 0 and rank 3 were
+<a id="__codelineno-3-13" name="__codelineno-3-13" href="#__codelineno-3-13"></a>AT THE SAME POINT in their own work relative to each other.
+<a id="__codelineno-3-14" name="__codelineno-3-14" href="#__codelineno-3-14"></a>Rank 0 could have already raced ten iterations ahead of rank
+<a id="__codelineno-3-15" name="__codelineno-3-15" href="#__codelineno-3-15"></a>3 by the time rank 3&#39;s own kernels are even launched -- this
+<a id="__codelineno-3-16" name="__codelineno-3-16" href="#__codelineno-3-16"></a>loop only checks each device&#39;s queue in turn, sequentially,
+<a id="__codelineno-3-17" name="__codelineno-3-17" href="#__codelineno-3-17"></a>on one CPU thread; it never makes any device wait for any
+<a id="__codelineno-3-18" name="__codelineno-3-18" href="#__codelineno-3-18"></a>OTHER device. A real global barrier needs every rank to wait
+<a id="__codelineno-3-19" name="__codelineno-3-19" href="#__codelineno-3-19"></a>for every OTHER rank, not just for its own queue to drain.
+</code></pre></div>
+<p>Every one of the four <code>cudaSetDevice()</code>/<code>cudaDeviceSynchronize()</code> pairs reports the same honest <code>cudaErrorNoDevice</code> this book has reported since Chapter 3, and that's beside the point this section makes: even with four genuinely working devices, this exact loop would still only ever check one device's queue at a time, in sequence, and would still never make any device's own execution wait on any other device's progress. The gap isn't a bug in <code>cudaDeviceSynchronize()</code> -- it's doing exactly what it was designed to do, which is a strictly per-device guarantee. What's missing is a mechanism that spans devices, not one that checks them one at a time.</p>
+<div class="admonition warning">
+<p class="admonition-title">[COMMON TRAP] Assuming a loop of cudaDeviceSynchronize() calls is a barrier</p>
+<p>It's an easy mistake to make, because the loop above <em>looks</em> like it's synchronizing "everything." It reads every device's status, in order, and doesn't return until it's checked all of them. But "checked all of them, one at a time" is not the same claim as "made all of them wait for each other." Nothing about this loop prevents device 0 from launching new work the instant its own queue is empty -- there is no mechanism here that could hold it back until device 3 catches up, because <code>cudaDeviceSynchronize()</code>'s entire contract is about <em>one</em> device's own queue, never about any other device's state. A real cross-device barrier has to be built from a primitive that every device's own runtime participates in together -- which is exactly what Section 17.2 introduces.</p>
+</div>
+<h2 id="172-a-real-barrier-a-throwaway-allreduce-then-a-real-wait">17.2 A Real Barrier: A Throwaway AllReduce, Then a Real Wait<a class="headerlink" href="#172-a-real-barrier-a-throwaway-allreduce-then-a-real-wait" title="Permanent link">&para;</a></h2>
+<h3 id="intuition_1">Intuition<a class="headerlink" href="#intuition_1" title="Permanent link">&para;</a></h3>
+<p>If <code>cudaDeviceSynchronize()</code> can't cross devices, what can? The honest answer, for this book's own NCCL, is: nothing built specifically for it. NCCL's own Collective Operations documentation lists AllReduce, Broadcast, Reduce, AllGather, ReduceScatter, AllToAll, Gather, and Scatter -- no Barrier, the same kind of gap Chapter 11 found when it discovered all-to-all had no dedicated real NCCL call either. MPI, which Part 5 will introduce, has the real thing: Open MPI's own documentation describes <code>MPI_Barrier()</code> plainly as "synchronization between MPI processes in a group," completing "after all group members have entered the barrier." NCCL simply doesn't offer that primitive. What real distributed training code does instead is exploit a property every one of this book's own collectives already has: a collective operation cannot report completion on <em>any</em> rank until <em>every</em> rank participating has issued the matching call. Call <code>ncclAllReduce()</code> on a single, throwaway element and ignore the result entirely -- what you're really using is the fact that the call had to wait for everyone. A real, publicly filed GitHub issue on NVIDIA's own NCCL repository (#808, "Understanding Barriers") shows a user discovering exactly this in practice, from the outside, watching what a "barrier" actually turns into: a real barrier operation, they report, can "show up as a ringreduce kernel" -- because, under the hood, that's precisely what it is.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>NCCL&#39;s real collectives (Ch8-16):          MPI&#39;s real barrier (Part 5):
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>  AllReduce, Broadcast, Reduce,              MPI_Barrier() -- &quot;synchronization
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>  AllGather, ReduceScatter, AllToAll,        between MPI processes in a group,&quot;
+<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>  Gather, Scatter                            completing only after EVERY
+<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>                                              process has entered it.
+<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a>  No Barrier in this list.
+<a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a>                                              A dedicated primitive that does
+<a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a>  This chapter&#39;s workaround: call             exactly one thing.
+<a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a>  ncclAllReduce() on a throwaway
+<a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a>  1-element buffer, purely for the
+<a id="__codelineno-4-12" name="__codelineno-4-12" href="#__codelineno-4-12"></a>  guarantee that it can&#39;t finish on
+<a id="__codelineno-4-13" name="__codelineno-4-13" href="#__codelineno-4-13"></a>  ANY rank until every rank calls it.
+</code></pre></div>
+<h3 id="background_1">Background<a class="headerlink" href="#background_1" title="Permanent link">&para;</a></h3>
+<p>Faking a barrier this way takes two real calls, not one, and the order matters. First, a real <code>ncclAllReduce()</code> call on a one-element buffer -- this is the call every rank has to issue before any of them can move past it, exactly the property Section 17.2's intuition described. But that call, like every kernel launch since Chapter 3 and every collective since Chapter 8, only <em>enqueues</em> work; it returns to the CPU immediately, whether or not the enqueued operation has actually finished. Actually blocking this CPU thread until the collective is done needs the second call: the same real <code>cudaStreamSynchronize()</code> mechanism Chapter 6 introduced. A barrier, honestly, is both calls together -- not the collective alone.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="c1">// Chapter 17: Barriers and Global Synchronization Across Devices</span>
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="c1">// 49_nccl_allreduce_as_barrier.cu</span>
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="c1">//</span>
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="c1">// NCCL&#39;s own Collective Operations documentation lists AllReduce,</span>
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a><span class="c1">// Broadcast, Reduce, AllGather, ReduceScatter, AllToAll, Gather, and</span>
+<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a><span class="c1">// Scatter -- no Barrier, the same kind of gap Chapter 11 found for</span>
+<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a><span class="c1">// all-to-all before NCCL added a dedicated call for it. MPI (Part 5)</span>
+<a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a><span class="c1">// has a real, dedicated MPI_Barrier() -- Open MPI&#39;s own docs describe</span>
+<a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a><span class="c1">// it plainly: &quot;synchronization between MPI processes in a group,&quot;</span>
+<a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a><span class="c1">// completing &quot;after all group members have entered the barrier.&quot;</span>
+<a id="__codelineno-5-11" name="__codelineno-5-11" href="#__codelineno-5-11"></a><span class="c1">// NCCL has no equivalent, so real distributed training code fakes one</span>
+<a id="__codelineno-5-12" name="__codelineno-5-12" href="#__codelineno-5-12"></a><span class="c1">// the same way a real, publicly filed NCCL GitHub issue (#808,</span>
+<a id="__codelineno-5-13" name="__codelineno-5-13" href="#__codelineno-5-13"></a><span class="c1">// &quot;Understanding Barriers&quot;) describes discovering by observation: a</span>
+<a id="__codelineno-5-14" name="__codelineno-5-14" href="#__codelineno-5-14"></a><span class="c1">// barrier action, under the hood, &quot;show[s] up as a ringreduce kernel&quot;</span>
+<a id="__codelineno-5-15" name="__codelineno-5-15" href="#__codelineno-5-15"></a><span class="c1">// -- i.e. a throwaway AllReduce call, issued purely for the property</span>
+<a id="__codelineno-5-16" name="__codelineno-5-16" href="#__codelineno-5-16"></a><span class="c1">// that it cannot complete on any rank until every rank has called it.</span>
+<a id="__codelineno-5-17" name="__codelineno-5-17" href="#__codelineno-5-17"></a><span class="c1">// Genuinely compiled with a real nvcc against the real installed</span>
+<a id="__codelineno-5-18" name="__codelineno-5-18" href="#__codelineno-5-18"></a><span class="c1">// libnccl.</span>
+<a id="__codelineno-5-19" name="__codelineno-5-19" href="#__codelineno-5-19"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;cstdio&gt;</span>
+<a id="__codelineno-5-20" name="__codelineno-5-20" href="#__codelineno-5-20"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;cuda_runtime.h&gt;</span>
+<a id="__codelineno-5-21" name="__codelineno-5-21" href="#__codelineno-5-21"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;nccl.h&gt;</span>
+<a id="__codelineno-5-22" name="__codelineno-5-22" href="#__codelineno-5-22"></a>
+<a id="__codelineno-5-23" name="__codelineno-5-23" href="#__codelineno-5-23"></a><span class="kt">int</span><span class="w"> </span><span class="nf">main</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-5-24" name="__codelineno-5-24" href="#__codelineno-5-24"></a><span class="w">    </span><span class="kt">int</span><span class="w"> </span><span class="n">deviceCount</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
+<a id="__codelineno-5-25" name="__codelineno-5-25" href="#__codelineno-5-25"></a><span class="w">    </span><span class="n">cudaGetDeviceCount</span><span class="p">(</span><span class="o">&amp;</span><span class="n">deviceCount</span><span class="p">);</span>
+<a id="__codelineno-5-26" name="__codelineno-5-26" href="#__codelineno-5-26"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;cudaGetDeviceCount(): %d device(s).</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">deviceCount</span><span class="p">);</span>
+<a id="__codelineno-5-27" name="__codelineno-5-27" href="#__codelineno-5-27"></a>
+<a id="__codelineno-5-28" name="__codelineno-5-28" href="#__codelineno-5-28"></a><span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">WORLD_SIZE</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">4</span><span class="p">;</span>
+<a id="__codelineno-5-29" name="__codelineno-5-29" href="#__codelineno-5-29"></a><span class="w">    </span><span class="n">ncclComm_t</span><span class="w"> </span><span class="n">comms</span><span class="p">[</span><span class="n">WORLD_SIZE</span><span class="p">];</span>
+<a id="__codelineno-5-30" name="__codelineno-5-30" href="#__codelineno-5-30"></a><span class="w">    </span><span class="n">ncclResult_t</span><span class="w"> </span><span class="n">eInit</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">ncclCommInitAll</span><span class="p">(</span><span class="n">comms</span><span class="p">,</span><span class="w"> </span><span class="n">WORLD_SIZE</span><span class="p">,</span><span class="w"> </span><span class="nb">nullptr</span><span class="p">);</span>
+<a id="__codelineno-5-31" name="__codelineno-5-31" href="#__codelineno-5-31"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;</span><span class="se">\n</span><span class="s">ncclCommInitAll(worldSize=%d): %s (code %d)</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span>
+<a id="__codelineno-5-32" name="__codelineno-5-32" href="#__codelineno-5-32"></a><span class="w">           </span><span class="n">WORLD_SIZE</span><span class="p">,</span><span class="w"> </span><span class="n">ncclGetErrorString</span><span class="p">(</span><span class="n">eInit</span><span class="p">),</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="p">)</span><span class="n">eInit</span><span class="p">);</span>
+<a id="__codelineno-5-33" name="__codelineno-5-33" href="#__codelineno-5-33"></a>
+<a id="__codelineno-5-34" name="__codelineno-5-34" href="#__codelineno-5-34"></a><span class="w">    </span><span class="c1">// ncclCommInitAll() reported failure above WITHOUT populating</span>
+<a id="__codelineno-5-35" name="__codelineno-5-35" href="#__codelineno-5-35"></a><span class="w">    </span><span class="c1">// comms[] -- exactly like every real communicator this book has</span>
+<a id="__codelineno-5-36" name="__codelineno-5-36" href="#__codelineno-5-36"></a><span class="w">    </span><span class="c1">// created since Chapter 11, it was never successfully built. The</span>
+<a id="__codelineno-5-37" name="__codelineno-5-37" href="#__codelineno-5-37"></a><span class="w">    </span><span class="c1">// rest of this section uses an explicit nullptr communicator, the</span>
+<a id="__codelineno-5-38" name="__codelineno-5-38" href="#__codelineno-5-38"></a><span class="w">    </span><span class="c1">// same safe convention every chapter since Chapter 12 has used,</span>
+<a id="__codelineno-5-39" name="__codelineno-5-39" href="#__codelineno-5-39"></a><span class="w">    </span><span class="c1">// rather than dereferencing whatever comms[0] happens to still</span>
+<a id="__codelineno-5-40" name="__codelineno-5-40" href="#__codelineno-5-40"></a><span class="w">    </span><span class="c1">// hold after a failed init.</span>
+<a id="__codelineno-5-41" name="__codelineno-5-41" href="#__codelineno-5-41"></a><span class="w">    </span><span class="n">ncclComm_t</span><span class="w"> </span><span class="n">comm</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nb">nullptr</span><span class="p">;</span>
+<a id="__codelineno-5-42" name="__codelineno-5-42" href="#__codelineno-5-42"></a><span class="w">    </span><span class="n">cudaStream_t</span><span class="w"> </span><span class="n">stream</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nb">nullptr</span><span class="p">;</span>
+<a id="__codelineno-5-43" name="__codelineno-5-43" href="#__codelineno-5-43"></a>
+<a id="__codelineno-5-44" name="__codelineno-5-44" href="#__codelineno-5-44"></a><span class="w">    </span><span class="c1">// The &quot;barrier&quot; payload: a single throwaway element, never a real</span>
+<a id="__codelineno-5-45" name="__codelineno-5-45" href="#__codelineno-5-45"></a><span class="w">    </span><span class="c1">// tensor. What matters isn&#39;t what value comes back -- it&#39;s that</span>
+<a id="__codelineno-5-46" name="__codelineno-5-46" href="#__codelineno-5-46"></a><span class="w">    </span><span class="c1">// ncclAllReduce() cannot report completion on ANY rank until every</span>
+<a id="__codelineno-5-47" name="__codelineno-5-47" href="#__codelineno-5-47"></a><span class="w">    </span><span class="c1">// rank in the communicator has issued this exact call.</span>
+<a id="__codelineno-5-48" name="__codelineno-5-48" href="#__codelineno-5-48"></a><span class="w">    </span><span class="kt">float</span><span class="w"> </span><span class="n">dummy</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">0.0f</span><span class="p">;</span>
+<a id="__codelineno-5-49" name="__codelineno-5-49" href="#__codelineno-5-49"></a><span class="w">    </span><span class="n">ncclResult_t</span><span class="w"> </span><span class="n">eBarrier</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">ncclAllReduce</span><span class="p">(</span><span class="o">&amp;</span><span class="n">dummy</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">dummy</span><span class="p">,</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span><span class="w"> </span><span class="n">ncclFloat</span><span class="p">,</span><span class="w"> </span><span class="n">ncclSum</span><span class="p">,</span><span class="w"> </span><span class="n">comm</span><span class="p">,</span><span class="w"> </span><span class="n">stream</span><span class="p">);</span>
+<a id="__codelineno-5-50" name="__codelineno-5-50" href="#__codelineno-5-50"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;ncclAllReduce(1-element dummy buffer, ncclSum) as a barrier: &quot;</span>
+<a id="__codelineno-5-51" name="__codelineno-5-51" href="#__codelineno-5-51"></a><span class="w">           </span><span class="s">&quot;%s (code %d)</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">ncclGetErrorString</span><span class="p">(</span><span class="n">eBarrier</span><span class="p">),</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="p">)</span><span class="n">eBarrier</span><span class="p">);</span>
+<a id="__codelineno-5-52" name="__codelineno-5-52" href="#__codelineno-5-52"></a>
+<a id="__codelineno-5-53" name="__codelineno-5-53" href="#__codelineno-5-53"></a><span class="w">    </span><span class="c1">// This is the trap this section&#39;s own COMMON TRAP names: the NCCL</span>
+<a id="__codelineno-5-54" name="__codelineno-5-54" href="#__codelineno-5-54"></a><span class="w">    </span><span class="c1">// call above only ENQUEUES work onto a stream -- exactly like</span>
+<a id="__codelineno-5-55" name="__codelineno-5-55" href="#__codelineno-5-55"></a><span class="w">    </span><span class="c1">// every kernel launch since Chapter 3 -- and returns to the CPU</span>
+<a id="__codelineno-5-56" name="__codelineno-5-56" href="#__codelineno-5-56"></a><span class="w">    </span><span class="c1">// immediately, whether or not any other rank has reached it yet.</span>
+<a id="__codelineno-5-57" name="__codelineno-5-57" href="#__codelineno-5-57"></a><span class="w">    </span><span class="c1">// Actually BLOCKING this CPU thread until the enqueued collective</span>
+<a id="__codelineno-5-58" name="__codelineno-5-58" href="#__codelineno-5-58"></a><span class="w">    </span><span class="c1">// has genuinely finished needs the same real primitive Chapter 6</span>
+<a id="__codelineno-5-59" name="__codelineno-5-59" href="#__codelineno-5-59"></a><span class="w">    </span><span class="c1">// introduced for exactly this reason.</span>
+<a id="__codelineno-5-60" name="__codelineno-5-60" href="#__codelineno-5-60"></a><span class="w">    </span><span class="n">cudaError_t</span><span class="w"> </span><span class="n">eSync</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">cudaStreamSynchronize</span><span class="p">(</span><span class="n">stream</span><span class="p">);</span>
+<a id="__codelineno-5-61" name="__codelineno-5-61" href="#__codelineno-5-61"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;cudaStreamSynchronize(): %s (code %d)  &lt;-- THIS is what &quot;</span>
+<a id="__codelineno-5-62" name="__codelineno-5-62" href="#__codelineno-5-62"></a><span class="w">           </span><span class="s">&quot;actually makes the CPU thread wait; the NCCL call alone &quot;</span>
+<a id="__codelineno-5-63" name="__codelineno-5-63" href="#__codelineno-5-63"></a><span class="w">           </span><span class="s">&quot;does not.</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">cudaGetErrorString</span><span class="p">(</span><span class="n">eSync</span><span class="p">),</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="p">)</span><span class="n">eSync</span><span class="p">);</span>
+<a id="__codelineno-5-64" name="__codelineno-5-64" href="#__codelineno-5-64"></a>
+<a id="__codelineno-5-65" name="__codelineno-5-65" href="#__codelineno-5-65"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;</span><span class="se">\n</span><span class="s">Every call above reports an honest failure -- &quot;</span>
+<a id="__codelineno-5-66" name="__codelineno-5-66" href="#__codelineno-5-66"></a><span class="w">           </span><span class="s">&quot;ncclCommInitAll() on a communicator that was never &quot;</span>
+<a id="__codelineno-5-67" name="__codelineno-5-67" href="#__codelineno-5-67"></a><span class="w">           </span><span class="s">&quot;successfully created, and no CUDA stream was ever real -- &quot;</span>
+<a id="__codelineno-5-68" name="__codelineno-5-68" href="#__codelineno-5-68"></a><span class="w">           </span><span class="s">&quot;but the sequence itself is the real pattern this book&#39;s own &quot;</span>
+<a id="__codelineno-5-69" name="__codelineno-5-69" href="#__codelineno-5-69"></a><span class="w">           </span><span class="s">&quot;cited GitHub issue observed: a dummy AllReduce for the &quot;</span>
+<a id="__codelineno-5-70" name="__codelineno-5-70" href="#__codelineno-5-70"></a><span class="w">           </span><span class="s">&quot;synchronization side effect, followed by a real stream/&quot;</span>
+<a id="__codelineno-5-71" name="__codelineno-5-71" href="#__codelineno-5-71"></a><span class="w">           </span><span class="s">&quot;device sync to actually block the host. Section 17.3 &quot;</span>
+<a id="__codelineno-5-72" name="__codelineno-5-72" href="#__codelineno-5-72"></a><span class="w">           </span><span class="s">&quot;checks what a barrier used this way is actually FOR: &quot;</span>
+<a id="__codelineno-5-73" name="__codelineno-5-73" href="#__codelineno-5-73"></a><span class="w">           </span><span class="s">&quot;keeping every rank&#39;s view of shared state consistent.</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
+<a id="__codelineno-5-74" name="__codelineno-5-74" href="#__codelineno-5-74"></a>
+<a id="__codelineno-5-75" name="__codelineno-5-75" href="#__codelineno-5-75"></a><span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
+<a id="__codelineno-5-76" name="__codelineno-5-76" href="#__codelineno-5-76"></a><span class="p">}</span>
+</code></pre></div>
+<p>Genuinely compiled with a real <code>nvcc</code> against the real installed <code>libnccl</code> and genuinely run. Locked output, deterministic across repeated runs:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>cudaGetDeviceCount(): 0 device(s).
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>ncclCommInitAll(worldSize=4): unhandled cuda error (run with NCCL_DEBUG=INFO for details) (code 1)
+<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>ncclAllReduce(1-element dummy buffer, ncclSum) as a barrier: invalid argument (run with NCCL_DEBUG=WARN for details) (code 4)
+<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>cudaStreamSynchronize(): no CUDA-capable device is detected (code 100)  &lt;-- THIS is what actually makes the CPU thread wait; the NCCL call alone does not.
+<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a>
+<a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a>Every call above reports an honest failure -- ncclCommInitAll() on a communicator that was never successfully created, and no CUDA stream was ever real -- but the sequence itself is the real pattern this book&#39;s own cited GitHub issue observed: a dummy AllReduce for the synchronization side effect, followed by a real stream/device sync to actually block the host. Section 17.3 checks what a barrier used this way is actually FOR: keeping every rank&#39;s view of shared state consistent.
+</code></pre></div>
+<p>Three real calls, three different, honest failure codes -- <code>ncclCommInitAll()</code> on a four-rank request that finds no device (<code>ncclUnhandledCudaError</code>, code 1, the same code Chapter 11 reported for a well-formed <code>ndev</code> request), <code>ncclAllReduce()</code> on an explicitly null communicator (<code>ncclInvalidArgument</code>, code 4, the same code Chapter 12 onward has used for that convention), and <code>cudaStreamSynchronize()</code> on a stream that was never real (<code>cudaErrorNoDevice</code>, code 100, this book's most common honest failure since Chapter 3). None of that is the point of this section; the point is the <em>sequence</em>, which is real regardless of whether any individual call succeeds: a throwaway collective, followed by a real block. Skip the second call and you have something that <em>looks</em> like a barrier in source code but provides none of a barrier's actual guarantee -- the CPU thread would sail past the <code>ncclAllReduce()</code> line the instant it finished enqueueing, with no idea whether any other rank had even started.</p>
+<div class="admonition warning">
+<p class="admonition-title">[COMMON TRAP] Assuming ncclAllReduce() itself blocks until every rank arrives</p>
+<p>It's tempting to think the throwaway <code>ncclAllReduce()</code> call above <em>is</em> the barrier, full stop -- after all, the property that justifies using it as one really is that it can't complete on any rank until every rank calls it. But "can't complete" and "the CPU thread waits for it to complete" are different claims. Every NCCL call this book has made since Chapter 11 is asynchronous with respect to the calling CPU thread: it enqueues its work onto a stream and returns immediately, exactly like a kernel launch. The collective genuinely won't finish executing until every rank participates -- but the CPU thread that issued it doesn't wait around to find out unless something <em>else</em> makes it wait. That's <code>cudaStreamSynchronize()</code> (or <code>cudaDeviceSynchronize()</code>), and skipping it after a "barrier" <code>ncclAllReduce()</code> produces code that reads like a barrier but synchronizes nothing at all -- one of the quieter, easier-to-miss versions of the asynchronous-execution trap this book first raised in Chapter 3.</p>
+</div>
+<h2 id="173-what-a-barrier-buys-you-and-what-it-costs">17.3 What a Barrier Buys You, and What It Costs<a class="headerlink" href="#173-what-a-barrier-buys-you-and-what-it-costs" title="Permanent link">&para;</a></h2>
+<h3 id="intuition_2">Intuition<a class="headerlink" href="#intuition_2" title="Permanent link">&para;</a></h3>
+<p>A barrier's whole purpose is to prevent exactly one kind of bug: a rank that finishes its own work early reading some piece of shared state before every other rank has finished writing its own contribution to it. That bug doesn't announce itself -- it just quietly hands some ranks a stale, incomplete view, with no crash and no error, which is precisely the kind of silent failure this book has tried to keep visible since Chapter 1. Whether it actually happens depends entirely on timing: if devices happen to make progress at different speeds -- and Chapter 18 is about to spend an entire chapter on exactly why they do -- an early rank really can race ahead and read before a slower rank has written. This section checks both halves of the barrier's story: what it prevents, with a concrete race, and what it costs, in real communication rounds, every single time it's called.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>WITHOUT a barrier (heterogeneous arrival):    WITH a barrier:
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>  rank 2 arrives EARLY, writes, THEN            ALL ranks write first --
+<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a>  reads the shared total immediately --          rank 2&#39;s early arrival doesn&#39;t
+<a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a>  but ranks 1 and 3 haven&#39;t written yet.          matter, nothing reads yet --
+<a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a>  rank 2 sees an INCOMPLETE total.                THEN every rank reads the
+<a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a>                                                    SAME, COMPLETE total.
+<a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a>  rank 1 arrives LAST, writes, reads --
+<a id="__codelineno-7-9" name="__codelineno-7-9" href="#__codelineno-7-9"></a>  by luck, everyone else already wrote,          No rank&#39;s read depends on
+<a id="__codelineno-7-10" name="__codelineno-7-10" href="#__codelineno-7-10"></a>  so rank 1 alone sees the correct total.        the accident of arrival order.
+</code></pre></div>
+<h3 id="background_2">Background<a class="headerlink" href="#background_2" title="Permanent link">&para;</a></h3>
+<p>Part A below simulates four ranks arriving at a shared checkpoint at different, heterogeneous times -- standing in for real devices making progress at different real speeds -- and compares what each rank observes about a shared total with and without a barrier separating every rank's write from every rank's read. Part B steps back to the cost question, reusing Chapter 9's ring round-count formula and Chapter 11's tree round-count formula directly rather than deriving or fabricating a new one.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="c1">// Chapter 17: Barriers and Global Synchronization Across Devices</span>
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a><span class="c1">// 50_barrier_consistency_simulation.cpp</span>
+<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a><span class="c1">//</span>
+<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a><span class="c1">// Plain host C++ -- this chapter&#39;s real verification, since no real</span>
+<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a><span class="c1">// device-to-device transfer could run on this machine. Part A checks</span>
+<a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a><span class="c1">// the one property a barrier actually buys you: with heterogeneous</span>
+<a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a><span class="c1">// per-rank progress (some ranks reach a checkpoint faster than</span>
+<a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a><span class="c1">// others, exactly the situation Chapter 18 will call load imbalance),</span>
+<a id="__codelineno-8-9" name="__codelineno-8-9" href="#__codelineno-8-9"></a><span class="c1">// does every rank see the SAME, COMPLETE shared state after the</span>
+<a id="__codelineno-8-10" name="__codelineno-8-10" href="#__codelineno-8-10"></a><span class="c1">// checkpoint, or does a rank that arrives early race ahead and read</span>
+<a id="__codelineno-8-11" name="__codelineno-8-11" href="#__codelineno-8-11"></a><span class="c1">// an incomplete view? Part B is a closed-form cost model: a barrier</span>
+<a id="__codelineno-8-12" name="__codelineno-8-12" href="#__codelineno-8-12"></a><span class="c1">// built from a throwaway AllReduce (Section 17.2) costs exactly the</span>
+<a id="__codelineno-8-13" name="__codelineno-8-13" href="#__codelineno-8-13"></a><span class="c1">// same number of communication rounds as a real AllReduce of any</span>
+<a id="__codelineno-8-14" name="__codelineno-8-14" href="#__codelineno-8-14"></a><span class="c1">// other size, reusing Chapter 9&#39;s ring formula and Chapter 11&#39;s tree</span>
+<a id="__codelineno-8-15" name="__codelineno-8-15" href="#__codelineno-8-15"></a><span class="c1">// formula rather than fabricating new timing numbers.</span>
+<a id="__codelineno-8-16" name="__codelineno-8-16" href="#__codelineno-8-16"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;cstdio&gt;</span>
+<a id="__codelineno-8-17" name="__codelineno-8-17" href="#__codelineno-8-17"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;vector&gt;</span>
+<a id="__codelineno-8-18" name="__codelineno-8-18" href="#__codelineno-8-18"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;algorithm&gt;</span>
+<a id="__codelineno-8-19" name="__codelineno-8-19" href="#__codelineno-8-19"></a>
+<a id="__codelineno-8-20" name="__codelineno-8-20" href="#__codelineno-8-20"></a><span class="k">const</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">WORLD_SIZE</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">4</span><span class="p">;</span>
+<a id="__codelineno-8-21" name="__codelineno-8-21" href="#__codelineno-8-21"></a>
+<a id="__codelineno-8-22" name="__codelineno-8-22" href="#__codelineno-8-22"></a><span class="c1">// Each rank&#39;s simulated &quot;arrival time&quot; at the checkpoint -- standing</span>
+<a id="__codelineno-8-23" name="__codelineno-8-23" href="#__codelineno-8-23"></a><span class="c1">// in for real, heterogeneous per-device progress (different clock</span>
+<a id="__codelineno-8-24" name="__codelineno-8-24" href="#__codelineno-8-24"></a><span class="c1">// speeds, different local work, exactly what Chapter 18 addresses</span>
+<a id="__codelineno-8-25" name="__codelineno-8-25" href="#__codelineno-8-25"></a><span class="c1">// directly). Rank 2 arrives first; rank 1 arrives last.</span>
+<a id="__codelineno-8-26" name="__codelineno-8-26" href="#__codelineno-8-26"></a><span class="k">const</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">arrivalTime</span><span class="p">[</span><span class="n">WORLD_SIZE</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span><span class="mi">3</span><span class="p">,</span><span class="w"> </span><span class="mi">7</span><span class="p">,</span><span class="w"> </span><span class="mi">2</span><span class="p">,</span><span class="w"> </span><span class="mi">5</span><span class="p">};</span>
+<a id="__codelineno-8-27" name="__codelineno-8-27" href="#__codelineno-8-27"></a><span class="c1">// Each rank&#39;s own contribution to a shared checkpoint value -- e.g.</span>
+<a id="__codelineno-8-28" name="__codelineno-8-28" href="#__codelineno-8-28"></a><span class="c1">// standing in for one term of a real distributed sum.</span>
+<a id="__codelineno-8-29" name="__codelineno-8-29" href="#__codelineno-8-29"></a><span class="k">const</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">contribution</span><span class="p">[</span><span class="n">WORLD_SIZE</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span><span class="mi">10</span><span class="p">,</span><span class="w"> </span><span class="mi">20</span><span class="p">,</span><span class="w"> </span><span class="mi">30</span><span class="p">,</span><span class="w"> </span><span class="mi">40</span><span class="p">};</span>
+<a id="__codelineno-8-30" name="__codelineno-8-30" href="#__codelineno-8-30"></a><span class="k">const</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">REFERENCE_TOTAL</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">10</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">20</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">30</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">40</span><span class="p">;</span><span class="w"> </span><span class="c1">// = 100, computed independently</span>
+<a id="__codelineno-8-31" name="__codelineno-8-31" href="#__codelineno-8-31"></a>
+<a id="__codelineno-8-32" name="__codelineno-8-32" href="#__codelineno-8-32"></a><span class="c1">// ---------------------------------------------------------------</span>
+<a id="__codelineno-8-33" name="__codelineno-8-33" href="#__codelineno-8-33"></a><span class="c1">// Part A: consistency. WITHOUT a barrier, a rank reads the shared</span>
+<a id="__codelineno-8-34" name="__codelineno-8-34" href="#__codelineno-8-34"></a><span class="c1">// total as soon as IT PERSONALLY arrives -- exactly what happens if</span>
+<a id="__codelineno-8-35" name="__codelineno-8-35" href="#__codelineno-8-35"></a><span class="c1">// nothing stops a rank from proceeding past a checkpoint before every</span>
+<a id="__codelineno-8-36" name="__codelineno-8-36" href="#__codelineno-8-36"></a><span class="c1">// other rank has written its own contribution. WITH a barrier, every</span>
+<a id="__codelineno-8-37" name="__codelineno-8-37" href="#__codelineno-8-37"></a><span class="c1">// rank&#39;s write is guaranteed complete before any rank&#39;s read begins.</span>
+<a id="__codelineno-8-38" name="__codelineno-8-38" href="#__codelineno-8-38"></a><span class="c1">// ---------------------------------------------------------------</span>
+<a id="__codelineno-8-39" name="__codelineno-8-39" href="#__codelineno-8-39"></a>
+<a id="__codelineno-8-40" name="__codelineno-8-40" href="#__codelineno-8-40"></a><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span><span class="w"> </span><span class="n">withoutBarrier</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-8-41" name="__codelineno-8-41" href="#__codelineno-8-41"></a><span class="w">    </span><span class="c1">// Ranks are processed in arrival order -- the real order events</span>
+<a id="__codelineno-8-42" name="__codelineno-8-42" href="#__codelineno-8-42"></a><span class="w">    </span><span class="c1">// would happen in, since nothing enforces anything else. Each</span>
+<a id="__codelineno-8-43" name="__codelineno-8-43" href="#__codelineno-8-43"></a><span class="w">    </span><span class="c1">// rank writes its contribution, then immediately reads whatever</span>
+<a id="__codelineno-8-44" name="__codelineno-8-44" href="#__codelineno-8-44"></a><span class="w">    </span><span class="c1">// the shared total is AT THAT MOMENT (which may or may not</span>
+<a id="__codelineno-8-45" name="__codelineno-8-45" href="#__codelineno-8-45"></a><span class="w">    </span><span class="c1">// include ranks that haven&#39;t arrived yet).</span>
+<a id="__codelineno-8-46" name="__codelineno-8-46" href="#__codelineno-8-46"></a><span class="w">    </span><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span><span class="w"> </span><span class="n">order</span><span class="p">(</span><span class="n">WORLD_SIZE</span><span class="p">);</span>
+<a id="__codelineno-8-47" name="__codelineno-8-47" href="#__codelineno-8-47"></a><span class="w">    </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">r</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span><span class="w"> </span><span class="n">r</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="n">WORLD_SIZE</span><span class="p">;</span><span class="w"> </span><span class="o">++</span><span class="n">r</span><span class="p">)</span><span class="w"> </span><span class="n">order</span><span class="p">[</span><span class="n">r</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">r</span><span class="p">;</span>
+<a id="__codelineno-8-48" name="__codelineno-8-48" href="#__codelineno-8-48"></a><span class="w">    </span><span class="n">std</span><span class="o">::</span><span class="n">sort</span><span class="p">(</span><span class="n">order</span><span class="p">.</span><span class="n">begin</span><span class="p">(),</span><span class="w"> </span><span class="n">order</span><span class="p">.</span><span class="n">end</span><span class="p">(),</span><span class="w"> </span><span class="p">[](</span><span class="kt">int</span><span class="w"> </span><span class="n">a</span><span class="p">,</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">b</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="n">arrivalTime</span><span class="p">[</span><span class="n">a</span><span class="p">]</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="n">arrivalTime</span><span class="p">[</span><span class="n">b</span><span class="p">];</span><span class="w"> </span><span class="p">});</span>
+<a id="__codelineno-8-49" name="__codelineno-8-49" href="#__codelineno-8-49"></a>
+<a id="__codelineno-8-50" name="__codelineno-8-50" href="#__codelineno-8-50"></a><span class="w">    </span><span class="kt">int</span><span class="w"> </span><span class="n">sharedTotal</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
+<a id="__codelineno-8-51" name="__codelineno-8-51" href="#__codelineno-8-51"></a><span class="w">    </span><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span><span class="w"> </span><span class="n">observed</span><span class="p">(</span><span class="n">WORLD_SIZE</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">);</span>
+<a id="__codelineno-8-52" name="__codelineno-8-52" href="#__codelineno-8-52"></a><span class="w">    </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">r</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="n">order</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-8-53" name="__codelineno-8-53" href="#__codelineno-8-53"></a><span class="w">        </span><span class="n">sharedTotal</span><span class="w"> </span><span class="o">+=</span><span class="w"> </span><span class="n">contribution</span><span class="p">[</span><span class="n">r</span><span class="p">];</span><span class="w">       </span><span class="c1">// this rank&#39;s own write</span>
+<a id="__codelineno-8-54" name="__codelineno-8-54" href="#__codelineno-8-54"></a><span class="w">        </span><span class="n">observed</span><span class="p">[</span><span class="n">r</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">sharedTotal</span><span class="p">;</span><span class="w">             </span><span class="c1">// this rank&#39;s own read, right after its own write</span>
+<a id="__codelineno-8-55" name="__codelineno-8-55" href="#__codelineno-8-55"></a><span class="w">    </span><span class="p">}</span>
+<a id="__codelineno-8-56" name="__codelineno-8-56" href="#__codelineno-8-56"></a><span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="n">observed</span><span class="p">;</span>
+<a id="__codelineno-8-57" name="__codelineno-8-57" href="#__codelineno-8-57"></a><span class="p">}</span>
+<a id="__codelineno-8-58" name="__codelineno-8-58" href="#__codelineno-8-58"></a>
+<a id="__codelineno-8-59" name="__codelineno-8-59" href="#__codelineno-8-59"></a><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span><span class="w"> </span><span class="n">withBarrier</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-8-60" name="__codelineno-8-60" href="#__codelineno-8-60"></a><span class="w">    </span><span class="c1">// Every rank&#39;s write happens first, in any order -- it doesn&#39;t</span>
+<a id="__codelineno-8-61" name="__codelineno-8-61" href="#__codelineno-8-61"></a><span class="w">    </span><span class="c1">// matter which, because no rank is allowed to READ until a real</span>
+<a id="__codelineno-8-62" name="__codelineno-8-62" href="#__codelineno-8-62"></a><span class="w">    </span><span class="c1">// barrier (Section 17.2&#39;s throwaway AllReduce, followed by a real</span>
+<a id="__codelineno-8-63" name="__codelineno-8-63" href="#__codelineno-8-63"></a><span class="w">    </span><span class="c1">// stream/device sync) confirms every rank&#39;s write is done.</span>
+<a id="__codelineno-8-64" name="__codelineno-8-64" href="#__codelineno-8-64"></a><span class="w">    </span><span class="kt">int</span><span class="w"> </span><span class="n">sharedTotal</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
+<a id="__codelineno-8-65" name="__codelineno-8-65" href="#__codelineno-8-65"></a><span class="w">    </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">r</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span><span class="w"> </span><span class="n">r</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="n">WORLD_SIZE</span><span class="p">;</span><span class="w"> </span><span class="o">++</span><span class="n">r</span><span class="p">)</span><span class="w"> </span><span class="n">sharedTotal</span><span class="w"> </span><span class="o">+=</span><span class="w"> </span><span class="n">contribution</span><span class="p">[</span><span class="n">r</span><span class="p">];</span>
+<a id="__codelineno-8-66" name="__codelineno-8-66" href="#__codelineno-8-66"></a><span class="w">    </span><span class="c1">// -- barrier here: every rank has now written, before any reads --</span>
+<a id="__codelineno-8-67" name="__codelineno-8-67" href="#__codelineno-8-67"></a><span class="w">    </span><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span><span class="w"> </span><span class="n">observed</span><span class="p">(</span><span class="n">WORLD_SIZE</span><span class="p">,</span><span class="w"> </span><span class="n">sharedTotal</span><span class="p">);</span><span class="w"> </span><span class="c1">// every rank reads the SAME, COMPLETE total</span>
+<a id="__codelineno-8-68" name="__codelineno-8-68" href="#__codelineno-8-68"></a><span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="n">observed</span><span class="p">;</span>
+<a id="__codelineno-8-69" name="__codelineno-8-69" href="#__codelineno-8-69"></a><span class="p">}</span>
+<a id="__codelineno-8-70" name="__codelineno-8-70" href="#__codelineno-8-70"></a>
+<a id="__codelineno-8-71" name="__codelineno-8-71" href="#__codelineno-8-71"></a><span class="kt">int</span><span class="w"> </span><span class="n">main</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-8-72" name="__codelineno-8-72" href="#__codelineno-8-72"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;Part A: %d ranks, heterogeneous arrival times %d/%d/%d/%d &quot;</span>
+<a id="__codelineno-8-73" name="__codelineno-8-73" href="#__codelineno-8-73"></a><span class="w">           </span><span class="s">&quot;(rank 2 arrives first, rank 1 arrives last), each &quot;</span>
+<a id="__codelineno-8-74" name="__codelineno-8-74" href="#__codelineno-8-74"></a><span class="w">           </span><span class="s">&quot;contributing to a shared checkpoint total. Independently &quot;</span>
+<a id="__codelineno-8-75" name="__codelineno-8-75" href="#__codelineno-8-75"></a><span class="w">           </span><span class="s">&quot;computed reference total: %d.</span><span class="se">\n\n</span><span class="s">&quot;</span><span class="p">,</span>
+<a id="__codelineno-8-76" name="__codelineno-8-76" href="#__codelineno-8-76"></a><span class="w">           </span><span class="n">WORLD_SIZE</span><span class="p">,</span><span class="w"> </span><span class="n">arrivalTime</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span><span class="w"> </span><span class="n">arrivalTime</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span><span class="w"> </span><span class="n">arrivalTime</span><span class="p">[</span><span class="mi">2</span><span class="p">],</span><span class="w"> </span><span class="n">arrivalTime</span><span class="p">[</span><span class="mi">3</span><span class="p">],</span>
+<a id="__codelineno-8-77" name="__codelineno-8-77" href="#__codelineno-8-77"></a><span class="w">           </span><span class="n">REFERENCE_TOTAL</span><span class="p">);</span>
+<a id="__codelineno-8-78" name="__codelineno-8-78" href="#__codelineno-8-78"></a>
+<a id="__codelineno-8-79" name="__codelineno-8-79" href="#__codelineno-8-79"></a><span class="w">    </span><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span><span class="w"> </span><span class="n">withoutB</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">withoutBarrier</span><span class="p">();</span>
+<a id="__codelineno-8-80" name="__codelineno-8-80" href="#__codelineno-8-80"></a><span class="w">    </span><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span><span class="w"> </span><span class="n">withB</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">withBarrier</span><span class="p">();</span>
+<a id="__codelineno-8-81" name="__codelineno-8-81" href="#__codelineno-8-81"></a>
+<a id="__codelineno-8-82" name="__codelineno-8-82" href="#__codelineno-8-82"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;WITHOUT a barrier -- each rank reads immediately after its own write:</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
+<a id="__codelineno-8-83" name="__codelineno-8-83" href="#__codelineno-8-83"></a><span class="w">    </span><span class="kt">int</span><span class="w"> </span><span class="n">correctWithout</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
+<a id="__codelineno-8-84" name="__codelineno-8-84" href="#__codelineno-8-84"></a><span class="w">    </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">r</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span><span class="w"> </span><span class="n">r</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="n">WORLD_SIZE</span><span class="p">;</span><span class="w"> </span><span class="o">++</span><span class="n">r</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-8-85" name="__codelineno-8-85" href="#__codelineno-8-85"></a><span class="w">        </span><span class="kt">bool</span><span class="w"> </span><span class="n">matches</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="n">withoutB</span><span class="p">[</span><span class="n">r</span><span class="p">]</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="n">REFERENCE_TOTAL</span><span class="p">);</span>
+<a id="__codelineno-8-86" name="__codelineno-8-86" href="#__codelineno-8-86"></a><span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">matches</span><span class="p">)</span><span class="w"> </span><span class="o">++</span><span class="n">correctWithout</span><span class="p">;</span>
+<a id="__codelineno-8-87" name="__codelineno-8-87" href="#__codelineno-8-87"></a><span class="w">        </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;  rank %d (arrived at t=%d): observed total = %-4d  %s</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span>
+<a id="__codelineno-8-88" name="__codelineno-8-88" href="#__codelineno-8-88"></a><span class="w">               </span><span class="n">r</span><span class="p">,</span><span class="w"> </span><span class="n">arrivalTime</span><span class="p">[</span><span class="n">r</span><span class="p">],</span><span class="w"> </span><span class="n">withoutB</span><span class="p">[</span><span class="n">r</span><span class="p">],</span><span class="w"> </span><span class="n">matches</span><span class="w"> </span><span class="o">?</span><span class="w"> </span><span class="s">&quot;matches reference&quot;</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="s">&quot;STALE -- missing later contributions&quot;</span><span class="p">);</span>
+<a id="__codelineno-8-89" name="__codelineno-8-89" href="#__codelineno-8-89"></a><span class="w">    </span><span class="p">}</span>
+<a id="__codelineno-8-90" name="__codelineno-8-90" href="#__codelineno-8-90"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;  %d of %d ranks saw the correct, complete total.</span><span class="se">\n\n</span><span class="s">&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">correctWithout</span><span class="p">,</span><span class="w"> </span><span class="n">WORLD_SIZE</span><span class="p">);</span>
+<a id="__codelineno-8-91" name="__codelineno-8-91" href="#__codelineno-8-91"></a>
+<a id="__codelineno-8-92" name="__codelineno-8-92" href="#__codelineno-8-92"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;WITH a barrier -- every write finishes before any read:</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
+<a id="__codelineno-8-93" name="__codelineno-8-93" href="#__codelineno-8-93"></a><span class="w">    </span><span class="kt">int</span><span class="w"> </span><span class="n">correctWith</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
+<a id="__codelineno-8-94" name="__codelineno-8-94" href="#__codelineno-8-94"></a><span class="w">    </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">r</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span><span class="w"> </span><span class="n">r</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="n">WORLD_SIZE</span><span class="p">;</span><span class="w"> </span><span class="o">++</span><span class="n">r</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-8-95" name="__codelineno-8-95" href="#__codelineno-8-95"></a><span class="w">        </span><span class="kt">bool</span><span class="w"> </span><span class="n">matches</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="n">withB</span><span class="p">[</span><span class="n">r</span><span class="p">]</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="n">REFERENCE_TOTAL</span><span class="p">);</span>
+<a id="__codelineno-8-96" name="__codelineno-8-96" href="#__codelineno-8-96"></a><span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">matches</span><span class="p">)</span><span class="w"> </span><span class="o">++</span><span class="n">correctWith</span><span class="p">;</span>
+<a id="__codelineno-8-97" name="__codelineno-8-97" href="#__codelineno-8-97"></a><span class="w">        </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;  rank %d: observed total = %-4d  %s</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span>
+<a id="__codelineno-8-98" name="__codelineno-8-98" href="#__codelineno-8-98"></a><span class="w">               </span><span class="n">r</span><span class="p">,</span><span class="w"> </span><span class="n">withB</span><span class="p">[</span><span class="n">r</span><span class="p">],</span><span class="w"> </span><span class="n">matches</span><span class="w"> </span><span class="o">?</span><span class="w"> </span><span class="s">&quot;matches reference&quot;</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="s">&quot;STALE&quot;</span><span class="p">);</span>
+<a id="__codelineno-8-99" name="__codelineno-8-99" href="#__codelineno-8-99"></a><span class="w">    </span><span class="p">}</span>
+<a id="__codelineno-8-100" name="__codelineno-8-100" href="#__codelineno-8-100"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;  %d of %d ranks saw the correct, complete total: %s</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span>
+<a id="__codelineno-8-101" name="__codelineno-8-101" href="#__codelineno-8-101"></a><span class="w">           </span><span class="n">correctWith</span><span class="p">,</span><span class="w"> </span><span class="n">WORLD_SIZE</span><span class="p">,</span><span class="w"> </span><span class="p">(</span><span class="n">correctWith</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="n">WORLD_SIZE</span><span class="p">)</span><span class="w"> </span><span class="o">?</span><span class="w"> </span><span class="s">&quot;PASS&quot;</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="s">&quot;FAIL&quot;</span><span class="p">);</span>
+<a id="__codelineno-8-102" name="__codelineno-8-102" href="#__codelineno-8-102"></a>
+<a id="__codelineno-8-103" name="__codelineno-8-103" href="#__codelineno-8-103"></a><span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">correctWithout</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="n">WORLD_SIZE</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="n">correctWith</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="n">WORLD_SIZE</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-8-104" name="__codelineno-8-104" href="#__codelineno-8-104"></a><span class="w">        </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;</span><span class="se">\n</span><span class="s">Only the LAST rank to arrive (rank 1, at t=%d) happened to &quot;</span>
+<a id="__codelineno-8-105" name="__codelineno-8-105" href="#__codelineno-8-105"></a><span class="w">               </span><span class="s">&quot;see the correct total without a barrier -- purely because &quot;</span>
+<a id="__codelineno-8-106" name="__codelineno-8-106" href="#__codelineno-8-106"></a><span class="w">               </span><span class="s">&quot;every other rank had already written by the time it read. &quot;</span>
+<a id="__codelineno-8-107" name="__codelineno-8-107" href="#__codelineno-8-107"></a><span class="w">               </span><span class="s">&quot;That&#39;s not a guarantee, it&#39;s an accident of this particular &quot;</span>
+<a id="__codelineno-8-108" name="__codelineno-8-108" href="#__codelineno-8-108"></a><span class="w">               </span><span class="s">&quot;arrival order; swap any two arrival times and a DIFFERENT &quot;</span>
+<a id="__codelineno-8-109" name="__codelineno-8-109" href="#__codelineno-8-109"></a><span class="w">               </span><span class="s">&quot;subset of ranks would see a stale value, silently, with no &quot;</span>
+<a id="__codelineno-8-110" name="__codelineno-8-110" href="#__codelineno-8-110"></a><span class="w">               </span><span class="s">&quot;error raised anywhere. This is exactly the failure mode &quot;</span>
+<a id="__codelineno-8-111" name="__codelineno-8-111" href="#__codelineno-8-111"></a><span class="w">               </span><span class="s">&quot;Chapter 16&#39;s own halo exchange had to guard against every &quot;</span>
+<a id="__codelineno-8-112" name="__codelineno-8-112" href="#__codelineno-8-112"></a><span class="w">               </span><span class="s">&quot;iteration, generalized to any shared checkpoint, not just a &quot;</span>
+<a id="__codelineno-8-113" name="__codelineno-8-113" href="#__codelineno-8-113"></a><span class="w">               </span><span class="s">&quot;grid&#39;s neighboring rows.</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">arrivalTime</span><span class="p">[</span><span class="mi">1</span><span class="p">]);</span>
+<a id="__codelineno-8-114" name="__codelineno-8-114" href="#__codelineno-8-114"></a><span class="w">    </span><span class="p">}</span>
+<a id="__codelineno-8-115" name="__codelineno-8-115" href="#__codelineno-8-115"></a>
+<a id="__codelineno-8-116" name="__codelineno-8-116" href="#__codelineno-8-116"></a><span class="w">    </span><span class="c1">// ---------------------------------------------------------------</span>
+<a id="__codelineno-8-117" name="__codelineno-8-117" href="#__codelineno-8-117"></a><span class="w">    </span><span class="c1">// Part B: cost. A barrier built from a throwaway AllReduce costs</span>
+<a id="__codelineno-8-118" name="__codelineno-8-118" href="#__codelineno-8-118"></a><span class="w">    </span><span class="c1">// the same number of communication rounds as a real AllReduce of</span>
+<a id="__codelineno-8-119" name="__codelineno-8-119" href="#__codelineno-8-119"></a><span class="w">    </span><span class="c1">// any other payload size -- reusing Chapter 9&#39;s ring formula and</span>
+<a id="__codelineno-8-120" name="__codelineno-8-120" href="#__codelineno-8-120"></a><span class="w">    </span><span class="c1">// Chapter 11&#39;s tree formula directly, not fabricating a new one.</span>
+<a id="__codelineno-8-121" name="__codelineno-8-121" href="#__codelineno-8-121"></a><span class="w">    </span><span class="c1">// ---------------------------------------------------------------</span>
+<a id="__codelineno-8-122" name="__codelineno-8-122" href="#__codelineno-8-122"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;</span><span class="se">\n</span><span class="s">Part B: a barrier&#39;s real communication cost, in rounds -- &quot;</span>
+<a id="__codelineno-8-123" name="__codelineno-8-123" href="#__codelineno-8-123"></a><span class="w">           </span><span class="s">&quot;reusing Chapter 9&#39;s ring formula 2*(N-1) and Chapter 11&#39;s &quot;</span>
+<a id="__codelineno-8-124" name="__codelineno-8-124" href="#__codelineno-8-124"></a><span class="w">           </span><span class="s">&quot;tree formula 2*ceil(log2(N)).</span><span class="se">\n\n</span><span class="s">&quot;</span><span class="p">);</span>
+<a id="__codelineno-8-125" name="__codelineno-8-125" href="#__codelineno-8-125"></a>
+<a id="__codelineno-8-126" name="__codelineno-8-126" href="#__codelineno-8-126"></a><span class="w">    </span><span class="kt">int</span><span class="w"> </span><span class="n">worldSizes</span><span class="p">[]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span><span class="mi">4</span><span class="p">,</span><span class="w"> </span><span class="mi">8</span><span class="p">,</span><span class="w"> </span><span class="mi">35</span><span class="p">};</span><span class="w"> </span><span class="c1">// 35 reuses Ch13&#39;s own GPT-3 shard count</span>
+<a id="__codelineno-8-127" name="__codelineno-8-127" href="#__codelineno-8-127"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;%-10s %-18s %-18s</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;N&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;ring rounds&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;tree rounds&quot;</span><span class="p">);</span>
+<a id="__codelineno-8-128" name="__codelineno-8-128" href="#__codelineno-8-128"></a><span class="w">    </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">n</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="n">worldSizes</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-8-129" name="__codelineno-8-129" href="#__codelineno-8-129"></a><span class="w">        </span><span class="kt">int</span><span class="w"> </span><span class="n">ringRounds</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">2</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="p">(</span><span class="n">n</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="mi">1</span><span class="p">);</span>
+<a id="__codelineno-8-130" name="__codelineno-8-130" href="#__codelineno-8-130"></a><span class="w">        </span><span class="kt">int</span><span class="w"> </span><span class="n">log2n</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
+<a id="__codelineno-8-131" name="__codelineno-8-131" href="#__codelineno-8-131"></a><span class="w">        </span><span class="k">while</span><span class="w"> </span><span class="p">((</span><span class="mi">1</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="n">log2n</span><span class="p">)</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="n">n</span><span class="p">)</span><span class="w"> </span><span class="o">++</span><span class="n">log2n</span><span class="p">;</span><span class="w"> </span><span class="c1">// ceil(log2(n))</span>
+<a id="__codelineno-8-132" name="__codelineno-8-132" href="#__codelineno-8-132"></a><span class="w">        </span><span class="kt">int</span><span class="w"> </span><span class="n">treeRounds</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">2</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="n">log2n</span><span class="p">;</span>
+<a id="__codelineno-8-133" name="__codelineno-8-133" href="#__codelineno-8-133"></a><span class="w">        </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;%-10d %-18d %-18d</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">n</span><span class="p">,</span><span class="w"> </span><span class="n">ringRounds</span><span class="p">,</span><span class="w"> </span><span class="n">treeRounds</span><span class="p">);</span>
+<a id="__codelineno-8-134" name="__codelineno-8-134" href="#__codelineno-8-134"></a><span class="w">    </span><span class="p">}</span>
+<a id="__codelineno-8-135" name="__codelineno-8-135" href="#__codelineno-8-135"></a>
+<a id="__codelineno-8-136" name="__codelineno-8-136" href="#__codelineno-8-136"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;</span><span class="se">\n</span><span class="s">A barrier&#39;s payload is the smallest possible -- one element, &quot;</span>
+<a id="__codelineno-8-137" name="__codelineno-8-137" href="#__codelineno-8-137"></a><span class="w">           </span><span class="s">&quot;not a real gradient tensor or activation -- but the ROUND &quot;</span>
+<a id="__codelineno-8-138" name="__codelineno-8-138" href="#__codelineno-8-138"></a><span class="w">           </span><span class="s">&quot;COUNT above doesn&#39;t depend on payload size at all; it depends &quot;</span>
+<a id="__codelineno-8-139" name="__codelineno-8-139" href="#__codelineno-8-139"></a><span class="w">           </span><span class="s">&quot;only on N, the number of ranks. A barrier is exactly as &quot;</span>
+<a id="__codelineno-8-140" name="__codelineno-8-140" href="#__codelineno-8-140"></a><span class="w">           </span><span class="s">&quot;latency-expensive, per call, as any other AllReduce with the &quot;</span>
+<a id="__codelineno-8-141" name="__codelineno-8-141" href="#__codelineno-8-141"></a><span class="w">           </span><span class="s">&quot;same N -- it is cheap in bytes moved, never in synchronization &quot;</span>
+<a id="__codelineno-8-142" name="__codelineno-8-142" href="#__codelineno-8-142"></a><span class="w">           </span><span class="s">&quot;rounds paid. Calling one every iteration, for every one of &quot;</span>
+<a id="__codelineno-8-143" name="__codelineno-8-143" href="#__codelineno-8-143"></a><span class="w">           </span><span class="s">&quot;Part 3&#39;s parallelization strategies, is a real, recurring cost, &quot;</span>
+<a id="__codelineno-8-144" name="__codelineno-8-144" href="#__codelineno-8-144"></a><span class="w">           </span><span class="s">&quot;not a free correctness guarantee.</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
+<a id="__codelineno-8-145" name="__codelineno-8-145" href="#__codelineno-8-145"></a>
+<a id="__codelineno-8-146" name="__codelineno-8-146" href="#__codelineno-8-146"></a><span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="p">(</span><span class="n">correctWith</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="n">WORLD_SIZE</span><span class="p">)</span><span class="w"> </span><span class="o">?</span><span class="w"> </span><span class="mi">0</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="mi">1</span><span class="p">;</span>
+<a id="__codelineno-8-147" name="__codelineno-8-147" href="#__codelineno-8-147"></a><span class="p">}</span>
+</code></pre></div>
+<p>Genuinely compiled with a real <code>g++</code> and genuinely run, re-verified identical on both this book's real toolchains. Locked output, deterministic across repeated runs:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>Part A: 4 ranks, heterogeneous arrival times 3/7/2/5 (rank 2 arrives first, rank 1 arrives last), each contributing to a shared checkpoint total. Independently computed reference total: 100.
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>
+<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>WITHOUT a barrier -- each rank reads immediately after its own write:
+<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a>  rank 0 (arrived at t=3): observed total = 40    STALE -- missing later contributions
+<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a>  rank 1 (arrived at t=7): observed total = 100   matches reference
+<a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a>  rank 2 (arrived at t=2): observed total = 30    STALE -- missing later contributions
+<a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a>  rank 3 (arrived at t=5): observed total = 80    STALE -- missing later contributions
+<a id="__codelineno-9-8" name="__codelineno-9-8" href="#__codelineno-9-8"></a>  1 of 4 ranks saw the correct, complete total.
+<a id="__codelineno-9-9" name="__codelineno-9-9" href="#__codelineno-9-9"></a>
+<a id="__codelineno-9-10" name="__codelineno-9-10" href="#__codelineno-9-10"></a>WITH a barrier -- every write finishes before any read:
+<a id="__codelineno-9-11" name="__codelineno-9-11" href="#__codelineno-9-11"></a>  rank 0: observed total = 100   matches reference
+<a id="__codelineno-9-12" name="__codelineno-9-12" href="#__codelineno-9-12"></a>  rank 1: observed total = 100   matches reference
+<a id="__codelineno-9-13" name="__codelineno-9-13" href="#__codelineno-9-13"></a>  rank 2: observed total = 100   matches reference
+<a id="__codelineno-9-14" name="__codelineno-9-14" href="#__codelineno-9-14"></a>  rank 3: observed total = 100   matches reference
+<a id="__codelineno-9-15" name="__codelineno-9-15" href="#__codelineno-9-15"></a>  4 of 4 ranks saw the correct, complete total: PASS
+<a id="__codelineno-9-16" name="__codelineno-9-16" href="#__codelineno-9-16"></a>
+<a id="__codelineno-9-17" name="__codelineno-9-17" href="#__codelineno-9-17"></a>Only the LAST rank to arrive (rank 1, at t=7) happened to see the correct total without a barrier -- purely because every other rank had already written by the time it read. That&#39;s not a guarantee, it&#39;s an accident of this particular arrival order; swap any two arrival times and a DIFFERENT subset of ranks would see a stale value, silently, with no error raised anywhere. This is exactly the failure mode Chapter 16&#39;s own halo exchange had to guard against every iteration, generalized to any shared checkpoint, not just a grid&#39;s neighboring rows.
+<a id="__codelineno-9-18" name="__codelineno-9-18" href="#__codelineno-9-18"></a>
+<a id="__codelineno-9-19" name="__codelineno-9-19" href="#__codelineno-9-19"></a>Part B: a barrier&#39;s real communication cost, in rounds -- reusing Chapter 9&#39;s ring formula 2*(N-1) and Chapter 11&#39;s tree formula 2*ceil(log2(N)).
+<a id="__codelineno-9-20" name="__codelineno-9-20" href="#__codelineno-9-20"></a>
+<a id="__codelineno-9-21" name="__codelineno-9-21" href="#__codelineno-9-21"></a>N          ring rounds        tree rounds       
+<a id="__codelineno-9-22" name="__codelineno-9-22" href="#__codelineno-9-22"></a>4          6                  4                 
+<a id="__codelineno-9-23" name="__codelineno-9-23" href="#__codelineno-9-23"></a>8          14                 6                 
+<a id="__codelineno-9-24" name="__codelineno-9-24" href="#__codelineno-9-24"></a>35         68                 12                
+<a id="__codelineno-9-25" name="__codelineno-9-25" href="#__codelineno-9-25"></a>
+<a id="__codelineno-9-26" name="__codelineno-9-26" href="#__codelineno-9-26"></a>A barrier&#39;s payload is the smallest possible -- one element, not a real gradient tensor or activation -- but the ROUND COUNT above doesn&#39;t depend on payload size at all; it depends only on N, the number of ranks. A barrier is exactly as latency-expensive, per call, as any other AllReduce with the same N -- it is cheap in bytes moved, never in synchronization rounds paid. Calling one every iteration, for every one of Part 3&#39;s parallelization strategies, is a real, recurring cost, not a free correctness guarantee.
+</code></pre></div>
+<p>Without a barrier, only rank 1 -- the <em>last</em> to arrive, purely by the accident of this particular arrival-time assignment -- happens to see the correct, complete total; the other three each read a partial sum missing whichever ranks hadn't written yet. With a barrier separating every write from every read, all four ranks see the identical, correct total, regardless of arrival order. That's the whole guarantee, and it's not free: Part B's round counts, reused directly from Chapter 9 and Chapter 11 rather than invented for this chapter, show a barrier costs exactly as many communication rounds as a full collective of the same rank count -- 6 ring rounds or 4 tree rounds for 4 ranks, scaling up to 68 or 12 for the 35-way split Chapter 13 introduced. Calling a barrier is not a lightweight courtesy; it is a real collective operation, with a real per-call latency cost that scales with the number of ranks, wearing a payload of just one element.</p>
+<div class="admonition warning">
+<p class="admonition-title">[COMMON TRAP] Treating a barrier as free because its payload is tiny</p>
+<p>A one-element <code>ncclAllReduce()</code> moves almost no data, which makes it easy to assume it's nearly free to call -- especially compared to a real gradient tensor or activation transfer. Part B's own round counts show that assumption is wrong in the dimension that actually matters for a barrier: latency, not bandwidth. The number of communication rounds a collective needs depends on how many ranks are participating, not on how many bytes each one is carrying -- Chapter 9's ring formula and Chapter 11's tree formula are both purely functions of <code>N</code>. A barrier called once per iteration, inside a tight training loop running across many ranks, pays that same round count every single time, and at large <code>N</code> -- Chapter 13's own 35-way GPT-3 split, for instance -- that's a real, recurring cost worth accounting for, not a rounding error just because the payload happens to be one float.</p>
+</div>
+<h2 id="chapter-summary">Chapter Summary<a class="headerlink" href="#chapter-summary" title="Permanent link">&para;</a></h2>
+<p>This chapter opened Part 4 by addressing a concern that cuts across every parallelization strategy Part 3 built, rather than introducing a new one. Section 17.1 established the gap directly: Chapter 6's <code>cudaDeviceSynchronize()</code>, looped over every device, only confirms each device's own queue was empty at the moment it was checked -- it never makes any device wait for any other device's progress. Section 17.2 closed that gap the way real distributed training code actually does, since NCCL itself has no dedicated barrier call (confirmed against NCCL's own Collective Operations documentation, and contrasted with MPI's real, dedicated <code>MPI_Barrier()</code>, previewing Part 5): a throwaway <code>ncclAllReduce()</code> on a one-element buffer, exploiting the fact that no rank's call can complete until every rank has issued it, followed by a real <code>cudaStreamSynchronize()</code> to actually block the CPU thread -- both calls are required, since the collective alone only enqueues work asynchronously. Section 17.3 verified what that combination buys: with heterogeneous per-rank arrival times, only a barrier guarantees every rank observes the same, complete shared state, rather than some ranks silently reading a stale, partial view -- and quantified what it costs, reusing Chapter 9's and Chapter 11's own round-count formulas to show a barrier's latency cost scales with the number of ranks exactly like any other collective, regardless of its tiny payload. Chapter 18 picks up directly where this chapter's heterogeneous-arrival-time simulation left off: why devices make progress at different speeds in the first place, and what to do about it besides just waiting for the slowest one.</p>
+<h2 id="self-check-questions">Self-Check Questions<a class="headerlink" href="#self-check-questions" title="Permanent link">&para;</a></h2>
+<ol>
+<li>Explain, in your own words, why a loop of <code>cudaSetDevice()</code>/<code>cudaDeviceSynchronize()</code> calls over every device does not constitute a global barrier, even though it touches every device.</li>
+<li>Name the exact real NCCL collectives Section 17.2 lists from NCCL's own documentation. Which one is conspicuously absent, and how does Section 17.2 work around its absence?</li>
+<li>Quote Open MPI's own description of <code>MPI_Barrier()</code>, and explain the one structural difference between it and this chapter's NCCL-based workaround.</li>
+<li>Section 17.2's COMMON TRAP distinguishes "the collective can't complete until every rank calls it" from "the CPU thread waits for it to complete." Explain the difference, and name the real API call that closes that gap.</li>
+<li>In Section 17.3's Part A, only rank 1 sees the correct total without a barrier. Explain precisely why, and describe an arrival-time assignment under which a <em>different</em> rank (not rank 1) would be the only one to see the correct total.</li>
+<li>Using Part B's own formulas, compute the ring and tree round counts for a barrier across 16 ranks.</li>
+<li>Why does this chapter's own COMMON TRAP in Section 17.3 say a barrier's cost depends on <code>N</code>, not on payload size? Contrast this directly with Chapter 5's own closed-form cost model, which <em>did</em> depend on payload size.</li>
+<li>This chapter cites a real NCCL GitHub issue (#808) as evidence for how a "barrier" is actually implemented. What did that issue's reporter observe, and what does it confirm about the technique Section 17.2 builds?</li>
+</ol>
+<h2 id="where-we-go-next">Where We Go Next<a class="headerlink" href="#where-we-go-next" title="Permanent link">&para;</a></h2>
+<p>Chapter 18 addresses directly what this chapter's own Part A simulation only modeled abstractly: why real devices in a real cluster make progress at genuinely different speeds -- heterogeneous hardware, thermal throttling, uneven work assignment -- and what a system does about that beyond simply making every rank wait at a barrier for the slowest one. Chapter 19 then asks the harder question a barrier's own definition raises but doesn't answer: what happens when a rank doesn't arrive at all.</p>
+<h2 id="worked-solutions">Worked Solutions<a class="headerlink" href="#worked-solutions" title="Permanent link">&para;</a></h2>
+<p><strong>1.</strong> The loop checks each device's own command queue independently and sequentially, one device at a time, on a single CPU thread. <code>cudaDeviceSynchronize()</code>'s guarantee is scoped to exactly one device: it confirms that device's queue is empty at the moment it's called. Nothing in the loop prevents a device that was checked earlier from launching new work immediately afterward, and nothing makes any device's progress depend on any other device's -- so by the time the loop finishes, the four devices could be at four completely different points in their own execution, which is the opposite of what a barrier guarantees.</p>
+<p><strong>2.</strong> Section 17.2 lists AllReduce, Broadcast, Reduce, AllGather, ReduceScatter, AllToAll, Gather, and Scatter, cited from NCCL's own Collective Operations documentation. Barrier is conspicuously absent. The workaround is calling <code>ncclAllReduce()</code> on a single throwaway element purely for its synchronization side effect -- exploiting that the call cannot complete on any rank until every rank in the communicator has issued it, without caring what value comes back.</p>
+<p><strong>3.</strong> Open MPI describes <code>MPI_Barrier()</code> as providing "synchronization between MPI processes in a group," completing "after all group members have entered the barrier." The structural difference is that MPI's version is a single, dedicated, purpose-built primitive, while this chapter's NCCL-based version repurposes a collective (<code>ncclAllReduce()</code>) that was designed to move and combine real data, using only its side effect and discarding the result entirely.</p>
+<p><strong>4.</strong> "The collective can't complete until every rank calls it" is a statement about when the underlying operation, running on the GPU/stream, is allowed to finish -- it genuinely can't, regardless of anything the CPU does. "The CPU thread waits for it to complete" is a separate, additional claim: the CPU thread that issued the call only pauses if something explicitly makes it pause. Since <code>ncclAllReduce()</code>, like every kernel launch, only enqueues work and returns immediately, the CPU thread does not automatically wait -- <code>cudaStreamSynchronize()</code> (or <code>cudaDeviceSynchronize()</code>) is the real call needed to close that gap.</p>
+<p><strong>5.</strong> Rank 1 sees the correct total only because it happens to be the <em>last</em> rank to arrive in this particular arrival-time assignment (<code>arrivalTime = {3, 7, 2, 5}</code>) -- by the time it writes and immediately reads, every other rank has already written its own contribution, so the shared total already happens to be complete. Any arrival-time assignment where a <em>different</em> rank is the maximum would make that different rank the one that (accidentally) sees the correct total instead -- for example, <code>arrivalTime = {9, 1, 2, 5}</code> would make rank 0 the last arrival, and rank 0 alone would see the correct total under the no-barrier path.</p>
+<p><strong>6.</strong> For <code>N = 16</code>: ring rounds = <code>2 * (16 - 1) = 30</code>. Tree rounds = <code>2 * ceil(log2(16)) = 2 * 4 = 8</code>.</p>
+<p><strong>7.</strong> The COMMON TRAP argues a barrier's round count depends only on <code>N</code>, the number of ranks, because Chapter 9's ring formula (<code>2*(N-1)</code>) and Chapter 11's tree formula (<code>2*ceil(log2(N))</code>) are both pure functions of rank count, with no term for message size at all -- a barrier's one-element payload costs the same number of rounds as it would with any other payload size. Chapter 5's own closed-form cost model, by contrast, explicitly modeled transfer time as scaling with the <em>number of bytes</em> moved, divided by a real bandwidth figure -- payload size was the whole point of that model, which is exactly why it doesn't apply the same way to a barrier's negligible payload.</p>
+<p><strong>8.</strong> The issue's reporter, building shared buffers coordinated by a barrier, observed that "barrier action show[s] up as a ringreduce kernel" when they inspected what was actually running -- i.e., what they called a barrier was, under the hood, a real ring-based all-reduce kernel. This confirms, from an independent, real-world source outside this book, exactly the technique Section 17.2 builds deliberately: a barrier implemented as a throwaway AllReduce call.</p>
+<hr />
+<p><strong>Sources cited in this chapter:</strong></p>
+<ul>
+<li><a href="https://docs.nvidia.com/deeplearning/nccl/user-guide/docs/usage/collectives.html">Overview of NCCL, Collective Operations -- NCCL 2.31.2 documentation</a> -- the real, current list of NCCL's named collectives (AllReduce, Broadcast, Reduce, AllGather, ReduceScatter, AllToAll, Gather, Scatter), confirming Barrier's absence, and each collective's own definition, already cited in earlier chapters and reused here for completeness.</li>
+<li><a href="https://www.open-mpi.org/doc/current/man3/MPI_Barrier.3.php">MPI_Barrier(3) -- Open MPI v4.1.8 documentation</a> -- the exact quotes "synchronization between MPI processes in a group" and "an MPI barrier completes after all group members have entered the barrier," used to preview Part 5's real, dedicated barrier primitive as a contrast to this chapter's NCCL workaround.</li>
+<li><a href="https://github.com/NVIDIA/nccl/issues/808">Understanding Barriers, Issue #808, NVIDIA/nccl (GitHub)</a> -- a real, publicly filed issue in which a user building shared buffers coordinated by a barrier reports observing that a "barrier action show[s] up as a ringreduce kernel," independent confirmation of Section 17.2's own throwaway-AllReduce technique.</li>
+<li>This book's own Chapter 3 (the per-device loop pattern and asynchronous kernel-launch semantics), Chapter 6 (<code>cudaDeviceSynchronize()</code>, <code>cudaStreamSynchronize()</code>), Chapter 9 (the ring round-count formula <code>2*(N-1)</code>, reused unchanged in Section 17.3's Part B), Chapter 11 (the real installed NCCL communicator, its honest failure codes, and the tree round-count formula <code>2*ceil(log2(N))</code>), Chapter 13 (the 35-way GPT-3 shard count reused as a <code>N</code> value in Section 17.3), and Chapter 16 (the halo-exchange consistency argument Section 17.3 generalizes).</li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+    
+      
+      <nav class="md-footer__inner md-grid" aria-label="Footer" >
+        
+          
+          <a href="../../part3/16-domain-decomposition-for-scientific-computing-halo-exchange-and-distributed-stencils/" class="md-footer__link md-footer__link--prev" aria-label="Previous: 16. Domain Decomposition for Scientific Computing: Halo Exchange and Distributed Stencils">
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+            </div>
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Previous
+              </span>
+              <div class="md-ellipsis">
+                16. Domain Decomposition for Scientific Computing: Halo Exchange and Distributed Stencils
+              </div>
+            </div>
+          </a>
+        
+        
+      </nav>
+    
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      Copyright &copy; 2026 Oluwaseyi Awoga
+    </div>
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.instant", "navigation.tracking", "navigation.sections", "navigation.expand", "navigation.top", "navigation.footer", "toc.follow", "search.suggest", "search.highlight", "content.code.copy", "content.code.annotate"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>
