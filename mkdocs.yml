@@ -71,6 +71,7 @@ nav:
       - "8. Broadcast and Reduce: The First Two Collectives, By Hand": part2/08-broadcast-and-reduce-the-first-two-collectives-by-hand.md
       - "9. Ring All-Reduce: The Algorithm Behind Every Multi-GPU Training Job": part2/09-ring-all-reduce-the-algorithm-behind-every-multi-gpu-training-job.md
       - "10. All-Gather, Reduce-Scatter, and All-to-All": part2/10-all-gather-reduce-scatter-and-all-to-all.md
+      - "11. NCCL: What It Actually Does Differently From What You Just Built": part2/11-nccl-what-it-actually-does-differently.md
 
 extra:
   social: []
