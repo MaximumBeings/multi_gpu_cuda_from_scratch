@@ -102,6 +102,7 @@ nav:
       - "34. GPU Recommendation Systems: Hybrid Data-Parallel and Model-Parallel Embeddings (HugeCTR)": part7/34-gpu-recommendation-systems.md
       - "35. AI Weather Forecasting at Scale (NVIDIA Earth-2 / FourCastNet)": part7/35-ai-weather-forecasting-at-scale.md
       - "36. Multi-GPU XVA and Portfolio Risk": part7/36-multi-gpu-xva-and-portfolio-risk.md
+      - "37. GPUDirect RDMA in Capital Markets": part7/37-gpudirect-rdma-in-capital-markets.md
 
 extra:
   social: []
