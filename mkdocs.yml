@@ -89,6 +89,7 @@ nav:
       - "23. CUDA Graphs Across Multiple GPUs and Multiple Nodes": part5/23-cuda-graphs-across-multiple-gpus-and-multiple-nodes.md
   - "Part 6 -- Case Studies":
       - "24. Multi-GPU Dense Matrix Multiplication at Scale": part6/24-multi-gpu-dense-matrix-multiplication-at-scale.md
+      - "25. Distributed Training of a Neural Network: Data Parallelism and Ring All-Reduce": part6/25-distributed-training-of-a-neural-network-data-parallelism-and-ring-all-reduce.md
 
 extra:
   social: []
