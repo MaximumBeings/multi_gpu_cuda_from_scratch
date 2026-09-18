@@ -104,6 +104,7 @@ nav:
       - "36. Multi-GPU XVA and Portfolio Risk": part7/36-multi-gpu-xva-and-portfolio-risk.md
       - "37. GPUDirect RDMA in Capital Markets": part7/37-gpudirect-rdma-in-capital-markets.md
       - "38. Real-Time Fraud Detection at Payment Scale": part7/38-real-time-fraud-detection-at-payment-scale.md
+      - "39. Real-Time Genomics at Scale": part7/39-real-time-genomics-at-scale.md
 
 extra:
   social: []
