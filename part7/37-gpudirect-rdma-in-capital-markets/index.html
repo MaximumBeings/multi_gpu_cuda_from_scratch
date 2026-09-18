@@ -1,0 +1,2723 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="From Peer-to-Peer Memory to Distributed Training Across the Cluster">
+      
+      
+        <meta name="author" content="Oluwaseyi Awoga">
+      
+      
+      
+        <link rel="prev" href="../36-multi-gpu-xva-and-portfolio-risk/">
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+    
+    
+      
+        <title>37. GPUDirect RDMA in Capital Markets - Multi-GPU Programming in CUDA C++ -- Under Development</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#371-what-gets-market-data-to-memory-today-really" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="Multi-GPU Programming in CUDA C++ -- Under Development" class="md-header__button md-logo" aria-label="Multi-GPU Programming in CUDA C++ -- Under Development" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 19h1a1 1 0 0 1 1 1h7v2h-7a1 1 0 0 1-1 1h-4a1 1 0 0 1-1-1H2v-2h7a1 1 0 0 1 1-1h1v-2H4a1 1 0 0 1-1-1v-4a1 1 0 0 1 1-1h16a1 1 0 0 1 1 1v4a1 1 0 0 1-1 1h-7zM4 3h16a1 1 0 0 1 1 1v4a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1m5 4h1V5H9zm0 8h1v-2H9zM5 5v2h2V5zm0 8v2h2v-2z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Multi-GPU Programming in CUDA C++ -- Under Development
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              37. GPUDirect RDMA in Capital Markets
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m17.75 4.09-2.53 1.94.91 3.06-2.63-1.81-2.63 1.81.91-3.06-2.53-1.94L12.44 4l1.06-3 1.06 3zm3.5 6.91-1.64 1.25.59 1.98-1.7-1.17-1.7 1.17.59-1.98L15.75 11l2.06-.05L18.5 9l.69 1.95zm-2.28 4.95c.83-.08 1.72 1.1 1.19 1.85-.32.45-.66.87-1.08 1.27C15.17 23 8.84 23 4.94 19.07c-3.91-3.9-3.91-10.24 0-14.14.4-.4.82-.76 1.27-1.08.75-.53 1.93.36 1.85 1.19-.27 2.86.69 5.83 2.89 8.02a9.96 9.96 0 0 0 8.02 2.89m-1.64 2.02a12.08 12.08 0 0 1-7.8-3.47c-2.17-2.19-3.33-5-3.49-7.82-2.81 3.14-2.7 7.96.31 10.98 3.02 3.01 7.84 3.12 10.98.31"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 7a5 5 0 0 1 5 5 5 5 0 0 1-5 5 5 5 0 0 1-5-5 5 5 0 0 1 5-5m0 2a3 3 0 0 0-3 3 3 3 0 0 0 3 3 3 3 0 0 0 3-3 3 3 0 0 0-3-3m0-7 2.39 3.42C13.65 5.15 12.84 5 12 5s-1.65.15-2.39.42zM3.34 7l4.16-.35A7.2 7.2 0 0 0 5.94 8.5c-.44.74-.69 1.5-.83 2.29zm.02 10 1.76-3.77a7.131 7.131 0 0 0 2.38 4.14zM20.65 7l-1.77 3.79a7.02 7.02 0 0 0-2.38-4.15zm-.01 10-4.14.36c.59-.51 1.12-1.14 1.54-1.86.42-.73.69-1.5.83-2.29zM12 22l-2.41-3.44c.74.27 1.55.44 2.41.44.82 0 1.63-.17 2.37-.44z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="Multi-GPU Programming in CUDA C++ -- Under Development" class="md-nav__button md-logo" aria-label="Multi-GPU Programming in CUDA C++ -- Under Development" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 19h1a1 1 0 0 1 1 1h7v2h-7a1 1 0 0 1-1 1h-4a1 1 0 0 1-1-1H2v-2h7a1 1 0 0 1 1-1h1v-2H4a1 1 0 0 1-1-1v-4a1 1 0 0 1 1-1h16a1 1 0 0 1 1 1v4a1 1 0 0 1-1 1h-7zM4 3h16a1 1 0 0 1 1 1v4a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1m5 4h1V5H9zm0 8h1v-2H9zM5 5v2h2V5zm0 8v2h2v-2z"/></svg>
+
+    </a>
+    Multi-GPU Programming in CUDA C++ -- Under Development
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Part 0 -- Why Multi-GPU, and the Hardware Underneath It
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Part 0 -- Why Multi-GPU, and the Hardware Underneath It
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part0/01-why-one-gpu-is-not-enough/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    1. Why One GPU Is Not Enough
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part0/02-multi-gpu-hardware-topology/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    2. Multi-GPU Hardware Topology: PCIe, NVLink, and NVSwitch
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part0/03-the-cuda-multi-gpu-programming-model/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    3. The CUDA Multi-GPU Programming Model: Devices, Contexts, and Streams Across Them
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Part 1 -- Getting Data Between GPUs
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Part 1 -- Getting Data Between GPUs
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part1/04-peer-to-peer-memory-access-and-uva/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    4. Peer-to-Peer Memory Access and Unified Virtual Addressing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part1/05-explicit-transfers-cudamemcpypeer-staged-host-transfers/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    5. Explicit Transfers: cudaMemcpyPeer, Staged Host Transfers, and When Each Wins
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part1/06-streams-events-and-cross-device-synchronization/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    6. Streams, Events, and Cross-Device Synchronization
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part1/07-cuda-inter-process-communication/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    7. CUDA Inter-Process Communication: Sharing Memory and Events Across Processes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Part 2 -- Collective Communication, Built From Scratch
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Part 2 -- Collective Communication, Built From Scratch
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part2/08-broadcast-and-reduce-the-first-two-collectives-by-hand/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    8. Broadcast and Reduce: The First Two Collectives, By Hand
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part2/09-ring-all-reduce-the-algorithm-behind-every-multi-gpu-training-job/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    9. Ring All-Reduce: The Algorithm Behind Every Multi-GPU Training Job
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part2/10-all-gather-reduce-scatter-and-all-to-all/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    10. All-Gather, Reduce-Scatter, and All-to-All
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part2/11-nccl-what-it-actually-does-differently/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    11. NCCL: What It Actually Does Differently From What You Just Built
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Part 3 -- Parallelization Strategies
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Part 3 -- Parallelization Strategies
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part3/12-data-parallelism-replicated-model-sharded-data/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    12. Data Parallelism: Replicated Model, Sharded Data
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part3/13-model-parallelism-when-one-gpu-cant-hold-the-weights/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    13. Model Parallelism: When One GPU Can't Hold the Weights
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part3/14-tensor-parallelism-splitting-a-single-matrix-multiply-across-devices/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    14. Tensor Parallelism: Splitting a Single Matrix Multiply Across Devices
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part3/15-pipeline-parallelism-splitting-layers-across-devices-and-the-bubble-that-costs-you/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    15. Pipeline Parallelism: Splitting Layers Across Devices, and the Bubble That Costs You
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part3/16-domain-decomposition-for-scientific-computing-halo-exchange-and-distributed-stencils/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    16. Domain Decomposition for Scientific Computing: Halo Exchange and Distributed Stencils
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_7" >
+        
+          
+          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Part 4 -- Synchronization, Load Balancing, and Failure
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Part 4 -- Synchronization, Load Balancing, and Failure
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part4/17-barriers-and-global-synchronization-across-devices/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    17. Barriers and Global Synchronization Across Devices
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part4/18-load-balancing-across-heterogeneous-gpus/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    18. Load Balancing Across Heterogeneous GPUs
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part4/19-stragglers-failures-and-fault-tolerant-collectives/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    19. Stragglers, Failures, and Fault-Tolerant Collectives
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_8" >
+        
+          
+          <label class="md-nav__link" for="__nav_8" id="__nav_8_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Part 5 -- Scaling Beyond One Node
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_8">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Part 5 -- Scaling Beyond One Node
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part5/20-mpi-from-scratch-then-cuda-aware-mpi-scaling-beyond-one-node/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    20. MPI From Scratch, Then CUDA-Aware MPI: Scaling Beyond One Node
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part5/21-gpudirect-rdma-bypassing-the-host-entirely/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    21. GPUDirect RDMA: Bypassing the Host Entirely
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part5/22-nvshmem-and-gpu-initiated-communication/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    22. NVSHMEM and GPU-Initiated Communication
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part5/23-cuda-graphs-across-multiple-gpus-and-multiple-nodes/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    23. CUDA Graphs Across Multiple GPUs and Multiple Nodes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_9" >
+        
+          
+          <label class="md-nav__link" for="__nav_9" id="__nav_9_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Part 6 -- Case Studies
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_9">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Part 6 -- Case Studies
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part6/24-multi-gpu-dense-matrix-multiplication-at-scale/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    24. Multi-GPU Dense Matrix Multiplication at Scale
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part6/25-distributed-training-of-a-neural-network-data-parallelism-and-ring-all-reduce/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    25. Distributed Training of a Neural Network: Data Parallelism and Ring All-Reduce
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part6/26-multi-gpu-llm-inference-tensor-and-pipeline-parallelism-in-practice/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    26. Multi-GPU LLM Inference: Tensor and Pipeline Parallelism in Practice
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part6/27-n-body-simulation-at-scale/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    27. N-Body Simulation at Scale
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part6/28-distributed-breadth-first-search/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    28. Distributed Breadth-First Search
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part6/29-distributed-jacobi-solver/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    29. Distributed Jacobi Solver
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part6/30-multi-gpu-ray-tracing-and-rendering/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    30. Multi-GPU Ray Tracing and Rendering
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part6/31-multi-gpu-monte-carlo-risk-simulation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    31. Multi-GPU Monte Carlo Risk Simulation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_10" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_10" id="__nav_10_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Part 7 -- Cutting-Edge Industrial Case Studies
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_10_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_10">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Part 7 -- Cutting-Edge Industrial Case Studies
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../32-mixture-of-experts-at-scale/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    32. Mixture-of-Experts at Scale: Expert Parallelism and GPU-Initiated All-to-All (DeepEP)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../33-disaggregated-llm-inference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    33. Disaggregated LLM Inference: Prefill/Decode Splitting (DistServe)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../34-gpu-recommendation-systems/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    34. GPU Recommendation Systems: Hybrid Data-Parallel and Model-Parallel Embeddings (HugeCTR)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../35-ai-weather-forecasting-at-scale/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    35. AI Weather Forecasting at Scale (NVIDIA Earth-2 / FourCastNet)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../36-multi-gpu-xva-and-portfolio-risk/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    36. Multi-GPU XVA and Portfolio Risk
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    37. GPUDirect RDMA in Capital Markets
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    37. GPUDirect RDMA in Capital Markets
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#371-what-gets-market-data-to-memory-today-really" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        37.1 What Gets Market Data to Memory Today, Really
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="37.1 What Gets Market Data to Memory Today, Really">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#intuition" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Intuition
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#background" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Background
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#372-gpudirect-rdma-for-market-data-whats-next-not-whats-deployed" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        37.2 GPUDirect RDMA for Market Data: "What's Next," Not "What's Deployed"
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="37.2 GPUDirect RDMA for Market Data: &#34;What&#39;s Next,&#34; Not &#34;What&#39;s Deployed&#34;">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#intuition_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Intuition
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#background_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Background
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#373-gdrcopy-gpudirect-rdma-running-the-other-direction" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        37.3 GDRCopy: GPUDirect RDMA Running the Other Direction
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="37.3 GDRCopy: GPUDirect RDMA Running the Other Direction">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#intuition_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Intuition
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#background_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Background
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#chapter-summary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Chapter Summary
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#self-check-questions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Self-Check Questions
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#where-we-go-next" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Where We Go Next
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#worked-solutions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Worked Solutions
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#371-what-gets-market-data-to-memory-today-really" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        37.1 What Gets Market Data to Memory Today, Really
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="37.1 What Gets Market Data to Memory Today, Really">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#intuition" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Intuition
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#background" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Background
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#372-gpudirect-rdma-for-market-data-whats-next-not-whats-deployed" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        37.2 GPUDirect RDMA for Market Data: "What's Next," Not "What's Deployed"
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="37.2 GPUDirect RDMA for Market Data: &#34;What&#39;s Next,&#34; Not &#34;What&#39;s Deployed&#34;">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#intuition_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Intuition
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#background_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Background
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#373-gdrcopy-gpudirect-rdma-running-the-other-direction" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        37.3 GDRCopy: GPUDirect RDMA Running the Other Direction
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="37.3 GDRCopy: GPUDirect RDMA Running the Other Direction">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#intuition_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Intuition
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#background_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Background
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#chapter-summary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Chapter Summary
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#self-check-questions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Self-Check Questions
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#where-we-go-next" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Where We Go Next
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#worked-solutions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Worked Solutions
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+
+  <h1>37. GPUDirect RDMA in Capital Markets</h1>
+
+<p><strong>What you will understand after this chapter:</strong> why real production market-data delivery today is built on kernel-bypass NIC processing straight to host memory, not yet on Chapter 21's own GPUDirect RDMA reaching all the way into GPU memory -- a real, honest gap this chapter documents rather than papers over; why NVIDIA's own real documentation places NIC-to-GPU GPUDirect RDMA for market data under "What's next," while a DIFFERENT, currently-shipping application of that same real technology (GDRCopy, letting the CPU read GPU memory directly) already matters today; and why, at real single-digit-microsecond total latency budgets, a FIXED per-call transfer overhead can single-handedly exceed an entire production latency budget -- the exact opposite of every earlier chapter's own cost-model lesson.</p>
+<p><strong>What you need to know first:</strong> Chapter 5 (the book's first closed-form transfer-cost model, the fixed-latency-plus-bandwidth shape this chapter inverts), Chapter 20 (the staged host-mediated fallback GPUDirect RDMA exists to remove), and Chapter 21 (GPUDirect RDMA itself -- the real device attributes, and the real cited 9.44x latency speedup and 46.4x topology-sensitivity numbers this chapter reuses and re-examines).</p>
+<hr />
+<p>Chapter 21 established that GPUDirect RDMA lets a network adapter's own DMA engine read and write GPU memory directly, and cited real numbers on what that is worth once both ends of a link are capable. This chapter asks a narrower, more honest question: for one specific, real, high-stakes workload -- low-latency market-data delivery in capital markets -- has that real technology actually been extended there yet? Real NVIDIA documentation on Databento's own production platform describes a real, deployed answer for the FIRST half of that pipeline: kernel-bypass NIC processing gets market data from the wire into host memory at genuinely production scale ("exceeds 80 Gbps and handles over 200 billion market updates each day," with a real cited "median network latency [that] dropped below 60 microseconds"). But a separate real NVIDIA blog post on Rivermax for financial services places the SECOND half -- NIC-to-GPU GPUDirect RDMA for market data specifically -- under its own "What's next" heading, not among its own deployed results. This chapter reports that honest gap directly (Section 37.2), then finds a different, currently-shipping real use of the same GPUDirect RDMA technology working in the OTHER direction: NVIDIA's own real GDRCopy library, letting a CPU read GPU memory directly with far lower overhead than an ordinary <code>cudaMemcpy</code>, solving a real bottleneck a real capital-markets inference benchmark identifies by name (Section 37.3).</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>+------------------------------------------------------------------+
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>| Ch21: GPU-to-GPU and NIC-to-GPU GPUDirect RDMA (the general case) |
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>+------------------------------------------------------------------+
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>| 37.1 What&#39;s REAL and deployed today: wire -&gt; kernel-bypass NIC    |
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>|      -&gt; HOST memory (DPDK, real sub-60us median, Databento)       |
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>+------------------------------------------------------------------+
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>| 37.2 What&#39;s &quot;What&#39;s Next,&quot; not yet deployed: NIC -&gt; GPU memory    |
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>|      directly for market data (NVIDIA&#39;s own real framing)        |
+<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>+------------------------------------------------------------------+
+<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>| 37.3 What&#39;s REAL and shipping today, a different direction:      |
+<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>|      CPU reads GPU memory directly (GDRCopy, GPUDirect RDMA)      |
+<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>+------------------------------------------------------------------+
+</code></pre></div>
+<h2 id="371-what-gets-market-data-to-memory-today-really">37.1 What Gets Market Data to Memory Today, Really<a class="headerlink" href="#371-what-gets-market-data-to-memory-today-really" title="Permanent link">&para;</a></h2>
+<h3 id="intuition">Intuition<a class="headerlink" href="#intuition" title="Permanent link">&para;</a></h3>
+<p>Before any GPU can touch a single stock quote, that quote has to travel from a wire, through a network interface card, into some computer's memory -- and every microsecond spent in that first hop is a microsecond no amount of clever GPU code can ever recover. Picture a real trading firm's mail room: the fastest possible sorting robots downstream mean nothing if incoming mail still has to be manually opened, stamped, and re-routed by a slow clerk at the front door. Real production market-data platforms have already automated that front door, and NVIDIA's own real Databento case study describes exactly how: "kernel-bypass paths on NVIDIA NICs allow Databento to maximize packet processing performance," with "DPDK acceleration" delivering a real cited "median network latency [that] dropped below 60 microseconds," at a real cited scale of "over 80 Gbps" and "over 200 billion market updates each day." That data lands in ordinary host memory -- fast, real, and deployed, but still a full step short of Chapter 21's own GPU-memory destination.</p>
+<div class="admonition warning">
+<p class="admonition-title">[COMMON TRAP] Treating two real cited statistics as if they describe the same moment</p>
+<p>It is tempting to divide one real cited number by another just because both are real and both are cited. File 108's own arithmetic shows why that can mislead: dividing Databento's real "80 Gbps" (a sustained PEAK capacity figure) by its real "200 billion updates/day" (a DAILY AVERAGE across quiet and busy periods) produces an "average bytes per update" figure many times larger than any real market-data message. The honest conclusion is not a wrong message size -- it is that the two real numbers were never measuring the same moment, and combining them naively manufactures a number that looks precise but means nothing.</p>
+</div>
+<h3 id="background">Background<a class="headerlink" href="#background" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>+----------------------------------------------------------+
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>| Wire -&gt; kernel-bypass NIC (DPDK) -&gt; HOST memory             |
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>|   real cited: sub-60us median latency, 80+ Gbps,           |
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>|   200+ billion updates/day (Databento)                     |
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>+----------------------------------------------------------+
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>| Nothing here touches a GPU yet -- this is the real,        |
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>| deployed first half of the pipeline this chapter examines |
+<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>+----------------------------------------------------------+
+</code></pre></div>
+<p>File 108 presents Databento's own real cited production figures directly, does simple unit-conversion arithmetic on them, and explicitly flags where that arithmetic stops meaning what it looks like it means.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="c1">// Chapter 37: GPUDirect RDMA in Capital Markets</span>
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="c1">// 108_kernel_bypass_market_data_baseline_model.cpp</span>
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="c1">//</span>
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="c1">// Chapter 21 built real GPUDirect RDMA between a NIC and a GPU, but its</span>
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="c1">// own hybrid communicator already assumed data had somehow reached a</span>
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a><span class="c1">// network interface in the first place. Real production market-data</span>
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a><span class="c1">// systems answer that &quot;somehow&quot; with a specific, currently-DEPLOYED</span>
+<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a><span class="c1">// technique that has nothing to do with GPUs yet: kernel-bypass NIC</span>
+<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a><span class="c1">// processing. NVIDIA&#39;s own real Databento case study describes exactly</span>
+<a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a><span class="c1">// this, at real production scale: Databento&#39;s real platform &quot;exceeds 80</span>
+<a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a><span class="c1">// Gbps and handles over 200 billion market updates each day,&quot; with &quot;US</span>
+<a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a><span class="c1">// options data alone surpassing standard 40G network links,&quot; using</span>
+<a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a><span class="c1">// &quot;kernel-bypass paths on NVIDIA NICs&quot; and &quot;DPDK acceleration&quot; to reach</span>
+<a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a><span class="c1">// a real cited &quot;median network latency [that] dropped below 60</span>
+<a id="__codelineno-2-15" name="__codelineno-2-15" href="#__codelineno-2-15"></a><span class="c1">// microseconds,&quot; with &quot;ConnectX hardware timestamping&quot; for sequencing.</span>
+<a id="__codelineno-2-16" name="__codelineno-2-16" href="#__codelineno-2-16"></a><span class="c1">// This file presents those real cited numbers directly and does simple,</span>
+<a id="__codelineno-2-17" name="__codelineno-2-17" href="#__codelineno-2-17"></a><span class="c1">// clearly-labeled arithmetic on them (average updates/second, average</span>
+<a id="__codelineno-2-18" name="__codelineno-2-18" href="#__codelineno-2-18"></a><span class="c1">// bytes/update at 80 Gbps) -- establishing the real, deployed starting</span>
+<a id="__codelineno-2-19" name="__codelineno-2-19" href="#__codelineno-2-19"></a><span class="c1">// point this chapter&#39;s own GPUDirect RDMA discussion (Sections 37.2 and</span>
+<a id="__codelineno-2-20" name="__codelineno-2-20" href="#__codelineno-2-20"></a><span class="c1">// 37.3) builds on: market data reaching HOST memory via kernel bypass,</span>
+<a id="__codelineno-2-21" name="__codelineno-2-21" href="#__codelineno-2-21"></a><span class="c1">// not yet GPU memory.</span>
+<a id="__codelineno-2-22" name="__codelineno-2-22" href="#__codelineno-2-22"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;cstdio&gt;</span>
+<a id="__codelineno-2-23" name="__codelineno-2-23" href="#__codelineno-2-23"></a>
+<a id="__codelineno-2-24" name="__codelineno-2-24" href="#__codelineno-2-24"></a><span class="kt">int</span><span class="w"> </span><span class="nf">main</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-2-25" name="__codelineno-2-25" href="#__codelineno-2-25"></a><span class="w">    </span><span class="c1">// Real cited Databento production figures.</span>
+<a id="__codelineno-2-26" name="__codelineno-2-26" href="#__codelineno-2-26"></a><span class="w">    </span><span class="kt">double</span><span class="w"> </span><span class="n">realGbps</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">80.0</span><span class="p">;</span>
+<a id="__codelineno-2-27" name="__codelineno-2-27" href="#__codelineno-2-27"></a><span class="w">    </span><span class="kt">double</span><span class="w"> </span><span class="n">realUpdatesPerDay</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">200.0e9</span><span class="p">;</span>
+<a id="__codelineno-2-28" name="__codelineno-2-28" href="#__codelineno-2-28"></a><span class="w">    </span><span class="kt">double</span><span class="w"> </span><span class="n">realMedianLatencyUs</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">60.0</span><span class="p">;</span><span class="w">  </span><span class="c1">// &quot;dropped below 60 microseconds&quot;</span>
+<a id="__codelineno-2-29" name="__codelineno-2-29" href="#__codelineno-2-29"></a>
+<a id="__codelineno-2-30" name="__codelineno-2-30" href="#__codelineno-2-30"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;Real cited Databento production figures (NVIDIA case study):</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
+<a id="__codelineno-2-31" name="__codelineno-2-31" href="#__codelineno-2-31"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;- Sustained throughput: over %.0f Gbps (</span><span class="se">\&quot;</span><span class="s">exceeds 80 Gbps</span><span class="se">\&quot;</span><span class="s">)</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">realGbps</span><span class="p">);</span>
+<a id="__codelineno-2-32" name="__codelineno-2-32" href="#__codelineno-2-32"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;- Daily volume: over %.0e market updates/day (</span><span class="se">\&quot;</span><span class="s">over 200 billion &quot;</span>
+<a id="__codelineno-2-33" name="__codelineno-2-33" href="#__codelineno-2-33"></a><span class="w">           </span><span class="s">&quot;market updates each day</span><span class="se">\&quot;</span><span class="s">)</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">realUpdatesPerDay</span><span class="p">);</span>
+<a id="__codelineno-2-34" name="__codelineno-2-34" href="#__codelineno-2-34"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;- Real cited median network latency (kernel-bypass + DPDK on &quot;</span>
+<a id="__codelineno-2-35" name="__codelineno-2-35" href="#__codelineno-2-35"></a><span class="w">           </span><span class="s">&quot;NVIDIA NICs): below %.0f microseconds</span><span class="se">\n\n</span><span class="s">&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">realMedianLatencyUs</span><span class="p">);</span>
+<a id="__codelineno-2-36" name="__codelineno-2-36" href="#__codelineno-2-36"></a>
+<a id="__codelineno-2-37" name="__codelineno-2-37" href="#__codelineno-2-37"></a><span class="w">    </span><span class="c1">// Simple, clearly-labeled arithmetic on the real cited figures above</span>
+<a id="__codelineno-2-38" name="__codelineno-2-38" href="#__codelineno-2-38"></a><span class="w">    </span><span class="c1">// -- not new measurements, just unit conversions.</span>
+<a id="__codelineno-2-39" name="__codelineno-2-39" href="#__codelineno-2-39"></a><span class="w">    </span><span class="kt">double</span><span class="w"> </span><span class="n">avgUpdatesPerSecond</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">realUpdatesPerDay</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="mf">86400.0</span><span class="p">;</span>
+<a id="__codelineno-2-40" name="__codelineno-2-40" href="#__codelineno-2-40"></a><span class="w">    </span><span class="kt">double</span><span class="w"> </span><span class="n">bytesPerSecondAt80Gbps</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">realGbps</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="mf">1.0e9</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="mf">8.0</span><span class="p">;</span>
+<a id="__codelineno-2-41" name="__codelineno-2-41" href="#__codelineno-2-41"></a><span class="w">    </span><span class="kt">double</span><span class="w"> </span><span class="n">avgBytesPerUpdate</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">bytesPerSecondAt80Gbps</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="n">avgUpdatesPerSecond</span><span class="p">;</span>
+<a id="__codelineno-2-42" name="__codelineno-2-42" href="#__codelineno-2-42"></a>
+<a id="__codelineno-2-43" name="__codelineno-2-43" href="#__codelineno-2-43"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;Derived (plain arithmetic on the real cited figures above):</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
+<a id="__codelineno-2-44" name="__codelineno-2-44" href="#__codelineno-2-44"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;Average updates/second across a full day: %.2e</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">avgUpdatesPerSecond</span><span class="p">);</span>
+<a id="__codelineno-2-45" name="__codelineno-2-45" href="#__codelineno-2-45"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;Bytes/second sustained at the real cited 80 Gbps figure: %.2e</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span>
+<a id="__codelineno-2-46" name="__codelineno-2-46" href="#__codelineno-2-46"></a><span class="w">           </span><span class="n">bytesPerSecondAt80Gbps</span><span class="p">);</span>
+<a id="__codelineno-2-47" name="__codelineno-2-47" href="#__codelineno-2-47"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;Implied average bytes/update if 80 Gbps were sustained at &quot;</span>
+<a id="__codelineno-2-48" name="__codelineno-2-48" href="#__codelineno-2-48"></a><span class="w">           </span><span class="s">&quot;this DAILY-AVERAGE update rate: %.1f bytes</span><span class="se">\n\n</span><span class="s">&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">avgBytesPerUpdate</span><span class="p">);</span>
+<a id="__codelineno-2-49" name="__codelineno-2-49" href="#__codelineno-2-49"></a>
+<a id="__codelineno-2-50" name="__codelineno-2-50" href="#__codelineno-2-50"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;A honest flag on that last number: real market-data messages &quot;</span>
+<a id="__codelineno-2-51" name="__codelineno-2-51" href="#__codelineno-2-51"></a><span class="w">           </span><span class="s">&quot;are typically tens to a few hundred bytes, not %.0f bytes -- &quot;</span>
+<a id="__codelineno-2-52" name="__codelineno-2-52" href="#__codelineno-2-52"></a><span class="w">           </span><span class="s">&quot;so this arithmetic result is a mismatch, not a real average &quot;</span>
+<a id="__codelineno-2-53" name="__codelineno-2-53" href="#__codelineno-2-53"></a><span class="w">           </span><span class="s">&quot;message size. It shows that the real cited </span><span class="se">\&quot;</span><span class="s">80 Gbps</span><span class="se">\&quot;</span><span class="s"> figure &quot;</span>
+<a id="__codelineno-2-54" name="__codelineno-2-54" href="#__codelineno-2-54"></a><span class="w">           </span><span class="s">&quot;describes sustained PEAK capacity, while the real cited &quot;</span>
+<a id="__codelineno-2-55" name="__codelineno-2-55" href="#__codelineno-2-55"></a><span class="w">           </span><span class="s">&quot;</span><span class="se">\&quot;</span><span class="s">200 billion updates/day</span><span class="se">\&quot;</span><span class="s"> figure is a DAILY AVERAGE across &quot;</span>
+<a id="__codelineno-2-56" name="__codelineno-2-56" href="#__codelineno-2-56"></a><span class="w">           </span><span class="s">&quot;quiet and busy periods alike; dividing one by the other &quot;</span>
+<a id="__codelineno-2-57" name="__codelineno-2-57" href="#__codelineno-2-57"></a><span class="w">           </span><span class="s">&quot;conflates two different real numbers that were never meant &quot;</span>
+<a id="__codelineno-2-58" name="__codelineno-2-58" href="#__codelineno-2-58"></a><span class="w">           </span><span class="s">&quot;to describe the same moment. Reporting this mismatch honestly, &quot;</span>
+<a id="__codelineno-2-59" name="__codelineno-2-59" href="#__codelineno-2-59"></a><span class="w">           </span><span class="s">&quot;rather than quietly presenting %.0f bytes as a real message &quot;</span>
+<a id="__codelineno-2-60" name="__codelineno-2-60" href="#__codelineno-2-60"></a><span class="w">           </span><span class="s">&quot;size, matters more here than the arithmetic itself.</span><span class="se">\n\n</span><span class="s">&quot;</span><span class="p">,</span>
+<a id="__codelineno-2-61" name="__codelineno-2-61" href="#__codelineno-2-61"></a><span class="w">           </span><span class="n">avgBytesPerUpdate</span><span class="p">,</span><span class="w"> </span><span class="n">avgBytesPerUpdate</span><span class="p">);</span>
+<a id="__codelineno-2-62" name="__codelineno-2-62" href="#__codelineno-2-62"></a>
+<a id="__codelineno-2-63" name="__codelineno-2-63" href="#__codelineno-2-63"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;This is the real, CURRENTLY-DEPLOYED starting point for &quot;</span>
+<a id="__codelineno-2-64" name="__codelineno-2-64" href="#__codelineno-2-64"></a><span class="w">           </span><span class="s">&quot;everything this chapter builds on: kernel-bypass NIC &quot;</span>
+<a id="__codelineno-2-65" name="__codelineno-2-65" href="#__codelineno-2-65"></a><span class="w">           </span><span class="s">&quot;processing (DPDK, hardware timestamping) gets market data &quot;</span>
+<a id="__codelineno-2-66" name="__codelineno-2-66" href="#__codelineno-2-66"></a><span class="w">           </span><span class="s">&quot;from the wire into HOST memory at real sub-%.0f-microsecond &quot;</span>
+<a id="__codelineno-2-67" name="__codelineno-2-67" href="#__codelineno-2-67"></a><span class="w">           </span><span class="s">&quot;median latency, at real production scale -- but it stops at &quot;</span>
+<a id="__codelineno-2-68" name="__codelineno-2-68" href="#__codelineno-2-68"></a><span class="w">           </span><span class="s">&quot;host memory. Nothing in this real, cited pipeline yet &quot;</span>
+<a id="__codelineno-2-69" name="__codelineno-2-69" href="#__codelineno-2-69"></a><span class="w">           </span><span class="s">&quot;involves a GPU at all. Section 37.2 asks the honest question &quot;</span>
+<a id="__codelineno-2-70" name="__codelineno-2-70" href="#__codelineno-2-70"></a><span class="w">           </span><span class="s">&quot;this chapter exists to answer: does Chapter 21&#39;s own &quot;</span>
+<a id="__codelineno-2-71" name="__codelineno-2-71" href="#__codelineno-2-71"></a><span class="w">           </span><span class="s">&quot;GPUDirect RDMA extend this real pipeline the rest of the way, &quot;</span>
+<a id="__codelineno-2-72" name="__codelineno-2-72" href="#__codelineno-2-72"></a><span class="w">           </span><span class="s">&quot;directly into GPU memory, for this specific workload today?</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span>
+<a id="__codelineno-2-73" name="__codelineno-2-73" href="#__codelineno-2-73"></a><span class="w">           </span><span class="n">realMedianLatencyUs</span><span class="p">);</span>
+<a id="__codelineno-2-74" name="__codelineno-2-74" href="#__codelineno-2-74"></a><span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
+<a id="__codelineno-2-75" name="__codelineno-2-75" href="#__codelineno-2-75"></a><span class="p">}</span>
+</code></pre></div>
+<p>Compile and run (a plain host <code>.cpp</code> file with no CUDA/NCCL/MPI/NVSHMEM linkage, cross-verified on both the cloud sandbox and the device):</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>g++<span class="w"> </span>-O2<span class="w"> </span>-ffp-contract<span class="o">=</span>off<span class="w"> </span>-o<span class="w"> </span>108_kernel_bypass_market_data_baseline_model<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="w">    </span>108_kernel_bypass_market_data_baseline_model.cpp
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>./108_kernel_bypass_market_data_baseline_model
+</code></pre></div>
+<p>Locked output:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>Real cited Databento production figures (NVIDIA case study):
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>- Sustained throughput: over 80 Gbps (&quot;exceeds 80 Gbps&quot;)
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>- Daily volume: over 2e+11 market updates/day (&quot;over 200 billion market updates each day&quot;)
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>- Real cited median network latency (kernel-bypass + DPDK on NVIDIA NICs): below 60 microseconds
+<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>
+<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>Derived (plain arithmetic on the real cited figures above):
+<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a>Average updates/second across a full day: 2.31e+06
+<a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a>Bytes/second sustained at the real cited 80 Gbps figure: 1.00e+10
+<a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a>Implied average bytes/update if 80 Gbps were sustained at this DAILY-AVERAGE update rate: 4320.0 bytes
+<a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a>
+<a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a>A honest flag on that last number: real market-data messages are typically tens to a few hundred bytes, not 4320 bytes -- so this arithmetic result is a mismatch, not a real average message size. It shows that the real cited &quot;80 Gbps&quot; figure describes sustained PEAK capacity, while the real cited &quot;200 billion updates/day&quot; figure is a DAILY AVERAGE across quiet and busy periods alike; dividing one by the other conflates two different real numbers that were never meant to describe the same moment. Reporting this mismatch honestly, rather than quietly presenting 4320 bytes as a real message size, matters more here than the arithmetic itself.
+<a id="__codelineno-4-12" name="__codelineno-4-12" href="#__codelineno-4-12"></a>
+<a id="__codelineno-4-13" name="__codelineno-4-13" href="#__codelineno-4-13"></a>This is the real, CURRENTLY-DEPLOYED starting point for everything this chapter builds on: kernel-bypass NIC processing (DPDK, hardware timestamping) gets market data from the wire into HOST memory at real sub-60-microsecond median latency, at real production scale -- but it stops at host memory. Nothing in this real, cited pipeline yet involves a GPU at all. Section 37.2 asks the honest question this chapter exists to answer: does Chapter 21&#39;s own GPUDirect RDMA extend this real pipeline the rest of the way, directly into GPU memory, for this specific workload today?
+</code></pre></div>
+<h2 id="372-gpudirect-rdma-for-market-data-whats-next-not-whats-deployed">37.2 GPUDirect RDMA for Market Data: "What's Next," Not "What's Deployed"<a class="headerlink" href="#372-gpudirect-rdma-for-market-data-whats-next-not-whats-deployed" title="Permanent link">&para;</a></h2>
+<h3 id="intuition_1">Intuition<a class="headerlink" href="#intuition_1" title="Permanent link">&para;</a></h3>
+<p>It would be natural to assume Chapter 21's own real GPUDirect RDMA technology has already been bolted onto Section 37.1's own real kernel-bypass pipeline, since both are real, both are from NVIDIA, and both obviously belong together. Real NVIDIA documentation is more careful than that assumption -- and this book follows its lead rather than rounding up. NVIDIA's own real blog post on Rivermax and NEIO FastSocket for financial services places NIC-to-GPU GPUDirect RDMA for market data under its own "What's next" heading: "GPUDirect technology is poised to improve the performance of trading systems by enabling direct memory access between NICs and GPUs, bypassing the CPU to reduce latency," and "with Rivermax and GPUDirect powering zero-copy access, market data is streamed directly from high-speed NICs into GPU memory, eliminating PCIe bottlenecks." Both are written as a direction, not a delivered result -- the same honest distinction this book has drawn before between a real capability and a real, currently-deployed use of it.</p>
+<div class="admonition warning">
+<p class="admonition-title">[COMMON TRAP] Combining two real, separately-cited numbers as if they were one measured result</p>
+<p>Chapter 21's own real 9.44x GPUDirect RDMA speedup and Section 37.1's own real sub-60-microsecond kernel-bypass baseline are BOTH real and BOTH cited -- but they were measured on different hardware, for a different message pattern, for a different workload entirely. File 109 computes what applying one to the other would project, but labels that number a projection at every mention, never a finding, because no real cited source combines them. The honest, directly-cited fact is the DIRECTION NVIDIA's own documentation states -- market-data-specific NIC-to-GPU GPUDirect RDMA is a "What's next," not yet a deployed result like Chapter 21's own GPU-to-GPU and storage-to-GPU use cases.</p>
+</div>
+<h3 id="background_1">Background<a class="headerlink" href="#background_1" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>+----------------------------------------------------------+
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>| Real cited baseline (37.1): NIC -&gt; HOST, sub-60us          |
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>+----------------------------------------------------------+
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>| Real cited Ch21 speedup, a DIFFERENT workload: 9.44x       |
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>| (applied ILLUSTRATIVELY here, not an NVIDIA-published      |
+<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>| combined number)                                           |
+<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a>+----------------------------------------------------------+
+<a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a>| NVIDIA&#39;s own real framing: NIC -&gt; GPU for market data is   |
+<a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a>| under &quot;What&#39;s next&quot; -- not yet among deployed results      |
+<a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a>+----------------------------------------------------------+
+</code></pre></div>
+<p>File 109 quotes NVIDIA's own real "What's next" language directly, then builds an explicitly-labeled illustrative projection combining Chapter 21's own real cited speedup with Section 37.1's own real cited baseline -- repeatedly naming it a projection, not a finding.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="c1">// Chapter 37: GPUDirect RDMA in Capital Markets</span>
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="c1">// 109_gpudirect_rdma_market_data_projection_model.cpp</span>
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="c1">//</span>
+<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="c1">// Section 37.1 established a real, CURRENTLY-DEPLOYED baseline: kernel-</span>
+<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a><span class="c1">// bypass NIC processing delivers market data to HOST memory at a real</span>
+<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a><span class="c1">// cited sub-60-microsecond median latency. The obvious next question is</span>
+<a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a><span class="c1">// whether Chapter 21&#39;s own real GPUDirect RDMA technique extends that</span>
+<a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a><span class="c1">// pipeline the rest of the way into GPU memory for this specific</span>
+<a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a><span class="c1">// workload TODAY. NVIDIA&#39;s own real blog post on Rivermax and NEIO</span>
+<a id="__codelineno-6-10" name="__codelineno-6-10" href="#__codelineno-6-10"></a><span class="c1">// FastSocket for financial services answers this honestly, and the</span>
+<a id="__codelineno-6-11" name="__codelineno-6-11" href="#__codelineno-6-11"></a><span class="c1">// honest answer matters: it describes GPUDirect for market data as a</span>
+<a id="__codelineno-6-12" name="__codelineno-6-12" href="#__codelineno-6-12"></a><span class="c1">// FUTURE direction, not a currently-deployed one -- &quot;GPUDirect</span>
+<a id="__codelineno-6-13" name="__codelineno-6-13" href="#__codelineno-6-13"></a><span class="c1">// technology is poised to improve the performance of trading systems by</span>
+<a id="__codelineno-6-14" name="__codelineno-6-14" href="#__codelineno-6-14"></a><span class="c1">// enabling direct memory access between NICs and GPUs, bypassing the</span>
+<a id="__codelineno-6-15" name="__codelineno-6-15" href="#__codelineno-6-15"></a><span class="c1">// CPU to reduce latency,&quot; and &quot;with Rivermax and GPUDirect powering</span>
+<a id="__codelineno-6-16" name="__codelineno-6-16" href="#__codelineno-6-16"></a><span class="c1">// zero-copy access, market data is streamed directly from high-speed</span>
+<a id="__codelineno-6-17" name="__codelineno-6-17" href="#__codelineno-6-17"></a><span class="c1">// NICs into GPU memory, eliminating PCIe bottlenecks&quot; -- both quotes</span>
+<a id="__codelineno-6-18" name="__codelineno-6-18" href="#__codelineno-6-18"></a><span class="c1">// appear under that post&#39;s own &quot;What&#39;s next&quot; heading, not as a deployed</span>
+<a id="__codelineno-6-19" name="__codelineno-6-19" href="#__codelineno-6-19"></a><span class="c1">// result. This file does NOT claim NVIDIA has published a combined</span>
+<a id="__codelineno-6-20" name="__codelineno-6-20" href="#__codelineno-6-20"></a><span class="c1">// market-data-plus-GPUDirect-RDMA latency number, because no such real,</span>
+<a id="__codelineno-6-21" name="__codelineno-6-21" href="#__codelineno-6-21"></a><span class="c1">// specific number was found. It instead builds an explicitly-labeled</span>
+<a id="__codelineno-6-22" name="__codelineno-6-22" href="#__codelineno-6-22"></a><span class="c1">// ILLUSTRATIVE projection: applying Chapter 21&#39;s own real cited</span>
+<a id="__codelineno-6-23" name="__codelineno-6-23" href="#__codelineno-6-23"></a><span class="c1">// GPUDirect RDMA speedup (9.44x, computed from NVIDIA&#39;s own real</span>
+<a id="__codelineno-6-24" name="__codelineno-6-24" href="#__codelineno-6-24"></a><span class="c1">// &quot;Benchmarking GPUDirect RDMA on Modern Server Platforms&quot; post) to</span>
+<a id="__codelineno-6-25" name="__codelineno-6-25" href="#__codelineno-6-25"></a><span class="c1">// Section 37.1&#39;s own real cited kernel-bypass baseline (sub-60-</span>
+<a id="__codelineno-6-26" name="__codelineno-6-26" href="#__codelineno-6-26"></a><span class="c1">// microsecond median), to show what removing the remaining host-memory</span>
+<a id="__codelineno-6-27" name="__codelineno-6-27" href="#__codelineno-6-27"></a><span class="c1">// hop could plausibly be worth IF this real Chapter 21 technique were</span>
+<a id="__codelineno-6-28" name="__codelineno-6-28" href="#__codelineno-6-28"></a><span class="c1">// applied to this real Section 37.1 workload -- this book&#39;s own</span>
+<a id="__codelineno-6-29" name="__codelineno-6-29" href="#__codelineno-6-29"></a><span class="c1">// synthesis of two independently real, separately-cited numbers, not a</span>
+<a id="__codelineno-6-30" name="__codelineno-6-30" href="#__codelineno-6-30"></a><span class="c1">// claim NVIDIA has published this specific result.</span>
+<a id="__codelineno-6-31" name="__codelineno-6-31" href="#__codelineno-6-31"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;cstdio&gt;</span>
+<a id="__codelineno-6-32" name="__codelineno-6-32" href="#__codelineno-6-32"></a>
+<a id="__codelineno-6-33" name="__codelineno-6-33" href="#__codelineno-6-33"></a><span class="kt">int</span><span class="w"> </span><span class="nf">main</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-6-34" name="__codelineno-6-34" href="#__codelineno-6-34"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;Real quotes from NVIDIA&#39;s own Rivermax/NEIO FastSocket blog &quot;</span>
+<a id="__codelineno-6-35" name="__codelineno-6-35" href="#__codelineno-6-35"></a><span class="w">           </span><span class="s">&quot;post, under its own </span><span class="se">\&quot;</span><span class="s">What&#39;s next</span><span class="se">\&quot;</span><span class="s"> heading (not a deployed-&quot;</span>
+<a id="__codelineno-6-36" name="__codelineno-6-36" href="#__codelineno-6-36"></a><span class="w">           </span><span class="s">&quot;today claim):</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
+<a id="__codelineno-6-37" name="__codelineno-6-37" href="#__codelineno-6-37"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;- </span><span class="se">\&quot;</span><span class="s">GPUDirect technology is poised to improve the performance &quot;</span>
+<a id="__codelineno-6-38" name="__codelineno-6-38" href="#__codelineno-6-38"></a><span class="w">           </span><span class="s">&quot;of trading systems by enabling direct memory access between &quot;</span>
+<a id="__codelineno-6-39" name="__codelineno-6-39" href="#__codelineno-6-39"></a><span class="w">           </span><span class="s">&quot;NICs and GPUs, bypassing the CPU to reduce latency.</span><span class="se">\&quot;\n</span><span class="s">&quot;</span><span class="p">);</span>
+<a id="__codelineno-6-40" name="__codelineno-6-40" href="#__codelineno-6-40"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;- </span><span class="se">\&quot;</span><span class="s">With Rivermax and GPUDirect powering zero-copy access, &quot;</span>
+<a id="__codelineno-6-41" name="__codelineno-6-41" href="#__codelineno-6-41"></a><span class="w">           </span><span class="s">&quot;market data is streamed directly from high-speed NICs into &quot;</span>
+<a id="__codelineno-6-42" name="__codelineno-6-42" href="#__codelineno-6-42"></a><span class="w">           </span><span class="s">&quot;GPU memory, eliminating PCIe bottlenecks.</span><span class="se">\&quot;\n\n</span><span class="s">&quot;</span><span class="p">);</span>
+<a id="__codelineno-6-43" name="__codelineno-6-43" href="#__codelineno-6-43"></a>
+<a id="__codelineno-6-44" name="__codelineno-6-44" href="#__codelineno-6-44"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;Real, separately-cited numbers this file combines &quot;</span>
+<a id="__codelineno-6-45" name="__codelineno-6-45" href="#__codelineno-6-45"></a><span class="w">           </span><span class="s">&quot;illustratively (never as a single NVIDIA-published result):</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
+<a id="__codelineno-6-46" name="__codelineno-6-46" href="#__codelineno-6-46"></a><span class="w">    </span><span class="kt">double</span><span class="w"> </span><span class="n">realKernelBypassLatencyUs</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">60.0</span><span class="p">;</span><span class="w">   </span><span class="c1">// Section 37.1&#39;s own real Databento figure</span>
+<a id="__codelineno-6-47" name="__codelineno-6-47" href="#__codelineno-6-47"></a><span class="w">    </span><span class="kt">double</span><span class="w"> </span><span class="n">realGpuDirectRdmaSpeedup</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">9.44</span><span class="p">;</span><span class="w">    </span><span class="c1">// Chapter 21&#39;s own real cited ratio</span>
+<a id="__codelineno-6-48" name="__codelineno-6-48" href="#__codelineno-6-48"></a>
+<a id="__codelineno-6-49" name="__codelineno-6-49" href="#__codelineno-6-49"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;- Section 37.1&#39;s own real cited kernel-bypass-to-host median &quot;</span>
+<a id="__codelineno-6-50" name="__codelineno-6-50" href="#__codelineno-6-50"></a><span class="w">           </span><span class="s">&quot;latency: below %.0f microseconds (Databento/NVIDIA case &quot;</span>
+<a id="__codelineno-6-51" name="__codelineno-6-51" href="#__codelineno-6-51"></a><span class="w">           </span><span class="s">&quot;study).</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">realKernelBypassLatencyUs</span><span class="p">);</span>
+<a id="__codelineno-6-52" name="__codelineno-6-52" href="#__codelineno-6-52"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;- Chapter 21&#39;s own real cited GPUDirect RDMA vs. staged-&quot;</span>
+<a id="__codelineno-6-53" name="__codelineno-6-53" href="#__codelineno-6-53"></a><span class="w">           </span><span class="s">&quot;transfer speedup: %.2fx (computed in Chapter 21 from &quot;</span>
+<a id="__codelineno-6-54" name="__codelineno-6-54" href="#__codelineno-6-54"></a><span class="w">           </span><span class="s">&quot;NVIDIA&#39;s own </span><span class="se">\&quot;</span><span class="s">Benchmarking GPUDirect RDMA on Modern Server &quot;</span>
+<a id="__codelineno-6-55" name="__codelineno-6-55" href="#__codelineno-6-55"></a><span class="w">           </span><span class="s">&quot;Platforms</span><span class="se">\&quot;</span><span class="s"> post, matching that post&#39;s own cited &quot;</span>
+<a id="__codelineno-6-56" name="__codelineno-6-56" href="#__codelineno-6-56"></a><span class="w">           </span><span class="s">&quot;</span><span class="se">\&quot;</span><span class="s">approximately 9x faster</span><span class="se">\&quot;</span><span class="s"> claim).</span><span class="se">\n\n</span><span class="s">&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">realGpuDirectRdmaSpeedup</span><span class="p">);</span>
+<a id="__codelineno-6-57" name="__codelineno-6-57" href="#__codelineno-6-57"></a>
+<a id="__codelineno-6-58" name="__codelineno-6-58" href="#__codelineno-6-58"></a><span class="w">    </span><span class="kt">double</span><span class="w"> </span><span class="n">illustrativeProjectedLatencyUs</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">realKernelBypassLatencyUs</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="n">realGpuDirectRdmaSpeedup</span><span class="p">;</span>
+<a id="__codelineno-6-59" name="__codelineno-6-59" href="#__codelineno-6-59"></a>
+<a id="__codelineno-6-60" name="__codelineno-6-60" href="#__codelineno-6-60"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;THIS BOOK&#39;S OWN ILLUSTRATIVE PROJECTION (not an NVIDIA-&quot;</span>
+<a id="__codelineno-6-61" name="__codelineno-6-61" href="#__codelineno-6-61"></a><span class="w">           </span><span class="s">&quot;published number): if Chapter 21&#39;s own real %.2fx GPUDirect &quot;</span>
+<a id="__codelineno-6-62" name="__codelineno-6-62" href="#__codelineno-6-62"></a><span class="w">           </span><span class="s">&quot;RDMA speedup applied directly to Section 37.1&#39;s own real &quot;</span>
+<a id="__codelineno-6-63" name="__codelineno-6-63" href="#__codelineno-6-63"></a><span class="w">           </span><span class="s">&quot;%.0fus kernel-bypass baseline, removing its remaining host-&quot;</span>
+<a id="__codelineno-6-64" name="__codelineno-6-64" href="#__codelineno-6-64"></a><span class="w">           </span><span class="s">&quot;memory hop, the projected latency would be approximately &quot;</span>
+<a id="__codelineno-6-65" name="__codelineno-6-65" href="#__codelineno-6-65"></a><span class="w">           </span><span class="s">&quot;%.2fus.</span><span class="se">\n\n</span><span class="s">&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">realGpuDirectRdmaSpeedup</span><span class="p">,</span><span class="w"> </span><span class="n">realKernelBypassLatencyUs</span><span class="p">,</span>
+<a id="__codelineno-6-66" name="__codelineno-6-66" href="#__codelineno-6-66"></a><span class="w">           </span><span class="n">illustrativeProjectedLatencyUs</span><span class="p">);</span>
+<a id="__codelineno-6-67" name="__codelineno-6-67" href="#__codelineno-6-67"></a>
+<a id="__codelineno-6-68" name="__codelineno-6-68" href="#__codelineno-6-68"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;Why this is labeled a projection and not a finding: Chapter &quot;</span>
+<a id="__codelineno-6-69" name="__codelineno-6-69" href="#__codelineno-6-69"></a><span class="w">           </span><span class="s">&quot;21&#39;s own %.2fx figure was measured on a synthetic small-&quot;</span>
+<a id="__codelineno-6-70" name="__codelineno-6-70" href="#__codelineno-6-70"></a><span class="w">           </span><span class="s">&quot;message ping-pong benchmark on specific Ivy Bridge-era &quot;</span>
+<a id="__codelineno-6-71" name="__codelineno-6-71" href="#__codelineno-6-71"></a><span class="w">           </span><span class="s">&quot;hardware, not on Databento&#39;s own real market-data pipeline or &quot;</span>
+<a id="__codelineno-6-72" name="__codelineno-6-72" href="#__codelineno-6-72"></a><span class="w">           </span><span class="s">&quot;its own real NIC/GPU topology. Combining the two real numbers &quot;</span>
+<a id="__codelineno-6-73" name="__codelineno-6-73" href="#__codelineno-6-73"></a><span class="w">           </span><span class="s">&quot;this way assumes the same relative speedup would carry over &quot;</span>
+<a id="__codelineno-6-74" name="__codelineno-6-74" href="#__codelineno-6-74"></a><span class="w">           </span><span class="s">&quot;to a different, real, specific workload -- an assumption this &quot;</span>
+<a id="__codelineno-6-75" name="__codelineno-6-75" href="#__codelineno-6-75"></a><span class="w">           </span><span class="s">&quot;book has no cited measurement to confirm. What IS real and &quot;</span>
+<a id="__codelineno-6-76" name="__codelineno-6-76" href="#__codelineno-6-76"></a><span class="w">           </span><span class="s">&quot;directly cited is the DIRECTION: NVIDIA&#39;s own documentation &quot;</span>
+<a id="__codelineno-6-77" name="__codelineno-6-77" href="#__codelineno-6-77"></a><span class="w">           </span><span class="s">&quot;places NIC-to-GPU GPUDirect RDMA for market data under </span><span class="se">\&quot;</span><span class="s">What&#39;s &quot;</span>
+<a id="__codelineno-6-78" name="__codelineno-6-78" href="#__codelineno-6-78"></a><span class="w">           </span><span class="s">&quot;next,</span><span class="se">\&quot;</span><span class="s"> not among its own already-deployed results, unlike &quot;</span>
+<a id="__codelineno-6-79" name="__codelineno-6-79" href="#__codelineno-6-79"></a><span class="w">           </span><span class="s">&quot;Chapter 21&#39;s own GPU-to-GPU and storage-to-GPU GPUDirect RDMA &quot;</span>
+<a id="__codelineno-6-80" name="__codelineno-6-80" href="#__codelineno-6-80"></a><span class="w">           </span><span class="s">&quot;use cases, which that chapter cited as already real and &quot;</span>
+<a id="__codelineno-6-81" name="__codelineno-6-81" href="#__codelineno-6-81"></a><span class="w">           </span><span class="s">&quot;measured.</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">realGpuDirectRdmaSpeedup</span><span class="p">);</span>
+<a id="__codelineno-6-82" name="__codelineno-6-82" href="#__codelineno-6-82"></a><span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
+<a id="__codelineno-6-83" name="__codelineno-6-83" href="#__codelineno-6-83"></a><span class="p">}</span>
+</code></pre></div>
+<p>Compile and run (plain host <code>.cpp</code>, cross-verified on both the cloud sandbox and the device):</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>g++<span class="w"> </span>-O2<span class="w"> </span>-ffp-contract<span class="o">=</span>off<span class="w"> </span>-o<span class="w"> </span>109_gpudirect_rdma_market_data_projection_model<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="w">    </span>109_gpudirect_rdma_market_data_projection_model.cpp
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>./109_gpudirect_rdma_market_data_projection_model
+</code></pre></div>
+<p>Locked output:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>Real quotes from NVIDIA&#39;s own Rivermax/NEIO FastSocket blog post, under its own &quot;What&#39;s next&quot; heading (not a deployed-today claim):
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>- &quot;GPUDirect technology is poised to improve the performance of trading systems by enabling direct memory access between NICs and GPUs, bypassing the CPU to reduce latency.&quot;
+<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>- &quot;With Rivermax and GPUDirect powering zero-copy access, market data is streamed directly from high-speed NICs into GPU memory, eliminating PCIe bottlenecks.&quot;
+<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a>
+<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a>Real, separately-cited numbers this file combines illustratively (never as a single NVIDIA-published result):
+<a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a>- Section 37.1&#39;s own real cited kernel-bypass-to-host median latency: below 60 microseconds (Databento/NVIDIA case study).
+<a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a>- Chapter 21&#39;s own real cited GPUDirect RDMA vs. staged-transfer speedup: 9.44x (computed in Chapter 21 from NVIDIA&#39;s own &quot;Benchmarking GPUDirect RDMA on Modern Server Platforms&quot; post, matching that post&#39;s own cited &quot;approximately 9x faster&quot; claim).
+<a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a>
+<a id="__codelineno-8-9" name="__codelineno-8-9" href="#__codelineno-8-9"></a>THIS BOOK&#39;S OWN ILLUSTRATIVE PROJECTION (not an NVIDIA-published number): if Chapter 21&#39;s own real 9.44x GPUDirect RDMA speedup applied directly to Section 37.1&#39;s own real 60us kernel-bypass baseline, removing its remaining host-memory hop, the projected latency would be approximately 6.36us.
+<a id="__codelineno-8-10" name="__codelineno-8-10" href="#__codelineno-8-10"></a>
+<a id="__codelineno-8-11" name="__codelineno-8-11" href="#__codelineno-8-11"></a>Why this is labeled a projection and not a finding: Chapter 21&#39;s own 9.44x figure was measured on a synthetic small-message ping-pong benchmark on specific Ivy Bridge-era hardware, not on Databento&#39;s own real market-data pipeline or its own real NIC/GPU topology. Combining the two real numbers this way assumes the same relative speedup would carry over to a different, real, specific workload -- an assumption this book has no cited measurement to confirm. What IS real and directly cited is the DIRECTION: NVIDIA&#39;s own documentation places NIC-to-GPU GPUDirect RDMA for market data under &quot;What&#39;s next,&quot; not among its own already-deployed results, unlike Chapter 21&#39;s own GPU-to-GPU and storage-to-GPU GPUDirect RDMA use cases, which that chapter cited as already real and measured.
+</code></pre></div>
+<h2 id="373-gdrcopy-gpudirect-rdma-running-the-other-direction">37.3 GDRCopy: GPUDirect RDMA Running the Other Direction<a class="headerlink" href="#373-gdrcopy-gpudirect-rdma-running-the-other-direction" title="Permanent link">&para;</a></h2>
+<h3 id="intuition_2">Intuition<a class="headerlink" href="#intuition_2" title="Permanent link">&para;</a></h3>
+<p>Section 37.2 found the OBVIOUS extension of Chapter 21's own technology -- NIC directly into GPU memory -- was still aspirational for this specific domain. But GPUDirect RDMA's own underlying mechanism (a third party mapping GPU memory directly) does not require that third party to be a NIC at all. Real NVIDIA capital-markets inference benchmarks report genuinely single-digit-microsecond total latencies -- "4.61 microseconds p99" on a real GH200, "4.3" microseconds P99 on a real RTX PRO 6000 -- and identify a real, specific bottleneck standing in the way of going faster still: "the overhead of CPU-GPU synchronization and reading the input vector from host memory... is the dominant contributor to latency for the small model." NVIDIA's own real GDRCopy library exists for exactly that problem, using GPUDirect RDMA's own real mechanism in a direction Chapter 21 never needed: letting the CPU itself map and read GPU memory directly, with far less overhead than routing through the normal CUDA API. Its own real README says so plainly: "while GPUDirect RDMA is meant for direct access to GPU memory from third-party devices, it is possible to use these same APIs to create perfectly valid CPU mappings of the GPU memory. The advantage of a CPU driven copy is the very small overhead involved."</p>
+<div class="admonition warning">
+<p class="admonition-title">[COMMON TRAP] Assuming a fixed per-call overhead always becomes negligible, as it did in every earlier chapter</p>
+<p>Chapters 5, 9, 16, 27, 28, 34, and 35 all found that a fixed per-call cost matters only briefly, before communication VOLUME takes over as the real bottleneck at scale. Real single-digit-microsecond capital-markets inference breaks that pattern completely: the payload here (one small input vector) never grows, and the entire real latency budget is itself only a few microseconds. File 110 shows a plain <code>cudaMemcpy</code> round trip's own real cited fixed overhead (6-7 microseconds, per GDRCopy's own README) can, by itself, EXCEED an entire real cited P99 latency budget -- not eventually, not at scale, but on every single call, regardless of how little data moves.</p>
+</div>
+<h3 id="background_2">Background<a class="headerlink" href="#background_2" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>+----------------------------------------------------------+
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>| Real total P99 budget (capital-markets inference): about   |
+<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>| 4.3-4.6 microseconds                                        |
+<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a>+----------------------------------------------------------+
+<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a>| cudaMemcpy round trip alone: 6-7us -&gt; EXCEEDS the budget    |
+<a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a>| GDRCopy round trip alone: about 1.09us -&gt; fits comfortably   |
+<a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a>+----------------------------------------------------------+
+<a id="__codelineno-9-8" name="__codelineno-9-8" href="#__codelineno-9-8"></a>| GPUDirect RDMA here runs the OTHER direction: CPU reads GPU |
+<a id="__codelineno-9-9" name="__codelineno-9-9" href="#__codelineno-9-9"></a>| memory directly, not a third-party device reading it        |
+<a id="__codelineno-9-10" name="__codelineno-9-10" href="#__codelineno-9-10"></a>+----------------------------------------------------------+
+</code></pre></div>
+<p>File 110 places GDRCopy's own real cited fixed-overhead numbers directly against the real cited total P99 latency budgets from NVIDIA's own capital-markets inference blog.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="c1">// Chapter 37: GPUDirect RDMA in Capital Markets</span>
+<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a><span class="c1">// 110_gdrcopy_fixed_overhead_vs_latency_budget_model.cpp</span>
+<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a><span class="c1">//</span>
+<a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a><span class="c1">// Every earlier chapter&#39;s own cost model (Chapter 5, 9, 16, 27, 28, 34,</span>
+<a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a><span class="c1">// 35) found that fixed per-call overhead becomes NEGLIGIBLE once enough</span>
+<a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a><span class="c1">// data moves -- communication VOLUME was always what eventually</span>
+<a id="__codelineno-10-7" name="__codelineno-10-7" href="#__codelineno-10-7"></a><span class="c1">// dominated. Real single-digit-microsecond capital-markets inference</span>
+<a id="__codelineno-10-8" name="__codelineno-10-8" href="#__codelineno-10-8"></a><span class="c1">// inverts that lesson completely. NVIDIA&#39;s own real &quot;Achieving Single-</span>
+<a id="__codelineno-10-9" name="__codelineno-10-9" href="#__codelineno-10-9"></a><span class="c1">// Digit Microsecond Latency Inference for Capital Markets&quot; blog reports</span>
+<a id="__codelineno-10-10" name="__codelineno-10-10" href="#__codelineno-10-10"></a><span class="c1">// real cited P99 latencies this small: &quot;4.61 microseconds p99&quot; on a</span>
+<a id="__codelineno-10-11" name="__codelineno-10-11" href="#__codelineno-10-11"></a><span class="c1">// real GH200 (four LSTM_A instances) and a real cited &quot;4.3&quot; microsecond</span>
+<a id="__codelineno-10-12" name="__codelineno-10-12" href="#__codelineno-10-12"></a><span class="c1">// P99 figure on RTX PRO 6000 Blackwell for a small model -- and</span>
+<a id="__codelineno-10-13" name="__codelineno-10-13" href="#__codelineno-10-13"></a><span class="c1">// identifies the real bottleneck directly: &quot;the overhead of CPU-GPU</span>
+<a id="__codelineno-10-14" name="__codelineno-10-14" href="#__codelineno-10-14"></a><span class="c1">// synchronization and reading the input vector from host memory... is</span>
+<a id="__codelineno-10-15" name="__codelineno-10-15" href="#__codelineno-10-15"></a><span class="c1">// the dominant contributor to latency for the small model.&quot; NVIDIA&#39;s</span>
+<a id="__codelineno-10-16" name="__codelineno-10-16" href="#__codelineno-10-16"></a><span class="c1">// own real GDRCopy library exists for exactly this problem -- its own</span>
+<a id="__codelineno-10-17" name="__codelineno-10-17" href="#__codelineno-10-17"></a><span class="c1">// real README states &quot;while GPUDirect RDMA is meant for direct access</span>
+<a id="__codelineno-10-18" name="__codelineno-10-18" href="#__codelineno-10-18"></a><span class="c1">// to GPU memory from third-party devices, it is possible to use these</span>
+<a id="__codelineno-10-19" name="__codelineno-10-19" href="#__codelineno-10-19"></a><span class="c1">// same APIs to create perfectly valid CPU mappings of the GPU memory.</span>
+<a id="__codelineno-10-20" name="__codelineno-10-20" href="#__codelineno-10-20"></a><span class="c1">// The advantage of a CPU driven copy is the very small overhead</span>
+<a id="__codelineno-10-21" name="__codelineno-10-21" href="#__codelineno-10-21"></a><span class="c1">// involved,&quot; and cites real, specific numbers: an ordinary &quot;cudaMemcpy</span>
+<a id="__codelineno-10-22" name="__codelineno-10-22" href="#__codelineno-10-22"></a><span class="c1">// can incur in a 6-7us overhead,&quot; against GDRCopy&#39;s own real cited</span>
+<a id="__codelineno-10-23" name="__codelineno-10-23" href="#__codelineno-10-23"></a><span class="c1">// ping-pong round-trip latency of &quot;1.08762 us&quot; (on a real A40 GPU).</span>
+<a id="__codelineno-10-24" name="__codelineno-10-24" href="#__codelineno-10-24"></a><span class="c1">// This file places those real, separately-cited numbers side by side</span>
+<a id="__codelineno-10-25" name="__codelineno-10-25" href="#__codelineno-10-25"></a><span class="c1">// against the real cited total latency budgets above, to show something</span>
+<a id="__codelineno-10-26" name="__codelineno-10-26" href="#__codelineno-10-26"></a><span class="c1">// no earlier chapter&#39;s cost model needed to show: a FIXED per-call</span>
+<a id="__codelineno-10-27" name="__codelineno-10-27" href="#__codelineno-10-27"></a><span class="c1">// overhead alone -- not any payload size -- can exceed an entire real</span>
+<a id="__codelineno-10-28" name="__codelineno-10-28" href="#__codelineno-10-28"></a><span class="c1">// production latency budget.</span>
+<a id="__codelineno-10-29" name="__codelineno-10-29" href="#__codelineno-10-29"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;cstdio&gt;</span>
+<a id="__codelineno-10-30" name="__codelineno-10-30" href="#__codelineno-10-30"></a>
+<a id="__codelineno-10-31" name="__codelineno-10-31" href="#__codelineno-10-31"></a><span class="kt">int</span><span class="w"> </span><span class="nf">main</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-10-32" name="__codelineno-10-32" href="#__codelineno-10-32"></a><span class="w">    </span><span class="c1">// Real cited GDRCopy README numbers.</span>
+<a id="__codelineno-10-33" name="__codelineno-10-33" href="#__codelineno-10-33"></a><span class="w">    </span><span class="kt">double</span><span class="w"> </span><span class="n">cudaMemcpyOverheadLowUs</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">6.0</span><span class="p">;</span>
+<a id="__codelineno-10-34" name="__codelineno-10-34" href="#__codelineno-10-34"></a><span class="w">    </span><span class="kt">double</span><span class="w"> </span><span class="n">cudaMemcpyOverheadHighUs</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">7.0</span><span class="p">;</span>
+<a id="__codelineno-10-35" name="__codelineno-10-35" href="#__codelineno-10-35"></a><span class="w">    </span><span class="kt">double</span><span class="w"> </span><span class="n">gdrCopyRoundTripUs</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">1.08762</span><span class="p">;</span><span class="w">  </span><span class="c1">// real cited A40 ping-pong result</span>
+<a id="__codelineno-10-36" name="__codelineno-10-36" href="#__codelineno-10-36"></a>
+<a id="__codelineno-10-37" name="__codelineno-10-37" href="#__codelineno-10-37"></a><span class="w">    </span><span class="c1">// Real cited capital-markets total inference latency budgets.</span>
+<a id="__codelineno-10-38" name="__codelineno-10-38" href="#__codelineno-10-38"></a><span class="w">    </span><span class="kt">double</span><span class="w"> </span><span class="n">gh200TotalP99Us</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">4.61</span><span class="p">;</span><span class="w">        </span><span class="c1">// real cited GH200, LSTM_A x4</span>
+<a id="__codelineno-10-39" name="__codelineno-10-39" href="#__codelineno-10-39"></a><span class="w">    </span><span class="kt">double</span><span class="w"> </span><span class="n">rtxPro6000TotalP99Us</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">4.3</span><span class="p">;</span><span class="w">    </span><span class="c1">// real cited RTX PRO 6000, small model</span>
+<a id="__codelineno-10-40" name="__codelineno-10-40" href="#__codelineno-10-40"></a>
+<a id="__codelineno-10-41" name="__codelineno-10-41" href="#__codelineno-10-41"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;Real cited fixed per-call overhead (NVIDIA/gdrcopy README):</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
+<a id="__codelineno-10-42" name="__codelineno-10-42" href="#__codelineno-10-42"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;- Ordinary cudaMemcpy round trip: %.1f-%.1f microseconds</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span>
+<a id="__codelineno-10-43" name="__codelineno-10-43" href="#__codelineno-10-43"></a><span class="w">           </span><span class="n">cudaMemcpyOverheadLowUs</span><span class="p">,</span><span class="w"> </span><span class="n">cudaMemcpyOverheadHighUs</span><span class="p">);</span>
+<a id="__codelineno-10-44" name="__codelineno-10-44" href="#__codelineno-10-44"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;- GDRCopy (CPU-mapped direct read via GPUDirect RDMA): %.5f &quot;</span>
+<a id="__codelineno-10-45" name="__codelineno-10-45" href="#__codelineno-10-45"></a><span class="w">           </span><span class="s">&quot;microseconds (real cited A40 ping-pong result)</span><span class="se">\n\n</span><span class="s">&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">gdrCopyRoundTripUs</span><span class="p">);</span>
+<a id="__codelineno-10-46" name="__codelineno-10-46" href="#__codelineno-10-46"></a>
+<a id="__codelineno-10-47" name="__codelineno-10-47" href="#__codelineno-10-47"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;Real cited TOTAL P99 inference latency budgets (NVIDIA capital-&quot;</span>
+<a id="__codelineno-10-48" name="__codelineno-10-48" href="#__codelineno-10-48"></a><span class="w">           </span><span class="s">&quot;markets blog):</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
+<a id="__codelineno-10-49" name="__codelineno-10-49" href="#__codelineno-10-49"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;- GH200, four LSTM_A instances: %.2f microseconds p99</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">gh200TotalP99Us</span><span class="p">);</span>
+<a id="__codelineno-10-50" name="__codelineno-10-50" href="#__codelineno-10-50"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;- RTX PRO 6000 Blackwell, small model: %.2f microseconds p99</span><span class="se">\n\n</span><span class="s">&quot;</span><span class="p">,</span>
+<a id="__codelineno-10-51" name="__codelineno-10-51" href="#__codelineno-10-51"></a><span class="w">           </span><span class="n">rtxPro6000TotalP99Us</span><span class="p">);</span>
+<a id="__codelineno-10-52" name="__codelineno-10-52" href="#__codelineno-10-52"></a>
+<a id="__codelineno-10-53" name="__codelineno-10-53" href="#__codelineno-10-53"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;%-46s %-18s %-18s</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;Comparison&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;vs GH200 budget&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;vs RTX PRO 6000 budget&quot;</span><span class="p">);</span>
+<a id="__codelineno-10-54" name="__codelineno-10-54" href="#__codelineno-10-54"></a><span class="w">    </span><span class="kt">double</span><span class="w"> </span><span class="n">memcpyFracGh200</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">100.0</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="n">cudaMemcpyOverheadLowUs</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="n">gh200TotalP99Us</span><span class="p">;</span>
+<a id="__codelineno-10-55" name="__codelineno-10-55" href="#__codelineno-10-55"></a><span class="w">    </span><span class="kt">double</span><span class="w"> </span><span class="n">memcpyFracRtx</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">100.0</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="n">cudaMemcpyOverheadLowUs</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="n">rtxPro6000TotalP99Us</span><span class="p">;</span>
+<a id="__codelineno-10-56" name="__codelineno-10-56" href="#__codelineno-10-56"></a><span class="w">    </span><span class="kt">double</span><span class="w"> </span><span class="n">gdrFracGh200</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">100.0</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="n">gdrCopyRoundTripUs</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="n">gh200TotalP99Us</span><span class="p">;</span>
+<a id="__codelineno-10-57" name="__codelineno-10-57" href="#__codelineno-10-57"></a><span class="w">    </span><span class="kt">double</span><span class="w"> </span><span class="n">gdrFracRtx</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">100.0</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="n">gdrCopyRoundTripUs</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="n">rtxPro6000TotalP99Us</span><span class="p">;</span>
+<a id="__codelineno-10-58" name="__codelineno-10-58" href="#__codelineno-10-58"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;%-46s %-17.1f%% %-17.1f%%</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;cudaMemcpy overhead alone (low end, 6us)&quot;</span><span class="p">,</span>
+<a id="__codelineno-10-59" name="__codelineno-10-59" href="#__codelineno-10-59"></a><span class="w">           </span><span class="n">memcpyFracGh200</span><span class="p">,</span><span class="w"> </span><span class="n">memcpyFracRtx</span><span class="p">);</span>
+<a id="__codelineno-10-60" name="__codelineno-10-60" href="#__codelineno-10-60"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;%-46s %-17.1f%% %-17.1f%%</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;GDRCopy round trip alone&quot;</span><span class="p">,</span>
+<a id="__codelineno-10-61" name="__codelineno-10-61" href="#__codelineno-10-61"></a><span class="w">           </span><span class="n">gdrFracGh200</span><span class="p">,</span><span class="w"> </span><span class="n">gdrFracRtx</span><span class="p">);</span>
+<a id="__codelineno-10-62" name="__codelineno-10-62" href="#__codelineno-10-62"></a>
+<a id="__codelineno-10-63" name="__codelineno-10-63" href="#__codelineno-10-63"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;</span><span class="se">\n</span><span class="s">A plain cudaMemcpy round trip&#39;s own real cited FIXED &quot;</span>
+<a id="__codelineno-10-64" name="__codelineno-10-64" href="#__codelineno-10-64"></a><span class="w">           </span><span class="s">&quot;overhead (%.1f-%.1fus) is, by itself, %.0f%%-%.0f%% of these &quot;</span>
+<a id="__codelineno-10-65" name="__codelineno-10-65" href="#__codelineno-10-65"></a><span class="w">           </span><span class="s">&quot;real total P99 latency budgets -- at the low end of NVIDIA&#39;s &quot;</span>
+<a id="__codelineno-10-66" name="__codelineno-10-66" href="#__codelineno-10-66"></a><span class="w">           </span><span class="s">&quot;own cited range, it alone would consume MORE than the &quot;</span>
+<a id="__codelineno-10-67" name="__codelineno-10-67" href="#__codelineno-10-67"></a><span class="w">           </span><span class="s">&quot;entire real RTX PRO 6000 budget, before a single byte of the &quot;</span>
+<a id="__codelineno-10-68" name="__codelineno-10-68" href="#__codelineno-10-68"></a><span class="w">           </span><span class="s">&quot;actual input vector or model computation is counted. GDRCopy&#39;s &quot;</span>
+<a id="__codelineno-10-69" name="__codelineno-10-69" href="#__codelineno-10-69"></a><span class="w">           </span><span class="s">&quot;own real cited round trip (%.5fus) is small enough, by &quot;</span>
+<a id="__codelineno-10-70" name="__codelineno-10-70" href="#__codelineno-10-70"></a><span class="w">           </span><span class="s">&quot;contrast, to leave the vast majority of either real budget &quot;</span>
+<a id="__codelineno-10-71" name="__codelineno-10-71" href="#__codelineno-10-71"></a><span class="w">           </span><span class="s">&quot;for the model&#39;s own computation. This is the opposite lesson &quot;</span>
+<a id="__codelineno-10-72" name="__codelineno-10-72" href="#__codelineno-10-72"></a><span class="w">           </span><span class="s">&quot;from every earlier chapter&#39;s own cost model: there, a fixed &quot;</span>
+<a id="__codelineno-10-73" name="__codelineno-10-73" href="#__codelineno-10-73"></a><span class="w">           </span><span class="s">&quot;per-call cost eventually became negligible as payload grew; &quot;</span>
+<a id="__codelineno-10-74" name="__codelineno-10-74" href="#__codelineno-10-74"></a><span class="w">           </span><span class="s">&quot;here, the payload (one small input vector) was always tiny, &quot;</span>
+<a id="__codelineno-10-75" name="__codelineno-10-75" href="#__codelineno-10-75"></a><span class="w">           </span><span class="s">&quot;so it is the FIXED overhead itself, not any volume, that &quot;</span>
+<a id="__codelineno-10-76" name="__codelineno-10-76" href="#__codelineno-10-76"></a><span class="w">           </span><span class="s">&quot;threatens to consume the entire real latency budget -- &quot;</span>
+<a id="__codelineno-10-77" name="__codelineno-10-77" href="#__codelineno-10-77"></a><span class="w">           </span><span class="s">&quot;exactly the real problem GDRCopy&#39;s own GPUDirect-RDMA-based &quot;</span>
+<a id="__codelineno-10-78" name="__codelineno-10-78" href="#__codelineno-10-78"></a><span class="w">           </span><span class="s">&quot;CPU mapping exists to solve.</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span>
+<a id="__codelineno-10-79" name="__codelineno-10-79" href="#__codelineno-10-79"></a><span class="w">           </span><span class="n">cudaMemcpyOverheadLowUs</span><span class="p">,</span><span class="w"> </span><span class="n">cudaMemcpyOverheadHighUs</span><span class="p">,</span>
+<a id="__codelineno-10-80" name="__codelineno-10-80" href="#__codelineno-10-80"></a><span class="w">           </span><span class="n">memcpyFracRtx</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="n">memcpyFracGh200</span><span class="w"> </span><span class="o">?</span><span class="w"> </span><span class="n">memcpyFracRtx</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="n">memcpyFracGh200</span><span class="p">,</span>
+<a id="__codelineno-10-81" name="__codelineno-10-81" href="#__codelineno-10-81"></a><span class="w">           </span><span class="n">memcpyFracRtx</span><span class="w"> </span><span class="o">&gt;</span><span class="w"> </span><span class="n">memcpyFracGh200</span><span class="w"> </span><span class="o">?</span><span class="w"> </span><span class="n">memcpyFracRtx</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="n">memcpyFracGh200</span><span class="p">,</span>
+<a id="__codelineno-10-82" name="__codelineno-10-82" href="#__codelineno-10-82"></a><span class="w">           </span><span class="n">gdrCopyRoundTripUs</span><span class="p">);</span>
+<a id="__codelineno-10-83" name="__codelineno-10-83" href="#__codelineno-10-83"></a><span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
+<a id="__codelineno-10-84" name="__codelineno-10-84" href="#__codelineno-10-84"></a><span class="p">}</span>
+</code></pre></div>
+<p>Compile and run (plain host <code>.cpp</code>, cross-verified on both the cloud sandbox and the device):</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>g++<span class="w"> </span>-O2<span class="w"> </span>-ffp-contract<span class="o">=</span>off<span class="w"> </span>-o<span class="w"> </span>110_gdrcopy_fixed_overhead_vs_latency_budget_model<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a><span class="w">    </span>110_gdrcopy_fixed_overhead_vs_latency_budget_model.cpp
+<a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a>./110_gdrcopy_fixed_overhead_vs_latency_budget_model
+</code></pre></div>
+<p>Locked output:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>Real cited fixed per-call overhead (NVIDIA/gdrcopy README):
+<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a>- Ordinary cudaMemcpy round trip: 6.0-7.0 microseconds
+<a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a>- GDRCopy (CPU-mapped direct read via GPUDirect RDMA): 1.08762 microseconds (real cited A40 ping-pong result)
+<a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a>
+<a id="__codelineno-12-5" name="__codelineno-12-5" href="#__codelineno-12-5"></a>Real cited TOTAL P99 inference latency budgets (NVIDIA capital-markets blog):
+<a id="__codelineno-12-6" name="__codelineno-12-6" href="#__codelineno-12-6"></a>- GH200, four LSTM_A instances: 4.61 microseconds p99
+<a id="__codelineno-12-7" name="__codelineno-12-7" href="#__codelineno-12-7"></a>- RTX PRO 6000 Blackwell, small model: 4.30 microseconds p99
+<a id="__codelineno-12-8" name="__codelineno-12-8" href="#__codelineno-12-8"></a>
+<a id="__codelineno-12-9" name="__codelineno-12-9" href="#__codelineno-12-9"></a>Comparison                                     vs GH200 budget    vs RTX PRO 6000 budget
+<a id="__codelineno-12-10" name="__codelineno-12-10" href="#__codelineno-12-10"></a>cudaMemcpy overhead alone (low end, 6us)       130.2            % 139.5            %
+<a id="__codelineno-12-11" name="__codelineno-12-11" href="#__codelineno-12-11"></a>GDRCopy round trip alone                       23.6             % 25.3             %
+<a id="__codelineno-12-12" name="__codelineno-12-12" href="#__codelineno-12-12"></a>
+<a id="__codelineno-12-13" name="__codelineno-12-13" href="#__codelineno-12-13"></a>A plain cudaMemcpy round trip&#39;s own real cited FIXED overhead (6.0-7.0us) is, by itself, 130%-140% of these real total P99 latency budgets -- at the low end of NVIDIA&#39;s own cited range, it alone would consume MORE than the entire real RTX PRO 6000 budget, before a single byte of the actual input vector or model computation is counted. GDRCopy&#39;s own real cited round trip (1.08762us) is small enough, by contrast, to leave the vast majority of either real budget for the model&#39;s own computation. This is the opposite lesson from every earlier chapter&#39;s own cost model: there, a fixed per-call cost eventually became negligible as payload grew; here, the payload (one small input vector) was always tiny, so it is the FIXED overhead itself, not any volume, that threatens to consume the entire real latency budget -- exactly the real problem GDRCopy&#39;s own GPUDirect-RDMA-based CPU mapping exists to solve.
+</code></pre></div>
+<h2 id="chapter-summary">Chapter Summary<a class="headerlink" href="#chapter-summary" title="Permanent link">&para;</a></h2>
+<p>This chapter set out to extend Chapter 21's own GPUDirect RDMA to capital markets, and found the honest answer was more nuanced than a simple extension. File 108 established the real, currently-deployed baseline: kernel-bypass NIC processing (DPDK, hardware timestamping) delivers market data to host memory at real production scale and a real sub-60-microsecond median latency -- stopping at host memory, not yet GPU memory -- and flagged a real risk of combining two correctly-cited but incompatible statistics. File 109 confirmed, by quoting NVIDIA's own real documentation directly, that NIC-to-GPU GPUDirect RDMA for market data specifically sits under a real "What's next" heading rather than among deployed results, and built an explicitly-labeled illustrative projection rather than overstating that gap as already closed. File 110 then found a different, currently-shipping real answer working in the opposite direction: GDRCopy uses GPUDirect RDMA's own real mechanism to let a CPU read GPU memory directly, and its real cited numbers, set against real single-digit-microsecond capital-markets inference budgets, showed something no earlier chapter's own cost model needed to show -- a fixed per-call transfer overhead alone can exceed an entire real production latency budget, inverting the "volume eventually dominates" lesson this book has relied on since Chapter 5.</p>
+<h2 id="self-check-questions">Self-Check Questions<a class="headerlink" href="#self-check-questions" title="Permanent link">&para;</a></h2>
+<ol>
+<li>What real, currently-deployed technique gets market data from the wire to memory before any GPU is involved, and what real cited numbers describe its scale and latency?</li>
+<li>Why does File 108 explicitly flag its own "average bytes per update" arithmetic as a mismatch rather than presenting it as a real message size?</li>
+<li>According to real NVIDIA documentation, is NIC-to-GPU GPUDirect RDMA for market data a deployed technique today, or a stated future direction? Quote the real language that supports your answer.</li>
+<li>Why does File 109 explicitly label its own combined latency number a "projection" rather than a "finding"?</li>
+<li>What real, specific benchmark does Chapter 21's own 9.44x GPUDirect RDMA speedup come from, and why might that number not carry over unchanged to a real market-data workload?</li>
+<li>What does GDRCopy actually do, according to its own real documentation, and how does it differ from the classic GPUDirect RDMA use case Chapter 21 built (a third-party device reading GPU memory)?</li>
+<li>Why does fixed per-call overhead dominate in Section 37.3's own cost model, when every earlier chapter's own cost model found the opposite -- that volume eventually dominates?</li>
+<li>According to File 110's own locked output, can a single ordinary cudaMemcpy round trip alone exceed an entire real capital-markets P99 latency budget? What does this imply for anyone designing such a pipeline?</li>
+<li>If a team wanted to build the aspirational NIC-to-GPU market-data pipeline Section 37.2 describes, what would this chapter's own findings suggest they should verify before trusting any specific latency number for their own workload?</li>
+</ol>
+<h2 id="where-we-go-next">Where We Go Next<a class="headerlink" href="#where-we-go-next" title="Permanent link">&para;</a></h2>
+<p>Chapter 38 turns to real-time fraud detection at payment scale, a real NVIDIA case study built with American Express, extending this book's own low-latency inference theme from single-digit-microsecond trading decisions to real-time transaction scoring under a very different real production constraint.</p>
+<h2 id="worked-solutions">Worked Solutions<a class="headerlink" href="#worked-solutions" title="Permanent link">&para;</a></h2>
+<ol>
+<li>Kernel-bypass NIC processing (using DPDK acceleration on real NVIDIA NICs) is the real, currently-deployed technique. NVIDIA's own real Databento case study cites a platform that "exceeds 80 Gbps and handles over 200 billion market updates each day," with a real cited "median network latency [that] dropped below 60 microseconds."</li>
+<li>Because dividing the real cited "80 Gbps" figure (a sustained peak-capacity number) by the real cited "200 billion updates/day" figure (a daily-average volume number) produces an implied message size (4320 bytes in File 108's own locked output) far larger than any real market-data message, revealing that the two real numbers describe different things (peak capacity vs. daily average) rather than the same moment -- presenting that number as a real message size would be misleading even though both inputs are genuinely real and cited.</li>
+<li>It is a stated future direction, not a deployed technique today. NVIDIA's own real Rivermax/NEIO FastSocket blog post states, under its own "What's next" heading: "GPUDirect technology is poised to improve the performance of trading systems by enabling direct memory access between NICs and GPUs, bypassing the CPU to reduce latency," and describes market data being "streamed directly from high-speed NICs into GPU memory" as part of that same forward-looking section, not as an already-measured deployed result.</li>
+<li>Because the two real numbers it combines -- Chapter 21's own real 9.44x GPUDirect RDMA speedup and Section 37.1's own real sub-60-microsecond kernel-bypass baseline -- were measured on different hardware, for a different message pattern, on a different real workload entirely. No real cited source combines them into one measured number, so presenting the combination as a "finding" would overstate what is actually known; calling it a "projection" honestly reflects that it assumes, rather than confirms, that the same relative speedup would carry over.</li>
+<li>That 9.44x figure comes from NVIDIA's own real "Benchmarking GPUDirect RDMA on Modern Server Platforms" post, measured via a synthetic small-message ping-pong benchmark on specific Ivy Bridge-era Xeon hardware. It might not carry over unchanged to a market-data workload because real market-data traffic has a different message-size distribution, runs on different (often newer) hardware, and crosses a different real PCIe topology -- and Chapter 21 itself already showed topology alone can swing GPUDirect RDMA's own real benefit by more than 40x.</li>
+<li>According to its own real README, GDRCopy "create[s] perfectly valid CPU mappings of the GPU memory" using GPUDirect RDMA's own underlying APIs, specifically because "the advantage of a CPU driven copy is the very small overhead involved." This differs from Chapter 21's own classic use case, where a third-party device (a NIC) reads or writes GPU memory directly; here, the CPU itself is the party reading GPU memory directly, without going through the ordinary CUDA API's own per-call overhead.</li>
+<li>Because the total real latency budget in this domain (a few microseconds, per NVIDIA's own real cited P99 figures) and the payload being transferred (one small input vector) are BOTH tiny and stay tiny -- unlike every earlier chapter's own cost model, where communication volume eventually grew large enough to make a fixed per-call cost negligible by comparison. When neither the budget nor the payload ever grows, the fixed cost never gets the chance to become proportionally small.</li>
+<li>Yes -- File 110's own locked output shows a plain cudaMemcpy round trip's own real cited fixed overhead (6.0-7.0 microseconds) is 130%-140% of the real cited total P99 latency budgets (4.3-4.61 microseconds), meaning it can, by itself, exceed the ENTIRE real budget before any actual computation happens. This implies that at this latency scale, the choice of transfer mechanism between CPU and GPU is not a minor optimization -- it can be the single largest, and even a budget-breaking, factor in the whole pipeline.</li>
+<li>They should verify the real cited numbers were measured on hardware, message sizes, and PCIe topology representative of their own specific deployment, rather than trusting Chapter 21's own 9.44x figure (measured on different, older hardware) or this chapter's own explicitly-labeled illustrative projection (File 109) to hold exactly for their own workload -- consistent with Chapter 21's own COMMON TRAP that "GPUDirect RDMA capable" is necessary but never sufficient to predict real performance without also checking the real topology and real workload in question.</li>
+</ol>
+<hr />
+<p><strong>Sources cited in this chapter:</strong></p>
+<ul>
+<li>NVIDIA. "Financial Services" case study (Databento), nvidia.com/en-us/case-studies/databento, fetched fresh this session. (The real "exceeds 80 Gbps and handles over 200 billion market updates each day," "kernel-bypass paths on NVIDIA NICs," "DPDK acceleration," "median network latency dropped below 60 microseconds," and "ConnectX hardware timestamping" quotes.)</li>
+<li>NVIDIA Technical Blog. "Maximizing Low-Latency Networking Performance for Financial Services with NVIDIA Rivermax and NEIO FastSocket," developer.nvidia.com, fetched fresh this session. (The real Rivermax kernel-bypass description and the real "GPUDirect technology is poised to improve the performance of trading systems..." and "market data is streamed directly from high-speed NICs into GPU memory..." quotes, both from that post's own "What's next" section.)</li>
+<li>NVIDIA Technical Blog. "Achieving Single-Digit Microsecond Latency Inference for Capital Markets," developer.nvidia.com, fetched fresh this session. (The real cited "4.61 microseconds p99" GH200 figure, the real cited "4.3" microsecond P99 RTX PRO 6000 Blackwell figure, and the real "the overhead of CPU-GPU synchronization and reading the input vector from host memory... is the dominant contributor to latency" quote.)</li>
+<li>NVIDIA/gdrcopy. GitHub README, github.com/NVIDIA/gdrcopy, fetched fresh this session. (The real "a low-latency GPU memory copy library based on NVIDIA GPUDirect RDMA technology" description, the real "it is possible to use these same APIs to create perfectly valid CPU mappings of the GPU memory... the advantage of a CPU driven copy is the very small overhead involved" quote, and the real cited "cudaMemcpy can incur in a 6-7us overhead" and "1.08762 us" A40 ping-pong round-trip numbers.)</li>
+<li>This book's own Chapter 5 (the first fixed-latency-plus-bandwidth cost model, the pattern Section 37.3 inverts), Chapter 20 (the staged host-mediated fallback GPUDirect RDMA exists to remove), and Chapter 21 (GPUDirect RDMA itself, including its own real cited 9.44x latency speedup and 46.4x topology-sensitivity numbers, both reused and directly re-examined in this chapter).</li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+    
+      
+      <nav class="md-footer__inner md-grid" aria-label="Footer" >
+        
+          
+          <a href="../36-multi-gpu-xva-and-portfolio-risk/" class="md-footer__link md-footer__link--prev" aria-label="Previous: 36. Multi-GPU XVA and Portfolio Risk">
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+            </div>
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Previous
+              </span>
+              <div class="md-ellipsis">
+                36. Multi-GPU XVA and Portfolio Risk
+              </div>
+            </div>
+          </a>
+        
+        
+      </nav>
+    
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      Copyright &copy; 2026 Oluwaseyi Awoga
+    </div>
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.instant", "navigation.tracking", "navigation.sections", "navigation.expand", "navigation.top", "navigation.footer", "toc.follow", "search.suggest", "search.highlight", "content.code.copy", "content.code.annotate"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>
