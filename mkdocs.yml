@@ -75,6 +75,7 @@ nav:
   - "Part 3 -- Parallelization Strategies":
       - "12. Data Parallelism: Replicated Model, Sharded Data": part3/12-data-parallelism-replicated-model-sharded-data.md
       - "13. Model Parallelism: When One GPU Can't Hold the Weights": part3/13-model-parallelism-when-one-gpu-cant-hold-the-weights.md
+      - "14. Tensor Parallelism: Splitting a Single Matrix Multiply Across Devices": part3/14-tensor-parallelism-splitting-a-single-matrix-multiply-across-devices.md
 
 extra:
   social: []
