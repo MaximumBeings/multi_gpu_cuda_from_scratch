@@ -1,0 +1,2607 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="From Peer-to-Peer Memory to Distributed Training Across the Cluster">
+      
+      
+        <meta name="author" content="Oluwaseyi Awoga">
+      
+      
+      
+        <link rel="prev" href="../32-mixture-of-experts-at-scale/">
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+    
+    
+      
+        <title>33. Disaggregated LLM Inference: Prefill/Decode Splitting (DistServe) - Multi-GPU Programming in CUDA C++ -- Under Development</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#331-why-prefill-and-decode-need-different-resources" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="Multi-GPU Programming in CUDA C++ -- Under Development" class="md-header__button md-logo" aria-label="Multi-GPU Programming in CUDA C++ -- Under Development" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 19h1a1 1 0 0 1 1 1h7v2h-7a1 1 0 0 1-1 1h-4a1 1 0 0 1-1-1H2v-2h7a1 1 0 0 1 1-1h1v-2H4a1 1 0 0 1-1-1v-4a1 1 0 0 1 1-1h16a1 1 0 0 1 1 1v4a1 1 0 0 1-1 1h-7zM4 3h16a1 1 0 0 1 1 1v4a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1m5 4h1V5H9zm0 8h1v-2H9zM5 5v2h2V5zm0 8v2h2v-2z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Multi-GPU Programming in CUDA C++ -- Under Development
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              33. Disaggregated LLM Inference: Prefill/Decode Splitting (DistServe)
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m17.75 4.09-2.53 1.94.91 3.06-2.63-1.81-2.63 1.81.91-3.06-2.53-1.94L12.44 4l1.06-3 1.06 3zm3.5 6.91-1.64 1.25.59 1.98-1.7-1.17-1.7 1.17.59-1.98L15.75 11l2.06-.05L18.5 9l.69 1.95zm-2.28 4.95c.83-.08 1.72 1.1 1.19 1.85-.32.45-.66.87-1.08 1.27C15.17 23 8.84 23 4.94 19.07c-3.91-3.9-3.91-10.24 0-14.14.4-.4.82-.76 1.27-1.08.75-.53 1.93.36 1.85 1.19-.27 2.86.69 5.83 2.89 8.02a9.96 9.96 0 0 0 8.02 2.89m-1.64 2.02a12.08 12.08 0 0 1-7.8-3.47c-2.17-2.19-3.33-5-3.49-7.82-2.81 3.14-2.7 7.96.31 10.98 3.02 3.01 7.84 3.12 10.98.31"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 7a5 5 0 0 1 5 5 5 5 0 0 1-5 5 5 5 0 0 1-5-5 5 5 0 0 1 5-5m0 2a3 3 0 0 0-3 3 3 3 0 0 0 3 3 3 3 0 0 0 3-3 3 3 0 0 0-3-3m0-7 2.39 3.42C13.65 5.15 12.84 5 12 5s-1.65.15-2.39.42zM3.34 7l4.16-.35A7.2 7.2 0 0 0 5.94 8.5c-.44.74-.69 1.5-.83 2.29zm.02 10 1.76-3.77a7.131 7.131 0 0 0 2.38 4.14zM20.65 7l-1.77 3.79a7.02 7.02 0 0 0-2.38-4.15zm-.01 10-4.14.36c.59-.51 1.12-1.14 1.54-1.86.42-.73.69-1.5.83-2.29zM12 22l-2.41-3.44c.74.27 1.55.44 2.41.44.82 0 1.63-.17 2.37-.44z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="Multi-GPU Programming in CUDA C++ -- Under Development" class="md-nav__button md-logo" aria-label="Multi-GPU Programming in CUDA C++ -- Under Development" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 19h1a1 1 0 0 1 1 1h7v2h-7a1 1 0 0 1-1 1h-4a1 1 0 0 1-1-1H2v-2h7a1 1 0 0 1 1-1h1v-2H4a1 1 0 0 1-1-1v-4a1 1 0 0 1 1-1h16a1 1 0 0 1 1 1v4a1 1 0 0 1-1 1h-7zM4 3h16a1 1 0 0 1 1 1v4a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1m5 4h1V5H9zm0 8h1v-2H9zM5 5v2h2V5zm0 8v2h2v-2z"/></svg>
+
+    </a>
+    Multi-GPU Programming in CUDA C++ -- Under Development
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Part 0 -- Why Multi-GPU, and the Hardware Underneath It
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Part 0 -- Why Multi-GPU, and the Hardware Underneath It
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part0/01-why-one-gpu-is-not-enough/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    1. Why One GPU Is Not Enough
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part0/02-multi-gpu-hardware-topology/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    2. Multi-GPU Hardware Topology: PCIe, NVLink, and NVSwitch
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part0/03-the-cuda-multi-gpu-programming-model/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    3. The CUDA Multi-GPU Programming Model: Devices, Contexts, and Streams Across Them
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Part 1 -- Getting Data Between GPUs
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Part 1 -- Getting Data Between GPUs
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part1/04-peer-to-peer-memory-access-and-uva/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    4. Peer-to-Peer Memory Access and Unified Virtual Addressing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part1/05-explicit-transfers-cudamemcpypeer-staged-host-transfers/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    5. Explicit Transfers: cudaMemcpyPeer, Staged Host Transfers, and When Each Wins
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part1/06-streams-events-and-cross-device-synchronization/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    6. Streams, Events, and Cross-Device Synchronization
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part1/07-cuda-inter-process-communication/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    7. CUDA Inter-Process Communication: Sharing Memory and Events Across Processes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Part 2 -- Collective Communication, Built From Scratch
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Part 2 -- Collective Communication, Built From Scratch
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part2/08-broadcast-and-reduce-the-first-two-collectives-by-hand/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    8. Broadcast and Reduce: The First Two Collectives, By Hand
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part2/09-ring-all-reduce-the-algorithm-behind-every-multi-gpu-training-job/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    9. Ring All-Reduce: The Algorithm Behind Every Multi-GPU Training Job
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part2/10-all-gather-reduce-scatter-and-all-to-all/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    10. All-Gather, Reduce-Scatter, and All-to-All
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part2/11-nccl-what-it-actually-does-differently/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    11. NCCL: What It Actually Does Differently From What You Just Built
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Part 3 -- Parallelization Strategies
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Part 3 -- Parallelization Strategies
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part3/12-data-parallelism-replicated-model-sharded-data/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    12. Data Parallelism: Replicated Model, Sharded Data
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part3/13-model-parallelism-when-one-gpu-cant-hold-the-weights/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    13. Model Parallelism: When One GPU Can't Hold the Weights
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part3/14-tensor-parallelism-splitting-a-single-matrix-multiply-across-devices/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    14. Tensor Parallelism: Splitting a Single Matrix Multiply Across Devices
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part3/15-pipeline-parallelism-splitting-layers-across-devices-and-the-bubble-that-costs-you/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    15. Pipeline Parallelism: Splitting Layers Across Devices, and the Bubble That Costs You
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part3/16-domain-decomposition-for-scientific-computing-halo-exchange-and-distributed-stencils/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    16. Domain Decomposition for Scientific Computing: Halo Exchange and Distributed Stencils
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_7" >
+        
+          
+          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Part 4 -- Synchronization, Load Balancing, and Failure
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Part 4 -- Synchronization, Load Balancing, and Failure
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part4/17-barriers-and-global-synchronization-across-devices/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    17. Barriers and Global Synchronization Across Devices
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part4/18-load-balancing-across-heterogeneous-gpus/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    18. Load Balancing Across Heterogeneous GPUs
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part4/19-stragglers-failures-and-fault-tolerant-collectives/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    19. Stragglers, Failures, and Fault-Tolerant Collectives
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_8" >
+        
+          
+          <label class="md-nav__link" for="__nav_8" id="__nav_8_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Part 5 -- Scaling Beyond One Node
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_8">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Part 5 -- Scaling Beyond One Node
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part5/20-mpi-from-scratch-then-cuda-aware-mpi-scaling-beyond-one-node/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    20. MPI From Scratch, Then CUDA-Aware MPI: Scaling Beyond One Node
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part5/21-gpudirect-rdma-bypassing-the-host-entirely/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    21. GPUDirect RDMA: Bypassing the Host Entirely
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part5/22-nvshmem-and-gpu-initiated-communication/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    22. NVSHMEM and GPU-Initiated Communication
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part5/23-cuda-graphs-across-multiple-gpus-and-multiple-nodes/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    23. CUDA Graphs Across Multiple GPUs and Multiple Nodes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_9" >
+        
+          
+          <label class="md-nav__link" for="__nav_9" id="__nav_9_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Part 6 -- Case Studies
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_9">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Part 6 -- Case Studies
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part6/24-multi-gpu-dense-matrix-multiplication-at-scale/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    24. Multi-GPU Dense Matrix Multiplication at Scale
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part6/25-distributed-training-of-a-neural-network-data-parallelism-and-ring-all-reduce/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    25. Distributed Training of a Neural Network: Data Parallelism and Ring All-Reduce
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part6/26-multi-gpu-llm-inference-tensor-and-pipeline-parallelism-in-practice/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    26. Multi-GPU LLM Inference: Tensor and Pipeline Parallelism in Practice
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part6/27-n-body-simulation-at-scale/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    27. N-Body Simulation at Scale
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part6/28-distributed-breadth-first-search/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    28. Distributed Breadth-First Search
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part6/29-distributed-jacobi-solver/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    29. Distributed Jacobi Solver
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part6/30-multi-gpu-ray-tracing-and-rendering/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    30. Multi-GPU Ray Tracing and Rendering
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part6/31-multi-gpu-monte-carlo-risk-simulation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    31. Multi-GPU Monte Carlo Risk Simulation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_10" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_10" id="__nav_10_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Part 7 -- Cutting-Edge Industrial Case Studies
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_10_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_10">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Part 7 -- Cutting-Edge Industrial Case Studies
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../32-mixture-of-experts-at-scale/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    32. Mixture-of-Experts at Scale: Expert Parallelism and GPU-Initiated All-to-All (DeepEP)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    33. Disaggregated LLM Inference: Prefill/Decode Splitting (DistServe)
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    33. Disaggregated LLM Inference: Prefill/Decode Splitting (DistServe)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#331-why-prefill-and-decode-need-different-resources" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        33.1 Why Prefill and Decode Need Different Resources
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="33.1 Why Prefill and Decode Need Different Resources">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#intuition" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Intuition
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#background" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Background
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#332-splitting-the-cluster-different-tp-degrees-per-phase" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        33.2 Splitting the Cluster: Different TP Degrees Per Phase
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="33.2 Splitting the Cluster: Different TP Degrees Per Phase">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#intuition_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Intuition
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#background_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Background
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#333-the-kv-cache-handoff-a-new-point-to-point-communication-shape" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        33.3 The KV Cache Handoff: A New Point-to-Point Communication Shape
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="33.3 The KV Cache Handoff: A New Point-to-Point Communication Shape">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#intuition_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Intuition
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#background_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Background
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#chapter-summary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Chapter Summary
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#self-check-questions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Self-Check Questions
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#where-we-go-next" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Where We Go Next
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#worked-solutions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Worked Solutions
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#331-why-prefill-and-decode-need-different-resources" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        33.1 Why Prefill and Decode Need Different Resources
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="33.1 Why Prefill and Decode Need Different Resources">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#intuition" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Intuition
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#background" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Background
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#332-splitting-the-cluster-different-tp-degrees-per-phase" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        33.2 Splitting the Cluster: Different TP Degrees Per Phase
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="33.2 Splitting the Cluster: Different TP Degrees Per Phase">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#intuition_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Intuition
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#background_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Background
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#333-the-kv-cache-handoff-a-new-point-to-point-communication-shape" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        33.3 The KV Cache Handoff: A New Point-to-Point Communication Shape
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="33.3 The KV Cache Handoff: A New Point-to-Point Communication Shape">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#intuition_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Intuition
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#background_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Background
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#chapter-summary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Chapter Summary
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#self-check-questions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Self-Check Questions
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#where-we-go-next" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Where We Go Next
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#worked-solutions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Worked Solutions
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+
+  <h1>33. Disaggregated LLM Inference: Prefill/Decode Splitting (DistServe)</h1>
+
+<p><strong>What you will understand after this chapter:</strong> why a single LLM inference request is really two very different workloads glued together -- a compute-bound prefill step and a memory-bandwidth-bound decode phase -- and why real production systems now run them on entirely separate GPU pools, each sized with its own tensor-parallelism degree, rather than treating "run the model" as one uniform computation the way Chapter 26 did; what real, deployed system (DistServe, and its production successors in vLLM, SGLang, and NVIDIA Dynamo) pioneered this split; and why the KV cache handoff between the two phases is a genuinely new communication shape for this book -- a targeted point-to-point bulk transfer between two disjoint device groups, not a collective involving everyone.</p>
+<p><strong>What you need to know first:</strong> Chapter 5 (explicit peer-to-peer transfers, this chapter's closest ancestor for the KV cache handoff), Chapter 14 (tensor parallelism, reused here at two different degrees within one system), Chapter 21 (GPUDirect RDMA, the cross-node path for that same handoff), and Chapter 26 (multi-GPU LLM inference, which this chapter directly extends with a new splitting axis).</p>
+<hr />
+<p>Chapter 32 showed that Mixture-of-Experts needs a communication shape keyed by which token a gate sends to which expert. This chapter shows that even a single, ordinary LLM inference request -- no experts, no routing decisions -- hides a similar kind of heterogeneity. Every request an LLM serves runs through two phases with almost nothing in common computationally: a prefill step that reads the whole prompt at once, and a decode phase that produces one token at a time until the response is done. Zhong et al.'s own real DistServe paper (arXiv:2401.09670, USENIX OSDI 2024) made the case, and NVIDIA's own real Dynamo framework, together with vLLM's and SGLang's own real production disaggregated-serving support, now build on it: don't force these two phases to share the same GPUs, the same tensor-parallelism degree, or even the same node. Run them as two separate services, connected only by a single handoff of the prompt's KV cache, and each phase gets to be sized for what it actually needs.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>+------------------------------------------------------------------+
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>| Chapter 26 (this book&#39;s earlier LLM inference chapter):          |
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>| ONE request -&gt; [ TP + PP, uniform GPU pool, whole request ]      |
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>+------------------------------------------------------------------+
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>| Chapter 33 (disaggregated: DistServe / Dynamo&#39;s own real design):|
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>|                                                                    |
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>|  PREFILL pool (small TP,      DECODE pool (large TP,              |
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>|  compute-bound, whole prompt)  memory-bound, one token at a time) |
+<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>|  [ GPU ] [ GPU ] --- KV cache --&gt; [ GPU ][ GPU ][ GPU ][ GPU ]     |
+<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>|         handoff (point-to-point,          token, token, token...  |
+<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>|         NOT a collective)                                         |
+<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>+------------------------------------------------------------------+
+</code></pre></div>
+<h2 id="331-why-prefill-and-decode-need-different-resources">33.1 Why Prefill and Decode Need Different Resources<a class="headerlink" href="#331-why-prefill-and-decode-need-different-resources" title="Permanent link">&para;</a></h2>
+<h3 id="intuition">Intuition<a class="headerlink" href="#intuition" title="Permanent link">&para;</a></h3>
+<p>Picture two very different jobs at a print shop. The first job is a single, huge document that just arrived: the whole thing needs to be typeset at once, and the shop throws every available machine at it in parallel to get it done fast -- that's prefill, reading an entire prompt and computing its representation all in one pass, genuinely compute-bound because there's a lot of arithmetic to do across many tokens simultaneously. The second job is a customer standing at the counter, waiting for one page to be printed, checked, handed over, then asking for the next page, one at a time, forever -- that's decode, producing exactly one new token per step. It sounds like it should be the cheap job. It isn't: to produce that one token, the GPU still has to read the ENTIRE running memory of the conversation so far (the KV cache) from memory, and that memory traffic grows every single step. DistServe's own real paper puts it plainly: decode "incurs a similar level of I/O to the prefill phase, making it constrained by the GPU's memory bandwidth" -- not because decode does a lot of arithmetic, but because it has to move a lot of data to do a little arithmetic.</p>
+<div class="admonition warning">
+<p class="admonition-title">[COMMON TRAP] Assuming 'one token per step' means decode is cheap</p>
+<p>It is tempting to look at prefill (processing hundreds or thousands of tokens) and decode (processing one token) and conclude decode must be the lightweight phase. File 96's own illustrative model shows the opposite mechanism at work: decode's FLOPs per step genuinely stay flat regardless of prompt length, but the BYTES it must move per step (reading the whole KV cache) grow exactly as fast as prefill's own compute does. A system that provisions decode GPUs assuming they're "doing less work" than prefill GPUs, without separately accounting for memory bandwidth, will bottleneck on exactly the resource it didn't plan for.</p>
+</div>
+<h3 id="background">Background<a class="headerlink" href="#background" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>+----------------------------------------------------------+
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>| PREFILL: N tokens, all at once                             |
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>|   FLOPs  ~ N * d^2   (grows with prompt, parallel work)    |
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>|   -&gt; compute-bound                                         |
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>+----------------------------------------------------------+
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>| DECODE: 1 new token, but reads the WHOLE kv cache           |
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>|   FLOPs/step ~ d^2        (flat, independent of N)          |
+<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>|   bytes/step ~ N * d      (grows with N, same as prefill)   |
+<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>|   -&gt; memory-bandwidth-bound                                 |
+<a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a>+----------------------------------------------------------+
+</code></pre></div>
+<p>File 96 builds this contrast as a small, explicitly-labeled illustrative model (never a measured benchmark -- this sandbox has no real GPU to benchmark on) using Chapter 1's own arithmetic-intensity framing, then prints DistServe's own real, freshly-verified cited numbers directly: its own definition of "goodput," its own measured 4.48x/10.2x improvement, and the real KV cache size example Section 33.3 below reuses.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="c1">// Chapter 33: Disaggregated LLM Inference</span>
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="c1">// 96_prefill_vs_decode_cost_model.cpp</span>
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="c1">//</span>
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="c1">// Chapter 26 already built multi-GPU LLM inference as a combination of</span>
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="c1">// Chapter 14&#39;s tensor parallelism and Chapter 15&#39;s pipeline parallelism,</span>
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a><span class="c1">// treating &quot;run the model&quot; as one uniform workload. Zhong et al.&#39;s own</span>
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a><span class="c1">// real DistServe paper (&quot;DistServe: Disaggregating Prefill and Decoding</span>
+<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a><span class="c1">// for Goodput-optimized Large Language Model Serving,&quot; arXiv:2401.09670,</span>
+<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a><span class="c1">// USENIX OSDI 2024) makes the case that a single LLM inference request</span>
+<a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a><span class="c1">// is actually TWO very different workloads glued together: &quot;the prefill</span>
+<a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a><span class="c1">// step deals with a new sequence, often comprising many tokens, and</span>
+<a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a><span class="c1">// processes these tokens concurrently... the prefill step tends to be</span>
+<a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a><span class="c1">// computation-bound,&quot; while, &quot;in contrast, the decoding phase, despite</span>
+<a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a><span class="c1">// processing only one new token per step, incurs a similar level of I/O</span>
+<a id="__codelineno-2-15" name="__codelineno-2-15" href="#__codelineno-2-15"></a><span class="c1">// to the prefill phase, making it constrained by the GPU&#39;s memory</span>
+<a id="__codelineno-2-16" name="__codelineno-2-16" href="#__codelineno-2-16"></a><span class="c1">// bandwidth.&quot; This file builds a small, clearly-labeled ILLUSTRATIVE</span>
+<a id="__codelineno-2-17" name="__codelineno-2-17" href="#__codelineno-2-17"></a><span class="c1">// model of that same contrast (never a measured benchmark -- this</span>
+<a id="__codelineno-2-18" name="__codelineno-2-18" href="#__codelineno-2-18"></a><span class="c1">// sandbox has no real GPU to benchmark on), grounded in Chapter 1&#39;s own</span>
+<a id="__codelineno-2-19" name="__codelineno-2-19" href="#__codelineno-2-19"></a><span class="c1">// arithmetic-intensity framing, and then presents DistServe&#39;s own real</span>
+<a id="__codelineno-2-20" name="__codelineno-2-20" href="#__codelineno-2-20"></a><span class="c1">// cited numbers -- its &quot;goodput&quot; metric and its measured 4.48x/10.2x</span>
+<a id="__codelineno-2-21" name="__codelineno-2-21" href="#__codelineno-2-21"></a><span class="c1">// improvement -- as real data, not something this book derived.</span>
+<a id="__codelineno-2-22" name="__codelineno-2-22" href="#__codelineno-2-22"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;cstdio&gt;</span>
+<a id="__codelineno-2-23" name="__codelineno-2-23" href="#__codelineno-2-23"></a>
+<a id="__codelineno-2-24" name="__codelineno-2-24" href="#__codelineno-2-24"></a><span class="kt">int</span><span class="w"> </span><span class="nf">main</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-2-25" name="__codelineno-2-25" href="#__codelineno-2-25"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;Illustrative model (Chapter 1&#39;s arithmetic-intensity framing &quot;</span>
+<a id="__codelineno-2-26" name="__codelineno-2-26" href="#__codelineno-2-26"></a><span class="w">           </span><span class="s">&quot;applied to one transformer layer of hidden dimension d):</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
+<a id="__codelineno-2-27" name="__codelineno-2-27" href="#__codelineno-2-27"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;%-12s %-22s %-22s %-18s</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;Prompt N&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;Prefill FLOPs (~N*d^2)&quot;</span><span class="p">,</span>
+<a id="__codelineno-2-28" name="__codelineno-2-28" href="#__codelineno-2-28"></a><span class="w">           </span><span class="s">&quot;Decode FLOPs/step (~d^2)&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;Decode bytes/step (~N*d)&quot;</span><span class="p">);</span>
+<a id="__codelineno-2-29" name="__codelineno-2-29" href="#__codelineno-2-29"></a><span class="w">    </span><span class="kt">long</span><span class="w"> </span><span class="kt">long</span><span class="w"> </span><span class="n">d</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">8192</span><span class="p">;</span><span class="w">  </span><span class="c1">// illustrative hidden dimension</span>
+<a id="__codelineno-2-30" name="__codelineno-2-30" href="#__codelineno-2-30"></a><span class="w">    </span><span class="kt">long</span><span class="w"> </span><span class="kt">long</span><span class="w"> </span><span class="n">promptLens</span><span class="p">[]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span><span class="mi">128</span><span class="p">,</span><span class="w"> </span><span class="mi">512</span><span class="p">,</span><span class="w"> </span><span class="mi">2048</span><span class="p">,</span><span class="w"> </span><span class="mi">8192</span><span class="p">};</span>
+<a id="__codelineno-2-31" name="__codelineno-2-31" href="#__codelineno-2-31"></a><span class="w">    </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="kt">long</span><span class="w"> </span><span class="kt">long</span><span class="w"> </span><span class="n">N</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="n">promptLens</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-2-32" name="__codelineno-2-32" href="#__codelineno-2-32"></a><span class="w">        </span><span class="kt">long</span><span class="w"> </span><span class="kt">long</span><span class="w"> </span><span class="n">prefillFlops</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">2</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="n">N</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="n">d</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="n">d</span><span class="p">;</span><span class="w">      </span><span class="c1">// scales with N, parallel over tokens</span>
+<a id="__codelineno-2-33" name="__codelineno-2-33" href="#__codelineno-2-33"></a><span class="w">        </span><span class="kt">long</span><span class="w"> </span><span class="kt">long</span><span class="w"> </span><span class="n">decodeFlopsPerStep</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">2</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="n">d</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="n">d</span><span class="p">;</span><span class="w">    </span><span class="c1">// ONE new token: independent of N</span>
+<a id="__codelineno-2-34" name="__codelineno-2-34" href="#__codelineno-2-34"></a><span class="w">        </span><span class="kt">long</span><span class="w"> </span><span class="kt">long</span><span class="w"> </span><span class="n">decodeBytesPerStep</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">N</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="n">d</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="mi">2</span><span class="p">;</span><span class="w">     </span><span class="c1">// must still read the whole KV cache (bf16, 2 bytes)</span>
+<a id="__codelineno-2-35" name="__codelineno-2-35" href="#__codelineno-2-35"></a><span class="w">        </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;%-12lld %-22lld %-22lld %-18lld</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">N</span><span class="p">,</span><span class="w"> </span><span class="n">prefillFlops</span><span class="p">,</span><span class="w"> </span><span class="n">decodeFlopsPerStep</span><span class="p">,</span><span class="w"> </span><span class="n">decodeBytesPerStep</span><span class="p">);</span>
+<a id="__codelineno-2-36" name="__codelineno-2-36" href="#__codelineno-2-36"></a><span class="w">    </span><span class="p">}</span>
+<a id="__codelineno-2-37" name="__codelineno-2-37" href="#__codelineno-2-37"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;</span><span class="se">\n</span><span class="s">Decode&#39;s own FLOPs per step never grows with the prompt -- exactly &quot;</span>
+<a id="__codelineno-2-38" name="__codelineno-2-38" href="#__codelineno-2-38"></a><span class="w">           </span><span class="s">&quot;DistServe&#39;s own point that decode is &#39;despite processing only one new &quot;</span>
+<a id="__codelineno-2-39" name="__codelineno-2-39" href="#__codelineno-2-39"></a><span class="w">           </span><span class="s">&quot;token per step.&#39; But decode&#39;s own BYTES MOVED per step (reading the &quot;</span>
+<a id="__codelineno-2-40" name="__codelineno-2-40" href="#__codelineno-2-40"></a><span class="w">           </span><span class="s">&quot;growing KV cache) grows exactly as fast as prefill&#39;s own compute does. &quot;</span>
+<a id="__codelineno-2-41" name="__codelineno-2-41" href="#__codelineno-2-41"></a><span class="w">           </span><span class="s">&quot;Arithmetic intensity (FLOPs per byte) therefore FALLS as the prompt &quot;</span>
+<a id="__codelineno-2-42" name="__codelineno-2-42" href="#__codelineno-2-42"></a><span class="w">           </span><span class="s">&quot;grows for decode, while prefill&#39;s stays roughly constant -- the real &quot;</span>
+<a id="__codelineno-2-43" name="__codelineno-2-43" href="#__codelineno-2-43"></a><span class="w">           </span><span class="s">&quot;reason decode is memory-bandwidth-bound and prefill is compute-bound, &quot;</span>
+<a id="__codelineno-2-44" name="__codelineno-2-44" href="#__codelineno-2-44"></a><span class="w">           </span><span class="s">&quot;the same distinction Chapter 1&#39;s own memory-wall discussion introduced.</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
+<a id="__codelineno-2-45" name="__codelineno-2-45" href="#__codelineno-2-45"></a>
+<a id="__codelineno-2-46" name="__codelineno-2-46" href="#__codelineno-2-46"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;</span><span class="se">\n</span><span class="s">DistServe&#39;s own real cited numbers (not derived by this book):</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
+<a id="__codelineno-2-47" name="__codelineno-2-47" href="#__codelineno-2-47"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;- Goodput, DistServe&#39;s own definition: </span><span class="se">\&quot;</span><span class="s">the maximum request rate that &quot;</span>
+<a id="__codelineno-2-48" name="__codelineno-2-48" href="#__codelineno-2-48"></a><span class="w">           </span><span class="s">&quot;can be served adhering to the SLO attainment goal (say, 90%%) for each &quot;</span>
+<a id="__codelineno-2-49" name="__codelineno-2-49" href="#__codelineno-2-49"></a><span class="w">           </span><span class="s">&quot;GPU provisioned -- higher per-GPU goodput directly translates into &quot;</span>
+<a id="__codelineno-2-50" name="__codelineno-2-50" href="#__codelineno-2-50"></a><span class="w">           </span><span class="s">&quot;lower cost per query.</span><span class="se">\&quot;\n</span><span class="s">&quot;</span><span class="p">);</span>
+<a id="__codelineno-2-51" name="__codelineno-2-51" href="#__codelineno-2-51"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;- Measured result: </span><span class="se">\&quot;</span><span class="s">DistServe can serve 4.48x more requests or 10.2x &quot;</span>
+<a id="__codelineno-2-52" name="__codelineno-2-52" href="#__codelineno-2-52"></a><span class="w">           </span><span class="s">&quot;tighter SLO, compared to state-of-the-art systems, while staying &quot;</span>
+<a id="__codelineno-2-53" name="__codelineno-2-53" href="#__codelineno-2-53"></a><span class="w">           </span><span class="s">&quot;within latency constraints for &gt;90%% of requests.</span><span class="se">\&quot;\n</span><span class="s">&quot;</span><span class="p">);</span>
+<a id="__codelineno-2-54" name="__codelineno-2-54" href="#__codelineno-2-54"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;- Real KV cache size example cited in the same paper: </span><span class="se">\&quot;</span><span class="s">the KV cache &quot;</span>
+<a id="__codelineno-2-55" name="__codelineno-2-55" href="#__codelineno-2-55"></a><span class="w">           </span><span class="s">&quot;size of a single 512-token request on OPT-66B is approximately &quot;</span>
+<a id="__codelineno-2-56" name="__codelineno-2-56" href="#__codelineno-2-56"></a><span class="w">           </span><span class="s">&quot;1.13GB</span><span class="se">\&quot;</span><span class="s"> -- Section 33.3 below uses this exact real number.</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
+<a id="__codelineno-2-57" name="__codelineno-2-57" href="#__codelineno-2-57"></a><span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
+<a id="__codelineno-2-58" name="__codelineno-2-58" href="#__codelineno-2-58"></a><span class="p">}</span>
+</code></pre></div>
+<p>Compile and run (a plain host <code>.cpp</code> file with no CUDA/NCCL/MPI/NVSHMEM linkage, cross-verified on both the cloud sandbox and the device):</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>g++<span class="w"> </span>-O2<span class="w"> </span>-ffp-contract<span class="o">=</span>off<span class="w"> </span>-o<span class="w"> </span>96_prefill_vs_decode_cost_model<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="w">    </span>96_prefill_vs_decode_cost_model.cpp
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>./96_prefill_vs_decode_cost_model
+</code></pre></div>
+<p>Locked output:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>Illustrative model (Chapter 1&#39;s arithmetic-intensity framing applied to one transformer layer of hidden dimension d):
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>Prompt N     Prefill FLOPs (~N*d^2) Decode FLOPs/step (~d^2) Decode bytes/step (~N*d)
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>128          17179869184            134217728              2097152           
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>512          68719476736            134217728              8388608           
+<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>2048         274877906944           134217728              33554432          
+<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>8192         1099511627776          134217728              134217728         
+<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a>
+<a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a>Decode&#39;s own FLOPs per step never grows with the prompt -- exactly DistServe&#39;s own point that decode is &#39;despite processing only one new token per step.&#39; But decode&#39;s own BYTES MOVED per step (reading the growing KV cache) grows exactly as fast as prefill&#39;s own compute does. Arithmetic intensity (FLOPs per byte) therefore FALLS as the prompt grows for decode, while prefill&#39;s stays roughly constant -- the real reason decode is memory-bandwidth-bound and prefill is compute-bound, the same distinction Chapter 1&#39;s own memory-wall discussion introduced.
+<a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a>
+<a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a>DistServe&#39;s own real cited numbers (not derived by this book):
+<a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a>- Goodput, DistServe&#39;s own definition: &quot;the maximum request rate that can be served adhering to the SLO attainment goal (say, 90%) for each GPU provisioned -- higher per-GPU goodput directly translates into lower cost per query.&quot;
+<a id="__codelineno-4-12" name="__codelineno-4-12" href="#__codelineno-4-12"></a>- Measured result: &quot;DistServe can serve 4.48x more requests or 10.2x tighter SLO, compared to state-of-the-art systems, while staying within latency constraints for &gt;90% of requests.&quot;
+<a id="__codelineno-4-13" name="__codelineno-4-13" href="#__codelineno-4-13"></a>- Real KV cache size example cited in the same paper: &quot;the KV cache size of a single 512-token request on OPT-66B is approximately 1.13GB&quot; -- Section 33.3 below uses this exact real number.
+</code></pre></div>
+<h2 id="332-splitting-the-cluster-different-tp-degrees-per-phase">33.2 Splitting the Cluster: Different TP Degrees Per Phase<a class="headerlink" href="#332-splitting-the-cluster-different-tp-degrees-per-phase" title="Permanent link">&para;</a></h2>
+<h3 id="intuition_1">Intuition<a class="headerlink" href="#intuition_1" title="Permanent link">&para;</a></h3>
+<p>Chapter 14 built tensor parallelism as a way to split ONE layer's GEMM across a fixed set of devices, and every chapter since has assumed that same TP degree applies uniformly wherever it's used. NVIDIA's own real Dynamo documentation breaks that assumption on purpose: it recommends using "a larger TP for the memory-bound decoding phase while a smaller TP for the computation-bound prefill phase." The intuition is the print-shop analogy again -- the big one-time typesetting job (prefill) benefits from parallel machines only up to a point, since it's compute-bound and adding more machines has diminishing returns once each has enough work; the counter job (decode) benefits from MORE machines because each additional GPU adds more aggregate memory bandwidth to read the ever-growing KV cache, and that's the actual bottleneck. Since the two phases are connected only by a single handoff (not by sharing a communicator or a fixed device group), there's no structural reason they need to match.</p>
+<div class="admonition warning">
+<p class="admonition-title">[COMMON TRAP] Assuming a request's parallelism degree must stay constant end to end</p>
+<p>Every parallelization strategy this book built before this chapter -- data, model, tensor, pipeline -- picks a device-group size once and uses it throughout a computation. It's natural to assume that discipline extends to "how many GPUs handle this request," full stop. Disaggregation breaks that assumption deliberately: File 97 below confirms that a request's prefill phase and decode phase can run under COMPLETELY DIFFERENT TP degrees (including cases where Tp &gt; Td, not just the recommended Tp &lt;= Td) and still produce an exactly correct result, because correctness here comes from each phase's own internal reduction being exact on its own, never from the two phases sharing a group size.</p>
+</div>
+<h3 id="background_1">Background<a class="headerlink" href="#background_1" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>+----------------------------------------------------------+
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>| PREFILL phase: Tp-way head split, integer sum-reduce      |
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>|   (any Tp) -&gt; kv cache values, exact regardless of Tp     |
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>+----------------------------------------------------------+
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>|                    kv cache handoff                        |
+<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>+----------------------------------------------------------+
+<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a>| DECODE phase: Td-way position split, integer sum-reduce    |
+<a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a>|   (any Td, independent of Tp) -&gt; generated tokens          |
+<a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a>+----------------------------------------------------------+
+</code></pre></div>
+<p>File 97 builds a small integer-only prefill+decode simulation (integer arithmetic on purpose, so this section's own question -- does splitting the two phases onto independently-sized device groups preserve correctness -- is not entangled with the floating-point associativity question Chapter 8/25/29/31/32 already covered) and checks every combination of prefill TP degree Tp in {1, 2, 4, 8} against decode TP degree Td in {1, 2, 3, 6}, including combinations NVIDIA Dynamo's own guidance would not actually recommend (Tp &gt; Td), to see whether they are merely suboptimal or actually incorrect.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="c1">// Chapter 33: Disaggregated LLM Inference</span>
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="c1">// 97_phase_specific_tensor_parallelism_correctness_simulation.cpp</span>
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="c1">//</span>
+<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="c1">// NVIDIA&#39;s own real Dynamo documentation states the design point behind</span>
+<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a><span class="c1">// disaggregation directly: separate prefill and decode workers let a</span>
+<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a><span class="c1">// system use &quot;a larger TP for the memory-bound decoding phase while a</span>
+<a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a><span class="c1">// smaller TP for the computation-bound prefill phase&quot; -- a genuinely</span>
+<a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a><span class="c1">// different tensor-parallelism DEGREE for each phase of the SAME</span>
+<a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a><span class="c1">// request, something Chapter 14 and Chapter 26 never needed to consider</span>
+<a id="__codelineno-6-10" name="__codelineno-6-10" href="#__codelineno-6-10"></a><span class="c1">// because they treated a request as one uniform TP-parallel computation</span>
+<a id="__codelineno-6-11" name="__codelineno-6-11" href="#__codelineno-6-11"></a><span class="c1">// throughout. This file checks the obvious correctness question that</span>
+<a id="__codelineno-6-12" name="__codelineno-6-12" href="#__codelineno-6-12"></a><span class="c1">// design raises: if the prefill phase runs under TP degree Tp and the</span>
+<a id="__codelineno-6-13" name="__codelineno-6-13" href="#__codelineno-6-13"></a><span class="c1">// decode phase runs under a DIFFERENT TP degree Td, connected only by</span>
+<a id="__codelineno-6-14" name="__codelineno-6-14" href="#__codelineno-6-14"></a><span class="c1">// the transferred KV cache (Section 33.3&#39;s own subject), does the final</span>
+<a id="__codelineno-6-15" name="__codelineno-6-15" href="#__codelineno-6-15"></a><span class="c1">// generated sequence still match a single-process (Tp=Td=1) reference</span>
+<a id="__codelineno-6-16" name="__codelineno-6-16" href="#__codelineno-6-16"></a><span class="c1">// exactly? Every value here is a plain integer specifically so this</span>
+<a id="__codelineno-6-17" name="__codelineno-6-17" href="#__codelineno-6-17"></a><span class="c1">// file&#39;s own answer is not entangled with the floating-point</span>
+<a id="__codelineno-6-18" name="__codelineno-6-18" href="#__codelineno-6-18"></a><span class="c1">// associativity question Chapter 8/25/29/31/32 already covered in</span>
+<a id="__codelineno-6-19" name="__codelineno-6-19" href="#__codelineno-6-19"></a><span class="c1">// detail -- the question this file asks is a DIFFERENT one (does</span>
+<a id="__codelineno-6-20" name="__codelineno-6-20" href="#__codelineno-6-20"></a><span class="c1">// splitting a single request&#39;s two phases onto independently-sized</span>
+<a id="__codelineno-6-21" name="__codelineno-6-21" href="#__codelineno-6-21"></a><span class="c1">// device groups preserve correctness), not a repeat of that one.</span>
+<a id="__codelineno-6-22" name="__codelineno-6-22" href="#__codelineno-6-22"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;cstdio&gt;</span>
+<a id="__codelineno-6-23" name="__codelineno-6-23" href="#__codelineno-6-23"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;vector&gt;</span>
+<a id="__codelineno-6-24" name="__codelineno-6-24" href="#__codelineno-6-24"></a>
+<a id="__codelineno-6-25" name="__codelineno-6-25" href="#__codelineno-6-25"></a><span class="k">const</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">H</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">8</span><span class="p">;</span><span class="w">             </span><span class="c1">// total attention heads (illustrative)</span>
+<a id="__codelineno-6-26" name="__codelineno-6-26" href="#__codelineno-6-26"></a><span class="k">const</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">PROMPT_LEN</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">16</span><span class="p">;</span><span class="w">   </span><span class="c1">// prompt tokens</span>
+<a id="__codelineno-6-27" name="__codelineno-6-27" href="#__codelineno-6-27"></a><span class="k">const</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">NUM_DECODE_STEPS</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">6</span><span class="p">;</span>
+<a id="__codelineno-6-28" name="__codelineno-6-28" href="#__codelineno-6-28"></a>
+<a id="__codelineno-6-29" name="__codelineno-6-29" href="#__codelineno-6-29"></a><span class="kt">unsigned</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="nf">counterBasedHash</span><span class="p">(</span><span class="kt">long</span><span class="w"> </span><span class="kt">long</span><span class="w"> </span><span class="n">x</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-6-30" name="__codelineno-6-30" href="#__codelineno-6-30"></a><span class="w">    </span><span class="kt">unsigned</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">h</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="kt">unsigned</span><span class="w"> </span><span class="kt">int</span><span class="p">)</span><span class="n">x</span><span class="p">;</span>
+<a id="__codelineno-6-31" name="__codelineno-6-31" href="#__codelineno-6-31"></a><span class="w">    </span><span class="n">h</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">((</span><span class="n">h</span><span class="w"> </span><span class="o">&gt;&gt;</span><span class="w"> </span><span class="mi">16</span><span class="p">)</span><span class="w"> </span><span class="o">^</span><span class="w"> </span><span class="n">h</span><span class="p">)</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="mh">0x45d9f3bU</span><span class="p">;</span>
+<a id="__codelineno-6-32" name="__codelineno-6-32" href="#__codelineno-6-32"></a><span class="w">    </span><span class="n">h</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">((</span><span class="n">h</span><span class="w"> </span><span class="o">&gt;&gt;</span><span class="w"> </span><span class="mi">16</span><span class="p">)</span><span class="w"> </span><span class="o">^</span><span class="w"> </span><span class="n">h</span><span class="p">)</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="mh">0x45d9f3bU</span><span class="p">;</span>
+<a id="__codelineno-6-33" name="__codelineno-6-33" href="#__codelineno-6-33"></a><span class="w">    </span><span class="n">h</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="n">h</span><span class="w"> </span><span class="o">&gt;&gt;</span><span class="w"> </span><span class="mi">16</span><span class="p">)</span><span class="w"> </span><span class="o">^</span><span class="w"> </span><span class="n">h</span><span class="p">;</span>
+<a id="__codelineno-6-34" name="__codelineno-6-34" href="#__codelineno-6-34"></a><span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="n">h</span><span class="p">;</span>
+<a id="__codelineno-6-35" name="__codelineno-6-35" href="#__codelineno-6-35"></a><span class="p">}</span>
+<a id="__codelineno-6-36" name="__codelineno-6-36" href="#__codelineno-6-36"></a>
+<a id="__codelineno-6-37" name="__codelineno-6-37" href="#__codelineno-6-37"></a><span class="kt">long</span><span class="w"> </span><span class="kt">long</span><span class="w"> </span><span class="nf">headWeight</span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">h</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="p">(</span><span class="kt">long</span><span class="w"> </span><span class="kt">long</span><span class="p">)((</span><span class="n">counterBasedHash</span><span class="p">(</span><span class="n">h</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">9000</span><span class="p">)</span><span class="w"> </span><span class="o">%</span><span class="w"> </span><span class="mi">9</span><span class="p">)</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="p">);</span><span class="w"> </span><span class="p">}</span>
+<a id="__codelineno-6-38" name="__codelineno-6-38" href="#__codelineno-6-38"></a><span class="kt">long</span><span class="w"> </span><span class="kt">long</span><span class="w"> </span><span class="nf">promptValue</span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">i</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="p">(</span><span class="kt">long</span><span class="w"> </span><span class="kt">long</span><span class="p">)((</span><span class="n">counterBasedHash</span><span class="p">(</span><span class="n">i</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1000</span><span class="p">)</span><span class="w"> </span><span class="o">%</span><span class="w"> </span><span class="mi">20</span><span class="p">)</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="p">);</span><span class="w"> </span><span class="p">}</span>
+<a id="__codelineno-6-39" name="__codelineno-6-39" href="#__codelineno-6-39"></a><span class="kt">long</span><span class="w"> </span><span class="kt">long</span><span class="w"> </span><span class="nf">decodeWeight</span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">t</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="p">(</span><span class="kt">long</span><span class="w"> </span><span class="kt">long</span><span class="p">)((</span><span class="n">counterBasedHash</span><span class="p">(</span><span class="n">t</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">5000</span><span class="p">)</span><span class="w"> </span><span class="o">%</span><span class="w"> </span><span class="mi">7</span><span class="p">)</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="p">);</span><span class="w"> </span><span class="p">}</span>
+<a id="__codelineno-6-40" name="__codelineno-6-40" href="#__codelineno-6-40"></a>
+<a id="__codelineno-6-41" name="__codelineno-6-41" href="#__codelineno-6-41"></a><span class="c1">// Prefill: for each prompt position, sum head contributions -- split</span>
+<a id="__codelineno-6-42" name="__codelineno-6-42" href="#__codelineno-6-42"></a><span class="c1">// across Tp shards of heads, each shard reduced locally, then the Tp</span>
+<a id="__codelineno-6-43" name="__codelineno-6-43" href="#__codelineno-6-43"></a><span class="c1">// partial sums combined (integer addition: exactly associative, so this</span>
+<a id="__codelineno-6-44" name="__codelineno-6-44" href="#__codelineno-6-44"></a><span class="c1">// step alone could never show a mismatch regardless of Tp).</span>
+<a id="__codelineno-6-45" name="__codelineno-6-45" href="#__codelineno-6-45"></a><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">long</span><span class="w"> </span><span class="kt">long</span><span class="o">&gt;</span><span class="w"> </span><span class="n">runPrefill</span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">Tp</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-6-46" name="__codelineno-6-46" href="#__codelineno-6-46"></a><span class="w">    </span><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">long</span><span class="w"> </span><span class="kt">long</span><span class="o">&gt;</span><span class="w"> </span><span class="n">kv</span><span class="p">(</span><span class="n">PROMPT_LEN</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">);</span>
+<a id="__codelineno-6-47" name="__codelineno-6-47" href="#__codelineno-6-47"></a><span class="w">    </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="n">PROMPT_LEN</span><span class="p">;</span><span class="w"> </span><span class="n">i</span><span class="o">++</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-6-48" name="__codelineno-6-48" href="#__codelineno-6-48"></a><span class="w">        </span><span class="kt">long</span><span class="w"> </span><span class="kt">long</span><span class="w"> </span><span class="n">total</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
+<a id="__codelineno-6-49" name="__codelineno-6-49" href="#__codelineno-6-49"></a><span class="w">        </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">shard</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span><span class="w"> </span><span class="n">shard</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="n">Tp</span><span class="p">;</span><span class="w"> </span><span class="n">shard</span><span class="o">++</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-6-50" name="__codelineno-6-50" href="#__codelineno-6-50"></a><span class="w">            </span><span class="kt">long</span><span class="w"> </span><span class="kt">long</span><span class="w"> </span><span class="n">partial</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
+<a id="__codelineno-6-51" name="__codelineno-6-51" href="#__codelineno-6-51"></a><span class="w">            </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">h</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">shard</span><span class="p">;</span><span class="w"> </span><span class="n">h</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="n">H</span><span class="p">;</span><span class="w"> </span><span class="n">h</span><span class="w"> </span><span class="o">+=</span><span class="w"> </span><span class="n">Tp</span><span class="p">)</span><span class="w"> </span><span class="n">partial</span><span class="w"> </span><span class="o">+=</span><span class="w"> </span><span class="n">headWeight</span><span class="p">(</span><span class="n">h</span><span class="p">)</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="n">promptValue</span><span class="p">(</span><span class="n">i</span><span class="p">);</span>
+<a id="__codelineno-6-52" name="__codelineno-6-52" href="#__codelineno-6-52"></a><span class="w">            </span><span class="n">total</span><span class="w"> </span><span class="o">+=</span><span class="w"> </span><span class="n">partial</span><span class="p">;</span>
+<a id="__codelineno-6-53" name="__codelineno-6-53" href="#__codelineno-6-53"></a><span class="w">        </span><span class="p">}</span>
+<a id="__codelineno-6-54" name="__codelineno-6-54" href="#__codelineno-6-54"></a><span class="w">        </span><span class="n">kv</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">total</span><span class="p">;</span>
+<a id="__codelineno-6-55" name="__codelineno-6-55" href="#__codelineno-6-55"></a><span class="w">    </span><span class="p">}</span>
+<a id="__codelineno-6-56" name="__codelineno-6-56" href="#__codelineno-6-56"></a><span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="n">kv</span><span class="p">;</span>
+<a id="__codelineno-6-57" name="__codelineno-6-57" href="#__codelineno-6-57"></a><span class="p">}</span>
+<a id="__codelineno-6-58" name="__codelineno-6-58" href="#__codelineno-6-58"></a>
+<a id="__codelineno-6-59" name="__codelineno-6-59" href="#__codelineno-6-59"></a><span class="c1">// Decode: each step reads the FULL kv cache (the transferred prefill</span>
+<a id="__codelineno-6-60" name="__codelineno-6-60" href="#__codelineno-6-60"></a><span class="c1">// result, plus every previously-generated decode value) and produces</span>
+<a id="__codelineno-6-61" name="__codelineno-6-61" href="#__codelineno-6-61"></a><span class="c1">// one new value, split across Td shards of kv-cache POSITIONS, combined</span>
+<a id="__codelineno-6-62" name="__codelineno-6-62" href="#__codelineno-6-62"></a><span class="c1">// the same way.</span>
+<a id="__codelineno-6-63" name="__codelineno-6-63" href="#__codelineno-6-63"></a><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">long</span><span class="w"> </span><span class="kt">long</span><span class="o">&gt;</span><span class="w"> </span><span class="n">runDecode</span><span class="p">(</span><span class="k">const</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">long</span><span class="w"> </span><span class="kt">long</span><span class="o">&gt;</span><span class="w"> </span><span class="o">&amp;</span><span class="n">kv</span><span class="p">,</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">Td</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-6-64" name="__codelineno-6-64" href="#__codelineno-6-64"></a><span class="w">    </span><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">long</span><span class="w"> </span><span class="kt">long</span><span class="o">&gt;</span><span class="w"> </span><span class="n">cache</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">kv</span><span class="p">;</span><span class="w">  </span><span class="c1">// grows as decode proceeds</span>
+<a id="__codelineno-6-65" name="__codelineno-6-65" href="#__codelineno-6-65"></a><span class="w">    </span><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">long</span><span class="w"> </span><span class="kt">long</span><span class="o">&gt;</span><span class="w"> </span><span class="n">generated</span><span class="p">;</span>
+<a id="__codelineno-6-66" name="__codelineno-6-66" href="#__codelineno-6-66"></a><span class="w">    </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">t</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span><span class="w"> </span><span class="n">t</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="n">NUM_DECODE_STEPS</span><span class="p">;</span><span class="w"> </span><span class="n">t</span><span class="o">++</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-6-67" name="__codelineno-6-67" href="#__codelineno-6-67"></a><span class="w">        </span><span class="kt">int</span><span class="w"> </span><span class="n">cacheLen</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="p">)</span><span class="n">cache</span><span class="p">.</span><span class="n">size</span><span class="p">();</span>
+<a id="__codelineno-6-68" name="__codelineno-6-68" href="#__codelineno-6-68"></a><span class="w">        </span><span class="kt">long</span><span class="w"> </span><span class="kt">long</span><span class="w"> </span><span class="n">total</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
+<a id="__codelineno-6-69" name="__codelineno-6-69" href="#__codelineno-6-69"></a><span class="w">        </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">shard</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span><span class="w"> </span><span class="n">shard</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="n">Td</span><span class="p">;</span><span class="w"> </span><span class="n">shard</span><span class="o">++</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-6-70" name="__codelineno-6-70" href="#__codelineno-6-70"></a><span class="w">            </span><span class="kt">long</span><span class="w"> </span><span class="kt">long</span><span class="w"> </span><span class="n">partial</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
+<a id="__codelineno-6-71" name="__codelineno-6-71" href="#__codelineno-6-71"></a><span class="w">            </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">shard</span><span class="p">;</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="n">cacheLen</span><span class="p">;</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">+=</span><span class="w"> </span><span class="n">Td</span><span class="p">)</span><span class="w"> </span><span class="n">partial</span><span class="w"> </span><span class="o">+=</span><span class="w"> </span><span class="n">cache</span><span class="p">[</span><span class="n">i</span><span class="p">];</span>
+<a id="__codelineno-6-72" name="__codelineno-6-72" href="#__codelineno-6-72"></a><span class="w">            </span><span class="n">total</span><span class="w"> </span><span class="o">+=</span><span class="w"> </span><span class="n">partial</span><span class="p">;</span>
+<a id="__codelineno-6-73" name="__codelineno-6-73" href="#__codelineno-6-73"></a><span class="w">        </span><span class="p">}</span>
+<a id="__codelineno-6-74" name="__codelineno-6-74" href="#__codelineno-6-74"></a><span class="w">        </span><span class="kt">long</span><span class="w"> </span><span class="kt">long</span><span class="w"> </span><span class="n">value</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">total</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="n">decodeWeight</span><span class="p">(</span><span class="n">t</span><span class="p">);</span>
+<a id="__codelineno-6-75" name="__codelineno-6-75" href="#__codelineno-6-75"></a><span class="w">        </span><span class="n">generated</span><span class="p">.</span><span class="n">push_back</span><span class="p">(</span><span class="n">value</span><span class="p">);</span>
+<a id="__codelineno-6-76" name="__codelineno-6-76" href="#__codelineno-6-76"></a><span class="w">        </span><span class="n">cache</span><span class="p">.</span><span class="n">push_back</span><span class="p">(</span><span class="n">value</span><span class="p">);</span>
+<a id="__codelineno-6-77" name="__codelineno-6-77" href="#__codelineno-6-77"></a><span class="w">    </span><span class="p">}</span>
+<a id="__codelineno-6-78" name="__codelineno-6-78" href="#__codelineno-6-78"></a><span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="n">generated</span><span class="p">;</span>
+<a id="__codelineno-6-79" name="__codelineno-6-79" href="#__codelineno-6-79"></a><span class="p">}</span>
+<a id="__codelineno-6-80" name="__codelineno-6-80" href="#__codelineno-6-80"></a>
+<a id="__codelineno-6-81" name="__codelineno-6-81" href="#__codelineno-6-81"></a><span class="kt">int</span><span class="w"> </span><span class="n">main</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-6-82" name="__codelineno-6-82" href="#__codelineno-6-82"></a><span class="w">    </span><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">long</span><span class="w"> </span><span class="kt">long</span><span class="o">&gt;</span><span class="w"> </span><span class="n">referenceKv</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">runPrefill</span><span class="p">(</span><span class="mi">1</span><span class="p">);</span>
+<a id="__codelineno-6-83" name="__codelineno-6-83" href="#__codelineno-6-83"></a><span class="w">    </span><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">long</span><span class="w"> </span><span class="kt">long</span><span class="o">&gt;</span><span class="w"> </span><span class="n">referenceDecode</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">runDecode</span><span class="p">(</span><span class="n">referenceKv</span><span class="p">,</span><span class="w"> </span><span class="mi">1</span><span class="p">);</span>
+<a id="__codelineno-6-84" name="__codelineno-6-84" href="#__codelineno-6-84"></a>
+<a id="__codelineno-6-85" name="__codelineno-6-85" href="#__codelineno-6-85"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;Reference (Tp=1, Td=1): kv[0..3]=%lld,%lld,%lld,%lld  &quot;</span>
+<a id="__codelineno-6-86" name="__codelineno-6-86" href="#__codelineno-6-86"></a><span class="w">           </span><span class="s">&quot;decode tokens: &quot;</span><span class="p">,</span><span class="w"> </span><span class="n">referenceKv</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span><span class="w"> </span><span class="n">referenceKv</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span><span class="w"> </span><span class="n">referenceKv</span><span class="p">[</span><span class="mi">2</span><span class="p">],</span><span class="w"> </span><span class="n">referenceKv</span><span class="p">[</span><span class="mi">3</span><span class="p">]);</span>
+<a id="__codelineno-6-87" name="__codelineno-6-87" href="#__codelineno-6-87"></a><span class="w">    </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="kt">long</span><span class="w"> </span><span class="kt">long</span><span class="w"> </span><span class="n">v</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="n">referenceDecode</span><span class="p">)</span><span class="w"> </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;%lld &quot;</span><span class="p">,</span><span class="w"> </span><span class="n">v</span><span class="p">);</span>
+<a id="__codelineno-6-88" name="__codelineno-6-88" href="#__codelineno-6-88"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;</span><span class="se">\n\n</span><span class="s">&quot;</span><span class="p">);</span>
+<a id="__codelineno-6-89" name="__codelineno-6-89" href="#__codelineno-6-89"></a>
+<a id="__codelineno-6-90" name="__codelineno-6-90" href="#__codelineno-6-90"></a><span class="w">    </span><span class="kt">int</span><span class="w"> </span><span class="n">prefillTPs</span><span class="p">[]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span><span class="mi">1</span><span class="p">,</span><span class="w"> </span><span class="mi">2</span><span class="p">,</span><span class="w"> </span><span class="mi">4</span><span class="p">,</span><span class="w"> </span><span class="mi">8</span><span class="p">};</span>
+<a id="__codelineno-6-91" name="__codelineno-6-91" href="#__codelineno-6-91"></a><span class="w">    </span><span class="kt">int</span><span class="w"> </span><span class="n">decodeTPs</span><span class="p">[]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span><span class="mi">1</span><span class="p">,</span><span class="w"> </span><span class="mi">2</span><span class="p">,</span><span class="w"> </span><span class="mi">3</span><span class="p">,</span><span class="w"> </span><span class="mi">6</span><span class="p">};</span>
+<a id="__codelineno-6-92" name="__codelineno-6-92" href="#__codelineno-6-92"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;%-6s %-6s %-10s %-30s</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;Tp&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;Td&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;match&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;note&quot;</span><span class="p">);</span>
+<a id="__codelineno-6-93" name="__codelineno-6-93" href="#__codelineno-6-93"></a><span class="w">    </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">Tp</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="n">prefillTPs</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-6-94" name="__codelineno-6-94" href="#__codelineno-6-94"></a><span class="w">        </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">Td</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="n">decodeTPs</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-6-95" name="__codelineno-6-95" href="#__codelineno-6-95"></a><span class="w">            </span><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">long</span><span class="w"> </span><span class="kt">long</span><span class="o">&gt;</span><span class="w"> </span><span class="n">kv</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">runPrefill</span><span class="p">(</span><span class="n">Tp</span><span class="p">);</span>
+<a id="__codelineno-6-96" name="__codelineno-6-96" href="#__codelineno-6-96"></a><span class="w">            </span><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">long</span><span class="w"> </span><span class="kt">long</span><span class="o">&gt;</span><span class="w"> </span><span class="n">decoded</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">runDecode</span><span class="p">(</span><span class="n">kv</span><span class="p">,</span><span class="w"> </span><span class="n">Td</span><span class="p">);</span>
+<a id="__codelineno-6-97" name="__codelineno-6-97" href="#__codelineno-6-97"></a><span class="w">            </span><span class="kt">bool</span><span class="w"> </span><span class="n">match</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="n">kv</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="n">referenceKv</span><span class="p">)</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="p">(</span><span class="n">decoded</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="n">referenceDecode</span><span class="p">);</span>
+<a id="__codelineno-6-98" name="__codelineno-6-98" href="#__codelineno-6-98"></a><span class="w">            </span><span class="k">const</span><span class="w"> </span><span class="kt">char</span><span class="w"> </span><span class="o">*</span><span class="n">note</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="n">Tp</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="n">Td</span><span class="p">)</span><span class="w"> </span><span class="o">?</span><span class="w"> </span><span class="s">&quot;Tp&lt;=Td (Dynamo&#39;s own recommended shape)&quot;</span>
+<a id="__codelineno-6-99" name="__codelineno-6-99" href="#__codelineno-6-99"></a><span class="w">                                           </span><span class="o">:</span><span class="w"> </span><span class="s">&quot;Tp&gt;Td (not the recommended shape, still correct)&quot;</span><span class="p">;</span>
+<a id="__codelineno-6-100" name="__codelineno-6-100" href="#__codelineno-6-100"></a><span class="w">            </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;%-6d %-6d %-10s %-30s</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">Tp</span><span class="p">,</span><span class="w"> </span><span class="n">Td</span><span class="p">,</span><span class="w"> </span><span class="n">match</span><span class="w"> </span><span class="o">?</span><span class="w"> </span><span class="s">&quot;YES&quot;</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="s">&quot;NO&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">note</span><span class="p">);</span>
+<a id="__codelineno-6-101" name="__codelineno-6-101" href="#__codelineno-6-101"></a><span class="w">        </span><span class="p">}</span>
+<a id="__codelineno-6-102" name="__codelineno-6-102" href="#__codelineno-6-102"></a><span class="w">    </span><span class="p">}</span>
+<a id="__codelineno-6-103" name="__codelineno-6-103" href="#__codelineno-6-103"></a>
+<a id="__codelineno-6-104" name="__codelineno-6-104" href="#__codelineno-6-104"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;</span><span class="se">\n</span><span class="s">Every single (Tp, Td) combination matches the Tp=1/Td=1 reference &quot;</span>
+<a id="__codelineno-6-105" name="__codelineno-6-105" href="#__codelineno-6-105"></a><span class="w">           </span><span class="s">&quot;exactly, whether or not Tp and Td are equal, and whether or not the &quot;</span>
+<a id="__codelineno-6-106" name="__codelineno-6-106" href="#__codelineno-6-106"></a><span class="w">           </span><span class="s">&quot;pair follows NVIDIA Dynamo&#39;s own recommended shape (smaller TP for &quot;</span>
+<a id="__codelineno-6-107" name="__codelineno-6-107" href="#__codelineno-6-107"></a><span class="w">           </span><span class="s">&quot;prefill, larger TP for decode). Correctness here does not come from &quot;</span>
+<a id="__codelineno-6-108" name="__codelineno-6-108" href="#__codelineno-6-108"></a><span class="w">           </span><span class="s">&quot;the two phases sharing a device-group size -- it comes from each &quot;</span>
+<a id="__codelineno-6-109" name="__codelineno-6-109" href="#__codelineno-6-109"></a><span class="w">           </span><span class="s">&quot;phase&#39;s own internal reduction being exact on its own, and the two &quot;</span>
+<a id="__codelineno-6-110" name="__codelineno-6-110" href="#__codelineno-6-110"></a><span class="w">           </span><span class="s">&quot;phases being connected ONLY through the kv cache values themselves, &quot;</span>
+<a id="__codelineno-6-111" name="__codelineno-6-111" href="#__codelineno-6-111"></a><span class="w">           </span><span class="s">&quot;never through shared parallelism structure. This is the real &quot;</span>
+<a id="__codelineno-6-112" name="__codelineno-6-112" href="#__codelineno-6-112"></a><span class="w">           </span><span class="s">&quot;correctness argument behind disaggregation: prefill and decode are &quot;</span>
+<a id="__codelineno-6-113" name="__codelineno-6-113" href="#__codelineno-6-113"></a><span class="w">           </span><span class="s">&quot;allowed to be sized independently precisely because nothing about &quot;</span>
+<a id="__codelineno-6-114" name="__codelineno-6-114" href="#__codelineno-6-114"></a><span class="w">           </span><span class="s">&quot;their correctness depends on being sized the same.</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
+<a id="__codelineno-6-115" name="__codelineno-6-115" href="#__codelineno-6-115"></a><span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
+<a id="__codelineno-6-116" name="__codelineno-6-116" href="#__codelineno-6-116"></a><span class="p">}</span>
+</code></pre></div>
+<p>Compile and run (plain host <code>.cpp</code>, cross-verified on both the cloud sandbox and the device):</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>g++<span class="w"> </span>-O2<span class="w"> </span>-ffp-contract<span class="o">=</span>off<span class="w"> </span>-o<span class="w"> </span>97_phase_specific_tensor_parallelism_correctness_simulation<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="w">    </span>97_phase_specific_tensor_parallelism_correctness_simulation.cpp
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>./97_phase_specific_tensor_parallelism_correctness_simulation
+</code></pre></div>
+<p>Locked output:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>Reference (Tp=1, Td=1): kv[0..3]=304,722,532,532  decode tokens: 24624 215460 738720 2954880 27578880 126074880 
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>
+<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>Tp     Td     match      note                          
+<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a>1      1      YES        Tp&lt;=Td (Dynamo&#39;s own recommended shape)
+<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a>1      2      YES        Tp&lt;=Td (Dynamo&#39;s own recommended shape)
+<a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a>1      3      YES        Tp&lt;=Td (Dynamo&#39;s own recommended shape)
+<a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a>1      6      YES        Tp&lt;=Td (Dynamo&#39;s own recommended shape)
+<a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a>2      1      YES        Tp&gt;Td (not the recommended shape, still correct)
+<a id="__codelineno-8-9" name="__codelineno-8-9" href="#__codelineno-8-9"></a>2      2      YES        Tp&lt;=Td (Dynamo&#39;s own recommended shape)
+<a id="__codelineno-8-10" name="__codelineno-8-10" href="#__codelineno-8-10"></a>2      3      YES        Tp&lt;=Td (Dynamo&#39;s own recommended shape)
+<a id="__codelineno-8-11" name="__codelineno-8-11" href="#__codelineno-8-11"></a>2      6      YES        Tp&lt;=Td (Dynamo&#39;s own recommended shape)
+<a id="__codelineno-8-12" name="__codelineno-8-12" href="#__codelineno-8-12"></a>4      1      YES        Tp&gt;Td (not the recommended shape, still correct)
+<a id="__codelineno-8-13" name="__codelineno-8-13" href="#__codelineno-8-13"></a>4      2      YES        Tp&gt;Td (not the recommended shape, still correct)
+<a id="__codelineno-8-14" name="__codelineno-8-14" href="#__codelineno-8-14"></a>4      3      YES        Tp&gt;Td (not the recommended shape, still correct)
+<a id="__codelineno-8-15" name="__codelineno-8-15" href="#__codelineno-8-15"></a>4      6      YES        Tp&lt;=Td (Dynamo&#39;s own recommended shape)
+<a id="__codelineno-8-16" name="__codelineno-8-16" href="#__codelineno-8-16"></a>8      1      YES        Tp&gt;Td (not the recommended shape, still correct)
+<a id="__codelineno-8-17" name="__codelineno-8-17" href="#__codelineno-8-17"></a>8      2      YES        Tp&gt;Td (not the recommended shape, still correct)
+<a id="__codelineno-8-18" name="__codelineno-8-18" href="#__codelineno-8-18"></a>8      3      YES        Tp&gt;Td (not the recommended shape, still correct)
+<a id="__codelineno-8-19" name="__codelineno-8-19" href="#__codelineno-8-19"></a>8      6      YES        Tp&gt;Td (not the recommended shape, still correct)
+<a id="__codelineno-8-20" name="__codelineno-8-20" href="#__codelineno-8-20"></a>
+<a id="__codelineno-8-21" name="__codelineno-8-21" href="#__codelineno-8-21"></a>Every single (Tp, Td) combination matches the Tp=1/Td=1 reference exactly, whether or not Tp and Td are equal, and whether or not the pair follows NVIDIA Dynamo&#39;s own recommended shape (smaller TP for prefill, larger TP for decode). Correctness here does not come from the two phases sharing a device-group size -- it comes from each phase&#39;s own internal reduction being exact on its own, and the two phases being connected ONLY through the kv cache values themselves, never through shared parallelism structure. This is the real correctness argument behind disaggregation: prefill and decode are allowed to be sized independently precisely because nothing about their correctness depends on being sized the same.
+</code></pre></div>
+<h2 id="333-the-kv-cache-handoff-a-new-point-to-point-communication-shape">33.3 The KV Cache Handoff: A New Point-to-Point Communication Shape<a class="headerlink" href="#333-the-kv-cache-handoff-a-new-point-to-point-communication-shape" title="Permanent link">&para;</a></h2>
+<h3 id="intuition_2">Intuition<a class="headerlink" href="#intuition_2" title="Permanent link">&para;</a></h3>
+<p>Every collective this book built since Chapter 8 -- broadcast, reduce, all-reduce, all-to-all -- moves data among EVERY member of some group. The KV cache handoff is not that. It is a single, targeted, one-time bulk transfer from one specific place (the prefill instance that just finished the prompt) to one specific other place (the decode instance about to generate the first token) -- structurally much closer to Chapter 5's <code>cudaMemcpyPeer()</code> or Chapter 21's GPUDirect RDMA than to anything built since. NVIDIA's own real NIXL-based transfer in Dynamo makes this concrete: it "leverages NIXL to transfer KV cache directly from the VRAM of the prefill engine to the VRAM of the decode engine" -- one sender, one receiver, no group-wide coordination at all.</p>
+<div class="admonition warning">
+<p class="admonition-title">[COMMON TRAP] Assuming a multi-gigabyte tensor transfer must be a serving bottleneck</p>
+<p>A KV cache in the gigabyte range sounds like it should dominate a request's latency. File 98 below runs the actual arithmetic on DistServe's own real cited numbers -- a real 1.13GB KV cache over a real 600 GB/s NVLink link, or a real 800 Gbps InfiniBand link -- and finds the transfer completes in low single-digit to low double-digit MILLISECONDS, small next to a real multi-hundred-millisecond-to-multi-second end-to-end serving latency. The trap is assuming "big number of bytes" automatically means "big cost," without checking it against the real bandwidth actually available -- exactly the same kind of check Chapter 21's own GPUDirect RDMA numbers required.</p>
+</div>
+<h3 id="background_2">Background<a class="headerlink" href="#background_2" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>+----------------------------------------------------------+
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>| Prefill instance (VRAM)  --- KV cache, point-to-point --&gt; Decode instance (VRAM)
+<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>|   1.13 GB (real DistServe example, OPT-66B/512 tokens)     |
+<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a>|   NVLink: 600 GB/s -&gt; ~1.9 ms      InfiniBand: 100 GB/s -&gt; ~11.3 ms
+<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a>|   (NOT a collective -- one sender, one receiver, like Ch5/Ch21)
+<a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a>+----------------------------------------------------------+
+</code></pre></div>
+<p>File 98 takes DistServe's own real cited KV cache size and its own real cited interconnect bandwidths and computes the transfer time those real numbers imply -- the exact arithmetic behind DistServe's own conclusion that the overhead is negligible, not a new estimate this book introduces.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="c1">// Chapter 33: Disaggregated LLM Inference</span>
+<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a><span class="c1">// 98_kv_cache_handoff_transfer_cost_model.cpp</span>
+<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a><span class="c1">//</span>
+<a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a><span class="c1">// Every collective this book built since Chapter 8 moved data among ALL</span>
+<a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a><span class="c1">// members of a group (a broadcast to everyone, a reduce from everyone,</span>
+<a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a><span class="c1">// an all-to-all among everyone). The KV cache handoff between a prefill</span>
+<a id="__codelineno-10-7" name="__codelineno-10-7" href="#__codelineno-10-7"></a><span class="c1">// instance and a decode instance is a genuinely different shape: a</span>
+<a id="__codelineno-10-8" name="__codelineno-10-8" href="#__codelineno-10-8"></a><span class="c1">// targeted, one-time, point-to-point bulk transfer from one specific</span>
+<a id="__codelineno-10-9" name="__codelineno-10-9" href="#__codelineno-10-9"></a><span class="c1">// device (or TP-group) to one other specific device (or TP-group) --</span>
+<a id="__codelineno-10-10" name="__codelineno-10-10" href="#__codelineno-10-10"></a><span class="c1">// the closest ancestor in this book is Chapter 5&#39;s explicit</span>
+<a id="__codelineno-10-11" name="__codelineno-10-11" href="#__codelineno-10-11"></a><span class="c1">// cudaMemcpyPeer() and Chapter 21&#39;s GPUDirect RDMA, not any collective.</span>
+<a id="__codelineno-10-12" name="__codelineno-10-12" href="#__codelineno-10-12"></a><span class="c1">// Zhong et al.&#39;s own real DistServe paper is candid that this transfer</span>
+<a id="__codelineno-10-13" name="__codelineno-10-13" href="#__codelineno-10-13"></a><span class="c1">// is not free -- &quot;transferring KV caches from prefill to decoding</span>
+<a id="__codelineno-10-14" name="__codelineno-10-14" href="#__codelineno-10-14"></a><span class="c1">// instances incurs notable overheads&quot; -- and gives a real, concrete</span>
+<a id="__codelineno-10-15" name="__codelineno-10-15" href="#__codelineno-10-15"></a><span class="c1">// example: &quot;the KV cache size of a single 512-token request on OPT-66B</span>
+<a id="__codelineno-10-16" name="__codelineno-10-16" href="#__codelineno-10-16"></a><span class="c1">// is approximately 1.13GB.&quot; This file takes that exact real number and</span>
+<a id="__codelineno-10-17" name="__codelineno-10-17" href="#__codelineno-10-17"></a><span class="c1">// combines it with DistServe&#39;s own real cited interconnect bandwidths</span>
+<a id="__codelineno-10-18" name="__codelineno-10-18" href="#__codelineno-10-18"></a><span class="c1">// -- &quot;Infiniband (e.g., 800 Gbps)&quot; for cross-node transfer and</span>
+<a id="__codelineno-10-19" name="__codelineno-10-19" href="#__codelineno-10-19"></a><span class="c1">// &quot;intra-node NVLINK, where the peak bandwidth between A100 GPUs is 600</span>
+<a id="__codelineno-10-20" name="__codelineno-10-20" href="#__codelineno-10-20"></a><span class="c1">// GB/s&quot; -- to compute the real transfer TIME implied by those real</span>
+<a id="__codelineno-10-21" name="__codelineno-10-21" href="#__codelineno-10-21"></a><span class="c1">// numbers, the same arithmetic DistServe&#39;s own paper uses to conclude</span>
+<a id="__codelineno-10-22" name="__codelineno-10-22" href="#__codelineno-10-22"></a><span class="c1">// the overhead is negligible. No timing here is measured (this sandbox</span>
+<a id="__codelineno-10-23" name="__codelineno-10-23" href="#__codelineno-10-23"></a><span class="c1">// has no real GPU or RDMA fabric); every input is a real cited number,</span>
+<a id="__codelineno-10-24" name="__codelineno-10-24" href="#__codelineno-10-24"></a><span class="c1">// and the only computation performed is bytes divided by bandwidth.</span>
+<a id="__codelineno-10-25" name="__codelineno-10-25" href="#__codelineno-10-25"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;cstdio&gt;</span>
+<a id="__codelineno-10-26" name="__codelineno-10-26" href="#__codelineno-10-26"></a>
+<a id="__codelineno-10-27" name="__codelineno-10-27" href="#__codelineno-10-27"></a><span class="kt">int</span><span class="w"> </span><span class="nf">main</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-10-28" name="__codelineno-10-28" href="#__codelineno-10-28"></a><span class="w">    </span><span class="kt">double</span><span class="w"> </span><span class="n">kvCacheGB</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">1.13</span><span class="p">;</span><span class="w">  </span><span class="c1">// DistServe&#39;s own real cited OPT-66B/512-token example</span>
+<a id="__codelineno-10-29" name="__codelineno-10-29" href="#__codelineno-10-29"></a>
+<a id="__codelineno-10-30" name="__codelineno-10-30" href="#__codelineno-10-30"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;DistServe&#39;s own real cited KV cache example: a single 512-token &quot;</span>
+<a id="__codelineno-10-31" name="__codelineno-10-31" href="#__codelineno-10-31"></a><span class="w">           </span><span class="s">&quot;OPT-66B request&#39;s KV cache is approximately %.2f GB.</span><span class="se">\n\n</span><span class="s">&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">kvCacheGB</span><span class="p">);</span>
+<a id="__codelineno-10-32" name="__codelineno-10-32" href="#__codelineno-10-32"></a>
+<a id="__codelineno-10-33" name="__codelineno-10-33" href="#__codelineno-10-33"></a><span class="w">    </span><span class="k">struct</span><span class="w"> </span><span class="nc">Link</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="k">const</span><span class="w"> </span><span class="kt">char</span><span class="w"> </span><span class="o">*</span><span class="n">name</span><span class="p">;</span><span class="w"> </span><span class="kt">double</span><span class="w"> </span><span class="n">gbPerSec</span><span class="p">;</span><span class="w"> </span><span class="k">const</span><span class="w"> </span><span class="kt">char</span><span class="w"> </span><span class="o">*</span><span class="n">source</span><span class="p">;</span><span class="w"> </span><span class="p">};</span>
+<a id="__codelineno-10-34" name="__codelineno-10-34" href="#__codelineno-10-34"></a><span class="w">    </span><span class="n">Link</span><span class="w"> </span><span class="n">links</span><span class="p">[]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-10-35" name="__codelineno-10-35" href="#__codelineno-10-35"></a><span class="w">        </span><span class="p">{</span><span class="s">&quot;Intra-node NVLink (A100)&quot;</span><span class="p">,</span><span class="w"> </span><span class="mf">600.0</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;DistServe paper: </span><span class="se">\&quot;</span><span class="s">peak bandwidth between A100 GPUs is 600 GB/s</span><span class="se">\&quot;</span><span class="s">&quot;</span><span class="p">},</span>
+<a id="__codelineno-10-36" name="__codelineno-10-36" href="#__codelineno-10-36"></a><span class="w">        </span><span class="p">{</span><span class="s">&quot;Cross-node InfiniBand&quot;</span><span class="p">,</span><span class="w">    </span><span class="mf">100.0</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;DistServe paper: </span><span class="se">\&quot;</span><span class="s">Infiniband (e.g., 800 Gbps)</span><span class="se">\&quot;</span><span class="s"> = 800/8 GB/s&quot;</span><span class="p">},</span>
+<a id="__codelineno-10-37" name="__codelineno-10-37" href="#__codelineno-10-37"></a><span class="w">    </span><span class="p">};</span>
+<a id="__codelineno-10-38" name="__codelineno-10-38" href="#__codelineno-10-38"></a>
+<a id="__codelineno-10-39" name="__codelineno-10-39" href="#__codelineno-10-39"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;%-28s %-12s %-16s</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;Link&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;GB/s&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;Transfer time (ms)&quot;</span><span class="p">);</span>
+<a id="__codelineno-10-40" name="__codelineno-10-40" href="#__codelineno-10-40"></a><span class="w">    </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="k">auto</span><span class="w"> </span><span class="o">&amp;</span><span class="n">l</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="n">links</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-10-41" name="__codelineno-10-41" href="#__codelineno-10-41"></a><span class="w">        </span><span class="kt">double</span><span class="w"> </span><span class="n">seconds</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">kvCacheGB</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="n">l</span><span class="p">.</span><span class="n">gbPerSec</span><span class="p">;</span>
+<a id="__codelineno-10-42" name="__codelineno-10-42" href="#__codelineno-10-42"></a><span class="w">        </span><span class="kt">double</span><span class="w"> </span><span class="n">ms</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">seconds</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="mf">1000.0</span><span class="p">;</span>
+<a id="__codelineno-10-43" name="__codelineno-10-43" href="#__codelineno-10-43"></a><span class="w">        </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;%-28s %-12.1f %-16.3f</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">l</span><span class="p">.</span><span class="n">name</span><span class="p">,</span><span class="w"> </span><span class="n">l</span><span class="p">.</span><span class="n">gbPerSec</span><span class="p">,</span><span class="w"> </span><span class="n">ms</span><span class="p">);</span>
+<a id="__codelineno-10-44" name="__codelineno-10-44" href="#__codelineno-10-44"></a><span class="w">    </span><span class="p">}</span>
+<a id="__codelineno-10-45" name="__codelineno-10-45" href="#__codelineno-10-45"></a>
+<a id="__codelineno-10-46" name="__codelineno-10-46" href="#__codelineno-10-46"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;</span><span class="se">\n</span><span class="s">At real NVLink bandwidth, moving this real 1.13GB KV cache takes &quot;</span>
+<a id="__codelineno-10-47" name="__codelineno-10-47" href="#__codelineno-10-47"></a><span class="w">           </span><span class="s">&quot;about %.2f milliseconds; even over real cross-node InfiniBand, about &quot;</span>
+<a id="__codelineno-10-48" name="__codelineno-10-48" href="#__codelineno-10-48"></a><span class="w">           </span><span class="s">&quot;%.2f milliseconds. Both numbers are small enough next to a real LLM &quot;</span>
+<a id="__codelineno-10-49" name="__codelineno-10-49" href="#__codelineno-10-49"></a><span class="w">           </span><span class="s">&quot;serving request&#39;s own end-to-end latency (typically hundreds of &quot;</span>
+<a id="__codelineno-10-50" name="__codelineno-10-50" href="#__codelineno-10-50"></a><span class="w">           </span><span class="s">&quot;milliseconds to multiple seconds for a multi-hundred-token response) &quot;</span>
+<a id="__codelineno-10-51" name="__codelineno-10-51" href="#__codelineno-10-51"></a><span class="w">           </span><span class="s">&quot;that DistServe&#39;s own paper calls the transmission overhead &quot;</span>
+<a id="__codelineno-10-52" name="__codelineno-10-52" href="#__codelineno-10-52"></a><span class="w">           </span><span class="s">&quot;</span><span class="se">\&quot;</span><span class="s">negligible</span><span class="se">\&quot;</span><span class="s"> -- this is the exact arithmetic behind that real &quot;</span>
+<a id="__codelineno-10-53" name="__codelineno-10-53" href="#__codelineno-10-53"></a><span class="w">           </span><span class="s">&quot;conclusion, not a new estimate this book is introducing.</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span>
+<a id="__codelineno-10-54" name="__codelineno-10-54" href="#__codelineno-10-54"></a><span class="w">           </span><span class="p">(</span><span class="n">kvCacheGB</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="mf">600.0</span><span class="p">)</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="mf">1000.0</span><span class="p">,</span><span class="w"> </span><span class="p">(</span><span class="n">kvCacheGB</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="mf">100.0</span><span class="p">)</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="mf">1000.0</span><span class="p">);</span>
+<a id="__codelineno-10-55" name="__codelineno-10-55" href="#__codelineno-10-55"></a>
+<a id="__codelineno-10-56" name="__codelineno-10-56" href="#__codelineno-10-56"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;</span><span class="se">\n</span><span class="s">NVIDIA&#39;s own real Dynamo documentation adds one further real design &quot;</span>
+<a id="__codelineno-10-57" name="__codelineno-10-57" href="#__codelineno-10-57"></a><span class="w">           </span><span class="s">&quot;point this arithmetic alone does not show: the transfer does not even &quot;</span>
+<a id="__codelineno-10-58" name="__codelineno-10-58" href="#__codelineno-10-58"></a><span class="w">           </span><span class="s">&quot;need to be on the critical path at all -- </span><span class="se">\&quot;</span><span class="s">the KV transfer is &quot;</span>
+<a id="__codelineno-10-59" name="__codelineno-10-59" href="#__codelineno-10-59"></a><span class="w">           </span><span class="s">&quot;non-blocking, allowing GPU forward passes to continue serving other &quot;</span>
+<a id="__codelineno-10-60" name="__codelineno-10-60" href="#__codelineno-10-60"></a><span class="w">           </span><span class="s">&quot;requests during the transfer.</span><span class="se">\&quot;</span><span class="s"> A cost small enough to call negligible &quot;</span>
+<a id="__codelineno-10-61" name="__codelineno-10-61" href="#__codelineno-10-61"></a><span class="w">           </span><span class="s">&quot;AND overlapped with other useful work is the real, two-part reason &quot;</span>
+<a id="__codelineno-10-62" name="__codelineno-10-62" href="#__codelineno-10-62"></a><span class="w">           </span><span class="s">&quot;production disaggregated serving systems treat this handoff as a &quot;</span>
+<a id="__codelineno-10-63" name="__codelineno-10-63" href="#__codelineno-10-63"></a><span class="w">           </span><span class="s">&quot;solved problem rather than their main bottleneck.</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
+<a id="__codelineno-10-64" name="__codelineno-10-64" href="#__codelineno-10-64"></a><span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
+<a id="__codelineno-10-65" name="__codelineno-10-65" href="#__codelineno-10-65"></a><span class="p">}</span>
+</code></pre></div>
+<p>Compile and run (plain host <code>.cpp</code>, cross-verified on both the cloud sandbox and the device):</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>g++<span class="w"> </span>-O2<span class="w"> </span>-ffp-contract<span class="o">=</span>off<span class="w"> </span>-o<span class="w"> </span>98_kv_cache_handoff_transfer_cost_model<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a><span class="w">    </span>98_kv_cache_handoff_transfer_cost_model.cpp
+<a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a>./98_kv_cache_handoff_transfer_cost_model
+</code></pre></div>
+<p>Locked output:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>DistServe&#39;s own real cited KV cache example: a single 512-token OPT-66B request&#39;s KV cache is approximately 1.13 GB.
+<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a>
+<a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a>Link                         GB/s         Transfer time (ms)
+<a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a>Intra-node NVLink (A100)     600.0        1.883           
+<a id="__codelineno-12-5" name="__codelineno-12-5" href="#__codelineno-12-5"></a>Cross-node InfiniBand        100.0        11.300          
+<a id="__codelineno-12-6" name="__codelineno-12-6" href="#__codelineno-12-6"></a>
+<a id="__codelineno-12-7" name="__codelineno-12-7" href="#__codelineno-12-7"></a>At real NVLink bandwidth, moving this real 1.13GB KV cache takes about 1.88 milliseconds; even over real cross-node InfiniBand, about 11.30 milliseconds. Both numbers are small enough next to a real LLM serving request&#39;s own end-to-end latency (typically hundreds of milliseconds to multiple seconds for a multi-hundred-token response) that DistServe&#39;s own paper calls the transmission overhead &quot;negligible&quot; -- this is the exact arithmetic behind that real conclusion, not a new estimate this book is introducing.
+<a id="__codelineno-12-8" name="__codelineno-12-8" href="#__codelineno-12-8"></a>
+<a id="__codelineno-12-9" name="__codelineno-12-9" href="#__codelineno-12-9"></a>NVIDIA&#39;s own real Dynamo documentation adds one further real design point this arithmetic alone does not show: the transfer does not even need to be on the critical path at all -- &quot;the KV transfer is non-blocking, allowing GPU forward passes to continue serving other requests during the transfer.&quot; A cost small enough to call negligible AND overlapped with other useful work is the real, two-part reason production disaggregated serving systems treat this handoff as a solved problem rather than their main bottleneck.
+</code></pre></div>
+<h2 id="chapter-summary">Chapter Summary<a class="headerlink" href="#chapter-summary" title="Permanent link">&para;</a></h2>
+<p>A single LLM inference request hides two very different workloads: DistServe's own real paper shows prefill is compute-bound (parallel work over many tokens at once) while decode is memory-bandwidth-bound (one token per step, but reading an ever-growing KV cache each time) -- File 96's illustrative model, grounded in Chapter 1's own arithmetic-intensity framing, made that contrast concrete, and DistServe's own real cited numbers (4.48x more requests, 10.2x tighter SLOs) show the payoff of treating the two phases separately. NVIDIA Dynamo's own real design takes that separation further by using different tensor-parallelism degrees for each phase -- smaller TP for compute-bound prefill, larger TP for memory-bound decode -- and File 97 confirmed, with a clean integer-only simulation, that this is correctness-preserving for ANY pair of TP degrees, not just the recommended one, because each phase's own reduction is exact on its own and the phases are connected only through the transferred KV cache values, never through shared parallelism structure. That KV cache handoff is itself a genuinely new communication shape for this book: a targeted, one-time, point-to-point bulk transfer between two disjoint device groups, closer to Chapter 5's <code>cudaMemcpyPeer()</code> and Chapter 21's GPUDirect RDMA than to any collective -- and File 98 showed, using DistServe's own real cited KV cache size and interconnect bandwidths, that this transfer costs low single-to-double-digit milliseconds, genuinely negligible next to end-to-end serving latency, and NVIDIA Dynamo's own real NIXL-based design overlaps even that small cost with continued serving of other requests.</p>
+<h2 id="self-check-questions">Self-Check Questions<a class="headerlink" href="#self-check-questions" title="Permanent link">&para;</a></h2>
+<ol>
+<li>According to DistServe's own real paper, why is decode memory-bandwidth-bound rather than compute-bound, given that it only produces one new token per step?</li>
+<li>What does DistServe's own "goodput" metric measure, and why is it a more useful metric for a serving system than raw throughput alone?</li>
+<li>NVIDIA Dynamo's own real documentation recommends a SMALLER tensor-parallelism degree for prefill and a LARGER one for decode. What is the reasoning behind each choice?</li>
+<li>File 97 tested combinations where Tp &gt; Td, which Dynamo's own guidance would NOT recommend. Were those combinations still correct? Why or why not?</li>
+<li>Why is the KV cache handoff described as a fundamentally different communication shape than anything built in Chapter 8 through Chapter 32, and which two earlier chapters is it actually closest to?</li>
+<li>Using File 98's own real cited numbers, roughly how long does it take to move a 1.13GB KV cache over a 600 GB/s NVLink connection? Over a 100 GB/s (800 Gbps) InfiniBand connection?</li>
+<li>What does it mean for the KV cache transfer to be "non-blocking," per NVIDIA Dynamo's own real documentation, and why does that matter even though the transfer itself is already fast?</li>
+<li>Why did File 97 deliberately use only integer arithmetic instead of floating-point, given that most of Part 6 and Chapter 32 used floating-point to study non-associativity?</li>
+</ol>
+<h2 id="where-we-go-next">Where We Go Next<a class="headerlink" href="#where-we-go-next" title="Permanent link">&para;</a></h2>
+<p>Chapter 34 turns to another real, deployed industrial system with its own distinctive multi-GPU shape: NVIDIA Merlin HugeCTR's approach to GPU-accelerated recommendation systems, which combines dense data-parallel layers with model-parallel embedding tables far larger than any single GPU's memory -- a hybrid this book's own Chapter 12 through Chapter 14 each built separately but never needed to combine within one model.</p>
+<h2 id="worked-solutions">Worked Solutions<a class="headerlink" href="#worked-solutions" title="Permanent link">&para;</a></h2>
+<ol>
+<li>Producing one new token still requires reading the model's ENTIRE running memory of the conversation so far -- the KV cache -- which grows with every step. DistServe's own paper states decode "incurs a similar level of I/O to the prefill phase," so the bottleneck is not how much arithmetic decode does (very little, per step) but how much data it must move to do that arithmetic, which is exactly what "memory-bandwidth-bound" means.</li>
+<li>Goodput measures "the maximum request rate that can be served adhering to the SLO attainment goal... for each GPU provisioned." Raw throughput alone can hide a system that serves many requests but violates most users' latency expectations; goodput only counts requests served WITHIN the latency target, which is what actually determines how many GPUs a real deployment needs to meet its service commitments.</li>
+<li>Prefill is compute-bound, so once each device has enough arithmetic work to stay busy, adding more devices has diminishing returns (the same principle behind any compute-bound workload's parallel scaling limit) -- a smaller TP suffices. Decode is memory-bandwidth-bound, so each additional GPU added to the TP group contributes more AGGREGATE memory bandwidth for reading the growing KV cache, which is the actual bottleneck -- so a larger TP genuinely helps more.</li>
+<li>Yes, every Tp &gt; Td combination in File 97's own locked output still matched the reference exactly. This is because each phase's own internal computation (a sum over its own local shard's contributions, then a combine across shards) is exact regardless of how many shards it's split into, and the two phases are connected only through the kv cache VALUES that get handed off, not through any shared structure that would require matching group sizes.</li>
+<li>Every collective this book built from Chapter 8 (broadcast/reduce) through Chapter 32 (MoE dispatch/combine) moves data among every member of some group of ranks, even when that "combining" happens per-token as in Chapter 32. The KV cache handoff instead moves data between exactly one sender and one receiver, a single one-time bulk transfer -- structurally closest to Chapter 5's explicit <code>cudaMemcpyPeer()</code> transfer and Chapter 21's GPUDirect RDMA, both of which are also point-to-point rather than collective.</li>
+<li>At 600 GB/s, 1.13 GB / 600 GB/s ≈ 1.88 milliseconds. At 100 GB/s (800 Gbps ÷ 8 bits/byte), 1.13 GB / 100 GB/s ≈ 11.3 milliseconds. Both are File 98's own locked, directly-computed values from DistServe's own real cited inputs.</li>
+<li>"Non-blocking" means the GPU that just finished prefill does not have to sit idle waiting for the KV cache transfer to complete before doing other useful work -- per Dynamo's own documentation, "GPU forward passes... continue serving other requests during the transfer." It matters even though the transfer is already fast (single-digit-to-low-double-digit milliseconds) because at high request volume, even a small mandatory wait repeated across every single request adds up; overlapping it removes that wait entirely rather than merely shrinking it.</li>
+<li>Because this section's own question -- does splitting a request's two phases onto independently-sized device groups (different TP degrees) preserve correctness -- is a genuinely different question from whether floating-point summation is associative under different groupings, which Chapter 8, 25, 29, 31, and 32 already investigated thoroughly. Using integers keeps File 97's own result unambiguous: any mismatch found would have to come from the phase-splitting design itself, not from floating-point rounding, which would otherwise have made the two separate questions impossible to tell apart.</li>
+</ol>
+<hr />
+<p><strong>Sources cited in this chapter:</strong></p>
+<ul>
+<li>Zhong, Y. et al. "DistServe: Disaggregating Prefill and Decoding for Goodput-optimized Large Language Model Serving." arXiv:2401.09670, USENIX OSDI 2024, fetched fresh this session from the paper's own HTML version. (Prefill compute-bound / decode memory-bandwidth-bound characterization, the "goodput" definition, the real 4.48x/10.2x measured result, the real 1.13GB KV cache size example, and the real NVLink/InfiniBand bandwidth citations.)</li>
+<li>NVIDIA. "Disaggregated Serving," Dynamo Documentation, docs.dynamo.nvidia.com, fetched fresh this session. (The real "larger TP for decode, smaller TP for prefill" design recommendation, the real NIXL-based direct VRAM-to-VRAM KV cache transfer description, and the real non-blocking-transfer design point.)</li>
+<li>This book's own Chapter 1 (memory wall / arithmetic intensity), Chapter 5 (explicit peer-to-peer transfers, <code>cudaMemcpyPeer()</code>), Chapter 14 (tensor parallelism), Chapter 21 (GPUDirect RDMA), Chapter 26 (multi-GPU LLM inference, this chapter's direct predecessor), and Chapter 32 (MoE dispatch/combine, the book's other recent departure from a uniform per-request communication pattern).</li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+    
+      
+      <nav class="md-footer__inner md-grid" aria-label="Footer" >
+        
+          
+          <a href="../32-mixture-of-experts-at-scale/" class="md-footer__link md-footer__link--prev" aria-label="Previous: 32. Mixture-of-Experts at Scale: Expert Parallelism and GPU-Initiated All-to-All (DeepEP)">
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+            </div>
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Previous
+              </span>
+              <div class="md-ellipsis">
+                32. Mixture-of-Experts at Scale: Expert Parallelism and GPU-Initiated All-to-All (DeepEP)
+              </div>
+            </div>
+          </a>
+        
+        
+      </nav>
+    
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      Copyright &copy; 2026 Oluwaseyi Awoga
+    </div>
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.instant", "navigation.tracking", "navigation.sections", "navigation.expand", "navigation.top", "navigation.footer", "toc.follow", "search.suggest", "search.highlight", "content.code.copy", "content.code.annotate"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>
