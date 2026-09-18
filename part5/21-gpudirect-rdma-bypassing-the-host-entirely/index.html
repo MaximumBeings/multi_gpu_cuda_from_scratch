@@ -1,0 +1,2195 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="From Peer-to-Peer Memory to Distributed Training Across the Cluster">
+      
+      
+        <meta name="author" content="Oluwaseyi Awoga">
+      
+      
+      
+        <link rel="prev" href="../20-mpi-from-scratch-then-cuda-aware-mpi-scaling-beyond-one-node/">
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+    
+    
+      
+        <title>21. GPUDirect RDMA: Bypassing the Host Entirely - Multi-GPU Programming in CUDA C++ -- Under Development</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#chapter-21-gpudirect-rdma-bypassing-the-host-entirely" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="Multi-GPU Programming in CUDA C++ -- Under Development" class="md-header__button md-logo" aria-label="Multi-GPU Programming in CUDA C++ -- Under Development" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 19h1a1 1 0 0 1 1 1h7v2h-7a1 1 0 0 1-1 1h-4a1 1 0 0 1-1-1H2v-2h7a1 1 0 0 1 1-1h1v-2H4a1 1 0 0 1-1-1v-4a1 1 0 0 1 1-1h16a1 1 0 0 1 1 1v4a1 1 0 0 1-1 1h-7zM4 3h16a1 1 0 0 1 1 1v4a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1m5 4h1V5H9zm0 8h1v-2H9zM5 5v2h2V5zm0 8v2h2v-2z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Multi-GPU Programming in CUDA C++ -- Under Development
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              21. GPUDirect RDMA: Bypassing the Host Entirely
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m17.75 4.09-2.53 1.94.91 3.06-2.63-1.81-2.63 1.81.91-3.06-2.53-1.94L12.44 4l1.06-3 1.06 3zm3.5 6.91-1.64 1.25.59 1.98-1.7-1.17-1.7 1.17.59-1.98L15.75 11l2.06-.05L18.5 9l.69 1.95zm-2.28 4.95c.83-.08 1.72 1.1 1.19 1.85-.32.45-.66.87-1.08 1.27C15.17 23 8.84 23 4.94 19.07c-3.91-3.9-3.91-10.24 0-14.14.4-.4.82-.76 1.27-1.08.75-.53 1.93.36 1.85 1.19-.27 2.86.69 5.83 2.89 8.02a9.96 9.96 0 0 0 8.02 2.89m-1.64 2.02a12.08 12.08 0 0 1-7.8-3.47c-2.17-2.19-3.33-5-3.49-7.82-2.81 3.14-2.7 7.96.31 10.98 3.02 3.01 7.84 3.12 10.98.31"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 7a5 5 0 0 1 5 5 5 5 0 0 1-5 5 5 5 0 0 1-5-5 5 5 0 0 1 5-5m0 2a3 3 0 0 0-3 3 3 3 0 0 0 3 3 3 3 0 0 0 3-3 3 3 0 0 0-3-3m0-7 2.39 3.42C13.65 5.15 12.84 5 12 5s-1.65.15-2.39.42zM3.34 7l4.16-.35A7.2 7.2 0 0 0 5.94 8.5c-.44.74-.69 1.5-.83 2.29zm.02 10 1.76-3.77a7.131 7.131 0 0 0 2.38 4.14zM20.65 7l-1.77 3.79a7.02 7.02 0 0 0-2.38-4.15zm-.01 10-4.14.36c.59-.51 1.12-1.14 1.54-1.86.42-.73.69-1.5.83-2.29zM12 22l-2.41-3.44c.74.27 1.55.44 2.41.44.82 0 1.63-.17 2.37-.44z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="Multi-GPU Programming in CUDA C++ -- Under Development" class="md-nav__button md-logo" aria-label="Multi-GPU Programming in CUDA C++ -- Under Development" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 19h1a1 1 0 0 1 1 1h7v2h-7a1 1 0 0 1-1 1h-4a1 1 0 0 1-1-1H2v-2h7a1 1 0 0 1 1-1h1v-2H4a1 1 0 0 1-1-1v-4a1 1 0 0 1 1-1h16a1 1 0 0 1 1 1v4a1 1 0 0 1-1 1h-7zM4 3h16a1 1 0 0 1 1 1v4a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1m5 4h1V5H9zm0 8h1v-2H9zM5 5v2h2V5zm0 8v2h2v-2z"/></svg>
+
+    </a>
+    Multi-GPU Programming in CUDA C++ -- Under Development
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Part 0 -- Why Multi-GPU, and the Hardware Underneath It
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Part 0 -- Why Multi-GPU, and the Hardware Underneath It
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part0/01-why-one-gpu-is-not-enough/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    1. Why One GPU Is Not Enough
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part0/02-multi-gpu-hardware-topology/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    2. Multi-GPU Hardware Topology: PCIe, NVLink, and NVSwitch
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part0/03-the-cuda-multi-gpu-programming-model/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    3. The CUDA Multi-GPU Programming Model: Devices, Contexts, and Streams Across Them
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Part 1 -- Getting Data Between GPUs
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Part 1 -- Getting Data Between GPUs
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part1/04-peer-to-peer-memory-access-and-uva/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    4. Peer-to-Peer Memory Access and Unified Virtual Addressing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part1/05-explicit-transfers-cudamemcpypeer-staged-host-transfers/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    5. Explicit Transfers: cudaMemcpyPeer, Staged Host Transfers, and When Each Wins
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part1/06-streams-events-and-cross-device-synchronization/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    6. Streams, Events, and Cross-Device Synchronization
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part1/07-cuda-inter-process-communication/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    7. CUDA Inter-Process Communication: Sharing Memory and Events Across Processes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Part 2 -- Collective Communication, Built From Scratch
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Part 2 -- Collective Communication, Built From Scratch
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part2/08-broadcast-and-reduce-the-first-two-collectives-by-hand/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    8. Broadcast and Reduce: The First Two Collectives, By Hand
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part2/09-ring-all-reduce-the-algorithm-behind-every-multi-gpu-training-job/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    9. Ring All-Reduce: The Algorithm Behind Every Multi-GPU Training Job
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part2/10-all-gather-reduce-scatter-and-all-to-all/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    10. All-Gather, Reduce-Scatter, and All-to-All
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part2/11-nccl-what-it-actually-does-differently/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    11. NCCL: What It Actually Does Differently From What You Just Built
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Part 3 -- Parallelization Strategies
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Part 3 -- Parallelization Strategies
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part3/12-data-parallelism-replicated-model-sharded-data/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    12. Data Parallelism: Replicated Model, Sharded Data
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part3/13-model-parallelism-when-one-gpu-cant-hold-the-weights/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    13. Model Parallelism: When One GPU Can't Hold the Weights
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part3/14-tensor-parallelism-splitting-a-single-matrix-multiply-across-devices/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    14. Tensor Parallelism: Splitting a Single Matrix Multiply Across Devices
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part3/15-pipeline-parallelism-splitting-layers-across-devices-and-the-bubble-that-costs-you/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    15. Pipeline Parallelism: Splitting Layers Across Devices, and the Bubble That Costs You
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part3/16-domain-decomposition-for-scientific-computing-halo-exchange-and-distributed-stencils/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    16. Domain Decomposition for Scientific Computing: Halo Exchange and Distributed Stencils
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_7" >
+        
+          
+          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Part 4 -- Synchronization, Load Balancing, and Failure
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Part 4 -- Synchronization, Load Balancing, and Failure
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part4/17-barriers-and-global-synchronization-across-devices/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    17. Barriers and Global Synchronization Across Devices
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part4/18-load-balancing-across-heterogeneous-gpus/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    18. Load Balancing Across Heterogeneous GPUs
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part4/19-stragglers-failures-and-fault-tolerant-collectives/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    19. Stragglers, Failures, and Fault-Tolerant Collectives
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_8" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_8" id="__nav_8_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Part 5 -- Scaling Beyond One Node
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_8">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Part 5 -- Scaling Beyond One Node
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../20-mpi-from-scratch-then-cuda-aware-mpi-scaling-beyond-one-node/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    20. MPI From Scratch, Then CUDA-Aware MPI: Scaling Beyond One Node
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    21. GPUDirect RDMA: Bypassing the Host Entirely
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    21. GPUDirect RDMA: Bypassing the Host Entirely
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#211-the-hybrid-bootstrap-mpi-for-rank-nccl-for-data" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        21.1 The Hybrid Bootstrap: MPI for Rank, NCCL for Data
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="21.1 The Hybrid Bootstrap: MPI for Rank, NCCL for Data">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#intuition" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Intuition
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#background" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Background
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#212-querying-real-gpudirect-rdma-support" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        21.2 Querying Real GPUDirect RDMA Support
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="21.2 Querying Real GPUDirect RDMA Support">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#intuition_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Intuition
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#background_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Background
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#213-the-cost-of-bypassing-the-host-and-when-topology-ruins-it" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        21.3 The Cost of Bypassing the Host (and When Topology Ruins It)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="21.3 The Cost of Bypassing the Host (and When Topology Ruins It)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#intuition_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Intuition
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#background_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Background
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#chapter-summary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Chapter Summary
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#self-check-questions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Self-Check Questions
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#where-we-go-next" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Where We Go Next
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#worked-solutions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Worked Solutions
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#211-the-hybrid-bootstrap-mpi-for-rank-nccl-for-data" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        21.1 The Hybrid Bootstrap: MPI for Rank, NCCL for Data
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="21.1 The Hybrid Bootstrap: MPI for Rank, NCCL for Data">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#intuition" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Intuition
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#background" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Background
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#212-querying-real-gpudirect-rdma-support" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        21.2 Querying Real GPUDirect RDMA Support
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="21.2 Querying Real GPUDirect RDMA Support">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#intuition_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Intuition
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#background_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Background
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#213-the-cost-of-bypassing-the-host-and-when-topology-ruins-it" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        21.3 The Cost of Bypassing the Host (and When Topology Ruins It)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="21.3 The Cost of Bypassing the Host (and When Topology Ruins It)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#intuition_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Intuition
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#background_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Background
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#chapter-summary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Chapter Summary
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#self-check-questions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Self-Check Questions
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#where-we-go-next" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Where We Go Next
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#worked-solutions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Worked Solutions
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+
+<h1 id="chapter-21-gpudirect-rdma-bypassing-the-host-entirely">Chapter 21: GPUDirect RDMA: Bypassing the Host Entirely<a class="headerlink" href="#chapter-21-gpudirect-rdma-bypassing-the-host-entirely" title="Permanent link">&para;</a></h1>
+<p><strong>What you will understand by the end of this chapter:</strong></p>
+<ul>
+<li>Why a real multi-node NCCL communicator still needs MPI (or something like it) underneath it, and how to build the real hybrid bootstrap -- <code>ncclGetUniqueId()</code> on one rank, <code>MPI_Bcast()</code> to every other rank, then <code>ncclCommInitRank()</code> on all of them -- that every real multi-node NCCL job actually uses.</li>
+<li>What GPUDirect RDMA actually is: a network adapter's DMA engine reading and writing GPU memory directly over PCI Express BAR addresses, with no host memory touched at any point -- the real alternative to Chapter 20's own staged fallback.</li>
+<li>How to query, for real, whether a specific GPU supports GPUDirect RDMA and what its write-ordering guarantees are (<code>cudaDevAttrGPUDirectRDMASupported</code>, <code>cudaDeviceFlushGPUDirectRDMAWrites()</code>).</li>
+<li>Why "GPUDirect RDMA capable" is necessary but not sufficient: real cited numbers showing PCIe topology alone can swing bandwidth between the same two capable devices by more than 40x.</li>
+</ul>
+<p><strong>What you need to know first:</strong></p>
+<ul>
+<li>Chapter 11's <code>ncclCommInitAll()</code>/<code>ncclUniqueId</code> basics, and Chapter 19's <code>ncclConfig_t</code> non-blocking communicator.</li>
+<li>Chapter 20's real <code>MPI_Init</code>/<code>MPI_Comm_rank</code>/<code>MPI_Comm_size</code>/<code>MPI_Bcast</code>, and its own staged host-transfer fallback (Chapter 5's pattern, reused between MPI ranks).</li>
+<li>Chapter 2's PCIe topology model -- same-switch vs. cross-socket bandwidth.</li>
+</ul>
+<hr />
+<p>Chapter 20 closed on an unfinished sentence: this exact environment's real, installed Open MPI build isn't CUDA-aware, so Section 20.2's own fallback spent every byte's trip going device-to-host, over the network, then host-to-device again -- never touching GPU memory directly from the network side at all. GPUDirect RDMA is the technology that removes that detour, but reaching it for real first needs one piece this book has never actually built: every NCCL communicator since Chapter 11 was built by a single process that could already see every GPU (<code>ncclCommInitAll()</code>) or, worse, was never real to begin with. A real multi-<em>node</em> NCCL job is neither -- it is exactly Chapter 20's own real multi-<em>process</em> MPI world, with NCCL layered on top of it for the actual data movement. Section 21.1 builds that real hybrid bootstrap first, because it's the thing that makes "GPUDirect RDMA between two nodes" a question that even makes sense to ask. Section 21.2 then checks, the same honest way this book has checked every device-touching capability since Chapter 3, whether a GPU genuinely supports GPUDirect RDMA. Section 21.3 closes with real, cited numbers on what bypassing the host is actually worth, and what happens when the PCIe topology underneath it is wrong.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>Chapter 20 alone:                          This chapter (Ch21):
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>  MPI_Init/Comm_rank/Comm_size                MPI bootstraps NCCL&#39;s id (21.1)
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>  -&gt; real processes, real ranks               -&gt; ncclGetUniqueId + MPI_Bcast
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>  MPI_Send/Recv/Sendrecv                          + ncclCommInitRank, all real
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>  -&gt; real bytes, host memory only             NCCL communicator now spans
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>  cudaMemcpy D2H -&gt; net -&gt; cudaMemcpy H2D         real MPI-discovered ranks
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>  -&gt; Section 20.2&#39;s own staged fallback       Does the NIC reach GPU memory
+<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>     (CUDA-aware MPI was false, so this           WITHOUT the host? (21.2)
+<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>     detour through the host was forced)      -&gt; query real GPUDirectRDMA
+<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>                                                   device attributes
+<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>                                               What is bypassing the host
+<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>                                                   actually worth? (21.3)
+<a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>                                               -&gt; real cited latency/BW
+<a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a>                                                   numbers, real topology risk
+</code></pre></div>
+<h2 id="211-the-hybrid-bootstrap-mpi-for-rank-nccl-for-data">21.1 The Hybrid Bootstrap: MPI for Rank, NCCL for Data<a class="headerlink" href="#211-the-hybrid-bootstrap-mpi-for-rank-nccl-for-data" title="Permanent link">&para;</a></h2>
+<h3 id="intuition">Intuition<a class="headerlink" href="#intuition" title="Permanent link">&para;</a></h3>
+<p>Every real distributed-training job you have ever heard of -- the ones that train across dozens or thousands of GPUs -- almost never uses MPI to move the actual training data, and almost never uses NCCL to launch its own processes. It uses both, for two different jobs, at the same time. MPI's job, established in full in Chapter 20, is to get a bunch of separate operating-system processes into existence and let them find each other: <code>mpirun -np N</code> launches them, <code>MPI_Comm_rank()</code> and <code>MPI_Comm_size()</code> tell each one who it is. NCCL's job, established since Chapter 11, is to move gradient and activation tensors between GPUs as fast as the hardware allows. The problem is that NCCL was never given a launcher of its own -- <code>ncclCommInitRank()</code> needs every participating rank to already agree on one shared <code>ncclUniqueId</code>, and NCCL has no built-in way to get that id from the one rank that generates it to every other rank. That's a completely generic "get one small piece of data from rank 0 to everyone else" problem, and MPI already solved the generic version of that problem with <code>MPI_Bcast()</code>. So real multi-node training code doesn't choose between MPI and NCCL -- it uses MPI for exactly one thing (distributing the id, plus everything else Chapter 20 already covered) and then hands off to NCCL for everything else.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>Step 1: mpirun -np N ./job launches N real OS processes (Chapter 20, unchanged)
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>  +--------+   +--------+   +--------+   +----------+
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>  | rank 0 |   | rank 1 |   | rank 2 |   | rank N-1 |
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>  +--------+   +--------+   +--------+   +----------+
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>Step 2: rank 0 alone generates the id -- every other rank has nothing yet
+<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>
+<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>  rank 0: ncclGetUniqueId(&amp;id) ---&gt; id generated (ranks 1..N-1: nothing yet)
+<a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a>
+<a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a>Step 3: MPI_Bcast(&amp;id, root=0) delivers that SAME id to every other rank
+<a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a>
+<a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a>  rank 0 ---&gt; rank 1
+<a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a>  rank 0 ---&gt; rank 2
+<a id="__codelineno-1-15" name="__codelineno-1-15" href="#__codelineno-1-15"></a>  rank 0 ---&gt; rank N-1
+<a id="__codelineno-1-16" name="__codelineno-1-16" href="#__codelineno-1-16"></a>
+<a id="__codelineno-1-17" name="__codelineno-1-17" href="#__codelineno-1-17"></a>Step 4: every rank calls ncclCommInitRank(&amp;comm, N, id, myRank) with the SAME id
+<a id="__codelineno-1-18" name="__codelineno-1-18" href="#__codelineno-1-18"></a>
+<a id="__codelineno-1-19" name="__codelineno-1-19" href="#__codelineno-1-19"></a>  rank 0:   ncclCommInitRank(&amp;comm, N, id, 0)   ---+
+<a id="__codelineno-1-20" name="__codelineno-1-20" href="#__codelineno-1-20"></a>  rank 1:   ncclCommInitRank(&amp;comm, N, id, 1)   ---+--&gt; same real NCCL communicator
+<a id="__codelineno-1-21" name="__codelineno-1-21" href="#__codelineno-1-21"></a>  rank N-1: ncclCommInitRank(&amp;comm, N, id, N-1) ---+    (every ncclAllReduce/ncclBroadcast
+<a id="__codelineno-1-22" name="__codelineno-1-22" href="#__codelineno-1-22"></a>                                                          call since Ch11 now spans real
+<a id="__codelineno-1-23" name="__codelineno-1-23" href="#__codelineno-1-23"></a>                                                          MPI-discovered ranks)
+</code></pre></div>
+<h3 id="background">Background<a class="headerlink" href="#background" title="Permanent link">&para;</a></h3>
+<p>NCCL's own installed header states the requirement directly, in its own comment above <code>ncclGetUniqueId()</code>: "ncclGetUniqueId should be called once and the Id should be distributed to all ranks in the communicator before calling ncclCommInitRank." NCCL's own official documentation shows the exact real pattern this section builds, "in the context of MPI, using one device per MPI rank": query <code>MPI_Comm_rank()</code>/<code>MPI_Comm_size()</code>, have rank 0 alone call <code>ncclGetUniqueId()</code>, <code>MPI_Bcast()</code> the id to everyone, then have every rank call <code>ncclCommInitRank()</code> with the shared id and its own rank.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="c1">// Chapter 21: GPUDirect RDMA: Bypassing the Host Entirely</span>
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="c1">// 60_hybrid_mpi_nccl_bootstrap.cpp</span>
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="c1">//</span>
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="c1">// Every NCCL communicator this book has built since Chapter 11 used</span>
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="c1">// ncclCommInitAll() -- a single-process convenience call that works</span>
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a><span class="c1">// because that single process could see every GPU. Chapter 20 showed</span>
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a><span class="c1">// mpirun genuinely launching separate OS processes, each seeing only</span>
+<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a><span class="c1">// its own GPU. NCCL&#39;s own installed header (nccl.h) says exactly what</span>
+<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a><span class="c1">// bridges that gap: &quot;ncclGetUniqueId should be called once and the Id</span>
+<a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a><span class="c1">// should be distributed to all ranks in the communicator before</span>
+<a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a><span class="c1">// calling ncclCommInitRank.&quot; NCCL has no process launcher and no</span>
+<a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a><span class="c1">// broadcast primitive of its own to use before a communicator exists</span>
+<a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a><span class="c1">// -- MPI already solved both in Chapter 20, so this section reuses</span>
+<a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a><span class="c1">// MPI purely as NCCL&#39;s own bootstrap, exactly as NCCL&#39;s own official</span>
+<a id="__codelineno-2-15" name="__codelineno-2-15" href="#__codelineno-2-15"></a><span class="c1">// documentation demonstrates: &quot;in the context of MPI, using one</span>
+<a id="__codelineno-2-16" name="__codelineno-2-16" href="#__codelineno-2-16"></a><span class="c1">// device per MPI rank.&quot;</span>
+<a id="__codelineno-2-17" name="__codelineno-2-17" href="#__codelineno-2-17"></a><span class="c1">// Genuinely compiled with a real mpicxx (linked against the real</span>
+<a id="__codelineno-2-18" name="__codelineno-2-18" href="#__codelineno-2-18"></a><span class="c1">// installed libnccl and libcudart) and genuinely run with a real</span>
+<a id="__codelineno-2-19" name="__codelineno-2-19" href="#__codelineno-2-19"></a><span class="c1">// mpirun -- the same two-toolchain-in-one-binary trick Chapter 20&#39;s</span>
+<a id="__codelineno-2-20" name="__codelineno-2-20" href="#__codelineno-2-20"></a><span class="c1">// own file 58 used for MPI+CUDA, now extended to MPI+CUDA+NCCL.</span>
+<a id="__codelineno-2-21" name="__codelineno-2-21" href="#__codelineno-2-21"></a><span class="cp">#define OMPI_SKIP_MPICXX</span>
+<a id="__codelineno-2-22" name="__codelineno-2-22" href="#__codelineno-2-22"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;mpi.h&gt;</span>
+<a id="__codelineno-2-23" name="__codelineno-2-23" href="#__codelineno-2-23"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;nccl.h&gt;</span>
+<a id="__codelineno-2-24" name="__codelineno-2-24" href="#__codelineno-2-24"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;cuda_runtime.h&gt;</span>
+<a id="__codelineno-2-25" name="__codelineno-2-25" href="#__codelineno-2-25"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;cstdio&gt;</span>
+<a id="__codelineno-2-26" name="__codelineno-2-26" href="#__codelineno-2-26"></a>
+<a id="__codelineno-2-27" name="__codelineno-2-27" href="#__codelineno-2-27"></a><span class="kt">int</span><span class="w"> </span><span class="nf">main</span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">argc</span><span class="p">,</span><span class="w"> </span><span class="kt">char</span><span class="o">**</span><span class="w"> </span><span class="n">argv</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-2-28" name="__codelineno-2-28" href="#__codelineno-2-28"></a><span class="w">    </span><span class="n">MPI_Init</span><span class="p">(</span><span class="o">&amp;</span><span class="n">argc</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">argv</span><span class="p">);</span>
+<a id="__codelineno-2-29" name="__codelineno-2-29" href="#__codelineno-2-29"></a><span class="w">    </span><span class="kt">int</span><span class="w"> </span><span class="n">myRank</span><span class="p">,</span><span class="w"> </span><span class="n">nRanks</span><span class="p">;</span>
+<a id="__codelineno-2-30" name="__codelineno-2-30" href="#__codelineno-2-30"></a><span class="w">    </span><span class="n">MPI_Comm_rank</span><span class="p">(</span><span class="n">MPI_COMM_WORLD</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">myRank</span><span class="p">);</span>
+<a id="__codelineno-2-31" name="__codelineno-2-31" href="#__codelineno-2-31"></a><span class="w">    </span><span class="n">MPI_Comm_size</span><span class="p">(</span><span class="n">MPI_COMM_WORLD</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">nRanks</span><span class="p">);</span>
+<a id="__codelineno-2-32" name="__codelineno-2-32" href="#__codelineno-2-32"></a>
+<a id="__codelineno-2-33" name="__codelineno-2-33" href="#__codelineno-2-33"></a><span class="w">    </span><span class="c1">// The real, documented sequence: exactly ONE rank calls</span>
+<a id="__codelineno-2-34" name="__codelineno-2-34" href="#__codelineno-2-34"></a><span class="w">    </span><span class="c1">// ncclGetUniqueId(). If every rank called it independently, each</span>
+<a id="__codelineno-2-35" name="__codelineno-2-35" href="#__codelineno-2-35"></a><span class="w">    </span><span class="c1">// would get a DIFFERENT id and there would be nothing for</span>
+<a id="__codelineno-2-36" name="__codelineno-2-36" href="#__codelineno-2-36"></a><span class="w">    </span><span class="c1">// ncclCommInitRank() to rendezvous on below -- this chapter&#39;s own</span>
+<a id="__codelineno-2-37" name="__codelineno-2-37" href="#__codelineno-2-37"></a><span class="w">    </span><span class="c1">// COMMON TRAP.</span>
+<a id="__codelineno-2-38" name="__codelineno-2-38" href="#__codelineno-2-38"></a><span class="w">    </span><span class="n">ncclUniqueId</span><span class="w"> </span><span class="n">id</span><span class="p">;</span>
+<a id="__codelineno-2-39" name="__codelineno-2-39" href="#__codelineno-2-39"></a><span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">myRank</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="mi">0</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-2-40" name="__codelineno-2-40" href="#__codelineno-2-40"></a><span class="w">        </span><span class="n">ncclGetUniqueId</span><span class="p">(</span><span class="o">&amp;</span><span class="n">id</span><span class="p">);</span>
+<a id="__codelineno-2-41" name="__codelineno-2-41" href="#__codelineno-2-41"></a><span class="w">        </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;rank 0: generated the ONE ncclUniqueId every rank will &quot;</span>
+<a id="__codelineno-2-42" name="__codelineno-2-42" href="#__codelineno-2-42"></a><span class="w">               </span><span class="s">&quot;share, and is about to MPI_Bcast it to all %d ranks.</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">nRanks</span><span class="p">);</span>
+<a id="__codelineno-2-43" name="__codelineno-2-43" href="#__codelineno-2-43"></a><span class="w">    </span><span class="p">}</span>
+<a id="__codelineno-2-44" name="__codelineno-2-44" href="#__codelineno-2-44"></a>
+<a id="__codelineno-2-45" name="__codelineno-2-45" href="#__codelineno-2-45"></a><span class="w">    </span><span class="c1">// MPI is doing NOTHING NCCL-specific here -- MPI_Bcast() is the</span>
+<a id="__codelineno-2-46" name="__codelineno-2-46" href="#__codelineno-2-46"></a><span class="w">    </span><span class="c1">// exact same general-purpose collective it always was, moving</span>
+<a id="__codelineno-2-47" name="__codelineno-2-47" href="#__codelineno-2-47"></a><span class="w">    </span><span class="c1">// sizeof(id) raw bytes from rank 0 to everyone else. NCCL never</span>
+<a id="__codelineno-2-48" name="__codelineno-2-48" href="#__codelineno-2-48"></a><span class="w">    </span><span class="c1">// sees this call; it only sees the result.</span>
+<a id="__codelineno-2-49" name="__codelineno-2-49" href="#__codelineno-2-49"></a><span class="w">    </span><span class="n">MPI_Bcast</span><span class="p">((</span><span class="kt">void</span><span class="o">*</span><span class="p">)</span><span class="o">&amp;</span><span class="n">id</span><span class="p">,</span><span class="w"> </span><span class="k">sizeof</span><span class="p">(</span><span class="n">id</span><span class="p">),</span><span class="w"> </span><span class="n">MPI_BYTE</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="n">MPI_COMM_WORLD</span><span class="p">);</span>
+<a id="__codelineno-2-50" name="__codelineno-2-50" href="#__codelineno-2-50"></a>
+<a id="__codelineno-2-51" name="__codelineno-2-51" href="#__codelineno-2-51"></a><span class="w">    </span><span class="c1">// Real device binding, per rank, exactly like every earlier</span>
+<a id="__codelineno-2-52" name="__codelineno-2-52" href="#__codelineno-2-52"></a><span class="w">    </span><span class="c1">// ncclCommInitRank() precondition since Chapter 11 (&quot;Each rank is</span>
+<a id="__codelineno-2-53" name="__codelineno-2-53" href="#__codelineno-2-53"></a><span class="w">    </span><span class="c1">// associated to a CUDA device, which has to be set before calling</span>
+<a id="__codelineno-2-54" name="__codelineno-2-54" href="#__codelineno-2-54"></a><span class="w">    </span><span class="c1">// ncclCommInitRank&quot; -- nccl.h&#39;s own comment). Honestly</span>
+<a id="__codelineno-2-55" name="__codelineno-2-55" href="#__codelineno-2-55"></a><span class="w">    </span><span class="c1">// cudaErrorNoDevice: this environment has no device at all,</span>
+<a id="__codelineno-2-56" name="__codelineno-2-56" href="#__codelineno-2-56"></a><span class="w">    </span><span class="c1">// regardless of which rank asks.</span>
+<a id="__codelineno-2-57" name="__codelineno-2-57" href="#__codelineno-2-57"></a><span class="w">    </span><span class="n">cudaError_t</span><span class="w"> </span><span class="n">eSet</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">cudaSetDevice</span><span class="p">(</span><span class="n">myRank</span><span class="p">);</span>
+<a id="__codelineno-2-58" name="__codelineno-2-58" href="#__codelineno-2-58"></a>
+<a id="__codelineno-2-59" name="__codelineno-2-59" href="#__codelineno-2-59"></a><span class="w">    </span><span class="c1">// Every rank now calls ncclCommInitRank() with the SAME id</span>
+<a id="__codelineno-2-60" name="__codelineno-2-60" href="#__codelineno-2-60"></a><span class="w">    </span><span class="c1">// (received via MPI, never regenerated) and its OWN rank/nRanks</span>
+<a id="__codelineno-2-61" name="__codelineno-2-61" href="#__codelineno-2-61"></a><span class="w">    </span><span class="c1">// (queried from MPI, never hard-coded) -- structurally identical</span>
+<a id="__codelineno-2-62" name="__codelineno-2-62" href="#__codelineno-2-62"></a><span class="w">    </span><span class="c1">// to Chapter 19&#39;s own ncclCommInitRankConfig() calls, just fed by</span>
+<a id="__codelineno-2-63" name="__codelineno-2-63" href="#__codelineno-2-63"></a><span class="w">    </span><span class="c1">// real MPI-discovered values instead of this book&#39;s own literal</span>
+<a id="__codelineno-2-64" name="__codelineno-2-64" href="#__codelineno-2-64"></a><span class="w">    </span><span class="c1">// constants.</span>
+<a id="__codelineno-2-65" name="__codelineno-2-65" href="#__codelineno-2-65"></a><span class="w">    </span><span class="n">ncclComm_t</span><span class="w"> </span><span class="n">comm</span><span class="p">;</span>
+<a id="__codelineno-2-66" name="__codelineno-2-66" href="#__codelineno-2-66"></a><span class="w">    </span><span class="n">ncclResult_t</span><span class="w"> </span><span class="n">eInit</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">ncclCommInitRank</span><span class="p">(</span><span class="o">&amp;</span><span class="n">comm</span><span class="p">,</span><span class="w"> </span><span class="n">nRanks</span><span class="p">,</span><span class="w"> </span><span class="n">id</span><span class="p">,</span><span class="w"> </span><span class="n">myRank</span><span class="p">);</span>
+<a id="__codelineno-2-67" name="__codelineno-2-67" href="#__codelineno-2-67"></a>
+<a id="__codelineno-2-68" name="__codelineno-2-68" href="#__codelineno-2-68"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;rank %d of %d: cudaSetDevice(%d)=%s ncclCommInitRank=%s (code %d)</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span>
+<a id="__codelineno-2-69" name="__codelineno-2-69" href="#__codelineno-2-69"></a><span class="w">           </span><span class="n">myRank</span><span class="p">,</span><span class="w"> </span><span class="n">nRanks</span><span class="p">,</span><span class="w"> </span><span class="n">myRank</span><span class="p">,</span><span class="w"> </span><span class="n">cudaGetErrorString</span><span class="p">(</span><span class="n">eSet</span><span class="p">),</span>
+<a id="__codelineno-2-70" name="__codelineno-2-70" href="#__codelineno-2-70"></a><span class="w">           </span><span class="n">ncclGetErrorString</span><span class="p">(</span><span class="n">eInit</span><span class="p">),</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="p">)</span><span class="n">eInit</span><span class="p">);</span>
+<a id="__codelineno-2-71" name="__codelineno-2-71" href="#__codelineno-2-71"></a>
+<a id="__codelineno-2-72" name="__codelineno-2-72" href="#__codelineno-2-72"></a><span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">myRank</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="mi">0</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-2-73" name="__codelineno-2-73" href="#__codelineno-2-73"></a><span class="w">        </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;</span><span class="se">\n</span><span class="s">Every rank sees the SAME honest failure code Chapter 11&#39;s &quot;</span>
+<a id="__codelineno-2-74" name="__codelineno-2-74" href="#__codelineno-2-74"></a><span class="w">               </span><span class="s">&quot;single-process ncclCommInitAll() saw on its own well-formed &quot;</span>
+<a id="__codelineno-2-75" name="__codelineno-2-75" href="#__codelineno-2-75"></a><span class="w">               </span><span class="s">&quot;requests (ncclUnhandledCudaError=1) -- this environment&#39;s &quot;</span>
+<a id="__codelineno-2-76" name="__codelineno-2-76" href="#__codelineno-2-76"></a><span class="w">               </span><span class="s">&quot;real absence of any GPU doesn&#39;t care whether the caller was &quot;</span>
+<a id="__codelineno-2-77" name="__codelineno-2-77" href="#__codelineno-2-77"></a><span class="w">               </span><span class="s">&quot;one process managing N devices or N real MPI processes each &quot;</span>
+<a id="__codelineno-2-78" name="__codelineno-2-78" href="#__codelineno-2-78"></a><span class="w">               </span><span class="s">&quot;managing one. What changed is genuinely real: %d separate &quot;</span>
+<a id="__codelineno-2-79" name="__codelineno-2-79" href="#__codelineno-2-79"></a><span class="w">               </span><span class="s">&quot;operating-system processes, discovered through MPI, agreed &quot;</span>
+<a id="__codelineno-2-80" name="__codelineno-2-80" href="#__codelineno-2-80"></a><span class="w">               </span><span class="s">&quot;on one shared id through MPI, and each independently called &quot;</span>
+<a id="__codelineno-2-81" name="__codelineno-2-81" href="#__codelineno-2-81"></a><span class="w">               </span><span class="s">&quot;the exact same NCCL entry point every earlier chapter used.</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span>
+<a id="__codelineno-2-82" name="__codelineno-2-82" href="#__codelineno-2-82"></a><span class="w">               </span><span class="n">nRanks</span><span class="p">);</span>
+<a id="__codelineno-2-83" name="__codelineno-2-83" href="#__codelineno-2-83"></a><span class="w">    </span><span class="p">}</span>
+<a id="__codelineno-2-84" name="__codelineno-2-84" href="#__codelineno-2-84"></a>
+<a id="__codelineno-2-85" name="__codelineno-2-85" href="#__codelineno-2-85"></a><span class="w">    </span><span class="n">MPI_Finalize</span><span class="p">();</span>
+<a id="__codelineno-2-86" name="__codelineno-2-86" href="#__codelineno-2-86"></a><span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
+<a id="__codelineno-2-87" name="__codelineno-2-87" href="#__codelineno-2-87"></a><span class="p">}</span>
+</code></pre></div>
+<p>Compiled with <code>mpicxx -Wall -Wextra 60_hybrid_mpi_nccl_bootstrap.cpp -o 60_hybrid_mpi_nccl_bootstrap -lnccl -lcudart</code> (the same real <code>mpicxx</code>-links-<code>libcudart</code> trick Chapter 20's own file 58 used, now also linking the real installed <code>libnccl</code>) and genuinely run with <code>mpirun --allow-run-as-root --oversubscribe -np 4 ./60_hybrid_mpi_nccl_bootstrap</code>. Locked output (the four per-rank lines and the closing paragraph are deterministic in content; their print ORDER across ranks is not, exactly like Chapter 20's own Section 20.1 -- three genuinely different real orderings, captured across three separate runs):</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>rank 0: generated the ONE ncclUniqueId every rank will share, and is about to MPI_Bcast it to all 4 ranks.
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>rank 1 of 4: cudaSetDevice(1)=no CUDA-capable device is detected ncclCommInitRank=unhandled cuda error (run with NCCL_DEBUG=INFO for details) (code 1)
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>rank 2 of 4: cudaSetDevice(2)=no CUDA-capable device is detected ncclCommInitRank=unhandled cuda error (run with NCCL_DEBUG=INFO for details) (code 1)
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>rank 3 of 4: cudaSetDevice(3)=no CUDA-capable device is detected ncclCommInitRank=unhandled cuda error (run with NCCL_DEBUG=INFO for details) (code 1)
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>rank 0 of 4: cudaSetDevice(0)=no CUDA-capable device is detected ncclCommInitRank=unhandled cuda error (run with NCCL_DEBUG=INFO for details) (code 1)
+<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>
+<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>Every rank sees the SAME honest failure code Chapter 11&#39;s single-process ncclCommInitAll() saw on its own well-formed requests (ncclUnhandledCudaError=1) -- this environment&#39;s real absence of any GPU doesn&#39;t care whether the caller was one process managing N devices or N real MPI processes each managing one. What changed is genuinely real: 4 separate operating-system processes, discovered through MPI, agreed on one shared id through MPI, and each independently called the exact same NCCL entry point every earlier chapter used.
+</code></pre></div>
+<p>A second real run printed the closing paragraph immediately after rank 0's own per-rank line, before ranks 1-3 had printed at all; a third run printed ranks 1, 2, 3 in that exact order after rank 0. All three runs' VALUES were identical -- only which process's <code>printf()</code> reached the terminal first changed, run to run, exactly as Chapter 20's own Section 20.1 already demonstrated for a plain MPI ring.</p>
+<div class="admonition warning">
+<p class="admonition-title">[COMMON TRAP] Every rank generating its own uniqueId, instead of one rank generating it and broadcasting it</p>
+<p>The code above deliberately guards <code>ncclGetUniqueId(&amp;id)</code> with <code>if (myRank == 0)</code>. Delete that guard -- let every rank call <code>ncclGetUniqueId()</code> independently -- and every rank now holds a <em>different</em> 128-byte id, because <code>ncclUniqueId</code> is generated from process-local random state, not derived from anything shared. <code>ncclCommInitRank()</code> on a real cluster then has nothing to rendezvous on: each rank is waiting for peers who agree on an id that rank never received, and the call hangs -- not a fast, honest error like every device-less failure this book has shown since Chapter 3, but the same silent, indefinite hang Chapter 19 named as NCCL's real, worse failure mode. NCCL's own installed header is explicit about the fix, in the exact comment quoted above: the id must be "called once" and then "distributed to all ranks... before calling ncclCommInitRank" -- generated by exactly one rank, delivered to the rest by some other real mechanism. This book uses <code>MPI_Bcast()</code> because Chapter 20 already built real MPI; a job with no MPI at all still needs some equivalent distribution step (a shared filesystem, a rendezvous server, a job scheduler's own environment variables) -- there is no version of this bootstrap that skips broadcasting the id.</p>
+</div>
+<h2 id="212-querying-real-gpudirect-rdma-support">21.2 Querying Real GPUDirect RDMA Support<a class="headerlink" href="#212-querying-real-gpudirect-rdma-support" title="Permanent link">&para;</a></h2>
+<h3 id="intuition_1">Intuition<a class="headerlink" href="#intuition_1" title="Permanent link">&para;</a></h3>
+<p>Section 21.1's hybrid communicator now spans real, separate machines in principle -- but knowing <em>that</em> a communicator exists says nothing about <em>how</em> its data actually crosses from one node's GPU to another's. Every inter-node collective ultimately has to move bytes through some network interface card. Without GPUDirect RDMA, that NIC only ever touches host memory, so a GPU-to-GPU transfer across nodes looks exactly like Chapter 20's own Section 20.2: <code>cudaMemcpy</code> the data off the GPU, hand it to the network, <code>cudaMemcpy</code> it back onto the destination GPU. GPUDirect RDMA removes the two <code>cudaMemcpy</code> calls entirely by letting the NIC's own DMA engine read and write GPU memory directly, the same way it already reads and writes host memory -- NVIDIA's own GPUDirect RDMA design guide states this plainly: "PCI Express device issues reads and writes to a peer device's BAR addresses in the same way that they are issued to system memory." Whether a specific GPU actually supports this is a real, queryable hardware-and-driver fact, not something to assume -- exactly the kind of honest capability query this book has run since Chapter 3's own <code>cudaGetDeviceCount()</code>.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>Without GPUDirect RDMA (Ch20&#39;s own Section 20.2 fallback) -- four real hops:
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>  GPU memory -&gt; cudaMemcpy(D2H) -&gt; Host buffer -&gt; network hop (MPI_Send/Recv)
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>  -&gt; Host buffer (remote) -&gt; cudaMemcpy(H2D) -&gt; GPU memory (remote)
+<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>
+<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>With GPUDirect RDMA -- the NIC&#39;s own DMA engine reads/writes GPU memory
+<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a>directly, over PCIe BAR addresses, no host memory touched on either side:
+<a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a>
+<a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a>  GPU memory -&gt; NIC&#39;s DMA engine -&gt; network -&gt; remote NIC&#39;s DMA engine -&gt; GPU memory (remote)
+</code></pre></div>
+<h3 id="background_1">Background<a class="headerlink" href="#background_1" title="Permanent link">&para;</a></h3>
+<p>CUDA exposes GPUDirect RDMA support as three real device attributes, confirmed here directly against this exact environment's own installed <code>driver_types.h</code> rather than assumed from documentation: <code>cudaDevAttrGPUDirectRDMASupported</code> ("Device supports GPUDirect RDMA APIs, like nvidia_p2p_get_pages"), <code>cudaDevAttrGPUDirectRDMAFlushWritesOptions</code> (a bitmask of which flush mechanisms the device supports), and <code>cudaDevAttrGPUDirectRDMAWritesOrdering</code> (whether the device natively guarantees a NIC's writes are visible to that device's own running kernels). The same two facts also live as fields on <code>cudaDeviceProp</code>, queryable through Chapter 18's own <code>cudaGetDeviceProperties()</code> function -- two independent real ways to ask, exactly like Chapter 20's own <code>MPIX_CUDA_AWARE_SUPPORT</code> macro vs. <code>MPIX_Query_cuda_support()</code> function pairing. When a platform does <em>not</em> natively guarantee write ordering, <code>cudaDeviceFlushGPUDirectRDMAWrites()</code> is the real, documented way to close that gap -- it blocks until pending GPUDirect RDMA writes are visible to the requested scope, and returns <code>cudaErrorNotSupported</code> when the device can't do this or when the ordering already covers that scope (a real no-op).</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="c1">// Chapter 21: GPUDirect RDMA: Bypassing the Host Entirely</span>
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="c1">// 61_gpudirect_rdma_query.cu</span>
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="c1">//</span>
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="c1">// Section 20.2 checked whether an MPI BUILD could accept a device</span>
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a><span class="c1">// pointer directly (it couldn&#39;t, on this exact installed Open MPI).</span>
+<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a><span class="c1">// GPUDirect RDMA is the layer underneath that question: it lets a</span>
+<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a><span class="c1">// third-party PCI Express device -- a NIC, in the hybrid setup this</span>
+<a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a><span class="c1">// chapter&#39;s own file 60 just bootstrapped -- read and write GPU</span>
+<a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a><span class="c1">// memory directly, over the same real PCIe BAR mechanism NVIDIA&#39;s own</span>
+<a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a><span class="c1">// GPUDirect RDMA design guide describes: &quot;PCI Express device issues</span>
+<a id="__codelineno-5-11" name="__codelineno-5-11" href="#__codelineno-5-11"></a><span class="c1">// reads and writes to a peer device&#39;s BAR addresses in the same way</span>
+<a id="__codelineno-5-12" name="__codelineno-5-12" href="#__codelineno-5-12"></a><span class="c1">// that they are issued to system memory.&quot; Whether a specific GPU</span>
+<a id="__codelineno-5-13" name="__codelineno-5-13" href="#__codelineno-5-13"></a><span class="c1">// supports this at all is not something to assume -- CUDA exposes it</span>
+<a id="__codelineno-5-14" name="__codelineno-5-14" href="#__codelineno-5-14"></a><span class="c1">// as three real, queryable device attributes (cudaDevAttrGPUDirect...,</span>
+<a id="__codelineno-5-15" name="__codelineno-5-15" href="#__codelineno-5-15"></a><span class="c1">// found by grepping this exact environment&#39;s own installed</span>
+<a id="__codelineno-5-16" name="__codelineno-5-16" href="#__codelineno-5-16"></a><span class="c1">// driver_types.h, not guessed), queried here the same honest way</span>
+<a id="__codelineno-5-17" name="__codelineno-5-17" href="#__codelineno-5-17"></a><span class="c1">// Chapter 18 queried cudaGetDeviceProperties().</span>
+<a id="__codelineno-5-18" name="__codelineno-5-18" href="#__codelineno-5-18"></a><span class="c1">// Genuinely compiled with a real nvcc against the real installed CUDA</span>
+<a id="__codelineno-5-19" name="__codelineno-5-19" href="#__codelineno-5-19"></a><span class="c1">// runtime.</span>
+<a id="__codelineno-5-20" name="__codelineno-5-20" href="#__codelineno-5-20"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;cstdio&gt;</span>
+<a id="__codelineno-5-21" name="__codelineno-5-21" href="#__codelineno-5-21"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;cuda_runtime.h&gt;</span>
+<a id="__codelineno-5-22" name="__codelineno-5-22" href="#__codelineno-5-22"></a>
+<a id="__codelineno-5-23" name="__codelineno-5-23" href="#__codelineno-5-23"></a><span class="kt">int</span><span class="w"> </span><span class="nf">main</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-5-24" name="__codelineno-5-24" href="#__codelineno-5-24"></a><span class="w">    </span><span class="kt">int</span><span class="w"> </span><span class="n">deviceCount</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
+<a id="__codelineno-5-25" name="__codelineno-5-25" href="#__codelineno-5-25"></a><span class="w">    </span><span class="n">cudaError_t</span><span class="w"> </span><span class="n">eCount</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">cudaGetDeviceCount</span><span class="p">(</span><span class="o">&amp;</span><span class="n">deviceCount</span><span class="p">);</span>
+<a id="__codelineno-5-26" name="__codelineno-5-26" href="#__codelineno-5-26"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;cudaGetDeviceCount(): %s, count=%d</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span>
+<a id="__codelineno-5-27" name="__codelineno-5-27" href="#__codelineno-5-27"></a><span class="w">           </span><span class="n">cudaGetErrorString</span><span class="p">(</span><span class="n">eCount</span><span class="p">),</span><span class="w"> </span><span class="n">deviceCount</span><span class="p">);</span>
+<a id="__codelineno-5-28" name="__codelineno-5-28" href="#__codelineno-5-28"></a>
+<a id="__codelineno-5-29" name="__codelineno-5-29" href="#__codelineno-5-29"></a><span class="w">    </span><span class="c1">// Real device attribute #1: does this device support GPUDirect RDMA</span>
+<a id="__codelineno-5-30" name="__codelineno-5-30" href="#__codelineno-5-30"></a><span class="w">    </span><span class="c1">// APIs at all (the kernel-driver functions nvidia_p2p_get_pages()/</span>
+<a id="__codelineno-5-31" name="__codelineno-5-31" href="#__codelineno-5-31"></a><span class="w">    </span><span class="c1">// nvidia_p2p_put_pages() the design guide names)? This is a</span>
+<a id="__codelineno-5-32" name="__codelineno-5-32" href="#__codelineno-5-32"></a><span class="w">    </span><span class="c1">// per-device hardware/driver fact, independent of any specific NIC.</span>
+<a id="__codelineno-5-33" name="__codelineno-5-33" href="#__codelineno-5-33"></a><span class="w">    </span><span class="kt">int</span><span class="w"> </span><span class="n">rdmaSupported</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">-1</span><span class="p">;</span>
+<a id="__codelineno-5-34" name="__codelineno-5-34" href="#__codelineno-5-34"></a><span class="w">    </span><span class="n">cudaError_t</span><span class="w"> </span><span class="n">eSupported</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">cudaDeviceGetAttribute</span><span class="p">(</span>
+<a id="__codelineno-5-35" name="__codelineno-5-35" href="#__codelineno-5-35"></a><span class="w">        </span><span class="o">&amp;</span><span class="n">rdmaSupported</span><span class="p">,</span><span class="w"> </span><span class="n">cudaDevAttrGPUDirectRDMASupported</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">);</span>
+<a id="__codelineno-5-36" name="__codelineno-5-36" href="#__codelineno-5-36"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;</span><span class="se">\n</span><span class="s">cudaDeviceGetAttribute(cudaDevAttrGPUDirectRDMASupported): &quot;</span>
+<a id="__codelineno-5-37" name="__codelineno-5-37" href="#__codelineno-5-37"></a><span class="w">           </span><span class="s">&quot;%s (queried value untouched at %d since the call itself &quot;</span>
+<a id="__codelineno-5-38" name="__codelineno-5-38" href="#__codelineno-5-38"></a><span class="w">           </span><span class="s">&quot;honestly failed -- no device 0 exists to report on)</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span>
+<a id="__codelineno-5-39" name="__codelineno-5-39" href="#__codelineno-5-39"></a><span class="w">           </span><span class="n">cudaGetErrorString</span><span class="p">(</span><span class="n">eSupported</span><span class="p">),</span><span class="w"> </span><span class="n">rdmaSupported</span><span class="p">);</span>
+<a id="__codelineno-5-40" name="__codelineno-5-40" href="#__codelineno-5-40"></a>
+<a id="__codelineno-5-41" name="__codelineno-5-41" href="#__codelineno-5-41"></a><span class="w">    </span><span class="c1">// Real device attribute #2: a bitmask of which flush options</span>
+<a id="__codelineno-5-42" name="__codelineno-5-42" href="#__codelineno-5-42"></a><span class="w">    </span><span class="c1">// cudaDeviceFlushGPUDirectRDMAWrites() (below) supports on this</span>
+<a id="__codelineno-5-43" name="__codelineno-5-43" href="#__codelineno-5-43"></a><span class="w">    </span><span class="c1">// device -- cudaFlushGPUDirectRDMAWritesOptionHost (1&lt;&lt;0) and/or</span>
+<a id="__codelineno-5-44" name="__codelineno-5-44" href="#__codelineno-5-44"></a><span class="w">    </span><span class="c1">// cudaFlushGPUDirectRDMAWritesOptionMemOps (1&lt;&lt;1), per this exact</span>
+<a id="__codelineno-5-45" name="__codelineno-5-45" href="#__codelineno-5-45"></a><span class="w">    </span><span class="c1">// installed driver_types.h.</span>
+<a id="__codelineno-5-46" name="__codelineno-5-46" href="#__codelineno-5-46"></a><span class="w">    </span><span class="kt">int</span><span class="w"> </span><span class="n">flushOptions</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">-1</span><span class="p">;</span>
+<a id="__codelineno-5-47" name="__codelineno-5-47" href="#__codelineno-5-47"></a><span class="w">    </span><span class="n">cudaError_t</span><span class="w"> </span><span class="n">eFlushOpts</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">cudaDeviceGetAttribute</span><span class="p">(</span>
+<a id="__codelineno-5-48" name="__codelineno-5-48" href="#__codelineno-5-48"></a><span class="w">        </span><span class="o">&amp;</span><span class="n">flushOptions</span><span class="p">,</span><span class="w"> </span><span class="n">cudaDevAttrGPUDirectRDMAFlushWritesOptions</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">);</span>
+<a id="__codelineno-5-49" name="__codelineno-5-49" href="#__codelineno-5-49"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;cudaDeviceGetAttribute(cudaDevAttrGPUDirectRDMAFlushWritesOptions): &quot;</span>
+<a id="__codelineno-5-50" name="__codelineno-5-50" href="#__codelineno-5-50"></a><span class="w">           </span><span class="s">&quot;%s</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">cudaGetErrorString</span><span class="p">(</span><span class="n">eFlushOpts</span><span class="p">));</span>
+<a id="__codelineno-5-51" name="__codelineno-5-51" href="#__codelineno-5-51"></a>
+<a id="__codelineno-5-52" name="__codelineno-5-52" href="#__codelineno-5-52"></a><span class="w">    </span><span class="c1">// Real device attribute #3: does this device natively guarantee</span>
+<a id="__codelineno-5-53" name="__codelineno-5-53" href="#__codelineno-5-53"></a><span class="w">    </span><span class="c1">// ORDERING of GPUDirect RDMA writes for the device&#39;s own kernels</span>
+<a id="__codelineno-5-54" name="__codelineno-5-54" href="#__codelineno-5-54"></a><span class="w">    </span><span class="c1">// (cudaGPUDirectRDMAWritesOrderingNone=0 / ...Owner=100 /</span>
+<a id="__codelineno-5-55" name="__codelineno-5-55" href="#__codelineno-5-55"></a><span class="w">    </span><span class="c1">// ...AllDevices=200)? A NIC&#39;s DMA write landing in GPU memory is</span>
+<a id="__codelineno-5-56" name="__codelineno-5-56" href="#__codelineno-5-56"></a><span class="w">    </span><span class="c1">// not automatically visible to a kernel already running on that</span>
+<a id="__codelineno-5-57" name="__codelineno-5-57" href="#__codelineno-5-57"></a><span class="w">    </span><span class="c1">// GPU unless the platform guarantees this ordering -- that&#39;s</span>
+<a id="__codelineno-5-58" name="__codelineno-5-58" href="#__codelineno-5-58"></a><span class="w">    </span><span class="c1">// exactly the race cudaDeviceFlushGPUDirectRDMAWrites() exists to</span>
+<a id="__codelineno-5-59" name="__codelineno-5-59" href="#__codelineno-5-59"></a><span class="w">    </span><span class="c1">// close when the platform does NOT guarantee it.</span>
+<a id="__codelineno-5-60" name="__codelineno-5-60" href="#__codelineno-5-60"></a><span class="w">    </span><span class="kt">int</span><span class="w"> </span><span class="n">writesOrdering</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">-1</span><span class="p">;</span>
+<a id="__codelineno-5-61" name="__codelineno-5-61" href="#__codelineno-5-61"></a><span class="w">    </span><span class="n">cudaError_t</span><span class="w"> </span><span class="n">eOrdering</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">cudaDeviceGetAttribute</span><span class="p">(</span>
+<a id="__codelineno-5-62" name="__codelineno-5-62" href="#__codelineno-5-62"></a><span class="w">        </span><span class="o">&amp;</span><span class="n">writesOrdering</span><span class="p">,</span><span class="w"> </span><span class="n">cudaDevAttrGPUDirectRDMAWritesOrdering</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">);</span>
+<a id="__codelineno-5-63" name="__codelineno-5-63" href="#__codelineno-5-63"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;cudaDeviceGetAttribute(cudaDevAttrGPUDirectRDMAWritesOrdering): &quot;</span>
+<a id="__codelineno-5-64" name="__codelineno-5-64" href="#__codelineno-5-64"></a><span class="w">           </span><span class="s">&quot;%s</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">cudaGetErrorString</span><span class="p">(</span><span class="n">eOrdering</span><span class="p">));</span>
+<a id="__codelineno-5-65" name="__codelineno-5-65" href="#__codelineno-5-65"></a>
+<a id="__codelineno-5-66" name="__codelineno-5-66" href="#__codelineno-5-66"></a><span class="w">    </span><span class="c1">// cudaGetDeviceProperties() carries the SAME two facts as struct</span>
+<a id="__codelineno-5-67" name="__codelineno-5-67" href="#__codelineno-5-67"></a><span class="w">    </span><span class="c1">// fields (Chapter 18&#39;s own query function, new fields) -- included</span>
+<a id="__codelineno-5-68" name="__codelineno-5-68" href="#__codelineno-5-68"></a><span class="w">    </span><span class="c1">// to show both real, independent ways CUDA exposes this, exactly</span>
+<a id="__codelineno-5-69" name="__codelineno-5-69" href="#__codelineno-5-69"></a><span class="w">    </span><span class="c1">// like Chapter 20&#39;s own MPIX_CUDA_AWARE_SUPPORT (macro) vs</span>
+<a id="__codelineno-5-70" name="__codelineno-5-70" href="#__codelineno-5-70"></a><span class="w">    </span><span class="c1">// MPIX_Query_cuda_support() (function) pairing.</span>
+<a id="__codelineno-5-71" name="__codelineno-5-71" href="#__codelineno-5-71"></a><span class="w">    </span><span class="n">cudaDeviceProp</span><span class="w"> </span><span class="n">prop</span><span class="p">;</span>
+<a id="__codelineno-5-72" name="__codelineno-5-72" href="#__codelineno-5-72"></a><span class="w">    </span><span class="n">cudaError_t</span><span class="w"> </span><span class="n">eProps</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">cudaGetDeviceProperties</span><span class="p">(</span><span class="o">&amp;</span><span class="n">prop</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">);</span>
+<a id="__codelineno-5-73" name="__codelineno-5-73" href="#__codelineno-5-73"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;</span><span class="se">\n</span><span class="s">cudaGetDeviceProperties(): %s</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">cudaGetErrorString</span><span class="p">(</span><span class="n">eProps</span><span class="p">));</span>
+<a id="__codelineno-5-74" name="__codelineno-5-74" href="#__codelineno-5-74"></a><span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">eProps</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="n">cudaSuccess</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-5-75" name="__codelineno-5-75" href="#__codelineno-5-75"></a><span class="w">        </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;  prop.gpuDirectRDMAFlushWritesOptions = %u</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span>
+<a id="__codelineno-5-76" name="__codelineno-5-76" href="#__codelineno-5-76"></a><span class="w">               </span><span class="n">prop</span><span class="p">.</span><span class="n">gpuDirectRDMAFlushWritesOptions</span><span class="p">);</span>
+<a id="__codelineno-5-77" name="__codelineno-5-77" href="#__codelineno-5-77"></a><span class="w">        </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;  prop.gpuDirectRDMAWritesOrdering     = %d</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span>
+<a id="__codelineno-5-78" name="__codelineno-5-78" href="#__codelineno-5-78"></a><span class="w">               </span><span class="n">prop</span><span class="p">.</span><span class="n">gpuDirectRDMAWritesOrdering</span><span class="p">);</span>
+<a id="__codelineno-5-79" name="__codelineno-5-79" href="#__codelineno-5-79"></a><span class="w">    </span><span class="p">}</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-5-80" name="__codelineno-5-80" href="#__codelineno-5-80"></a><span class="w">        </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;  (struct never populated -- same honest failure as the &quot;</span>
+<a id="__codelineno-5-81" name="__codelineno-5-81" href="#__codelineno-5-81"></a><span class="w">               </span><span class="s">&quot;three cudaDeviceGetAttribute() calls above; this &quot;</span>
+<a id="__codelineno-5-82" name="__codelineno-5-82" href="#__codelineno-5-82"></a><span class="w">               </span><span class="s">&quot;environment has no device 0 for either query style to &quot;</span>
+<a id="__codelineno-5-83" name="__codelineno-5-83" href="#__codelineno-5-83"></a><span class="w">               </span><span class="s">&quot;report on)</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
+<a id="__codelineno-5-84" name="__codelineno-5-84" href="#__codelineno-5-84"></a><span class="w">    </span><span class="p">}</span>
+<a id="__codelineno-5-85" name="__codelineno-5-85" href="#__codelineno-5-85"></a>
+<a id="__codelineno-5-86" name="__codelineno-5-86" href="#__codelineno-5-86"></a><span class="w">    </span><span class="c1">// The actual bypass-the-host action: block until pending GPUDirect</span>
+<a id="__codelineno-5-87" name="__codelineno-5-87" href="#__codelineno-5-87"></a><span class="w">    </span><span class="c1">// RDMA writes to this device are visible to the requested scope.</span>
+<a id="__codelineno-5-88" name="__codelineno-5-88" href="#__codelineno-5-88"></a><span class="w">    </span><span class="c1">// Real, documented return values: cudaSuccess, or cudaErrorNotSupported</span>
+<a id="__codelineno-5-89" name="__codelineno-5-89" href="#__codelineno-5-89"></a><span class="w">    </span><span class="c1">// if &quot;the call will be a no-op&quot; -- e.g. because the device&#39;s own</span>
+<a id="__codelineno-5-90" name="__codelineno-5-90" href="#__codelineno-5-90"></a><span class="w">    </span><span class="c1">// ordering guarantee (queried above) already covers this scope, or</span>
+<a id="__codelineno-5-91" name="__codelineno-5-91" href="#__codelineno-5-91"></a><span class="w">    </span><span class="c1">// because the device has no GPUDirect RDMA support at all.</span>
+<a id="__codelineno-5-92" name="__codelineno-5-92" href="#__codelineno-5-92"></a><span class="w">    </span><span class="n">cudaError_t</span><span class="w"> </span><span class="n">eFlush</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">cudaDeviceFlushGPUDirectRDMAWrites</span><span class="p">(</span>
+<a id="__codelineno-5-93" name="__codelineno-5-93" href="#__codelineno-5-93"></a><span class="w">        </span><span class="n">cudaFlushGPUDirectRDMAWritesTargetCurrentDevice</span><span class="p">,</span>
+<a id="__codelineno-5-94" name="__codelineno-5-94" href="#__codelineno-5-94"></a><span class="w">        </span><span class="n">cudaFlushGPUDirectRDMAWritesToOwner</span><span class="p">);</span>
+<a id="__codelineno-5-95" name="__codelineno-5-95" href="#__codelineno-5-95"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;</span><span class="se">\n</span><span class="s">cudaDeviceFlushGPUDirectRDMAWrites(TargetCurrentDevice, &quot;</span>
+<a id="__codelineno-5-96" name="__codelineno-5-96" href="#__codelineno-5-96"></a><span class="w">           </span><span class="s">&quot;ToOwner): %s</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">cudaGetErrorString</span><span class="p">(</span><span class="n">eFlush</span><span class="p">));</span>
+<a id="__codelineno-5-97" name="__codelineno-5-97" href="#__codelineno-5-97"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;This call needs an ACTIVE device context to mean anything at &quot;</span>
+<a id="__codelineno-5-98" name="__codelineno-5-98" href="#__codelineno-5-98"></a><span class="w">           </span><span class="s">&quot;all -- there is no device 0 to make current, so this is the &quot;</span>
+<a id="__codelineno-5-99" name="__codelineno-5-99" href="#__codelineno-5-99"></a><span class="w">           </span><span class="s">&quot;same honest cudaErrorNoDevice family every device-touching &quot;</span>
+<a id="__codelineno-5-100" name="__codelineno-5-100" href="#__codelineno-5-100"></a><span class="w">           </span><span class="s">&quot;call in this book has returned since Chapter 3, not a new &quot;</span>
+<a id="__codelineno-5-101" name="__codelineno-5-101" href="#__codelineno-5-101"></a><span class="w">           </span><span class="s">&quot;failure mode specific to GPUDirect RDMA.</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
+<a id="__codelineno-5-102" name="__codelineno-5-102" href="#__codelineno-5-102"></a>
+<a id="__codelineno-5-103" name="__codelineno-5-103" href="#__codelineno-5-103"></a><span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
+<a id="__codelineno-5-104" name="__codelineno-5-104" href="#__codelineno-5-104"></a><span class="p">}</span>
+</code></pre></div>
+<p>Compiled with <code>nvcc -Wno-deprecated-gpu-targets 61_gpudirect_rdma_query.cu -o 61_gpudirect_rdma_query</code> and genuinely run. Locked output, deterministic:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>cudaGetDeviceCount(): no CUDA-capable device is detected, count=0
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>cudaDeviceGetAttribute(cudaDevAttrGPUDirectRDMASupported): no CUDA-capable device is detected (queried value untouched at -1 since the call itself honestly failed -- no device 0 exists to report on)
+<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>cudaDeviceGetAttribute(cudaDevAttrGPUDirectRDMAFlushWritesOptions): no CUDA-capable device is detected
+<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>cudaDeviceGetAttribute(cudaDevAttrGPUDirectRDMAWritesOrdering): no CUDA-capable device is detected
+<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a>
+<a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a>cudaGetDeviceProperties(): no CUDA-capable device is detected
+<a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a>  (struct never populated -- same honest failure as the three cudaDeviceGetAttribute() calls above; this environment has no device 0 for either query style to report on)
+<a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a>
+<a id="__codelineno-6-10" name="__codelineno-6-10" href="#__codelineno-6-10"></a>cudaDeviceFlushGPUDirectRDMAWrites(TargetCurrentDevice, ToOwner): no CUDA-capable device is detected
+<a id="__codelineno-6-11" name="__codelineno-6-11" href="#__codelineno-6-11"></a>This call needs an ACTIVE device context to mean anything at all -- there is no device 0 to make current, so this is the same honest cudaErrorNoDevice family every device-touching call in this book has returned since Chapter 3, not a new failure mode specific to GPUDirect RDMA.
+</code></pre></div>
+<div class="admonition warning">
+<p class="admonition-title">[COMMON TRAP] Treating \"GPUDirect RDMA capable\" as a property of the GPU alone</p>
+<p><code>cudaDevAttrGPUDirectRDMASupported</code> answers one question: can this GPU's driver expose its memory to a third-party device at all. It says nothing about any <em>specific</em> NIC, and nothing about the PCIe path between that GPU and that NIC. NVIDIA's own GPUDirect RDMA design guide is explicit that both devices must "share the same upstream PCI Express root complex," and NCCL's own <code>NCCL_NET_GDR_LEVEL</code> variable exists precisely because that path varies: its real documented levels run from <code>PIX</code> (GPU and NIC on the same PCI switch -- fast) down through <code>PXB</code>, <code>PHB</code>, to <code>SYS</code> (crossing the inter-NUMA-node SMP interconnect -- GPUDirect RDMA still technically works, but see Section 21.3 for exactly how much slower). A device that answers "yes" to <code>cudaDevAttrGPUDirectRDMASupported</code> can still end up on the slow end of that range, or -- if some other real constraint in the system rules it out entirely -- fall back to no GPUDirect RDMA at all, for reasons this one attribute alone can never reveal. The device-level query in this section and the topology question in the next are two different questions, and answering only the first is not enough to predict real performance.</p>
+</div>
+<h2 id="213-the-cost-of-bypassing-the-host-and-when-topology-ruins-it">21.3 The Cost of Bypassing the Host (and When Topology Ruins It)<a class="headerlink" href="#213-the-cost-of-bypassing-the-host-and-when-topology-ruins-it" title="Permanent link">&para;</a></h2>
+<h3 id="intuition_2">Intuition<a class="headerlink" href="#intuition_2" title="Permanent link">&para;</a></h3>
+<p>Section 21.2 established that GPUDirect RDMA support is a real, queryable yes/no. What that yes/no is actually <em>worth</em> -- and what can silently take most of that value away -- are two separate real questions this section answers with cited numbers rather than a hardware measurement this environment cannot take. For small messages, skipping Chapter 20's own two <code>cudaMemcpy</code> calls and the intermediate host buffer removes real, fixed per-message latency -- every hop Section 21.2's diagram removed was a real hop with a real minimum cost, not a free abstraction. For large messages, the story is about sustained bandwidth, and bandwidth is where the COMMON TRAP above turns real: NVIDIA's own benchmarking of GPUDirect RDMA on real server platforms shows both a large, real speedup when the topology is right and a severe, real collapse when it isn't -- the same PCIe-topology sensitivity Chapter 2 first introduced for GPU-to-GPU links, now applying to the GPU-to-NIC link that this chapter's hybrid communicator ultimately depends on.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>Same PCIe switch (best case):          Crossing inter-socket QPI (worst case, SAME real post):
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>  GPU --- PCIe switch --- NIC            GPU --- CPU0 === QPI === CPU1 --- NIC
+<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a>  11.6 GB/s (measured,                   250 MB/s write bandwidth (measured,
+<a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a>   Host-to-GPU, dual-rail)                IB adapter pushing to a cross-socket GPU)
+<a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a>
+<a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a>  Both paths are &quot;GPUDirect RDMA capable&quot; by Section 21.2&#39;s own query.
+<a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a>  The 46x gap between them comes ENTIRELY from PCIe topology, not capability.
+</code></pre></div>
+<h3 id="background_2">Background<a class="headerlink" href="#background_2" title="Permanent link">&para;</a></h3>
+<p>Every number below is cited to NVIDIA's own "Benchmarking GPUDirect RDMA on Modern Server Platforms" post -- this section's own arithmetic combines them; it does not reproduce any unpublished model from that post.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="c1">// Chapter 21: GPUDirect RDMA: Bypassing the Host Entirely</span>
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a><span class="c1">// 62_staged_vs_rdma_cost_model.cpp</span>
+<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a><span class="c1">//</span>
+<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a><span class="c1">// Plain host C++, no device/MPI/NCCL needed -- this section&#39;s job is</span>
+<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a><span class="c1">// to quantify, using cited real numbers (not new measurements this</span>
+<a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a><span class="c1">// book has no hardware to take), the gap between Section 20.2&#39;s own</span>
+<a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a><span class="c1">// real staged path (cudaMemcpy D2H -&gt; network -&gt; cudaMemcpy H2D) and</span>
+<a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a><span class="c1">// GPUDirect RDMA&#39;s direct path. Every constant below is cited to</span>
+<a id="__codelineno-8-9" name="__codelineno-8-9" href="#__codelineno-8-9"></a><span class="c1">// NVIDIA&#39;s own &quot;Benchmarking GPUDirect RDMA on Modern Server</span>
+<a id="__codelineno-8-10" name="__codelineno-8-10" href="#__codelineno-8-10"></a><span class="c1">// Platforms&quot; post; every combination of them is this book&#39;s own</span>
+<a id="__codelineno-8-11" name="__codelineno-8-11" href="#__codelineno-8-11"></a><span class="c1">// arithmetic, not a reproduction of an unpublished internal model --</span>
+<a id="__codelineno-8-12" name="__codelineno-8-12" href="#__codelineno-8-12"></a><span class="c1">// Part C below is explicit about that boundary.</span>
+<a id="__codelineno-8-13" name="__codelineno-8-13" href="#__codelineno-8-13"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;cstdio&gt;</span>
+<a id="__codelineno-8-14" name="__codelineno-8-14" href="#__codelineno-8-14"></a>
+<a id="__codelineno-8-15" name="__codelineno-8-15" href="#__codelineno-8-15"></a><span class="kt">int</span><span class="w"> </span><span class="nf">main</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-8-16" name="__codelineno-8-16" href="#__codelineno-8-16"></a><span class="w">    </span><span class="c1">// ---- Part A: small-message latency, cited fixed numbers ----</span>
+<a id="__codelineno-8-17" name="__codelineno-8-17" href="#__codelineno-8-17"></a><span class="w">    </span><span class="c1">// &quot;GPUDirect RDMA provides a latency consistently below 2us&quot; --</span>
+<a id="__codelineno-8-18" name="__codelineno-8-18" href="#__codelineno-8-18"></a><span class="w">    </span><span class="c1">// measured 1.7us (GPU-to-Host) and 1.9us (Host-to-GPU direction).</span>
+<a id="__codelineno-8-19" name="__codelineno-8-19" href="#__codelineno-8-19"></a><span class="w">    </span><span class="c1">// The staged path&#39;s own cited breakdown: cudaMemcpy/cudaMemcpyAsync</span>
+<a id="__codelineno-8-20" name="__codelineno-8-20" href="#__codelineno-8-20"></a><span class="w">    </span><span class="c1">// &quot;can easily take 8us and 9us respectively,&quot; plus InfiniBand&#39;s own</span>
+<a id="__codelineno-8-21" name="__codelineno-8-21" href="#__codelineno-8-21"></a><span class="w">    </span><span class="c1">// &quot;1.3us&quot; host-to-host latency -- the post&#39;s own rounded total for</span>
+<a id="__codelineno-8-22" name="__codelineno-8-22" href="#__codelineno-8-22"></a><span class="w">    </span><span class="c1">// the full GPU-to-GPU staged round trip is &quot;approximately 17us.&quot;</span>
+<a id="__codelineno-8-23" name="__codelineno-8-23" href="#__codelineno-8-23"></a><span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="kt">double</span><span class="w"> </span><span class="n">RDMA_LATENCY_LOW_US</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">1.7</span><span class="p">;</span>
+<a id="__codelineno-8-24" name="__codelineno-8-24" href="#__codelineno-8-24"></a><span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="kt">double</span><span class="w"> </span><span class="n">RDMA_LATENCY_HIGH_US</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">1.9</span><span class="p">;</span>
+<a id="__codelineno-8-25" name="__codelineno-8-25" href="#__codelineno-8-25"></a><span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="kt">double</span><span class="w"> </span><span class="n">STAGED_LATENCY_US</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">17.0</span><span class="p">;</span>
+<a id="__codelineno-8-26" name="__codelineno-8-26" href="#__codelineno-8-26"></a>
+<a id="__codelineno-8-27" name="__codelineno-8-27" href="#__codelineno-8-27"></a><span class="w">    </span><span class="kt">double</span><span class="w"> </span><span class="n">rdmaAvg</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="n">RDMA_LATENCY_LOW_US</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">RDMA_LATENCY_HIGH_US</span><span class="p">)</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="mf">2.0</span><span class="p">;</span>
+<a id="__codelineno-8-28" name="__codelineno-8-28" href="#__codelineno-8-28"></a><span class="w">    </span><span class="kt">double</span><span class="w"> </span><span class="n">speedup</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">STAGED_LATENCY_US</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="n">rdmaAvg</span><span class="p">;</span>
+<a id="__codelineno-8-29" name="__codelineno-8-29" href="#__codelineno-8-29"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;Part A -- small-message fixed latency (cited, not measured here):</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
+<a id="__codelineno-8-30" name="__codelineno-8-30" href="#__codelineno-8-30"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;  GPUDirect RDMA: %.1f-%.1fus (avg %.2fus)</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span>
+<a id="__codelineno-8-31" name="__codelineno-8-31" href="#__codelineno-8-31"></a><span class="w">           </span><span class="n">RDMA_LATENCY_LOW_US</span><span class="p">,</span><span class="w"> </span><span class="n">RDMA_LATENCY_HIGH_US</span><span class="p">,</span><span class="w"> </span><span class="n">rdmaAvg</span><span class="p">);</span>
+<a id="__codelineno-8-32" name="__codelineno-8-32" href="#__codelineno-8-32"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;  Staged (D2H + IB host-to-host + H2D): ~%.1fus</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">STAGED_LATENCY_US</span><span class="p">);</span>
+<a id="__codelineno-8-33" name="__codelineno-8-33" href="#__codelineno-8-33"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;  Ratio: %.2fx -- matches the source&#39;s own cited &quot;</span>
+<a id="__codelineno-8-34" name="__codelineno-8-34" href="#__codelineno-8-34"></a><span class="w">           </span><span class="s">&quot;</span><span class="se">\&quot;</span><span class="s">approximately 9x faster</span><span class="se">\&quot;</span><span class="s"> claim (computed here from its own &quot;</span>
+<a id="__codelineno-8-35" name="__codelineno-8-35" href="#__codelineno-8-35"></a><span class="w">           </span><span class="s">&quot;two numbers, not independently re-measured).</span><span class="se">\n\n</span><span class="s">&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">speedup</span><span class="p">);</span>
+<a id="__codelineno-8-36" name="__codelineno-8-36" href="#__codelineno-8-36"></a>
+<a id="__codelineno-8-37" name="__codelineno-8-37" href="#__codelineno-8-37"></a><span class="w">    </span><span class="c1">// ---- Part B: large-message bandwidth, topology-dependent ----</span>
+<a id="__codelineno-8-38" name="__codelineno-8-38" href="#__codelineno-8-38"></a><span class="w">    </span><span class="c1">// Best case, both devices under the SAME PCIe switch (the</span>
+<a id="__codelineno-8-39" name="__codelineno-8-39" href="#__codelineno-8-39"></a><span class="w">    </span><span class="c1">// GPUDirect RDMA design guide&#39;s own top-tier topology): 11.6 GB/s</span>
+<a id="__codelineno-8-40" name="__codelineno-8-40" href="#__codelineno-8-40"></a><span class="w">    </span><span class="c1">// Host-to-GPU with a dual-rail setup. Worst real case in the SAME</span>
+<a id="__codelineno-8-41" name="__codelineno-8-41" href="#__codelineno-8-41"></a><span class="w">    </span><span class="c1">// post: crossing the inter-socket QPI link collapses write</span>
+<a id="__codelineno-8-42" name="__codelineno-8-42" href="#__codelineno-8-42"></a><span class="w">    </span><span class="c1">// bandwidth to &quot;250 MB/s when the IB adapter pushes data to a GPU</span>
+<a id="__codelineno-8-43" name="__codelineno-8-43" href="#__codelineno-8-43"></a><span class="w">    </span><span class="c1">// on a different socket.&quot; Same two endpoints NCCL&#39;s own</span>
+<a id="__codelineno-8-44" name="__codelineno-8-44" href="#__codelineno-8-44"></a><span class="w">    </span><span class="c1">// NCCL_NET_GDR_LEVEL knob names directly -- PIX (same PCIe switch)</span>
+<a id="__codelineno-8-45" name="__codelineno-8-45" href="#__codelineno-8-45"></a><span class="w">    </span><span class="c1">// down through SYS (cross-NUMA-node, over the SMP interconnect) --</span>
+<a id="__codelineno-8-46" name="__codelineno-8-46" href="#__codelineno-8-46"></a><span class="w">    </span><span class="c1">// reusing Chapter 2&#39;s own topology-matters framing, now for a</span>
+<a id="__codelineno-8-47" name="__codelineno-8-47" href="#__codelineno-8-47"></a><span class="w">    </span><span class="c1">// GPU-NIC pair instead of a GPU-GPU pair.</span>
+<a id="__codelineno-8-48" name="__codelineno-8-48" href="#__codelineno-8-48"></a><span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="kt">double</span><span class="w"> </span><span class="n">BEST_CASE_GBPS</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">11.6</span><span class="p">;</span><span class="w">   </span><span class="c1">// same PCIe switch (PIX-class)</span>
+<a id="__codelineno-8-49" name="__codelineno-8-49" href="#__codelineno-8-49"></a><span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="kt">double</span><span class="w"> </span><span class="n">WORST_CASE_GBPS</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">0.25</span><span class="p">;</span><span class="w">  </span><span class="c1">// 250 MB/s, crossing QPI (SYS-class)</span>
+<a id="__codelineno-8-50" name="__codelineno-8-50" href="#__codelineno-8-50"></a><span class="w">    </span><span class="kt">double</span><span class="w"> </span><span class="n">degradation</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">BEST_CASE_GBPS</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="n">WORST_CASE_GBPS</span><span class="p">;</span>
+<a id="__codelineno-8-51" name="__codelineno-8-51" href="#__codelineno-8-51"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;Part B -- large-message bandwidth, same real post, different &quot;</span>
+<a id="__codelineno-8-52" name="__codelineno-8-52" href="#__codelineno-8-52"></a><span class="w">           </span><span class="s">&quot;PCIe topology:</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
+<a id="__codelineno-8-53" name="__codelineno-8-53" href="#__codelineno-8-53"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;  Same PCIe switch (NCCL_NET_GDR_LEVEL=PIX-class): %.1f GB/s</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span>
+<a id="__codelineno-8-54" name="__codelineno-8-54" href="#__codelineno-8-54"></a><span class="w">           </span><span class="n">BEST_CASE_GBPS</span><span class="p">);</span>
+<a id="__codelineno-8-55" name="__codelineno-8-55" href="#__codelineno-8-55"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;  Crossing inter-socket QPI (NCCL_NET_GDR_LEVEL=SYS-class): &quot;</span>
+<a id="__codelineno-8-56" name="__codelineno-8-56" href="#__codelineno-8-56"></a><span class="w">           </span><span class="s">&quot;%.2f GB/s</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">WORST_CASE_GBPS</span><span class="p">);</span>
+<a id="__codelineno-8-57" name="__codelineno-8-57" href="#__codelineno-8-57"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;  Degradation: %.1fx -- </span><span class="se">\&quot;</span><span class="s">GPUDirect RDMA capable</span><span class="se">\&quot;</span><span class="s"> (Section &quot;</span>
+<a id="__codelineno-8-58" name="__codelineno-8-58" href="#__codelineno-8-58"></a><span class="w">           </span><span class="s">&quot;21.2&#39;s own boolean attribute) is NECESSARY but not &quot;</span>
+<a id="__codelineno-8-59" name="__codelineno-8-59" href="#__codelineno-8-59"></a><span class="w">           </span><span class="s">&quot;SUFFICIENT: the same capable GPU, paired with the same &quot;</span>
+<a id="__codelineno-8-60" name="__codelineno-8-60" href="#__codelineno-8-60"></a><span class="w">           </span><span class="s">&quot;capable NIC, is %.0fx slower if the PCIe topology between &quot;</span>
+<a id="__codelineno-8-61" name="__codelineno-8-61" href="#__codelineno-8-61"></a><span class="w">           </span><span class="s">&quot;them is wrong, with no code change at all.</span><span class="se">\n\n</span><span class="s">&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">degradation</span><span class="p">,</span><span class="w"> </span><span class="n">degradation</span><span class="p">);</span>
+<a id="__codelineno-8-62" name="__codelineno-8-62" href="#__codelineno-8-62"></a>
+<a id="__codelineno-8-63" name="__codelineno-8-63" href="#__codelineno-8-63"></a><span class="w">    </span><span class="c1">// ---- Part C: the real crossover, cited as a finding, not re-derived ----</span>
+<a id="__codelineno-8-64" name="__codelineno-8-64" href="#__codelineno-8-64"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;Part C -- the source&#39;s own real crossover finding:</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
+<a id="__codelineno-8-65" name="__codelineno-8-65" href="#__codelineno-8-65"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;  The same post states: </span><span class="se">\&quot;</span><span class="s">GPUDirect RDMA is faster than the &quot;</span>
+<a id="__codelineno-8-66" name="__codelineno-8-66" href="#__codelineno-8-66"></a><span class="w">           </span><span class="s">&quot;staging approach for message sizes up to 400-500KB (on Ivy &quot;</span>
+<a id="__codelineno-8-67" name="__codelineno-8-67" href="#__codelineno-8-67"></a><span class="w">           </span><span class="s">&quot;Bridge Xeon)</span><span class="se">\&quot;</span><span class="s"> -- a real, cited finding this book reports &quot;</span>
+<a id="__codelineno-8-68" name="__codelineno-8-68" href="#__codelineno-8-68"></a><span class="w">           </span><span class="s">&quot;rather than re-derives: NVIDIA&#39;s post names the crossover &quot;</span>
+<a id="__codelineno-8-69" name="__codelineno-8-69" href="#__codelineno-8-69"></a><span class="w">           </span><span class="s">&quot;but does not publish the underlying model that produces it, &quot;</span>
+<a id="__codelineno-8-70" name="__codelineno-8-70" href="#__codelineno-8-70"></a><span class="w">           </span><span class="s">&quot;and Parts A and B above already show why a simple two-term &quot;</span>
+<a id="__codelineno-8-71" name="__codelineno-8-71" href="#__codelineno-8-71"></a><span class="w">           </span><span class="s">&quot;(fixed latency + bandwidth) model built from this post&#39;s own &quot;</span>
+<a id="__codelineno-8-72" name="__codelineno-8-72" href="#__codelineno-8-72"></a><span class="w">           </span><span class="s">&quot;OTHER numbers should not be expected to reproduce it exactly &quot;</span>
+<a id="__codelineno-8-73" name="__codelineno-8-73" href="#__codelineno-8-73"></a><span class="w">           </span><span class="s">&quot;-- Part A&#39;s numbers alone would put GPUDirect RDMA ahead at &quot;</span>
+<a id="__codelineno-8-74" name="__codelineno-8-74" href="#__codelineno-8-74"></a><span class="w">           </span><span class="s">&quot;every size, since it has both the lower fixed latency AND &quot;</span>
+<a id="__codelineno-8-75" name="__codelineno-8-75" href="#__codelineno-8-75"></a><span class="w">           </span><span class="s">&quot;(Part B, best case) the higher bandwidth. The real crossover &quot;</span>
+<a id="__codelineno-8-76" name="__codelineno-8-76" href="#__codelineno-8-76"></a><span class="w">           </span><span class="s">&quot;almost certainly depends on GPUDirect RDMA&#39;s own bandwidth &quot;</span>
+<a id="__codelineno-8-77" name="__codelineno-8-77" href="#__codelineno-8-77"></a><span class="w">           </span><span class="s">&quot;ceiling being LOWER than the staged path&#39;s at large sizes on &quot;</span>
+<a id="__codelineno-8-78" name="__codelineno-8-78" href="#__codelineno-8-78"></a><span class="w">           </span><span class="s">&quot;specifically the Ivy Bridge platform tested -- a real, &quot;</span>
+<a id="__codelineno-8-79" name="__codelineno-8-79" href="#__codelineno-8-79"></a><span class="w">           </span><span class="s">&quot;platform-specific effect this book has no cited numbers for, &quot;</span>
+<a id="__codelineno-8-80" name="__codelineno-8-80" href="#__codelineno-8-80"></a><span class="w">           </span><span class="s">&quot;so it is reported as a limit of what is known here, not &quot;</span>
+<a id="__codelineno-8-81" name="__codelineno-8-81" href="#__codelineno-8-81"></a><span class="w">           </span><span class="s">&quot;quietly modeled around.</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
+<a id="__codelineno-8-82" name="__codelineno-8-82" href="#__codelineno-8-82"></a>
+<a id="__codelineno-8-83" name="__codelineno-8-83" href="#__codelineno-8-83"></a><span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
+<a id="__codelineno-8-84" name="__codelineno-8-84" href="#__codelineno-8-84"></a><span class="p">}</span>
+</code></pre></div>
+<p>Compiled with <code>g++ -Wall -Wextra -O2 62_staged_vs_rdma_cost_model.cpp -o 62_staged_vs_rdma_cost_model</code>, genuinely run, and cross-verified byte-identical on the device (<code>g++</code> 11.4.0). Locked output:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>Part A -- small-message fixed latency (cited, not measured here):
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>  GPUDirect RDMA: 1.7-1.9us (avg 1.80us)
+<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>  Staged (D2H + IB host-to-host + H2D): ~17.0us
+<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a>  Ratio: 9.44x -- matches the source&#39;s own cited &quot;approximately 9x faster&quot; claim (computed here from its own two numbers, not independently re-measured).
+<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a>
+<a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a>Part B -- large-message bandwidth, same real post, different PCIe topology:
+<a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a>  Same PCIe switch (NCCL_NET_GDR_LEVEL=PIX-class): 11.6 GB/s
+<a id="__codelineno-9-8" name="__codelineno-9-8" href="#__codelineno-9-8"></a>  Crossing inter-socket QPI (NCCL_NET_GDR_LEVEL=SYS-class): 0.25 GB/s
+<a id="__codelineno-9-9" name="__codelineno-9-9" href="#__codelineno-9-9"></a>  Degradation: 46.4x -- &quot;GPUDirect RDMA capable&quot; (Section 21.2&#39;s own boolean attribute) is NECESSARY but not SUFFICIENT: the same capable GPU, paired with the same capable NIC, is 46x slower if the PCIe topology between them is wrong, with no code change at all.
+<a id="__codelineno-9-10" name="__codelineno-9-10" href="#__codelineno-9-10"></a>
+<a id="__codelineno-9-11" name="__codelineno-9-11" href="#__codelineno-9-11"></a>Part C -- the source&#39;s own real crossover finding:
+<a id="__codelineno-9-12" name="__codelineno-9-12" href="#__codelineno-9-12"></a>  The same post states: &quot;GPUDirect RDMA is faster than the staging approach for message sizes up to 400-500KB (on Ivy Bridge Xeon)&quot; -- a real, cited finding this book reports rather than re-derives: NVIDIA&#39;s post names the crossover but does not publish the underlying model that produces it, and Parts A and B above already show why a simple two-term (fixed latency + bandwidth) model built from this post&#39;s own OTHER numbers should not be expected to reproduce it exactly -- Part A&#39;s numbers alone would put GPUDirect RDMA ahead at every size, since it has both the lower fixed latency AND (Part B, best case) the higher bandwidth. The real crossover almost certainly depends on GPUDirect RDMA&#39;s own bandwidth ceiling being LOWER than the staged path&#39;s at large sizes on specifically the Ivy Bridge platform tested -- a real, platform-specific effect this book has no cited numbers for, so it is reported as a limit of what is known here, not quietly modeled around.
+</code></pre></div>
+<div class="admonition warning">
+<p class="admonition-title">[COMMON TRAP] Assuming GPUDirect RDMA is always the faster choice once it's available</p>
+<p>Section 21.2's query and this section's Part A both make GPUDirect RDMA look like a strict win -- lower fixed latency, higher best-case bandwidth, no reason not to use it. Part C's own honestly-reported crossover is the real counter-example: NVIDIA's own benchmark found the staging approach becomes <em>competitive</em> past roughly 400-500KB on the platform it tested, and Part B shows a second, independent way GPUDirect RDMA can lose badly -- not from message size at all, but from PCIe topology alone, a 46x swing between two identically-"capable" systems. This is exactly why real MPI implementations (MVAPICH2-GDR is a well-known example) expose a message-size threshold knob that switches between a direct GPUDirect RDMA path and a staged path, rather than always preferring one. Querying <code>cudaDevAttrGPUDirectRDMASupported</code> and stopping there answers "can I," never "should I, for this message, on this topology, right now."</p>
+</div>
+<h2 id="chapter-summary">Chapter Summary<a class="headerlink" href="#chapter-summary" title="Permanent link">&para;</a></h2>
+<p>This chapter opened Part 5's second real building block. Section 21.1 built the hybrid bootstrap every real multi-node NCCL job actually uses: MPI (Chapter 20's own real multi-process model) generates and distributes NCCL's <code>ncclUniqueId</code>, and NCCL (every collective since Chapter 11) takes over from there -- verified against NCCL's own installed-header comment and NCCL's own official documentation, with the real, distributed-id-required trap named directly. Section 21.2 queried, honestly and for real, whether a GPU supports GPUDirect RDMA (<code>cudaDevAttrGPUDirectRDMASupported</code>) and how its write-ordering guarantee works (<code>cudaDevAttrGPUDirectRDMAWritesOrdering</code>, <code>cudaDeviceFlushGPUDirectRDMAWrites()</code>) -- three real device attributes confirmed against this exact environment's own installed CUDA headers, all honestly <code>cudaErrorNoDevice</code> since no device exists here. Section 21.3 quantified what bypassing the host in Section 20.2's own staged fallback is worth using NVIDIA's own cited benchmark numbers: roughly 9x lower latency for small messages, but a real, topology-driven 46x bandwidth swing that has nothing to do with message size, and an honestly-reported real crossover this book's own simple model correctly predicts it cannot reproduce.</p>
+<h2 id="self-check-questions">Self-Check Questions<a class="headerlink" href="#self-check-questions" title="Permanent link">&para;</a></h2>
+<ol>
+<li>Why does NCCL need MPI (or an equivalent) at all, given that NCCL already has its own communicator API? What specific step can NCCL not do on its own?</li>
+<li>In file 60, what would happen on a real cluster (not this environment) if the <code>if (myRank == 0)</code> guard around <code>ncclGetUniqueId(&amp;id)</code> were removed?</li>
+<li><code>cudaDevAttrGPUDirectRDMASupported</code> and NCCL's <code>NCCL_NET_GDR_LEVEL</code> both relate to GPUDirect RDMA. What real, different question does each one answer?</li>
+<li>What is <code>cudaDeviceFlushGPUDirectRDMAWrites()</code> for, and under what real device condition would calling it be a genuine no-op rather than a bug?</li>
+<li>Section 21.3's Part A computed a 9.44x speedup from two fixed latency numbers. Which two numbers, and why does the source's own post round this to "approximately 9x"?</li>
+<li>Explain, using Part B's own two numbers, why a GPU and NIC that are both individually "GPUDirect RDMA capable" can still deliver 250 MB/s instead of 11.6 GB/s.</li>
+<li>Why does this chapter's own Part C explicitly decline to build a closed-form model reproducing NVIDIA's cited 400-500KB crossover, when Parts A and B already build models for the small-message and topology cases?</li>
+<li>File 60 links three real libraries in one binary (Open MPI, NCCL, CUDA runtime) via <code>mpicxx</code>. Which two chapters each first established one piece of that same combination, and what did file 60 change about how they're fed into <code>ncclCommInitRank()</code>?</li>
+<li>Contrast the COMMON TRAP in Section 21.1 (a hang) with the COMMON TRAP in Section 21.2/21.3 (silently wrong performance expectations, not a hang or an error). Why can the same "GPUDirect RDMA capable" answer coexist with both a correct program and a badly underperforming one?</li>
+</ol>
+<h2 id="where-we-go-next">Where We Go Next<a class="headerlink" href="#where-we-go-next" title="Permanent link">&para;</a></h2>
+<p>Chapter 21 answered whether a NIC can reach GPU memory directly, and what that's worth when the PCIe topology cooperates. Every collective this book has built since Chapter 8, though, still assumes the <em>GPU</em> is a passive participant -- it computes, and some other actor (a CPU thread, an MPI call, NCCL's own internal logic) decides when and what to communicate. Chapter 22 opens with NVSHMEM, where that assumption breaks: a GPU kernel can issue a put or get to a remote GPU's memory directly, from device code, while it is still running -- no host round-trip, no waiting for a separate collective call to be launched from the CPU at all.</p>
+<h2 id="worked-solutions">Worked Solutions<a class="headerlink" href="#worked-solutions" title="Permanent link">&para;</a></h2>
+<p><strong>1.</strong> NCCL's communicator API can build a communicator once every rank already agrees on one shared <code>ncclUniqueId</code>, but NCCL has no mechanism of its own to get that id from the one rank that generates it to every other rank -- it has no process launcher and no general-purpose broadcast primitive that exists before a communicator does. That is a generic "one-to-all small message" problem, and MPI's <code>MPI_Bcast()</code> already solves the generic version.</p>
+<p><strong>2.</strong> Every rank would generate its own, independently random <code>ncclUniqueId</code>, since the id is not derived from anything shared across ranks. <code>ncclCommInitRank()</code> on a real cluster would then have no common id to rendezvous on: each rank waits for peers that never agreed to that specific id, and the call hangs indefinitely rather than failing fast -- the same real, worse failure mode Chapter 19 named for a genuinely dead peer, now caused by a bootstrapping bug instead of hardware failure.</p>
+<p><strong>3.</strong> <code>cudaDevAttrGPUDirectRDMASupported</code> answers whether a specific GPU's driver can expose its memory to a third-party PCI Express device at all -- a per-GPU hardware/driver capability, independent of any particular NIC. <code>NCCL_NET_GDR_LEVEL</code> answers a different, topology-specific question: for a <em>particular</em> GPU-NIC pair, how close together are they on the PCIe fabric (same switch, through switches, same NUMA node, or across the inter-socket interconnect), which determines whether NCCL will actually use GPUDirect RDMA between that specific pair and how well it will perform if it does.</p>
+<p><strong>4.</strong> It blocks the calling code until pending GPUDirect RDMA writes to the target device are visible to the requested scope (the device's owning context, or all devices). It is a genuine no-op, returning <code>cudaErrorNotSupported</code>, when the device's own <code>cudaDevAttrGPUDirectRDMAWritesOrdering</code> attribute already reports that its scope covers the requested one -- i.e., the platform already natively guarantees the ordering this call exists to enforce, so there is nothing left for the call to do.</p>
+<p><strong>5.</strong> The two numbers are the average of the cited RDMA latency range (1.7us and 1.9us, averaging to 1.8us) and the cited staged-path total (~17.0us), giving 17.0/1.8 = 9.44x. The source's own post rounds this down to "approximately 9x" likely because its own 1.7us and 1.9us are themselves measured, rounded figures (not exact constants), and because "approximately 9x" is a looser, more defensible claim than quoting a precise ratio from numbers that are already stated as approximate ("can easily take 8us and 9us," "approximately 17us").</p>
+<p><strong>6.</strong> Both numbers come from the SAME real post but describe different PCIe topologies, not different capability levels. 11.6 GB/s is measured when the GPU and NIC share the same PCIe switch (GPUDirect RDMA's own best-case path, requiring no long hop). 250 MB/s is measured when the IB adapter must push data to a GPU on a different CPU socket, crossing the inter-socket QPI link -- a real, physical bottleneck that exists regardless of whether both devices individually report <code>cudaDevAttrGPUDirectRDMASupported = 1</code>. Capability is a yes/no property of each device; the 46x gap is a property of the path between them.</p>
+<p><strong>7.</strong> Because Parts A and B's own models are built entirely from OTHER numbers in the same cited post (fixed latencies, best/worst-case bandwidths) that this book has independently verified are real and can combine additively or as simple ratios. The 400-500KB crossover is a THIRD, separate finding the post states as a conclusion ("by using a simple performance model it can be shown that...") without publishing that model's own inputs or formula. Building a new model and claiming it reproduces an unpublished one would be fabricating agreement with a source this book cannot actually check -- so Part C reports the finding as a citation and explains, using Parts A and B's own numbers, why a naive model of this book's own would NOT be expected to land at the same crossover, rather than silently presenting a model tuned to match it.</p>
+<p><strong>8.</strong> Chapter 20 first established a real Open MPI installation and the <code>mpicxx</code>-links-<code>libcudart</code> combination (file 58). Chapter 11 first established a real NCCL installation and communicator construction (<code>ncclCommInitAll()</code>). File 60 changes how NCCL's inputs are fed: instead of one process supplying a literal rank count and calling <code>ncclCommInitAll()</code> once for every device it can see, file 60 has each of N real MPI-launched processes independently call <code>ncclCommInitRank()</code> with a rank and size it queried from <code>MPI_Comm_rank()</code>/<code>MPI_Comm_size()</code>, and a shared id it received via <code>MPI_Bcast()</code> rather than generating itself.</p>
+<p><strong>9.</strong> Section 21.1's trap produces a hang because the bug (independently-generated, mismatched ids) prevents the communicator from ever forming at all -- there is no partial or degraded success state, just an indefinite wait. Sections 21.2/21.3's trap produces a program that runs completely correctly and completes, but transfers data far slower than "GPUDirect RDMA capable" alone would suggest, because capability and topology are independent real facts: a device can genuinely support the mechanism (Section 21.2's yes) while sitting on a path that makes using it a bad idea for a given message size or system layout (Section 21.3's cost model). The same boolean answer is compatible with both scenarios because it was only ever answering "can," never "will perform well."</p>
+<hr />
+<p><strong>Sources cited in this chapter:</strong></p>
+<ul>
+<li><a href="https://docs.nvidia.com/cuda/gpudirect-rdma/">1. Overview — GPUDirect RDMA 13.4 documentation</a> — the core mechanism ("a direct path for data exchange between the GPU and a third-party peer device using standard features of PCI Express"), the PCI BAR mechanism quote ("PCI Express device issues reads and writes to a peer device's BAR addresses in the same way that they are issued to system memory"), the same-root-complex topology requirement, and the <code>nvidia_p2p_get_pages()</code>/<code>nvidia_p2p_put_pages()</code> kernel API names.</li>
+<li>This exact environment's own installed CUDA header, <code>/usr/include/driver_types.h</code> (CUDA 12.0) — the real, verified enum values and comments for <code>cudaDevAttrGPUDirectRDMASupported</code>, <code>cudaDevAttrGPUDirectRDMAFlushWritesOptions</code>, <code>cudaDevAttrGPUDirectRDMAWritesOrdering</code>, <code>cudaFlushGPUDirectRDMAWritesOptions</code>, <code>cudaGPUDirectRDMAWritesOrdering</code>, <code>cudaFlushGPUDirectRDMAWritesScope</code>, and <code>cudaFlushGPUDirectRDMAWritesTarget</code>, and the <code>cudaDeviceFlushGPUDirectRDMAWrites()</code> declaration in <code>/usr/include/cuda_runtime_api.h</code>.</li>
+<li>This exact environment's own installed NCCL header, <code>/usr/include/nccl.h</code> — the real, verified comment above <code>ncclGetUniqueId()</code>: "ncclGetUniqueId should be called once and the Id should be distributed to all ranks in the communicator before calling ncclCommInitRank," and the comment above <code>ncclCommInitRank()</code> on per-device binding and implicit synchronization.</li>
+<li><a href="https://docs.nvidia.com/deeplearning/nccl/user-guide/docs/examples.html">Examples — NCCL user guide</a> — the real multi-process/MPI example this chapter's file 60 follows directly: <code>MPI_Comm_rank</code>/<code>MPI_Comm_size</code>, rank 0 alone calling <code>ncclGetUniqueId()</code>, <code>MPI_Bcast()</code> of the id, and <code>ncclCommInitRank()</code>, explicitly described as working "in the context of MPI, using one device per MPI rank."</li>
+<li><a href="https://docs.nvidia.com/deeplearning/nccl/archives/nccl_2183/user-guide/docs/env.html">Environment Variables — NCCL user guide (archived, 2.18.x)</a> — <code>NCCL_NET_GDR_LEVEL</code>'s real documented PCIe-distance levels (<code>PIX</code>, <code>PXB</code>, <code>PHB</code>, <code>SYS</code>) and their topology meanings, reused in Section 21.3's own cost model.</li>
+<li><a href="https://developer.nvidia.com/blog/benchmarking-gpudirect-rdma-on-modern-server-platforms/">Benchmarking GPUDirect RDMA on Modern Server Platforms — NVIDIA Technical Blog</a> — every cited number in Section 21.3: the sub-2us GPUDirect RDMA latency figures (1.7us/1.9us), the staged-path latency breakdown (~8us/9us <code>cudaMemcpy</code>, 1.3us IB host-to-host, ~17us total), the same-PCIe-switch best-case bandwidth (11.6 GB/s), the cross-socket QPI worst-case bandwidth (250 MB/s), and the real cited 400-500KB crossover finding on Ivy Bridge Xeon.</li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+    
+      
+      <nav class="md-footer__inner md-grid" aria-label="Footer" >
+        
+          
+          <a href="../20-mpi-from-scratch-then-cuda-aware-mpi-scaling-beyond-one-node/" class="md-footer__link md-footer__link--prev" aria-label="Previous: 20. MPI From Scratch, Then CUDA-Aware MPI: Scaling Beyond One Node">
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+            </div>
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Previous
+              </span>
+              <div class="md-ellipsis">
+                20. MPI From Scratch, Then CUDA-Aware MPI: Scaling Beyond One Node
+              </div>
+            </div>
+          </a>
+        
+        
+      </nav>
+    
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      Copyright &copy; 2026 Oluwaseyi Awoga
+    </div>
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.instant", "navigation.tracking", "navigation.sections", "navigation.expand", "navigation.top", "navigation.footer", "toc.follow", "search.suggest", "search.highlight", "content.code.copy", "content.code.annotate"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>
