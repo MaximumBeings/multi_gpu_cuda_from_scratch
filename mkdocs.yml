@@ -72,6 +72,8 @@ nav:
       - "9. Ring All-Reduce: The Algorithm Behind Every Multi-GPU Training Job": part2/09-ring-all-reduce-the-algorithm-behind-every-multi-gpu-training-job.md
       - "10. All-Gather, Reduce-Scatter, and All-to-All": part2/10-all-gather-reduce-scatter-and-all-to-all.md
       - "11. NCCL: What It Actually Does Differently From What You Just Built": part2/11-nccl-what-it-actually-does-differently.md
+  - "Part 3 -- Parallelization Strategies":
+      - "12. Data Parallelism: Replicated Model, Sharded Data": part3/12-data-parallelism-replicated-model-sharded-data.md
 
 extra:
   social: []
