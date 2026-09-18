@@ -82,6 +82,8 @@ nav:
       - "17. Barriers and Global Synchronization Across Devices": part4/17-barriers-and-global-synchronization-across-devices.md
       - "18. Load Balancing Across Heterogeneous GPUs": part4/18-load-balancing-across-heterogeneous-gpus.md
       - "19. Stragglers, Failures, and Fault-Tolerant Collectives": part4/19-stragglers-failures-and-fault-tolerant-collectives.md
+  - "Part 5 -- Scaling Beyond One Node":
+      - "20. MPI From Scratch, Then CUDA-Aware MPI: Scaling Beyond One Node": part5/20-mpi-from-scratch-then-cuda-aware-mpi-scaling-beyond-one-node.md
 
 extra:
   social: []
