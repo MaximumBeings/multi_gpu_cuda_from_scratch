@@ -1,0 +1,2141 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="From Peer-to-Peer Memory to Distributed Training Across the Cluster">
+      
+      
+        <meta name="author" content="Oluwaseyi Awoga">
+      
+      
+      
+        <link rel="prev" href="../18-load-balancing-across-heterogeneous-gpus/">
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+    
+    
+      
+        <title>19. Stragglers, Failures, and Fault-Tolerant Collectives - Multi-GPU Programming in CUDA C++ -- Under Development</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#chapter-19-stragglers-failures-and-fault-tolerant-collectives" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="Multi-GPU Programming in CUDA C++ -- Under Development" class="md-header__button md-logo" aria-label="Multi-GPU Programming in CUDA C++ -- Under Development" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 19h1a1 1 0 0 1 1 1h7v2h-7a1 1 0 0 1-1 1h-4a1 1 0 0 1-1-1H2v-2h7a1 1 0 0 1 1-1h1v-2H4a1 1 0 0 1-1-1v-4a1 1 0 0 1 1-1h16a1 1 0 0 1 1 1v4a1 1 0 0 1-1 1h-7zM4 3h16a1 1 0 0 1 1 1v4a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1m5 4h1V5H9zm0 8h1v-2H9zM5 5v2h2V5zm0 8v2h2v-2z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Multi-GPU Programming in CUDA C++ -- Under Development
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              19. Stragglers, Failures, and Fault-Tolerant Collectives
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m17.75 4.09-2.53 1.94.91 3.06-2.63-1.81-2.63 1.81.91-3.06-2.53-1.94L12.44 4l1.06-3 1.06 3zm3.5 6.91-1.64 1.25.59 1.98-1.7-1.17-1.7 1.17.59-1.98L15.75 11l2.06-.05L18.5 9l.69 1.95zm-2.28 4.95c.83-.08 1.72 1.1 1.19 1.85-.32.45-.66.87-1.08 1.27C15.17 23 8.84 23 4.94 19.07c-3.91-3.9-3.91-10.24 0-14.14.4-.4.82-.76 1.27-1.08.75-.53 1.93.36 1.85 1.19-.27 2.86.69 5.83 2.89 8.02a9.96 9.96 0 0 0 8.02 2.89m-1.64 2.02a12.08 12.08 0 0 1-7.8-3.47c-2.17-2.19-3.33-5-3.49-7.82-2.81 3.14-2.7 7.96.31 10.98 3.02 3.01 7.84 3.12 10.98.31"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 7a5 5 0 0 1 5 5 5 5 0 0 1-5 5 5 5 0 0 1-5-5 5 5 0 0 1 5-5m0 2a3 3 0 0 0-3 3 3 3 0 0 0 3 3 3 3 0 0 0 3-3 3 3 0 0 0-3-3m0-7 2.39 3.42C13.65 5.15 12.84 5 12 5s-1.65.15-2.39.42zM3.34 7l4.16-.35A7.2 7.2 0 0 0 5.94 8.5c-.44.74-.69 1.5-.83 2.29zm.02 10 1.76-3.77a7.131 7.131 0 0 0 2.38 4.14zM20.65 7l-1.77 3.79a7.02 7.02 0 0 0-2.38-4.15zm-.01 10-4.14.36c.59-.51 1.12-1.14 1.54-1.86.42-.73.69-1.5.83-2.29zM12 22l-2.41-3.44c.74.27 1.55.44 2.41.44.82 0 1.63-.17 2.37-.44z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="Multi-GPU Programming in CUDA C++ -- Under Development" class="md-nav__button md-logo" aria-label="Multi-GPU Programming in CUDA C++ -- Under Development" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 19h1a1 1 0 0 1 1 1h7v2h-7a1 1 0 0 1-1 1h-4a1 1 0 0 1-1-1H2v-2h7a1 1 0 0 1 1-1h1v-2H4a1 1 0 0 1-1-1v-4a1 1 0 0 1 1-1h16a1 1 0 0 1 1 1v4a1 1 0 0 1-1 1h-7zM4 3h16a1 1 0 0 1 1 1v4a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1m5 4h1V5H9zm0 8h1v-2H9zM5 5v2h2V5zm0 8v2h2v-2z"/></svg>
+
+    </a>
+    Multi-GPU Programming in CUDA C++ -- Under Development
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Part 0 -- Why Multi-GPU, and the Hardware Underneath It
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Part 0 -- Why Multi-GPU, and the Hardware Underneath It
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part0/01-why-one-gpu-is-not-enough/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    1. Why One GPU Is Not Enough
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part0/02-multi-gpu-hardware-topology/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    2. Multi-GPU Hardware Topology: PCIe, NVLink, and NVSwitch
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part0/03-the-cuda-multi-gpu-programming-model/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    3. The CUDA Multi-GPU Programming Model: Devices, Contexts, and Streams Across Them
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Part 1 -- Getting Data Between GPUs
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Part 1 -- Getting Data Between GPUs
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part1/04-peer-to-peer-memory-access-and-uva/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    4. Peer-to-Peer Memory Access and Unified Virtual Addressing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part1/05-explicit-transfers-cudamemcpypeer-staged-host-transfers/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    5. Explicit Transfers: cudaMemcpyPeer, Staged Host Transfers, and When Each Wins
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part1/06-streams-events-and-cross-device-synchronization/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    6. Streams, Events, and Cross-Device Synchronization
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part1/07-cuda-inter-process-communication/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    7. CUDA Inter-Process Communication: Sharing Memory and Events Across Processes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Part 2 -- Collective Communication, Built From Scratch
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Part 2 -- Collective Communication, Built From Scratch
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part2/08-broadcast-and-reduce-the-first-two-collectives-by-hand/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    8. Broadcast and Reduce: The First Two Collectives, By Hand
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part2/09-ring-all-reduce-the-algorithm-behind-every-multi-gpu-training-job/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    9. Ring All-Reduce: The Algorithm Behind Every Multi-GPU Training Job
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part2/10-all-gather-reduce-scatter-and-all-to-all/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    10. All-Gather, Reduce-Scatter, and All-to-All
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part2/11-nccl-what-it-actually-does-differently/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    11. NCCL: What It Actually Does Differently From What You Just Built
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Part 3 -- Parallelization Strategies
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Part 3 -- Parallelization Strategies
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part3/12-data-parallelism-replicated-model-sharded-data/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    12. Data Parallelism: Replicated Model, Sharded Data
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part3/13-model-parallelism-when-one-gpu-cant-hold-the-weights/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    13. Model Parallelism: When One GPU Can't Hold the Weights
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part3/14-tensor-parallelism-splitting-a-single-matrix-multiply-across-devices/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    14. Tensor Parallelism: Splitting a Single Matrix Multiply Across Devices
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part3/15-pipeline-parallelism-splitting-layers-across-devices-and-the-bubble-that-costs-you/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    15. Pipeline Parallelism: Splitting Layers Across Devices, and the Bubble That Costs You
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part3/16-domain-decomposition-for-scientific-computing-halo-exchange-and-distributed-stencils/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    16. Domain Decomposition for Scientific Computing: Halo Exchange and Distributed Stencils
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Part 4 -- Synchronization, Load Balancing, and Failure
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_7">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Part 4 -- Synchronization, Load Balancing, and Failure
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../17-barriers-and-global-synchronization-across-devices/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    17. Barriers and Global Synchronization Across Devices
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../18-load-balancing-across-heterogeneous-gpus/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    18. Load Balancing Across Heterogeneous GPUs
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    19. Stragglers, Failures, and Fault-Tolerant Collectives
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    19. Stragglers, Failures, and Fault-Tolerant Collectives
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#191-the-problem-nccl-hangs-doesnt-error-when-a-peer-genuinely-dies" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        19.1 The Problem: NCCL Hangs, Doesn't Error, When a Peer Genuinely Dies
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="19.1 The Problem: NCCL Hangs, Doesn&#39;t Error, When a Peer Genuinely Dies">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#intuition" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Intuition
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#background" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Background
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#192-detecting-and-escaping-a-hang-non-blocking-communicators-and-ncclcommabort" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        19.2 Detecting and Escaping a Hang: Non-Blocking Communicators and ncclCommAbort()
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="19.2 Detecting and Escaping a Hang: Non-Blocking Communicators and ncclCommAbort()">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#intuition_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Intuition
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#background_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Background
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#193-stragglers-are-not-failures-backup-workers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        19.3 Stragglers Are Not Failures: Backup Workers
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="19.3 Stragglers Are Not Failures: Backup Workers">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#intuition_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Intuition
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#background_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Background
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#chapter-summary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Chapter Summary
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#self-check-questions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Self-Check Questions
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#where-we-go-next" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Where We Go Next
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#worked-solutions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Worked Solutions
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#191-the-problem-nccl-hangs-doesnt-error-when-a-peer-genuinely-dies" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        19.1 The Problem: NCCL Hangs, Doesn't Error, When a Peer Genuinely Dies
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="19.1 The Problem: NCCL Hangs, Doesn&#39;t Error, When a Peer Genuinely Dies">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#intuition" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Intuition
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#background" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Background
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#192-detecting-and-escaping-a-hang-non-blocking-communicators-and-ncclcommabort" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        19.2 Detecting and Escaping a Hang: Non-Blocking Communicators and ncclCommAbort()
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="19.2 Detecting and Escaping a Hang: Non-Blocking Communicators and ncclCommAbort()">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#intuition_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Intuition
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#background_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Background
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#193-stragglers-are-not-failures-backup-workers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        19.3 Stragglers Are Not Failures: Backup Workers
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="19.3 Stragglers Are Not Failures: Backup Workers">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#intuition_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Intuition
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#background_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Background
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#chapter-summary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Chapter Summary
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#self-check-questions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Self-Check Questions
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#where-we-go-next" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Where We Go Next
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#worked-solutions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Worked Solutions
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+
+<h1 id="chapter-19-stragglers-failures-and-fault-tolerant-collectives">Chapter 19: Stragglers, Failures, and Fault-Tolerant Collectives<a class="headerlink" href="#chapter-19-stragglers-failures-and-fault-tolerant-collectives" title="Permanent link">&para;</a></h1>
+<p><strong>What you will understand by the end of this chapter:</strong></p>
+<ul>
+<li>Why every real NCCL call this book has made since Chapter 11 has returned an instant, honest error code -- and why that is <em>not</em> how a real cluster's real peer failure behaves: NVIDIA's own documentation states plainly that even healthy ranks should expect NCCL to either error <em>or hang</em> on a collective.</li>
+<li>How to build a non-blocking NCCL communicator (<code>ncclConfig_t</code>, <code>config.blocking = 0</code>) and poll <code>ncclCommGetAsyncError()</code> in a bounded loop, so a hang becomes something you can detect instead of something you endure.</li>
+<li>Why <code>ncclCommAbort()</code> only stops a hang -- it does not repair or replace the communicator -- and what a real application still has to do afterward.</li>
+<li>How Open MPI's ULFM extension offers a genuinely richer recovery model, <code>MPIX_Comm_revoke()</code> and <code>MPIX_Comm_shrink()</code>, that NCCL has no equivalent for.</li>
+<li>The real "backup workers" technique (Chen et al., 2016) for tolerating stragglers with <em>no failure detection at all</em>, and the one invariant it guarantees.</li>
+</ul>
+<p><strong>What you need to know first:</strong></p>
+<ul>
+<li>Chapter 11's real <code>ncclCommInitAll()</code> communicator and the honest error codes it returns in this environment.</li>
+<li>Chapter 17's real barrier (a throwaway <code>ncclAllReduce()</code> plus a required <code>cudaStreamSynchronize()</code>) -- this chapter's failures happen at exactly that kind of waiting point.</li>
+<li>Chapter 18's makespan framing: what a barrier costs when one rank is slower than the rest.</li>
+</ul>
+<hr />
+<p>Chapter 18 asked what happens when every rank finishes, just not at the same time. This chapter asks the harder question Chapter 18 left alone: what happens when a rank doesn't finish at all. Every real CUDA and NCCL call this book has made, since Chapter 3, has returned an honest, <em>immediate</em> error code, because this environment has never had a real device to begin with -- <code>cudaErrorNoDevice</code>, <code>ncclUnhandledCudaError</code>, <code>ncclInvalidArgument</code>, always instant, always clean. It would be easy to let that instant-error pattern quietly stand in for what a real cluster does when a rank genuinely dies mid-collective. It's the wrong model. NVIDIA's own documentation on building fault-tolerant NCCL applications states the real failure mode plainly, and it is worse than an error: "even healthy ranks should expect NCCL to either return an error or hang on any collective operation." A rank that dies doesn't make the other ranks see an error -- it makes them wait, forever, at whatever collective or barrier they were sharing with it. This chapter builds the real detect-and-recover pattern NCCL actually offers for that, names what it doesn't offer (contrasted with MPI's own ULFM extension, previewing Chapter 20), and then covers a real, different, milder technique -- backup workers -- for the far more common case where a rank isn't dead, just slow.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>This book&#39;s own environment            A real cluster, one peer dies
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>(no device, ever):                     mid-collective:
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>  rank0 -&gt; ncclAllReduce()                 rank0 -&gt; ncclAllReduce() ... waiting
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>  rank0 -&gt; ncclUnhandledCudaError          rank1 -&gt; ncclAllReduce() ... waiting
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>           (instant, honest, code 1)       rank2 -&gt; ncclAllReduce() ... waiting
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>                                            rank3 -&gt; dead, never returns
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>                                            -----------------------------------
+<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>                                            rank0, rank1, rank2 HANG. Forever.
+<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>
+<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>  Every chapter&#39;s own call, through        Section 19.1 names this real gap;
+<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>  Ch18, has looked like the LEFT           19.2 builds the real escape; 19.3
+<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>  column above.                            covers the milder case: SLOW, not dead.
+</code></pre></div>
+<h2 id="191-the-problem-nccl-hangs-doesnt-error-when-a-peer-genuinely-dies">19.1 The Problem: NCCL Hangs, Doesn't Error, When a Peer Genuinely Dies<a class="headerlink" href="#191-the-problem-nccl-hangs-doesnt-error-when-a-peer-genuinely-dies" title="Permanent link">&para;</a></h2>
+<h3 id="intuition">Intuition<a class="headerlink" href="#intuition" title="Permanent link">&para;</a></h3>
+<p>Look back at every real NCCL call this book has made since Chapter 11: <code>ncclCommInitAll()</code> in Chapter 11 itself, <code>ncclAllReduce()</code> for gradient averaging in Chapter 12, for tensor-parallel combines in Chapter 14, for Chapter 17's own barrier. Every single one of them returned an honest, <em>immediate</em> <code>ncclResult_t</code> -- <code>ncclInvalidArgument</code>, <code>ncclUnhandledCudaError</code> -- because this environment has never had a real device for any of them to succeed on. That pattern is this environment's own honest failure mode, and it is worth naming precisely so it isn't mistaken for a real cluster's failure mode, which is genuinely different and, for an application trying to stay correct, genuinely worse. NVIDIA's own fault-tolerance documentation draws this exact distinction, contrasting an ordinary bad NCCL call (which does error out) with what happens when a peer in an otherwise-correct program actually dies: "even healthy ranks should expect NCCL to either return an error or hang on any collective operation." A rank calling <code>ncclAllReduce()</code> with a dead peer doesn't get <code>ncclUnhandledCudaError</code> back and move on -- it sits inside that call, waiting for a peer that will never respond, with no way to tell the difference between "still in progress" and "never coming back," because a blocking communicator's calls, by construction, don't return until they're done.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>Blocking communicator (every real NCCL call this book has made, Ch11-18):
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>  ncclCommInitRankConfig(blocking=1)  or  ncclAllReduce(...)  or  Ch17&#39;s barrier
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>  +----------------------------------------+
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>  | waiting ... waiting ... waiting ...    |   no way to poll, no way to time out
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>  +----------------------------------------+
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>  returns ... eventually. Or, with a genuinely dead peer, never.
+<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>
+<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>Non-blocking communicator (this section names it; 19.2 builds the real escape):
+<a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a>
+<a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a>  ncclCommInitRankConfig(blocking=0)
+<a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a>  -&gt; returns IMMEDIATELY
+<a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a>     -&gt; poll ncclCommGetAsyncError() in a loop,
+<a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a>        bounded by YOUR OWN timeout, not NCCL&#39;s.
+</code></pre></div>
+<h3 id="background">Background<a class="headerlink" href="#background" title="Permanent link">&para;</a></h3>
+<p>Every communicator this book has built through Chapter 18 -- Chapter 11's <code>ncclCommInitAll()</code>, and every direct <code>ncclCommInitRank()</code>-style call implicit since -- is <em>blocking</em> by default: <code>config.blocking = 1</code>, whether or not any code ever set that field explicitly. This section builds both the default blocking communicator every earlier chapter used, and the real, documented alternative -- a non-blocking one, <code>config.blocking = 0</code> -- side by side, using NCCL's real <code>ncclConfig_t</code> struct and <code>NCCL_CONFIG_INITIALIZER</code> macro, confirmed present in the actual installed NCCL header (libnccl 2.18.3). Section 19.2 is what a non-blocking communicator like the second one below actually makes possible.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="c1">// Chapter 19: Stragglers, Failures, and Fault-Tolerant Collectives</span>
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="c1">// 54_blocking_vs_nonblocking_comm.cu</span>
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="c1">//</span>
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="c1">// Every real NCCL call this book has made since Chapter 11 has</span>
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="c1">// returned an honest, IMMEDIATE error code -- ncclInvalidArgument,</span>
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a><span class="c1">// ncclUnhandledCudaError -- because this environment has never had a</span>
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a><span class="c1">// real device to begin with. A real cluster&#39;s real failure mode is</span>
+<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a><span class="c1">// different, and worse: NVIDIA&#39;s own documentation on building</span>
+<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a><span class="c1">// fault-tolerant NCCL applications states it plainly -- &quot;even healthy</span>
+<a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a><span class="c1">// ranks should expect NCCL to either return an error OR HANG on any</span>
+<a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a><span class="c1">// collective operation.&quot; A rank that genuinely dies mid-collective</span>
+<a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a><span class="c1">// doesn&#39;t make every other rank see an error; it makes every other</span>
+<a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a><span class="c1">// rank hang, forever, at whatever collective (or Chapter 17&#39;s own</span>
+<a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a><span class="c1">// barrier) they were waiting on with it. This section builds the real</span>
+<a id="__codelineno-2-15" name="__codelineno-2-15" href="#__codelineno-2-15"></a><span class="c1">// fix: a NON-BLOCKING communicator, configured with a real</span>
+<a id="__codelineno-2-16" name="__codelineno-2-16" href="#__codelineno-2-16"></a><span class="c1">// ncclConfig_t, so a hang can be DETECTED instead of endured.</span>
+<a id="__codelineno-2-17" name="__codelineno-2-17" href="#__codelineno-2-17"></a><span class="c1">// Genuinely compiled with a real nvcc against the real installed</span>
+<a id="__codelineno-2-18" name="__codelineno-2-18" href="#__codelineno-2-18"></a><span class="c1">// libnccl.</span>
+<a id="__codelineno-2-19" name="__codelineno-2-19" href="#__codelineno-2-19"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;cstdio&gt;</span>
+<a id="__codelineno-2-20" name="__codelineno-2-20" href="#__codelineno-2-20"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;cuda_runtime.h&gt;</span>
+<a id="__codelineno-2-21" name="__codelineno-2-21" href="#__codelineno-2-21"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;nccl.h&gt;</span>
+<a id="__codelineno-2-22" name="__codelineno-2-22" href="#__codelineno-2-22"></a>
+<a id="__codelineno-2-23" name="__codelineno-2-23" href="#__codelineno-2-23"></a><span class="kt">int</span><span class="w"> </span><span class="nf">main</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-2-24" name="__codelineno-2-24" href="#__codelineno-2-24"></a><span class="w">    </span><span class="kt">int</span><span class="w"> </span><span class="n">deviceCount</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
+<a id="__codelineno-2-25" name="__codelineno-2-25" href="#__codelineno-2-25"></a><span class="w">    </span><span class="n">cudaGetDeviceCount</span><span class="p">(</span><span class="o">&amp;</span><span class="n">deviceCount</span><span class="p">);</span>
+<a id="__codelineno-2-26" name="__codelineno-2-26" href="#__codelineno-2-26"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;cudaGetDeviceCount(): %d device(s).</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">deviceCount</span><span class="p">);</span>
+<a id="__codelineno-2-27" name="__codelineno-2-27" href="#__codelineno-2-27"></a>
+<a id="__codelineno-2-28" name="__codelineno-2-28" href="#__codelineno-2-28"></a><span class="w">    </span><span class="n">ncclUniqueId</span><span class="w"> </span><span class="n">uniqueId</span><span class="p">;</span>
+<a id="__codelineno-2-29" name="__codelineno-2-29" href="#__codelineno-2-29"></a><span class="w">    </span><span class="n">ncclResult_t</span><span class="w"> </span><span class="n">eUniqueId</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">ncclGetUniqueId</span><span class="p">(</span><span class="o">&amp;</span><span class="n">uniqueId</span><span class="p">);</span>
+<a id="__codelineno-2-30" name="__codelineno-2-30" href="#__codelineno-2-30"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;</span><span class="se">\n</span><span class="s">ncclGetUniqueId(): %s (code %d)</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span>
+<a id="__codelineno-2-31" name="__codelineno-2-31" href="#__codelineno-2-31"></a><span class="w">           </span><span class="n">ncclGetErrorString</span><span class="p">(</span><span class="n">eUniqueId</span><span class="p">),</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="p">)</span><span class="n">eUniqueId</span><span class="p">);</span>
+<a id="__codelineno-2-32" name="__codelineno-2-32" href="#__codelineno-2-32"></a>
+<a id="__codelineno-2-33" name="__codelineno-2-33" href="#__codelineno-2-33"></a><span class="w">    </span><span class="c1">// The DEFAULT communicator every earlier chapter&#39;s ncclCommInitAll()</span>
+<a id="__codelineno-2-34" name="__codelineno-2-34" href="#__codelineno-2-34"></a><span class="w">    </span><span class="c1">// implicitly built: blocking. Every NCCL call on it either finishes</span>
+<a id="__codelineno-2-35" name="__codelineno-2-35" href="#__codelineno-2-35"></a><span class="w">    </span><span class="c1">// or, on a real cluster with a genuinely dead peer, never returns</span>
+<a id="__codelineno-2-36" name="__codelineno-2-36" href="#__codelineno-2-36"></a><span class="w">    </span><span class="c1">// at all -- there is no way to poll it, no way to time it out.</span>
+<a id="__codelineno-2-37" name="__codelineno-2-37" href="#__codelineno-2-37"></a><span class="w">    </span><span class="n">ncclConfig_t</span><span class="w"> </span><span class="n">blockingConfig</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">NCCL_CONFIG_INITIALIZER</span><span class="p">;</span>
+<a id="__codelineno-2-38" name="__codelineno-2-38" href="#__codelineno-2-38"></a><span class="w">    </span><span class="n">blockingConfig</span><span class="p">.</span><span class="n">blocking</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">1</span><span class="p">;</span>
+<a id="__codelineno-2-39" name="__codelineno-2-39" href="#__codelineno-2-39"></a><span class="w">    </span><span class="n">ncclComm_t</span><span class="w"> </span><span class="n">blockingComm</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nb">nullptr</span><span class="p">;</span>
+<a id="__codelineno-2-40" name="__codelineno-2-40" href="#__codelineno-2-40"></a><span class="w">    </span><span class="n">ncclResult_t</span><span class="w"> </span><span class="n">eBlocking</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">ncclCommInitRankConfig</span><span class="p">(</span><span class="o">&amp;</span><span class="n">blockingComm</span><span class="p">,</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span><span class="w"> </span><span class="n">uniqueId</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">blockingConfig</span><span class="p">);</span>
+<a id="__codelineno-2-41" name="__codelineno-2-41" href="#__codelineno-2-41"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;ncclCommInitRankConfig(blocking=1): %s (code %d)</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span>
+<a id="__codelineno-2-42" name="__codelineno-2-42" href="#__codelineno-2-42"></a><span class="w">           </span><span class="n">ncclGetErrorString</span><span class="p">(</span><span class="n">eBlocking</span><span class="p">),</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="p">)</span><span class="n">eBlocking</span><span class="p">);</span>
+<a id="__codelineno-2-43" name="__codelineno-2-43" href="#__codelineno-2-43"></a>
+<a id="__codelineno-2-44" name="__codelineno-2-44" href="#__codelineno-2-44"></a><span class="w">    </span><span class="c1">// The FIX: a real, documented NCCL feature -- config.blocking = 0.</span>
+<a id="__codelineno-2-45" name="__codelineno-2-45" href="#__codelineno-2-45"></a><span class="w">    </span><span class="c1">// NVIDIA&#39;s own words: &quot;NCCL communicators can be configured to be</span>
+<a id="__codelineno-2-46" name="__codelineno-2-46" href="#__codelineno-2-46"></a><span class="w">    </span><span class="c1">// non-blocking so that initialization functions may continue in</span>
+<a id="__codelineno-2-47" name="__codelineno-2-47" href="#__codelineno-2-47"></a><span class="w">    </span><span class="c1">// the background,&quot; specifically &quot;so that we may detect and react</span>
+<a id="__codelineno-2-48" name="__codelineno-2-48" href="#__codelineno-2-48"></a><span class="w">    </span><span class="c1">// to timeouts.&quot; Section 19.2 uses exactly this communicator.</span>
+<a id="__codelineno-2-49" name="__codelineno-2-49" href="#__codelineno-2-49"></a><span class="w">    </span><span class="n">ncclConfig_t</span><span class="w"> </span><span class="n">nonBlockingConfig</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">NCCL_CONFIG_INITIALIZER</span><span class="p">;</span>
+<a id="__codelineno-2-50" name="__codelineno-2-50" href="#__codelineno-2-50"></a><span class="w">    </span><span class="n">nonBlockingConfig</span><span class="p">.</span><span class="n">blocking</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
+<a id="__codelineno-2-51" name="__codelineno-2-51" href="#__codelineno-2-51"></a><span class="w">    </span><span class="n">ncclComm_t</span><span class="w"> </span><span class="n">nonBlockingComm</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nb">nullptr</span><span class="p">;</span>
+<a id="__codelineno-2-52" name="__codelineno-2-52" href="#__codelineno-2-52"></a><span class="w">    </span><span class="n">ncclResult_t</span><span class="w"> </span><span class="n">eNonBlocking</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">ncclCommInitRankConfig</span><span class="p">(</span><span class="o">&amp;</span><span class="n">nonBlockingComm</span><span class="p">,</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span><span class="w"> </span><span class="n">uniqueId</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">nonBlockingConfig</span><span class="p">);</span>
+<a id="__codelineno-2-53" name="__codelineno-2-53" href="#__codelineno-2-53"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;ncclCommInitRankConfig(blocking=0): %s (code %d)</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span>
+<a id="__codelineno-2-54" name="__codelineno-2-54" href="#__codelineno-2-54"></a><span class="w">           </span><span class="n">ncclGetErrorString</span><span class="p">(</span><span class="n">eNonBlocking</span><span class="p">),</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="p">)</span><span class="n">eNonBlocking</span><span class="p">);</span>
+<a id="__codelineno-2-55" name="__codelineno-2-55" href="#__codelineno-2-55"></a>
+<a id="__codelineno-2-56" name="__codelineno-2-56" href="#__codelineno-2-56"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;</span><span class="se">\n</span><span class="s">Both calls above return immediately in THIS environment, &quot;</span>
+<a id="__codelineno-2-57" name="__codelineno-2-57" href="#__codelineno-2-57"></a><span class="w">           </span><span class="s">&quot;honestly reporting that initialization on a never-successful &quot;</span>
+<a id="__codelineno-2-58" name="__codelineno-2-58" href="#__codelineno-2-58"></a><span class="w">           </span><span class="s">&quot;communicator failed to progress. That&#39;s this environment&#39;s &quot;</span>
+<a id="__codelineno-2-59" name="__codelineno-2-59" href="#__codelineno-2-59"></a><span class="w">           </span><span class="s">&quot;own honest failure mode (no device, ever) -- it is NOT the &quot;</span>
+<a id="__codelineno-2-60" name="__codelineno-2-60" href="#__codelineno-2-60"></a><span class="w">           </span><span class="s">&quot;same as a real cluster&#39;s hang-on-peer-failure mode, which &quot;</span>
+<a id="__codelineno-2-61" name="__codelineno-2-61" href="#__codelineno-2-61"></a><span class="w">           </span><span class="s">&quot;this section&#39;s whole point is to name correctly rather than &quot;</span>
+<a id="__codelineno-2-62" name="__codelineno-2-62" href="#__codelineno-2-62"></a><span class="w">           </span><span class="s">&quot;let this book&#39;s own always-instant errors quietly stand in &quot;</span>
+<a id="__codelineno-2-63" name="__codelineno-2-63" href="#__codelineno-2-63"></a><span class="w">           </span><span class="s">&quot;for it. Section 19.2 builds the real detect-and-recover &quot;</span>
+<a id="__codelineno-2-64" name="__codelineno-2-64" href="#__codelineno-2-64"></a><span class="w">           </span><span class="s">&quot;sequence a non-blocking communicator like the second one &quot;</span>
+<a id="__codelineno-2-65" name="__codelineno-2-65" href="#__codelineno-2-65"></a><span class="w">           </span><span class="s">&quot;above makes possible.</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
+<a id="__codelineno-2-66" name="__codelineno-2-66" href="#__codelineno-2-66"></a>
+<a id="__codelineno-2-67" name="__codelineno-2-67" href="#__codelineno-2-67"></a><span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
+<a id="__codelineno-2-68" name="__codelineno-2-68" href="#__codelineno-2-68"></a><span class="p">}</span>
+</code></pre></div>
+<p>Genuinely compiled with a real <code>nvcc</code> and genuinely run. Locked output, deterministic across repeated runs:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>cudaGetDeviceCount(): 0 device(s).
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>ncclGetUniqueId(): no error (code 0)
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>ncclCommInitRankConfig(blocking=1): unhandled cuda error (run with NCCL_DEBUG=INFO for details) (code 1)
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>ncclCommInitRankConfig(blocking=0): unhandled cuda error (run with NCCL_DEBUG=INFO for details) (code 1)
+<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>
+<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>Both calls above return immediately in THIS environment, honestly reporting that initialization on a never-successful communicator failed to progress. That&#39;s this environment&#39;s own honest failure mode (no device, ever) -- it is NOT the same as a real cluster&#39;s hang-on-peer-failure mode, which this section&#39;s whole point is to name correctly rather than let this book&#39;s own always-instant errors quietly stand in for it. Section 19.2 builds the real detect-and-recover sequence a non-blocking communicator like the second one above makes possible.
+</code></pre></div>
+<p><code>ncclGetUniqueId()</code> succeeds outright -- it needs no device at all, just a host-side handle to distribute to every rank before any communicator exists. Both <code>ncclCommInitRankConfig()</code> calls fail identically here, <code>blocking=1</code> and <code>blocking=0</code> alike, and that's the honest, important detail: the <code>blocking</code> field changes what a caller is <em>allowed to do while waiting</em>, not whether initialization can succeed without a device. In this environment, with no device to ever succeed on, that distinction is invisible -- both calls report the same instant <code>code 1</code>. On a real cluster with a real, live peer that later dies, the same two configurations diverge sharply: the blocking one leaves every healthy rank stuck inside the call with nothing to do but wait; the non-blocking one returns control immediately, so the caller can go poll for the answer on its own terms. That divergence is Section 19.2's whole subject.</p>
+<div class="admonition warning">
+<p class="admonition-title">[COMMON TRAP] Assuming a caught NCCL error means the failure has been handled</p>
+<p>Every earlier chapter's own honest error codes -- <code>ncclInvalidArgument</code>, <code>ncclUnhandledCudaError</code> -- made it easy to build a habit: call an NCCL function, check its <code>ncclResult_t</code>, print or handle the error, move on. That habit works perfectly in this book's own environment, where every real call fails instantly, every single time. It does not generalize to a real cluster. NVIDIA's own documentation is explicit that a genuinely failed peer can make an <em>otherwise-correct</em> collective call simply never return, on a <em>blocking</em> communicator -- there is no <code>ncclResult_t</code> to check, caught or otherwise, because the call that would produce one hasn't come back. Checking a return code handles the errors this book has shown you throughout; it says nothing at all about the hangs a real dead peer causes, which is exactly why Section 19.2's non-blocking-plus-polling pattern exists as a genuinely separate mechanism, not a refinement of error-checking.</p>
+</div>
+<h2 id="192-detecting-and-escaping-a-hang-non-blocking-communicators-and-ncclcommabort">19.2 Detecting and Escaping a Hang: Non-Blocking Communicators and <code>ncclCommAbort()</code><a class="headerlink" href="#192-detecting-and-escaping-a-hang-non-blocking-communicators-and-ncclcommabort" title="Permanent link">&para;</a></h2>
+<h3 id="intuition_1">Intuition<a class="headerlink" href="#intuition_1" title="Permanent link">&para;</a></h3>
+<p>A non-blocking communicator on its own only solves half the problem Section 19.1 named: it stops a caller from being trapped <em>inside</em> a call, but it doesn't yet tell the caller whether initialization -- or any later collective -- actually succeeded, failed, or is still working. NVIDIA's own documentation names the missing piece directly: a non-blocking communicator lets an application "enable non-blocking NCCL communicator so that we may detect and react to timeouts," and the mechanism for that detection is a second real call, <code>ncclCommGetAsyncError()</code>, checked in a loop. Their own example code shows exactly this pattern -- <code>NCCL_CHECK(ncclCommGetAsyncError(comm, &amp;asyncError)); while (asyncError == ncclInProgress)</code> -- polling until the result stops being "still working" and becomes something definite. Once it's definite and bad, NVIDIA's documentation names the one way out in equally direct terms: "typical recovery for the healthy ranks starts with <code>ncclCommAbort</code> on the existing communicator," which "will exit any operation currently in progress, and destroy the communicator." Abort is not repair. It stops the hang and nothing more -- a real application still has to build a fresh communicator afterward, almost always excluding the rank that caused the trouble. Open MPI's own ULFM (User-Level Failure Mitigation) extension, previewed here and built for real in Chapter 20, offers a strictly richer version of this same idea: <code>MPIX_Comm_revoke()</code>, which "interrupts any communication pending on the communicator at all ranks" in one call, and <code>MPIX_Comm_shrink()</code>, which then "creates a new communicator where dead processes ... were removed" -- survivors keep going in a smaller world, with no full rebuild required. NCCL has nothing like <code>shrink()</code>; its own abort-and-rebuild cycle involves every surviving rank from scratch.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>NCCL&#39;s real escape (this section):          MPI ULFM&#39;s real escape (Ch20 preview):
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>  detect: poll ncclCommGetAsyncError()          MPIX_Comm_revoke()
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>  -&gt; ncclCommAbort()                            -&gt; interrupts pending comm on
+<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>     stops the hang, nothing more                  EVERY surviving rank at once
+<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>  -&gt; rebuild: ncclCommInitRankConfig()          MPIX_Comm_shrink()
+<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a>     again, from scratch, ALL ranks             -&gt; builds a SMALLER communicator,
+<a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a>                                                    dead rank excluded, survivors
+<a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a>                                                    keep going -- no full rebuild
+</code></pre></div>
+<h3 id="background_1">Background<a class="headerlink" href="#background_1" title="Permanent link">&para;</a></h3>
+<p><code>pollUntilSettled()</code> below is this book's own version of NVIDIA's documented polling loop, bounded by a maximum poll count standing in for a real wall-clock timeout, exactly the way Section 19.1 named it. It calls <code>ncclCommGetAsyncError()</code> on the non-blocking communicator Section 19.1 introduced, then, once settled, calls the real <code>ncclCommAbort()</code> escape.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="c1">// Chapter 19: Stragglers, Failures, and Fault-Tolerant Collectives</span>
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="c1">// 55_nccl_async_detect_and_recover.cu</span>
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="c1">//</span>
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="c1">// Section 19.1 named the real problem: a blocking NCCL communicator</span>
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a><span class="c1">// gives an application no way to notice a hung collective, because</span>
+<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a><span class="c1">// the call that would tell it so is itself the thing that&#39;s hanging.</span>
+<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a><span class="c1">// This file builds NVIDIA&#39;s own real, documented fix in full: create</span>
+<a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a><span class="c1">// the communicator NON-BLOCKING (config.blocking = 0), then instead</span>
+<a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a><span class="c1">// of blocking on the init/collective call itself, POLL</span>
+<a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a><span class="c1">// ncclCommGetAsyncError() in a bounded loop -- NVIDIA&#39;s own example</span>
+<a id="__codelineno-5-11" name="__codelineno-5-11" href="#__codelineno-5-11"></a><span class="c1">// code shows exactly this pattern: &quot;NCCL_CHECK(ncclCommGetAsyncError(</span>
+<a id="__codelineno-5-12" name="__codelineno-5-12" href="#__codelineno-5-12"></a><span class="c1">// comm, &amp;asyncError)); while (asyncError == ncclInProgress)&quot;. Once a</span>
+<a id="__codelineno-5-13" name="__codelineno-5-13" href="#__codelineno-5-13"></a><span class="c1">// real problem is detected, NVIDIA&#39;s docs describe the escape</span>
+<a id="__codelineno-5-14" name="__codelineno-5-14" href="#__codelineno-5-14"></a><span class="c1">// directly: &quot;Typical recovery for the healthy ranks starts with</span>
+<a id="__codelineno-5-15" name="__codelineno-5-15" href="#__codelineno-5-15"></a><span class="c1">// ncclCommAbort on the existing communicator, followed by</span>
+<a id="__codelineno-5-16" name="__codelineno-5-16" href="#__codelineno-5-16"></a><span class="c1">// ncclCommInit&quot; -- ncclCommAbort() is not recovery on its own; it</span>
+<a id="__codelineno-5-17" name="__codelineno-5-17" href="#__codelineno-5-17"></a><span class="c1">// &quot;will exit any operation currently in progress, and destroy the</span>
+<a id="__codelineno-5-18" name="__codelineno-5-18" href="#__codelineno-5-18"></a><span class="c1">// communicator.&quot; The application still has to rebuild a fresh</span>
+<a id="__codelineno-5-19" name="__codelineno-5-19" href="#__codelineno-5-19"></a><span class="c1">// communicator afterward (not shown here -- that&#39;s just</span>
+<a id="__codelineno-5-20" name="__codelineno-5-20" href="#__codelineno-5-20"></a><span class="c1">// ncclCommInitRankConfig() again, already built in 19.1).</span>
+<a id="__codelineno-5-21" name="__codelineno-5-21" href="#__codelineno-5-21"></a><span class="c1">// Genuinely compiled with a real nvcc against the real installed</span>
+<a id="__codelineno-5-22" name="__codelineno-5-22" href="#__codelineno-5-22"></a><span class="c1">// libnccl.</span>
+<a id="__codelineno-5-23" name="__codelineno-5-23" href="#__codelineno-5-23"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;cstdio&gt;</span>
+<a id="__codelineno-5-24" name="__codelineno-5-24" href="#__codelineno-5-24"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;cuda_runtime.h&gt;</span>
+<a id="__codelineno-5-25" name="__codelineno-5-25" href="#__codelineno-5-25"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;nccl.h&gt;</span>
+<a id="__codelineno-5-26" name="__codelineno-5-26" href="#__codelineno-5-26"></a>
+<a id="__codelineno-5-27" name="__codelineno-5-27" href="#__codelineno-5-27"></a><span class="c1">// The real polling pattern NVIDIA&#39;s fault-tolerance docs describe:</span>
+<a id="__codelineno-5-28" name="__codelineno-5-28" href="#__codelineno-5-28"></a><span class="c1">// call ncclCommGetAsyncError() in a loop, bounded by a max iteration</span>
+<a id="__codelineno-5-29" name="__codelineno-5-29" href="#__codelineno-5-29"></a><span class="c1">// count standing in for a real wall-clock timeout, until the</span>
+<a id="__codelineno-5-30" name="__codelineno-5-30" href="#__codelineno-5-30"></a><span class="c1">// communicator reports something other than &quot;still in progress.&quot;</span>
+<a id="__codelineno-5-31" name="__codelineno-5-31" href="#__codelineno-5-31"></a><span class="n">ncclResult_t</span><span class="w"> </span><span class="nf">pollUntilSettled</span><span class="p">(</span><span class="n">ncclComm_t</span><span class="w"> </span><span class="n">comm</span><span class="p">,</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">maxPolls</span><span class="p">,</span><span class="w"> </span><span class="kt">int</span><span class="o">*</span><span class="w"> </span><span class="n">pollsUsed</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-5-32" name="__codelineno-5-32" href="#__codelineno-5-32"></a><span class="w">    </span><span class="n">ncclResult_t</span><span class="w"> </span><span class="n">asyncErr</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">ncclInProgress</span><span class="p">;</span>
+<a id="__codelineno-5-33" name="__codelineno-5-33" href="#__codelineno-5-33"></a><span class="w">    </span><span class="kt">int</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
+<a id="__codelineno-5-34" name="__codelineno-5-34" href="#__codelineno-5-34"></a><span class="w">    </span><span class="k">for</span><span class="w"> </span><span class="p">(;</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="n">maxPolls</span><span class="p">;</span><span class="w"> </span><span class="o">++</span><span class="n">i</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-5-35" name="__codelineno-5-35" href="#__codelineno-5-35"></a><span class="w">        </span><span class="n">ncclResult_t</span><span class="w"> </span><span class="n">queryErr</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">ncclCommGetAsyncError</span><span class="p">(</span><span class="n">comm</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">asyncErr</span><span class="p">);</span>
+<a id="__codelineno-5-36" name="__codelineno-5-36" href="#__codelineno-5-36"></a><span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">queryErr</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="n">ncclSuccess</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-5-37" name="__codelineno-5-37" href="#__codelineno-5-37"></a><span class="w">            </span><span class="c1">// The query call itself failed -- e.g. comm was never a</span>
+<a id="__codelineno-5-38" name="__codelineno-5-38" href="#__codelineno-5-38"></a><span class="w">            </span><span class="c1">// valid handle to begin with, this environment&#39;s own</span>
+<a id="__codelineno-5-39" name="__codelineno-5-39" href="#__codelineno-5-39"></a><span class="w">            </span><span class="c1">// honest case, since ncclCommInitRankConfig() below never</span>
+<a id="__codelineno-5-40" name="__codelineno-5-40" href="#__codelineno-5-40"></a><span class="w">            </span><span class="c1">// completes without a device.</span>
+<a id="__codelineno-5-41" name="__codelineno-5-41" href="#__codelineno-5-41"></a><span class="w">            </span><span class="o">*</span><span class="n">pollsUsed</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="p">;</span>
+<a id="__codelineno-5-42" name="__codelineno-5-42" href="#__codelineno-5-42"></a><span class="w">            </span><span class="k">return</span><span class="w"> </span><span class="n">queryErr</span><span class="p">;</span>
+<a id="__codelineno-5-43" name="__codelineno-5-43" href="#__codelineno-5-43"></a><span class="w">        </span><span class="p">}</span>
+<a id="__codelineno-5-44" name="__codelineno-5-44" href="#__codelineno-5-44"></a><span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">asyncErr</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="n">ncclInProgress</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-5-45" name="__codelineno-5-45" href="#__codelineno-5-45"></a><span class="w">            </span><span class="o">*</span><span class="n">pollsUsed</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="p">;</span>
+<a id="__codelineno-5-46" name="__codelineno-5-46" href="#__codelineno-5-46"></a><span class="w">            </span><span class="k">return</span><span class="w"> </span><span class="n">asyncErr</span><span class="p">;</span>
+<a id="__codelineno-5-47" name="__codelineno-5-47" href="#__codelineno-5-47"></a><span class="w">        </span><span class="p">}</span>
+<a id="__codelineno-5-48" name="__codelineno-5-48" href="#__codelineno-5-48"></a><span class="w">        </span><span class="c1">// A real caller would sleep briefly here before polling</span>
+<a id="__codelineno-5-49" name="__codelineno-5-49" href="#__codelineno-5-49"></a><span class="w">        </span><span class="c1">// again; this book&#39;s own honest environment never reaches a</span>
+<a id="__codelineno-5-50" name="__codelineno-5-50" href="#__codelineno-5-50"></a><span class="w">        </span><span class="c1">// second iteration, so there&#39;s nothing to genuinely sleep on.</span>
+<a id="__codelineno-5-51" name="__codelineno-5-51" href="#__codelineno-5-51"></a><span class="w">    </span><span class="p">}</span>
+<a id="__codelineno-5-52" name="__codelineno-5-52" href="#__codelineno-5-52"></a><span class="w">    </span><span class="o">*</span><span class="n">pollsUsed</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">i</span><span class="p">;</span>
+<a id="__codelineno-5-53" name="__codelineno-5-53" href="#__codelineno-5-53"></a><span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="n">ncclInProgress</span><span class="p">;</span><span class="w"> </span><span class="c1">// exhausted the poll budget -- a real timeout</span>
+<a id="__codelineno-5-54" name="__codelineno-5-54" href="#__codelineno-5-54"></a><span class="p">}</span>
+<a id="__codelineno-5-55" name="__codelineno-5-55" href="#__codelineno-5-55"></a>
+<a id="__codelineno-5-56" name="__codelineno-5-56" href="#__codelineno-5-56"></a><span class="kt">int</span><span class="w"> </span><span class="nf">main</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-5-57" name="__codelineno-5-57" href="#__codelineno-5-57"></a><span class="w">    </span><span class="kt">int</span><span class="w"> </span><span class="n">deviceCount</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
+<a id="__codelineno-5-58" name="__codelineno-5-58" href="#__codelineno-5-58"></a><span class="w">    </span><span class="n">cudaGetDeviceCount</span><span class="p">(</span><span class="o">&amp;</span><span class="n">deviceCount</span><span class="p">);</span>
+<a id="__codelineno-5-59" name="__codelineno-5-59" href="#__codelineno-5-59"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;cudaGetDeviceCount(): %d device(s).</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">deviceCount</span><span class="p">);</span>
+<a id="__codelineno-5-60" name="__codelineno-5-60" href="#__codelineno-5-60"></a>
+<a id="__codelineno-5-61" name="__codelineno-5-61" href="#__codelineno-5-61"></a><span class="w">    </span><span class="n">ncclUniqueId</span><span class="w"> </span><span class="n">uniqueId</span><span class="p">;</span>
+<a id="__codelineno-5-62" name="__codelineno-5-62" href="#__codelineno-5-62"></a><span class="w">    </span><span class="n">ncclGetUniqueId</span><span class="p">(</span><span class="o">&amp;</span><span class="n">uniqueId</span><span class="p">);</span>
+<a id="__codelineno-5-63" name="__codelineno-5-63" href="#__codelineno-5-63"></a>
+<a id="__codelineno-5-64" name="__codelineno-5-64" href="#__codelineno-5-64"></a><span class="w">    </span><span class="c1">// Build the non-blocking communicator 19.1 introduced.</span>
+<a id="__codelineno-5-65" name="__codelineno-5-65" href="#__codelineno-5-65"></a><span class="w">    </span><span class="n">ncclConfig_t</span><span class="w"> </span><span class="n">config</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">NCCL_CONFIG_INITIALIZER</span><span class="p">;</span>
+<a id="__codelineno-5-66" name="__codelineno-5-66" href="#__codelineno-5-66"></a><span class="w">    </span><span class="n">config</span><span class="p">.</span><span class="n">blocking</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
+<a id="__codelineno-5-67" name="__codelineno-5-67" href="#__codelineno-5-67"></a><span class="w">    </span><span class="n">ncclComm_t</span><span class="w"> </span><span class="n">comm</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nb">nullptr</span><span class="p">;</span>
+<a id="__codelineno-5-68" name="__codelineno-5-68" href="#__codelineno-5-68"></a><span class="w">    </span><span class="n">ncclResult_t</span><span class="w"> </span><span class="n">eInit</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">ncclCommInitRankConfig</span><span class="p">(</span><span class="o">&amp;</span><span class="n">comm</span><span class="p">,</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span><span class="w"> </span><span class="n">uniqueId</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">config</span><span class="p">);</span>
+<a id="__codelineno-5-69" name="__codelineno-5-69" href="#__codelineno-5-69"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;</span><span class="se">\n</span><span class="s">ncclCommInitRankConfig(blocking=0): %s (code %d)</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span>
+<a id="__codelineno-5-70" name="__codelineno-5-70" href="#__codelineno-5-70"></a><span class="w">           </span><span class="n">ncclGetErrorString</span><span class="p">(</span><span class="n">eInit</span><span class="p">),</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="p">)</span><span class="n">eInit</span><span class="p">);</span>
+<a id="__codelineno-5-71" name="__codelineno-5-71" href="#__codelineno-5-71"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;On a non-blocking communicator this call is allowed to return &quot;</span>
+<a id="__codelineno-5-72" name="__codelineno-5-72" href="#__codelineno-5-72"></a><span class="w">           </span><span class="s">&quot;BEFORE initialization has actually finished -- that&#39;s the whole &quot;</span>
+<a id="__codelineno-5-73" name="__codelineno-5-73" href="#__codelineno-5-73"></a><span class="w">           </span><span class="s">&quot;point, so the caller gets control back immediately instead of &quot;</span>
+<a id="__codelineno-5-74" name="__codelineno-5-74" href="#__codelineno-5-74"></a><span class="w">           </span><span class="s">&quot;blocking. Whether init is really done yet is a separate &quot;</span>
+<a id="__codelineno-5-75" name="__codelineno-5-75" href="#__codelineno-5-75"></a><span class="w">           </span><span class="s">&quot;question, answered only by polling ncclCommGetAsyncError(), &quot;</span>
+<a id="__codelineno-5-76" name="__codelineno-5-76" href="#__codelineno-5-76"></a><span class="w">           </span><span class="s">&quot;never by this return value alone.</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
+<a id="__codelineno-5-77" name="__codelineno-5-77" href="#__codelineno-5-77"></a>
+<a id="__codelineno-5-78" name="__codelineno-5-78" href="#__codelineno-5-78"></a><span class="w">    </span><span class="c1">// The real detect step: poll for up to MAX_POLLS iterations, the</span>
+<a id="__codelineno-5-79" name="__codelineno-5-79" href="#__codelineno-5-79"></a><span class="w">    </span><span class="c1">// way a real application would poll for up to some wall-clock</span>
+<a id="__codelineno-5-80" name="__codelineno-5-80" href="#__codelineno-5-80"></a><span class="w">    </span><span class="c1">// timeout while a peer might be hanging.</span>
+<a id="__codelineno-5-81" name="__codelineno-5-81" href="#__codelineno-5-81"></a><span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">MAX_POLLS</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">1000</span><span class="p">;</span>
+<a id="__codelineno-5-82" name="__codelineno-5-82" href="#__codelineno-5-82"></a><span class="w">    </span><span class="kt">int</span><span class="w"> </span><span class="n">pollsUsed</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
+<a id="__codelineno-5-83" name="__codelineno-5-83" href="#__codelineno-5-83"></a><span class="w">    </span><span class="n">ncclResult_t</span><span class="w"> </span><span class="n">settled</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">pollUntilSettled</span><span class="p">(</span><span class="n">comm</span><span class="p">,</span><span class="w"> </span><span class="n">MAX_POLLS</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">pollsUsed</span><span class="p">);</span>
+<a id="__codelineno-5-84" name="__codelineno-5-84" href="#__codelineno-5-84"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;</span><span class="se">\n</span><span class="s">pollUntilSettled(): settled after %d/%d poll(s) with result &quot;</span>
+<a id="__codelineno-5-85" name="__codelineno-5-85" href="#__codelineno-5-85"></a><span class="w">           </span><span class="s">&quot;%s (code %d)</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span>
+<a id="__codelineno-5-86" name="__codelineno-5-86" href="#__codelineno-5-86"></a><span class="w">           </span><span class="n">pollsUsed</span><span class="p">,</span><span class="w"> </span><span class="n">MAX_POLLS</span><span class="p">,</span><span class="w"> </span><span class="n">ncclGetErrorString</span><span class="p">(</span><span class="n">settled</span><span class="p">),</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="p">)</span><span class="n">settled</span><span class="p">);</span>
+<a id="__codelineno-5-87" name="__codelineno-5-87" href="#__codelineno-5-87"></a>
+<a id="__codelineno-5-88" name="__codelineno-5-88" href="#__codelineno-5-88"></a><span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">pollsUsed</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="n">MAX_POLLS</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-5-89" name="__codelineno-5-89" href="#__codelineno-5-89"></a><span class="w">        </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;The very first poll already saw a settled (non-&quot;</span>
+<a id="__codelineno-5-90" name="__codelineno-5-90" href="#__codelineno-5-90"></a><span class="w">               </span><span class="s">&quot;ncclInProgress) result -- this environment&#39;s own honest &quot;</span>
+<a id="__codelineno-5-91" name="__codelineno-5-91" href="#__codelineno-5-91"></a><span class="w">               </span><span class="s">&quot;failure mode is immediate, not a hang, so there was never &quot;</span>
+<a id="__codelineno-5-92" name="__codelineno-5-92" href="#__codelineno-5-92"></a><span class="w">               </span><span class="s">&quot;anything for this loop to genuinely wait out. On a real &quot;</span>
+<a id="__codelineno-5-93" name="__codelineno-5-93" href="#__codelineno-5-93"></a><span class="w">               </span><span class="s">&quot;cluster with a genuinely dead peer, ncclCommGetAsyncError() &quot;</span>
+<a id="__codelineno-5-94" name="__codelineno-5-94" href="#__codelineno-5-94"></a><span class="w">               </span><span class="s">&quot;keeps returning ncclInProgress for as long as the peer &quot;</span>
+<a id="__codelineno-5-95" name="__codelineno-5-95" href="#__codelineno-5-95"></a><span class="w">               </span><span class="s">&quot;stays dead, and THIS loop is what turns that into a bounded &quot;</span>
+<a id="__codelineno-5-96" name="__codelineno-5-96" href="#__codelineno-5-96"></a><span class="w">               </span><span class="s">&quot;wait instead of an unbounded hang.</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
+<a id="__codelineno-5-97" name="__codelineno-5-97" href="#__codelineno-5-97"></a><span class="w">    </span><span class="p">}</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-5-98" name="__codelineno-5-98" href="#__codelineno-5-98"></a><span class="w">        </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;Exhausted the poll budget without settling -- on a real &quot;</span>
+<a id="__codelineno-5-99" name="__codelineno-5-99" href="#__codelineno-5-99"></a><span class="w">               </span><span class="s">&quot;cluster this is the real timeout firing: a peer that &quot;</span>
+<a id="__codelineno-5-100" name="__codelineno-5-100" href="#__codelineno-5-100"></a><span class="w">               </span><span class="s">&quot;never comes back. Either way, settled or timed out, the &quot;</span>
+<a id="__codelineno-5-101" name="__codelineno-5-101" href="#__codelineno-5-101"></a><span class="w">               </span><span class="s">&quot;next step is the same.</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
+<a id="__codelineno-5-102" name="__codelineno-5-102" href="#__codelineno-5-102"></a><span class="w">    </span><span class="p">}</span>
+<a id="__codelineno-5-103" name="__codelineno-5-103" href="#__codelineno-5-103"></a>
+<a id="__codelineno-5-104" name="__codelineno-5-104" href="#__codelineno-5-104"></a><span class="w">    </span><span class="c1">// The real escape: NVIDIA&#39;s own docs state it directly -- &quot;Typical</span>
+<a id="__codelineno-5-105" name="__codelineno-5-105" href="#__codelineno-5-105"></a><span class="w">    </span><span class="c1">// recovery for the healthy ranks starts with ncclCommAbort on the</span>
+<a id="__codelineno-5-106" name="__codelineno-5-106" href="#__codelineno-5-106"></a><span class="w">    </span><span class="c1">// existing communicator, followed by ncclCommInit.&quot; Abort is not</span>
+<a id="__codelineno-5-107" name="__codelineno-5-107" href="#__codelineno-5-107"></a><span class="w">    </span><span class="c1">// recovery; it just stops the hang so the process can move on.</span>
+<a id="__codelineno-5-108" name="__codelineno-5-108" href="#__codelineno-5-108"></a><span class="w">    </span><span class="n">ncclResult_t</span><span class="w"> </span><span class="n">eAbort</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">ncclCommAbort</span><span class="p">(</span><span class="n">comm</span><span class="p">);</span>
+<a id="__codelineno-5-109" name="__codelineno-5-109" href="#__codelineno-5-109"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;</span><span class="se">\n</span><span class="s">ncclCommAbort(): %s (code %d)</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span>
+<a id="__codelineno-5-110" name="__codelineno-5-110" href="#__codelineno-5-110"></a><span class="w">           </span><span class="n">ncclGetErrorString</span><span class="p">(</span><span class="n">eAbort</span><span class="p">),</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="p">)</span><span class="n">eAbort</span><span class="p">);</span>
+<a id="__codelineno-5-111" name="__codelineno-5-111" href="#__codelineno-5-111"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;ncclCommAbort() only guarantees that this call returns -- it &quot;</span>
+<a id="__codelineno-5-112" name="__codelineno-5-112" href="#__codelineno-5-112"></a><span class="w">           </span><span class="s">&quot;does NOT rebuild a working communicator. A real application &quot;</span>
+<a id="__codelineno-5-113" name="__codelineno-5-113" href="#__codelineno-5-113"></a><span class="w">           </span><span class="s">&quot;still has to call ncclCommInitRankConfig() again afterward &quot;</span>
+<a id="__codelineno-5-114" name="__codelineno-5-114" href="#__codelineno-5-114"></a><span class="w">           </span><span class="s">&quot;(19.1&#39;s own call, unchanged) to get back into a workable &quot;</span>
+<a id="__codelineno-5-115" name="__codelineno-5-115" href="#__codelineno-5-115"></a><span class="w">           </span><span class="s">&quot;state, almost always with the dead rank excluded from the new &quot;</span>
+<a id="__codelineno-5-116" name="__codelineno-5-116" href="#__codelineno-5-116"></a><span class="w">           </span><span class="s">&quot;membership list.</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
+<a id="__codelineno-5-117" name="__codelineno-5-117" href="#__codelineno-5-117"></a>
+<a id="__codelineno-5-118" name="__codelineno-5-118" href="#__codelineno-5-118"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;</span><span class="se">\n</span><span class="s">Open MPI&#39;s ULFM (User-Level Failure Mitigation) extension &quot;</span>
+<a id="__codelineno-5-119" name="__codelineno-5-119" href="#__codelineno-5-119"></a><span class="w">           </span><span class="s">&quot;offers a real, richer alternative to this abort-and-rebuild &quot;</span>
+<a id="__codelineno-5-120" name="__codelineno-5-120" href="#__codelineno-5-120"></a><span class="w">           </span><span class="s">&quot;cycle: MPIX_Comm_revoke() invalidates a communicator across &quot;</span>
+<a id="__codelineno-5-121" name="__codelineno-5-121" href="#__codelineno-5-121"></a><span class="w">           </span><span class="s">&quot;every surviving rank at once (so nobody is left waiting on a &quot;</span>
+<a id="__codelineno-5-122" name="__codelineno-5-122" href="#__codelineno-5-122"></a><span class="w">           </span><span class="s">&quot;peer that already knows to give up), and MPIX_Comm_shrink() &quot;</span>
+<a id="__codelineno-5-123" name="__codelineno-5-123" href="#__codelineno-5-123"></a><span class="w">           </span><span class="s">&quot;then produces a NEW communicator that simply excludes the &quot;</span>
+<a id="__codelineno-5-124" name="__codelineno-5-124" href="#__codelineno-5-124"></a><span class="w">           </span><span class="s">&quot;dead rank -- survivors keep going with a smaller world, no &quot;</span>
+<a id="__codelineno-5-125" name="__codelineno-5-125" href="#__codelineno-5-125"></a><span class="w">           </span><span class="s">&quot;full rebuild required. NCCL has no equivalent to shrink(): &quot;</span>
+<a id="__codelineno-5-126" name="__codelineno-5-126" href="#__codelineno-5-126"></a><span class="w">           </span><span class="s">&quot;ncclCommAbort() only stops the hang, and rebuilding an NCCL &quot;</span>
+<a id="__codelineno-5-127" name="__codelineno-5-127" href="#__codelineno-5-127"></a><span class="w">           </span><span class="s">&quot;communicator to exclude one dead rank means calling &quot;</span>
+<a id="__codelineno-5-128" name="__codelineno-5-128" href="#__codelineno-5-128"></a><span class="w">           </span><span class="s">&quot;ncclCommInitRankConfig() again with an entirely new rank &quot;</span>
+<a id="__codelineno-5-129" name="__codelineno-5-129" href="#__codelineno-5-129"></a><span class="w">           </span><span class="s">&quot;count and a new ncclUniqueId, involving every surviving rank &quot;</span>
+<a id="__codelineno-5-130" name="__codelineno-5-130" href="#__codelineno-5-130"></a><span class="w">           </span><span class="s">&quot;from scratch. Chapter 20 opens Part 5 with MPI&#39;s own first &quot;</span>
+<a id="__codelineno-5-131" name="__codelineno-5-131" href="#__codelineno-5-131"></a><span class="w">           </span><span class="s">&quot;dedicated chapter, where ULFM gets built and run directly, &quot;</span>
+<a id="__codelineno-5-132" name="__codelineno-5-132" href="#__codelineno-5-132"></a><span class="w">           </span><span class="s">&quot;not just described.</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
+<a id="__codelineno-5-133" name="__codelineno-5-133" href="#__codelineno-5-133"></a>
+<a id="__codelineno-5-134" name="__codelineno-5-134" href="#__codelineno-5-134"></a><span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
+<a id="__codelineno-5-135" name="__codelineno-5-135" href="#__codelineno-5-135"></a><span class="p">}</span>
+</code></pre></div>
+<p>Genuinely compiled with a real <code>nvcc</code> and genuinely run. Locked output, deterministic across repeated runs:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>cudaGetDeviceCount(): 0 device(s).
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>ncclCommInitRankConfig(blocking=0): unhandled cuda error (run with NCCL_DEBUG=INFO for details) (code 1)
+<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>On a non-blocking communicator this call is allowed to return BEFORE initialization has actually finished -- that&#39;s the whole point, so the caller gets control back immediately instead of blocking. Whether init is really done yet is a separate question, answered only by polling ncclCommGetAsyncError(), never by this return value alone.
+<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>
+<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a>pollUntilSettled(): settled after 1/1000 poll(s) with result invalid argument (run with NCCL_DEBUG=WARN for details) (code 4)
+<a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a>The very first poll already saw a settled (non-ncclInProgress) result -- this environment&#39;s own honest failure mode is immediate, not a hang, so there was never anything for this loop to genuinely wait out. On a real cluster with a genuinely dead peer, ncclCommGetAsyncError() keeps returning ncclInProgress for as long as the peer stays dead, and THIS loop is what turns that into a bounded wait instead of an unbounded hang.
+<a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a>
+<a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a>ncclCommAbort(): no error (code 0)
+<a id="__codelineno-6-10" name="__codelineno-6-10" href="#__codelineno-6-10"></a>ncclCommAbort() only guarantees that this call returns -- it does NOT rebuild a working communicator. A real application still has to call ncclCommInitRankConfig() again afterward (19.1&#39;s own call, unchanged) to get back into a workable state, almost always with the dead rank excluded from the new membership list.
+<a id="__codelineno-6-11" name="__codelineno-6-11" href="#__codelineno-6-11"></a>
+<a id="__codelineno-6-12" name="__codelineno-6-12" href="#__codelineno-6-12"></a>Open MPI&#39;s ULFM (User-Level Failure Mitigation) extension offers a real, richer alternative to this abort-and-rebuild cycle: MPIX_Comm_revoke() invalidates a communicator across every surviving rank at once (so nobody is left waiting on a peer that already knows to give up), and MPIX_Comm_shrink() then produces a NEW communicator that simply excludes the dead rank -- survivors keep going with a smaller world, no full rebuild required. NCCL has no equivalent to shrink(): ncclCommAbort() only stops the hang, and rebuilding an NCCL communicator to exclude one dead rank means calling ncclCommInitRankConfig() again with an entirely new rank count and a new ncclUniqueId, involving every surviving rank from scratch. Chapter 20 opens Part 5 with MPI&#39;s own first dedicated chapter, where ULFM gets built and run directly, not just described.
+</code></pre></div>
+<p><code>pollUntilSettled()</code> settles on its very first iteration here -- <code>ncclCommGetAsyncError()</code> reports <code>ncclInvalidArgument</code> (code 4) immediately, because <code>comm</code> was never a genuinely valid handle to begin with in an environment with no device. That is, once again, this environment's own honest failure mode standing in the same spot a real hang would occupy: the loop itself is real and correct either way, and on a real cluster with a real hanging peer it is precisely this loop -- not this book's own instant result -- that would keep running, <code>ncclInProgress</code>, iteration after iteration, until either the peer recovers or the poll budget runs out. The most interesting single line in this output is <code>ncclCommAbort(): no error (code 0)</code>: NCCL genuinely reports success at aborting a communicator that never finished initializing, which is consistent with its own documented behavior -- <code>ncclCommAbort()</code>'s job is only to make sure nothing is left in progress and the handle is cleaned up, not to judge whether that communicator was ever healthy to begin with.</p>
+<div class="admonition warning">
+<p class="admonition-title">[COMMON TRAP] Treating <code>ncclCommAbort()</code> as recovery instead of just an escape</p>
+<p>It's tempting to read <code>ncclCommAbort()</code>'s clean <code>ncclSuccess</code> return and treat the problem as solved. It isn't. NVIDIA's own documentation is explicit that abort's whole job is narrower: it "will exit any operation currently in progress, and destroy the communicator" -- stopping the hang, and nothing more. After <code>ncclCommAbort()</code> returns, there is no working communicator at all; every rank that was part of it needs a brand-new <code>ncclCommInitRankConfig()</code> call, Section 19.1's own call, run again from scratch, almost always with the dead rank's slot removed from the membership list and a fresh <code>ncclUniqueId</code>. Skipping that rebuild and trying to keep using the aborted handle, or assuming the abort itself somehow restored connectivity, leaves an application with no communicator, not a repaired one -- exactly the gap MPI's ULFM <code>Comm_shrink()</code> closes, by producing the smaller, still-working communicator directly instead of leaving that rebuild step to the caller.</p>
+</div>
+<h2 id="193-stragglers-are-not-failures-backup-workers">19.3 Stragglers Are Not Failures: Backup Workers<a class="headerlink" href="#193-stragglers-are-not-failures-backup-workers" title="Permanent link">&para;</a></h2>
+<h3 id="intuition_2">Intuition<a class="headerlink" href="#intuition_2" title="Permanent link">&para;</a></h3>
+<p>Sections 19.1 and 19.2 dealt with a peer that is genuinely, permanently dead. That's the rarer, more catastrophic case. The far more common real failure mode in a large cluster is milder: a worker that's merely <em>slow</em> on this particular step -- a noisy neighbor process stealing CPU time, a transient network hiccup, one slow disk read -- and then back to normal speed on the very next step. Chen et al.'s "Revisiting Distributed Synchronous SGD" studies exactly this case, and their fix needs no failure detector, no polling loop, and no <code>ncclCommAbort()</code> at all. Their own description of it is direct: "instead of having only N workers, we add b extra workers, but as soon as the parameter servers receive gradients from any N workers, they stop waiting and update their parameters using the N gradients." Whichever workers (up to b of them) haven't reported yet are simply dropped, for that step only -- no error, no abort, no rebuild. Their own real experiments used this at real scale, reporting <code>N = 96, b = 4</code> as a strong configuration out of 100 total machines. The technique's own real guarantee, checked concretely in this section, is an order-statistic one: pooling N+b candidates and keeping the fastest N of them can only ever finish sooner (or, in the worst case, at the same time) than being stuck with one fixed set of N candidates -- for any timings at all, straggler or no straggler.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>N=4 required + b=2 backup workers, one step:
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>  required: [ 10 ][ 11 ][ 9 ][ 1000000 ]   one of these is a catastrophic straggler
+<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a>  backup:   [ 12 ][ 13 ]
+<a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a>
+<a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a>  Pool all 6, sort by finish time:
+<a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a>    9 -- 10 -- 11 -- 12 -- 13 -- 1000000
+<a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a>                 ^ first 4 finishers -- proceed HERE, drop the rest
+<a id="__codelineno-7-9" name="__codelineno-7-9" href="#__codelineno-7-9"></a>
+<a id="__codelineno-7-10" name="__codelineno-7-10" href="#__codelineno-7-10"></a>  without backups: must wait for 1000000
+<a id="__codelineno-7-11" name="__codelineno-7-11" href="#__codelineno-7-11"></a>  with backups:    proceeds at 12
+</code></pre></div>
+<h3 id="background_2">Background<a class="headerlink" href="#background_2" title="Permanent link">&para;</a></h3>
+<p><code>withoutBackupsWait()</code> below reproduces every earlier chapter's own implicit assumption -- exactly N required workers, wait for all of them. <code>withBackupsWait()</code> implements Chen et al.'s real technique: pool N required and b backup finish times together, sort them, and take the N-th smallest -- the finish time of whichever worker arrives N-th out of all N+b candidates. Three fixed, named scenarios check the invariant directly rather than assuming it.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="c1">// Chapter 19: Stragglers, Failures, and Fault-Tolerant Collectives</span>
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a><span class="c1">// 56_backup_workers_simulation.cpp</span>
+<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a><span class="c1">//</span>
+<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a><span class="c1">// Plain host C++ -- this chapter&#39;s real verification for Section</span>
+<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a><span class="c1">// 19.3. Sections 19.1-19.2 dealt with a peer that&#39;s fully DEAD.</span>
+<a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a><span class="c1">// Chen et al.&#39;s &quot;Revisiting Distributed Synchronous SGD&quot; (arXiv</span>
+<a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a><span class="c1">// 1604.00981) studies a milder, far more common real failure mode</span>
+<a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a><span class="c1">// instead: a peer that&#39;s merely SLOW -- a straggler -- on any given</span>
+<a id="__codelineno-8-9" name="__codelineno-8-9" href="#__codelineno-8-9"></a><span class="c1">// step, for reasons (a noisy neighbor VM, a transient network hiccup,</span>
+<a id="__codelineno-8-10" name="__codelineno-8-10" href="#__codelineno-8-10"></a><span class="c1">// a slow disk read) that mostly don&#39;t repeat next step. Their real</span>
+<a id="__codelineno-8-11" name="__codelineno-8-11" href="#__codelineno-8-11"></a><span class="c1">// fix needs no failure detector at all: launch N+b workers for N</span>
+<a id="__codelineno-8-12" name="__codelineno-8-12" href="#__codelineno-8-12"></a><span class="c1">// required results, and proceed the moment the FIRST N of them</span>
+<a id="__codelineno-8-13" name="__codelineno-8-13" href="#__codelineno-8-13"></a><span class="c1">// report, dropping whichever b (or fewer) stragglers haven&#39;t finished</span>
+<a id="__codelineno-8-14" name="__codelineno-8-14" href="#__codelineno-8-14"></a><span class="c1">// yet. This file simulates that rule directly on fixed, named</span>
+<a id="__codelineno-8-15" name="__codelineno-8-15" href="#__codelineno-8-15"></a><span class="c1">// timings (no randomness -- every number below is chosen to make one</span>
+<a id="__codelineno-8-16" name="__codelineno-8-16" href="#__codelineno-8-16"></a><span class="c1">// concrete point) and checks, across every scenario, the one</span>
+<a id="__codelineno-8-17" name="__codelineno-8-17" href="#__codelineno-8-17"></a><span class="c1">// invariant Chen et al.&#39;s own technique promises: waiting for backups</span>
+<a id="__codelineno-8-18" name="__codelineno-8-18" href="#__codelineno-8-18"></a><span class="c1">// is NEVER slower than waiting for the fixed required set alone.</span>
+<a id="__codelineno-8-19" name="__codelineno-8-19" href="#__codelineno-8-19"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;cstdio&gt;</span>
+<a id="__codelineno-8-20" name="__codelineno-8-20" href="#__codelineno-8-20"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;vector&gt;</span>
+<a id="__codelineno-8-21" name="__codelineno-8-21" href="#__codelineno-8-21"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;algorithm&gt;</span>
+<a id="__codelineno-8-22" name="__codelineno-8-22" href="#__codelineno-8-22"></a>
+<a id="__codelineno-8-23" name="__codelineno-8-23" href="#__codelineno-8-23"></a><span class="c1">// The baseline every earlier chapter&#39;s own collectives implicitly</span>
+<a id="__codelineno-8-24" name="__codelineno-8-24" href="#__codelineno-8-24"></a><span class="c1">// assumed: exactly N required workers, no backups. One slow (or</span>
+<a id="__codelineno-8-25" name="__codelineno-8-25" href="#__codelineno-8-25"></a><span class="c1">// effectively hung) worker among the N holds up the whole step --</span>
+<a id="__codelineno-8-26" name="__codelineno-8-26" href="#__codelineno-8-26"></a><span class="c1">// this is precisely Chapter 17&#39;s own barrier cost, paid again here</span>
+<a id="__codelineno-8-27" name="__codelineno-8-27" href="#__codelineno-8-27"></a><span class="c1">// per-step instead of once at a global sync.</span>
+<a id="__codelineno-8-28" name="__codelineno-8-28" href="#__codelineno-8-28"></a><span class="kt">double</span><span class="w"> </span><span class="nf">withoutBackupsWait</span><span class="p">(</span><span class="k">const</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">double</span><span class="o">&gt;&amp;</span><span class="w"> </span><span class="n">requiredTimes</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-8-29" name="__codelineno-8-29" href="#__codelineno-8-29"></a><span class="w">    </span><span class="kt">double</span><span class="w"> </span><span class="n">worst</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">0.0</span><span class="p">;</span>
+<a id="__codelineno-8-30" name="__codelineno-8-30" href="#__codelineno-8-30"></a><span class="w">    </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="kt">double</span><span class="w"> </span><span class="n">t</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="n">requiredTimes</span><span class="p">)</span><span class="w"> </span><span class="n">worst</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">max</span><span class="p">(</span><span class="n">worst</span><span class="p">,</span><span class="w"> </span><span class="n">t</span><span class="p">);</span>
+<a id="__codelineno-8-31" name="__codelineno-8-31" href="#__codelineno-8-31"></a><span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="n">worst</span><span class="p">;</span>
+<a id="__codelineno-8-32" name="__codelineno-8-32" href="#__codelineno-8-32"></a><span class="p">}</span>
+<a id="__codelineno-8-33" name="__codelineno-8-33" href="#__codelineno-8-33"></a>
+<a id="__codelineno-8-34" name="__codelineno-8-34" href="#__codelineno-8-34"></a><span class="c1">// Chen et al.&#39;s real technique: launch requiredTimes.size() + backup-</span>
+<a id="__codelineno-8-35" name="__codelineno-8-35" href="#__codelineno-8-35"></a><span class="c1">// Times.size() workers, and proceed once the FIRST requiredTimes.size()</span>
+<a id="__codelineno-8-36" name="__codelineno-8-36" href="#__codelineno-8-36"></a><span class="c1">// of ALL of them (required and backup, pooled together) have reported</span>
+<a id="__codelineno-8-37" name="__codelineno-8-37" href="#__codelineno-8-37"></a><span class="c1">// -- the n-th order statistic of the pooled finishing times. Whichever</span>
+<a id="__codelineno-8-38" name="__codelineno-8-38" href="#__codelineno-8-38"></a><span class="c1">// workers haven&#39;t finished yet (up to backupTimes.size() of them) are</span>
+<a id="__codelineno-8-39" name="__codelineno-8-39" href="#__codelineno-8-39"></a><span class="c1">// simply dropped for this step.</span>
+<a id="__codelineno-8-40" name="__codelineno-8-40" href="#__codelineno-8-40"></a><span class="kt">double</span><span class="w"> </span><span class="nf">withBackupsWait</span><span class="p">(</span><span class="k">const</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">double</span><span class="o">&gt;&amp;</span><span class="w"> </span><span class="n">requiredTimes</span><span class="p">,</span>
+<a id="__codelineno-8-41" name="__codelineno-8-41" href="#__codelineno-8-41"></a><span class="w">                        </span><span class="k">const</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">double</span><span class="o">&gt;&amp;</span><span class="w"> </span><span class="n">backupTimes</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-8-42" name="__codelineno-8-42" href="#__codelineno-8-42"></a><span class="w">    </span><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">double</span><span class="o">&gt;</span><span class="w"> </span><span class="n">pooled</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">requiredTimes</span><span class="p">;</span>
+<a id="__codelineno-8-43" name="__codelineno-8-43" href="#__codelineno-8-43"></a><span class="w">    </span><span class="n">pooled</span><span class="p">.</span><span class="n">insert</span><span class="p">(</span><span class="n">pooled</span><span class="p">.</span><span class="n">end</span><span class="p">(),</span><span class="w"> </span><span class="n">backupTimes</span><span class="p">.</span><span class="n">begin</span><span class="p">(),</span><span class="w"> </span><span class="n">backupTimes</span><span class="p">.</span><span class="n">end</span><span class="p">());</span>
+<a id="__codelineno-8-44" name="__codelineno-8-44" href="#__codelineno-8-44"></a><span class="w">    </span><span class="n">std</span><span class="o">::</span><span class="n">sort</span><span class="p">(</span><span class="n">pooled</span><span class="p">.</span><span class="n">begin</span><span class="p">(),</span><span class="w"> </span><span class="n">pooled</span><span class="p">.</span><span class="n">end</span><span class="p">());</span>
+<a id="__codelineno-8-45" name="__codelineno-8-45" href="#__codelineno-8-45"></a><span class="w">    </span><span class="kt">size_t</span><span class="w"> </span><span class="n">n</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">requiredTimes</span><span class="p">.</span><span class="n">size</span><span class="p">();</span>
+<a id="__codelineno-8-46" name="__codelineno-8-46" href="#__codelineno-8-46"></a><span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="n">pooled</span><span class="p">[</span><span class="n">n</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="mi">1</span><span class="p">];</span><span class="w"> </span><span class="c1">// n-th smallest, 0-indexed as [n-1]</span>
+<a id="__codelineno-8-47" name="__codelineno-8-47" href="#__codelineno-8-47"></a><span class="p">}</span>
+<a id="__codelineno-8-48" name="__codelineno-8-48" href="#__codelineno-8-48"></a>
+<a id="__codelineno-8-49" name="__codelineno-8-49" href="#__codelineno-8-49"></a><span class="k">struct</span><span class="w"> </span><span class="nc">Scenario</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-8-50" name="__codelineno-8-50" href="#__codelineno-8-50"></a><span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="kt">char</span><span class="o">*</span><span class="w"> </span><span class="n">name</span><span class="p">;</span>
+<a id="__codelineno-8-51" name="__codelineno-8-51" href="#__codelineno-8-51"></a><span class="w">    </span><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">double</span><span class="o">&gt;</span><span class="w"> </span><span class="n">requiredTimes</span><span class="p">;</span><span class="w"> </span><span class="c1">// N=4 required workers&#39; finish times</span>
+<a id="__codelineno-8-52" name="__codelineno-8-52" href="#__codelineno-8-52"></a><span class="w">    </span><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">double</span><span class="o">&gt;</span><span class="w"> </span><span class="n">backupTimes</span><span class="p">;</span><span class="w">   </span><span class="c1">// b=2 backup workers&#39; finish times</span>
+<a id="__codelineno-8-53" name="__codelineno-8-53" href="#__codelineno-8-53"></a><span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="kt">char</span><span class="o">*</span><span class="w"> </span><span class="n">explanation</span><span class="p">;</span>
+<a id="__codelineno-8-54" name="__codelineno-8-54" href="#__codelineno-8-54"></a><span class="p">};</span>
+<a id="__codelineno-8-55" name="__codelineno-8-55" href="#__codelineno-8-55"></a>
+<a id="__codelineno-8-56" name="__codelineno-8-56" href="#__codelineno-8-56"></a><span class="kt">int</span><span class="w"> </span><span class="nf">main</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-8-57" name="__codelineno-8-57" href="#__codelineno-8-57"></a><span class="w">    </span><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">Scenario</span><span class="o">&gt;</span><span class="w"> </span><span class="n">scenarios</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-8-58" name="__codelineno-8-58" href="#__codelineno-8-58"></a><span class="w">        </span><span class="p">{</span>
+<a id="__codelineno-8-59" name="__codelineno-8-59" href="#__codelineno-8-59"></a><span class="w">            </span><span class="s">&quot;no true straggler&quot;</span><span class="p">,</span>
+<a id="__codelineno-8-60" name="__codelineno-8-60" href="#__codelineno-8-60"></a><span class="w">            </span><span class="p">{</span><span class="mf">10.0</span><span class="p">,</span><span class="w"> </span><span class="mf">11.0</span><span class="p">,</span><span class="w"> </span><span class="mf">9.0</span><span class="p">,</span><span class="w"> </span><span class="mf">12.0</span><span class="p">},</span>
+<a id="__codelineno-8-61" name="__codelineno-8-61" href="#__codelineno-8-61"></a><span class="w">            </span><span class="p">{</span><span class="mf">10.5</span><span class="p">,</span><span class="w"> </span><span class="mf">11.5</span><span class="p">},</span>
+<a id="__codelineno-8-62" name="__codelineno-8-62" href="#__codelineno-8-62"></a><span class="w">            </span><span class="s">&quot;Nothing is actually hung -- every one of the 6 workers &quot;</span>
+<a id="__codelineno-8-63" name="__codelineno-8-63" href="#__codelineno-8-63"></a><span class="w">            </span><span class="s">&quot;finishes in ordinary time. Even here, backups still help: &quot;</span>
+<a id="__codelineno-8-64" name="__codelineno-8-64" href="#__codelineno-8-64"></a><span class="w">            </span><span class="s">&quot;the 4th-fastest of all 6 (11.0) beats the slowest of the &quot;</span>
+<a id="__codelineno-8-65" name="__codelineno-8-65" href="#__codelineno-8-65"></a><span class="w">            </span><span class="s">&quot;4 originally-required ones (12.0), purely from having two &quot;</span>
+<a id="__codelineno-8-66" name="__codelineno-8-66" href="#__codelineno-8-66"></a><span class="w">            </span><span class="s">&quot;extra chances at the draw.&quot;</span>
+<a id="__codelineno-8-67" name="__codelineno-8-67" href="#__codelineno-8-67"></a><span class="w">        </span><span class="p">},</span>
+<a id="__codelineno-8-68" name="__codelineno-8-68" href="#__codelineno-8-68"></a><span class="w">        </span><span class="p">{</span>
+<a id="__codelineno-8-69" name="__codelineno-8-69" href="#__codelineno-8-69"></a><span class="w">            </span><span class="s">&quot;a required worker catastrophically straggles&quot;</span><span class="p">,</span>
+<a id="__codelineno-8-70" name="__codelineno-8-70" href="#__codelineno-8-70"></a><span class="w">            </span><span class="p">{</span><span class="mf">10.0</span><span class="p">,</span><span class="w"> </span><span class="mf">11.0</span><span class="p">,</span><span class="w"> </span><span class="mf">9.0</span><span class="p">,</span><span class="w"> </span><span class="mf">1000000.0</span><span class="p">},</span>
+<a id="__codelineno-8-71" name="__codelineno-8-71" href="#__codelineno-8-71"></a><span class="w">            </span><span class="p">{</span><span class="mf">12.0</span><span class="p">,</span><span class="w"> </span><span class="mf">13.0</span><span class="p">},</span>
+<a id="__codelineno-8-72" name="__codelineno-8-72" href="#__codelineno-8-72"></a><span class="w">            </span><span class="s">&quot;One of the 4 ORIGINALLY-REQUIRED workers is the real &quot;</span>
+<a id="__codelineno-8-73" name="__codelineno-8-73" href="#__codelineno-8-73"></a><span class="w">            </span><span class="s">&quot;target case -- effectively hung (a straggler so slow it &quot;</span>
+<a id="__codelineno-8-74" name="__codelineno-8-74" href="#__codelineno-8-74"></a><span class="w">            </span><span class="s">&quot;may as well be Section 19.1&#39;s dead peer). Without &quot;</span>
+<a id="__codelineno-8-75" name="__codelineno-8-75" href="#__codelineno-8-75"></a><span class="w">            </span><span class="s">&quot;backups, the whole step is held hostage to it. With 2 &quot;</span>
+<a id="__codelineno-8-76" name="__codelineno-8-76" href="#__codelineno-8-76"></a><span class="w">            </span><span class="s">&quot;backups in flight, the pool has 4 OTHER finishers well &quot;</span>
+<a id="__codelineno-8-77" name="__codelineno-8-77" href="#__codelineno-8-77"></a><span class="w">            </span><span class="s">&quot;under the straggler&#39;s time, so the step proceeds without &quot;</span>
+<a id="__codelineno-8-78" name="__codelineno-8-78" href="#__codelineno-8-78"></a><span class="w">            </span><span class="s">&quot;ever waiting on it at all.&quot;</span>
+<a id="__codelineno-8-79" name="__codelineno-8-79" href="#__codelineno-8-79"></a><span class="w">        </span><span class="p">},</span>
+<a id="__codelineno-8-80" name="__codelineno-8-80" href="#__codelineno-8-80"></a><span class="w">        </span><span class="p">{</span>
+<a id="__codelineno-8-81" name="__codelineno-8-81" href="#__codelineno-8-81"></a><span class="w">            </span><span class="s">&quot;slow backups, no downside&quot;</span><span class="p">,</span>
+<a id="__codelineno-8-82" name="__codelineno-8-82" href="#__codelineno-8-82"></a><span class="w">            </span><span class="p">{</span><span class="mf">10.0</span><span class="p">,</span><span class="w"> </span><span class="mf">11.0</span><span class="p">,</span><span class="w"> </span><span class="mf">9.0</span><span class="p">,</span><span class="w"> </span><span class="mf">12.0</span><span class="p">},</span>
+<a id="__codelineno-8-83" name="__codelineno-8-83" href="#__codelineno-8-83"></a><span class="w">            </span><span class="p">{</span><span class="mf">500.0</span><span class="p">,</span><span class="w"> </span><span class="mf">600.0</span><span class="p">},</span>
+<a id="__codelineno-8-84" name="__codelineno-8-84" href="#__codelineno-8-84"></a><span class="w">            </span><span class="s">&quot;The backups themselves are the slow ones this time, far &quot;</span>
+<a id="__codelineno-8-85" name="__codelineno-8-85" href="#__codelineno-8-85"></a><span class="w">            </span><span class="s">&quot;slower than any required worker. That costs nothing: the &quot;</span>
+<a id="__codelineno-8-86" name="__codelineno-8-86" href="#__codelineno-8-86"></a><span class="w">            </span><span class="s">&quot;first 4 finishers are still the 4 required workers &quot;</span>
+<a id="__codelineno-8-87" name="__codelineno-8-87" href="#__codelineno-8-87"></a><span class="w">            </span><span class="s">&quot;(9,10,11,12), so the backups&#39; own results are simply &quot;</span>
+<a id="__codelineno-8-88" name="__codelineno-8-88" href="#__codelineno-8-88"></a><span class="w">            </span><span class="s">&quot;dropped, unused, exactly as designed.&quot;</span>
+<a id="__codelineno-8-89" name="__codelineno-8-89" href="#__codelineno-8-89"></a><span class="w">        </span><span class="p">},</span>
+<a id="__codelineno-8-90" name="__codelineno-8-90" href="#__codelineno-8-90"></a><span class="w">    </span><span class="p">};</span>
+<a id="__codelineno-8-91" name="__codelineno-8-91" href="#__codelineno-8-91"></a>
+<a id="__codelineno-8-92" name="__codelineno-8-92" href="#__codelineno-8-92"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;Section 19.3: backup workers, N=4 required + b=2 backup, &quot;</span>
+<a id="__codelineno-8-93" name="__codelineno-8-93" href="#__codelineno-8-93"></a><span class="w">           </span><span class="s">&quot;3 fixed scenarios.</span><span class="se">\n\n</span><span class="s">&quot;</span><span class="p">);</span>
+<a id="__codelineno-8-94" name="__codelineno-8-94" href="#__codelineno-8-94"></a>
+<a id="__codelineno-8-95" name="__codelineno-8-95" href="#__codelineno-8-95"></a><span class="w">    </span><span class="kt">bool</span><span class="w"> </span><span class="n">allInvariantsHold</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nb">true</span><span class="p">;</span>
+<a id="__codelineno-8-96" name="__codelineno-8-96" href="#__codelineno-8-96"></a><span class="w">    </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="k">const</span><span class="w"> </span><span class="n">Scenario</span><span class="o">&amp;</span><span class="w"> </span><span class="n">s</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="n">scenarios</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-8-97" name="__codelineno-8-97" href="#__codelineno-8-97"></a><span class="w">        </span><span class="kt">double</span><span class="w"> </span><span class="n">without</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">withoutBackupsWait</span><span class="p">(</span><span class="n">s</span><span class="p">.</span><span class="n">requiredTimes</span><span class="p">);</span>
+<a id="__codelineno-8-98" name="__codelineno-8-98" href="#__codelineno-8-98"></a><span class="w">        </span><span class="kt">double</span><span class="w"> </span><span class="n">with</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">withBackupsWait</span><span class="p">(</span><span class="n">s</span><span class="p">.</span><span class="n">requiredTimes</span><span class="p">,</span><span class="w"> </span><span class="n">s</span><span class="p">.</span><span class="n">backupTimes</span><span class="p">);</span>
+<a id="__codelineno-8-99" name="__codelineno-8-99" href="#__codelineno-8-99"></a><span class="w">        </span><span class="kt">bool</span><span class="w"> </span><span class="n">invariantHolds</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="n">with</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="n">without</span><span class="p">);</span>
+<a id="__codelineno-8-100" name="__codelineno-8-100" href="#__codelineno-8-100"></a><span class="w">        </span><span class="n">allInvariantsHold</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">allInvariantsHold</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="n">invariantHolds</span><span class="p">;</span>
+<a id="__codelineno-8-101" name="__codelineno-8-101" href="#__codelineno-8-101"></a>
+<a id="__codelineno-8-102" name="__codelineno-8-102" href="#__codelineno-8-102"></a><span class="w">        </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;Scenario: %s</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">s</span><span class="p">.</span><span class="n">name</span><span class="p">);</span>
+<a id="__codelineno-8-103" name="__codelineno-8-103" href="#__codelineno-8-103"></a><span class="w">        </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;  required times: [%.1f, %.1f, %.1f, %.1f]   backup times: [%.1f, %.1f]</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span>
+<a id="__codelineno-8-104" name="__codelineno-8-104" href="#__codelineno-8-104"></a><span class="w">               </span><span class="n">s</span><span class="p">.</span><span class="n">requiredTimes</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span><span class="w"> </span><span class="n">s</span><span class="p">.</span><span class="n">requiredTimes</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span><span class="w"> </span><span class="n">s</span><span class="p">.</span><span class="n">requiredTimes</span><span class="p">[</span><span class="mi">2</span><span class="p">],</span><span class="w"> </span><span class="n">s</span><span class="p">.</span><span class="n">requiredTimes</span><span class="p">[</span><span class="mi">3</span><span class="p">],</span>
+<a id="__codelineno-8-105" name="__codelineno-8-105" href="#__codelineno-8-105"></a><span class="w">               </span><span class="n">s</span><span class="p">.</span><span class="n">backupTimes</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span><span class="w"> </span><span class="n">s</span><span class="p">.</span><span class="n">backupTimes</span><span class="p">[</span><span class="mi">1</span><span class="p">]);</span>
+<a id="__codelineno-8-106" name="__codelineno-8-106" href="#__codelineno-8-106"></a><span class="w">        </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;  without backups (max of the 4 required):        %.1f</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">without</span><span class="p">);</span>
+<a id="__codelineno-8-107" name="__codelineno-8-107" href="#__codelineno-8-107"></a><span class="w">        </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;  with backups (4th-fastest of all 6, pooled):     %.1f</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">with</span><span class="p">);</span>
+<a id="__codelineno-8-108" name="__codelineno-8-108" href="#__codelineno-8-108"></a><span class="w">        </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;  with &lt;= without: %s</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">invariantHolds</span><span class="w"> </span><span class="o">?</span><span class="w"> </span><span class="s">&quot;PASS&quot;</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="s">&quot;FAIL&quot;</span><span class="p">);</span>
+<a id="__codelineno-8-109" name="__codelineno-8-109" href="#__codelineno-8-109"></a><span class="w">        </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;  %s</span><span class="se">\n\n</span><span class="s">&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">s</span><span class="p">.</span><span class="n">explanation</span><span class="p">);</span>
+<a id="__codelineno-8-110" name="__codelineno-8-110" href="#__codelineno-8-110"></a><span class="w">    </span><span class="p">}</span>
+<a id="__codelineno-8-111" name="__codelineno-8-111" href="#__codelineno-8-111"></a>
+<a id="__codelineno-8-112" name="__codelineno-8-112" href="#__codelineno-8-112"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;Invariant across every scenario above -- waiting for backups &quot;</span>
+<a id="__codelineno-8-113" name="__codelineno-8-113" href="#__codelineno-8-113"></a><span class="w">           </span><span class="s">&quot;is never slower than waiting for the fixed required set &quot;</span>
+<a id="__codelineno-8-114" name="__codelineno-8-114" href="#__codelineno-8-114"></a><span class="w">           </span><span class="s">&quot;alone -- holds in all %zu/%zu cases: %s</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span>
+<a id="__codelineno-8-115" name="__codelineno-8-115" href="#__codelineno-8-115"></a><span class="w">           </span><span class="n">scenarios</span><span class="p">.</span><span class="n">size</span><span class="p">(),</span><span class="w"> </span><span class="n">scenarios</span><span class="p">.</span><span class="n">size</span><span class="p">(),</span><span class="w"> </span><span class="n">allInvariantsHold</span><span class="w"> </span><span class="o">?</span><span class="w"> </span><span class="s">&quot;PASS&quot;</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="s">&quot;FAIL&quot;</span><span class="p">);</span>
+<a id="__codelineno-8-116" name="__codelineno-8-116" href="#__codelineno-8-116"></a>
+<a id="__codelineno-8-117" name="__codelineno-8-117" href="#__codelineno-8-117"></a><span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">allInvariantsHold</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-8-118" name="__codelineno-8-118" href="#__codelineno-8-118"></a><span class="w">        </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;</span><span class="se">\n</span><span class="s">This is exactly Chen et al.&#39;s own real claim, checked &quot;</span>
+<a id="__codelineno-8-119" name="__codelineno-8-119" href="#__codelineno-8-119"></a><span class="w">               </span><span class="s">&quot;here on fixed numbers rather than assumed: taking the &quot;</span>
+<a id="__codelineno-8-120" name="__codelineno-8-120" href="#__codelineno-8-120"></a><span class="w">               </span><span class="s">&quot;n-th order statistic of a LARGER pool can only ever be &quot;</span>
+<a id="__codelineno-8-121" name="__codelineno-8-121" href="#__codelineno-8-121"></a><span class="w">               </span><span class="s">&quot;less than or equal to the max of one FIXED subset of &quot;</span>
+<a id="__codelineno-8-122" name="__codelineno-8-122" href="#__codelineno-8-122"></a><span class="w">               </span><span class="s">&quot;that same pool&#39;s own n members, for any numbers at all &quot;</span>
+<a id="__codelineno-8-123" name="__codelineno-8-123" href="#__codelineno-8-123"></a><span class="w">               </span><span class="s">&quot;-- adding more candidates and picking the best n of them &quot;</span>
+<a id="__codelineno-8-124" name="__codelineno-8-124" href="#__codelineno-8-124"></a><span class="w">               </span><span class="s">&quot;never makes the n-th-best candidate&#39;s time worse.</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
+<a id="__codelineno-8-125" name="__codelineno-8-125" href="#__codelineno-8-125"></a><span class="w">    </span><span class="p">}</span>
+<a id="__codelineno-8-126" name="__codelineno-8-126" href="#__codelineno-8-126"></a>
+<a id="__codelineno-8-127" name="__codelineno-8-127" href="#__codelineno-8-127"></a><span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="n">allInvariantsHold</span><span class="w"> </span><span class="o">?</span><span class="w"> </span><span class="mi">0</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="mi">1</span><span class="p">;</span>
+<a id="__codelineno-8-128" name="__codelineno-8-128" href="#__codelineno-8-128"></a><span class="p">}</span>
+</code></pre></div>
+<p>Genuinely compiled with a real <code>g++</code> and genuinely run, re-verified identical on both this book's real toolchains (no floating-point exact-bit comparison here -- only <code>&lt;=</code> comparisons and a <code>max</code> -- so no <code>-ffp-contract=off</code> flag was needed). Locked output, deterministic across repeated runs:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>Section 19.3: backup workers, N=4 required + b=2 backup, 3 fixed scenarios.
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>
+<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>Scenario: no true straggler
+<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a>  required times: [10.0, 11.0, 9.0, 12.0]   backup times: [10.5, 11.5]
+<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a>  without backups (max of the 4 required):        12.0
+<a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a>  with backups (4th-fastest of all 6, pooled):     11.0
+<a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a>  with &lt;= without: PASS
+<a id="__codelineno-9-8" name="__codelineno-9-8" href="#__codelineno-9-8"></a>  Nothing is actually hung -- every one of the 6 workers finishes in ordinary time. Even here, backups still help: the 4th-fastest of all 6 (11.0) beats the slowest of the 4 originally-required ones (12.0), purely from having two extra chances at the draw.
+<a id="__codelineno-9-9" name="__codelineno-9-9" href="#__codelineno-9-9"></a>
+<a id="__codelineno-9-10" name="__codelineno-9-10" href="#__codelineno-9-10"></a>Scenario: a required worker catastrophically straggles
+<a id="__codelineno-9-11" name="__codelineno-9-11" href="#__codelineno-9-11"></a>  required times: [10.0, 11.0, 9.0, 1000000.0]   backup times: [12.0, 13.0]
+<a id="__codelineno-9-12" name="__codelineno-9-12" href="#__codelineno-9-12"></a>  without backups (max of the 4 required):        1000000.0
+<a id="__codelineno-9-13" name="__codelineno-9-13" href="#__codelineno-9-13"></a>  with backups (4th-fastest of all 6, pooled):     12.0
+<a id="__codelineno-9-14" name="__codelineno-9-14" href="#__codelineno-9-14"></a>  with &lt;= without: PASS
+<a id="__codelineno-9-15" name="__codelineno-9-15" href="#__codelineno-9-15"></a>  One of the 4 ORIGINALLY-REQUIRED workers is the real target case -- effectively hung (a straggler so slow it may as well be Section 19.1&#39;s dead peer). Without backups, the whole step is held hostage to it. With 2 backups in flight, the pool has 4 OTHER finishers well under the straggler&#39;s time, so the step proceeds without ever waiting on it at all.
+<a id="__codelineno-9-16" name="__codelineno-9-16" href="#__codelineno-9-16"></a>
+<a id="__codelineno-9-17" name="__codelineno-9-17" href="#__codelineno-9-17"></a>Scenario: slow backups, no downside
+<a id="__codelineno-9-18" name="__codelineno-9-18" href="#__codelineno-9-18"></a>  required times: [10.0, 11.0, 9.0, 12.0]   backup times: [500.0, 600.0]
+<a id="__codelineno-9-19" name="__codelineno-9-19" href="#__codelineno-9-19"></a>  without backups (max of the 4 required):        12.0
+<a id="__codelineno-9-20" name="__codelineno-9-20" href="#__codelineno-9-20"></a>  with backups (4th-fastest of all 6, pooled):     12.0
+<a id="__codelineno-9-21" name="__codelineno-9-21" href="#__codelineno-9-21"></a>  with &lt;= without: PASS
+<a id="__codelineno-9-22" name="__codelineno-9-22" href="#__codelineno-9-22"></a>  The backups themselves are the slow ones this time, far slower than any required worker. That costs nothing: the first 4 finishers are still the 4 required workers (9,10,11,12), so the backups&#39; own results are simply dropped, unused, exactly as designed.
+<a id="__codelineno-9-23" name="__codelineno-9-23" href="#__codelineno-9-23"></a>
+<a id="__codelineno-9-24" name="__codelineno-9-24" href="#__codelineno-9-24"></a>Invariant across every scenario above -- waiting for backups is never slower than waiting for the fixed required set alone -- holds in all 3/3 cases: PASS
+<a id="__codelineno-9-25" name="__codelineno-9-25" href="#__codelineno-9-25"></a>
+<a id="__codelineno-9-26" name="__codelineno-9-26" href="#__codelineno-9-26"></a>This is exactly Chen et al.&#39;s own real claim, checked here on fixed numbers rather than assumed: taking the n-th order statistic of a LARGER pool can only ever be less than or equal to the max of one FIXED subset of that same pool&#39;s own n members, for any numbers at all -- adding more candidates and picking the best n of them never makes the n-th-best candidate&#39;s time worse.
+</code></pre></div>
+<p>The middle scenario is the one worth sitting with: without backups, the step's makespan is <code>1000000.0</code> -- Chapter 18's own worst-case makespan, taken to an extreme. With two backups in flight, the very same catastrophic straggler costs the step nothing at all; the pool's 4th-fastest finisher is <code>12.0</code>, and the straggler is simply never waited on. That's the real payoff Chen et al. report at scale (<code>N=96, b=4</code>, out of 100 total machines): a small, fixed number of extra workers absorbs almost any single straggler, without ever having to detect, classify, or recover from anything -- the technique's whole mechanism is "don't wait past the N-th finisher," full stop.</p>
+<div class="admonition warning">
+<p class="admonition-title">[COMMON TRAP] Treating backup workers as a fault-tolerance technique, not a straggler-mitigation one</p>
+<p>Backup workers and Sections 19.1-19.2's detect-and-recover pattern solve two genuinely different problems, and it's easy to conflate them because both involve "extra" workers and both involve <em>not waiting</em> for someone. Chen et al.'s technique tolerates a worker being <em>slow on this particular step</em> -- it assumes, implicitly, that a straggler this step is very likely to be a normal, healthy worker again next step, which is exactly why dropping its result just this once is safe. It does not detect, and cannot recover from, a worker that is genuinely and permanently dead: with a fixed budget of <code>b</code> backups, a required worker that never comes back consumes one unit of that budget every single step, forever, and the moment the number of permanently-dead workers exceeds <code>b</code>, this technique degrades right back into Section 19.1's own hang -- there simply aren't enough live candidates left to reach <code>N</code>. A real system needs both: backup workers to absorb the common case (transient slowness) cheaply, and Section 19.2's real detect-and-abort-and-rebuild machinery (or MPI ULFM's richer revoke-and-shrink) for the rarer case backup workers was never designed to solve.</p>
+</div>
+<h2 id="chapter-summary">Chapter Summary<a class="headerlink" href="#chapter-summary" title="Permanent link">&para;</a></h2>
+<p>This chapter completed Part 4's arc from "every rank is equally fast and always present" (the silent assumption behind every partitioning function since Chapter 12) to "a rank can be absent entirely." Section 19.1 named the real, and worse, failure mode a genuinely dead peer causes on a real cluster: not the instant, honest error this book's every device-less call has produced since Chapter 3, but a hang, on any collective, at any rank still healthy enough to be waiting -- NVIDIA's own documentation states this plainly for NCCL. Section 19.2 built the real fix NCCL actually offers: a non-blocking communicator (<code>ncclConfig_t</code>, <code>config.blocking = 0</code>), polled via <code>ncclCommGetAsyncError()</code> in a bounded loop instead of blocked on directly, escaped via <code>ncclCommAbort()</code> once a real problem is detected -- while being explicit that abort only stops the hang, it doesn't repair anything, and a full communicator rebuild (all ranks, from scratch) is still required afterward. That section also named a real, richer alternative this book hasn't built yet: MPI's ULFM extension, whose <code>MPIX_Comm_revoke()</code> and <code>MPIX_Comm_shrink()</code> let survivors continue in a smaller communicator without a full rebuild, previewing Chapter 20. Section 19.3 then covered a genuinely different, milder, and far more common case -- a worker that's merely slow, not dead -- via Chen et al.'s real backup-workers technique, verified directly against a fixed, checked invariant: pooling more candidates and keeping the fastest N of them is never slower than waiting on one fixed set of N, for any timings at all. This completes Part 4 (Chapters 17-19: barriers, load balancing, and fault tolerance). Chapter 20 opens Part 5 by leaving single-node NCCL behind for MPI's own first dedicated chapter -- built, not just referenced, and including a real, working look at the ULFM extension this chapter could only preview.</p>
+<h2 id="self-check-questions">Self-Check Questions<a class="headerlink" href="#self-check-questions" title="Permanent link">&para;</a></h2>
+<ol>
+<li>Quote NVIDIA's own documented distinction between an ordinary NCCL error and what a genuinely dead peer causes on a <em>blocking</em> communicator, and explain in your own words why checking a call's <code>ncclResult_t</code> cannot catch the second case.</li>
+<li>What does setting <code>config.blocking = 0</code> actually change about when <code>ncclCommInitRankConfig()</code> returns, and what does it <em>not</em> change about whether initialization has actually finished?</li>
+<li>In Section 19.2's own locked output, <code>ncclCommAbort()</code> reports <code>no error (code 0)</code> even though the communicator it aborted never successfully initialized. Explain why that's consistent with <code>ncclCommAbort()</code>'s own documented job, rather than a bug.</li>
+<li>Name the one real capability Open MPI's ULFM extension offers (via <code>MPIX_Comm_shrink()</code>) that NCCL's own <code>ncclCommAbort()</code> + rebuild cycle does not.</li>
+<li>Using Section 19.3's own <code>withBackupsWait()</code> function, explain in your own words why pooling N+b candidates and taking the N-th smallest can never produce a <em>worse</em> (larger) result than <code>withoutBackupsWait()</code>'s max of one fixed set of N, for any input timings at all.</li>
+<li>Section 19.3's third scenario makes the backup workers themselves the slowest of all 6 candidates, and the "with backups" result is unchanged from the baseline. Why does that happen, and what does it say about the actual cost of adding backup workers when no one straggles?</li>
+<li>Explain the COMMON TRAP in Section 19.3 in your own words: why can't a fixed budget of <code>b</code> backup workers substitute for Section 19.2's detect-and-recover machinery when a required worker is genuinely, permanently dead rather than merely slow?</li>
+<li>This chapter cites Chen et al.'s own real configuration, <code>N=96, b=4</code> out of 100 total machines. If 5 of those 100 workers die permanently (not just straggle), what happens to the system's ability to reach 96 reports on any future step, and why does that outcome resemble Section 19.1's hang rather than the designed, harmless straggler-dropping this section demonstrated?</li>
+</ol>
+<h2 id="where-we-go-next">Where We Go Next<a class="headerlink" href="#where-we-go-next" title="Permanent link">&para;</a></h2>
+<p>Chapter 20 opens Part 5 by leaving single-node NCCL behind for the first time in this book: MPI, built from scratch and then made CUDA-aware, for scaling a job beyond one node entirely. It also returns to two things this chapter could only preview -- MPI's own dedicated <code>MPI_Barrier()</code> (contrasted with Chapter 17's throwaway-<code>ncclAllReduce()</code> workaround) and, most directly following from this chapter, ULFM's real <code>MPIX_Comm_revoke()</code> and <code>MPIX_Comm_shrink()</code>, built and run for real rather than just quoted.</p>
+<h2 id="worked-solutions">Worked Solutions<a class="headerlink" href="#worked-solutions" title="Permanent link">&para;</a></h2>
+<p><strong>1.</strong> NVIDIA's documentation states: "even healthy ranks should expect NCCL to either return an error or hang on any collective operation." Checking a call's <code>ncclResult_t</code> only catches the first branch of that either/or -- a call that <em>returns</em> with a bad code. A hang, by definition, is a call that has not returned at all; there is no <code>ncclResult_t</code> value to inspect yet, caught or otherwise, because the call itself hasn't produced one. Error-checking and hang-detection are two genuinely separate mechanisms for exactly this reason.</p>
+<p><strong>2.</strong> Setting <code>config.blocking = 0</code> changes <em>when the call returns</em>: a non-blocking <code>ncclCommInitRankConfig()</code> is allowed to return control to the caller before initialization has actually finished, instead of blocking until it's done (or never returning, if a peer is dead). It does <em>not</em> change whether initialization has actually completed by the time the call returns -- that's a separate fact, which the caller has to check afterward, in a loop, via <code>ncclCommGetAsyncError()</code>.</p>
+<p><strong>3.</strong> <code>ncclCommAbort()</code>'s own documented job is narrow: it "will exit any operation currently in progress, and destroy the communicator." That job doesn't require the communicator to have ever been healthy or fully initialized -- aborting a handle that never finished setting up is still a well-defined, successful operation (there's nothing in progress to exit, and the handle can still be destroyed cleanly), which is exactly why NCCL reports <code>no error</code> for it here rather than treating the earlier failed initialization as somehow making abort itself fail too.</p>
+<p><strong>4.</strong> ULFM's <code>MPIX_Comm_shrink()</code> produces a new, smaller communicator that excludes the dead process directly, letting survivors continue without a full rebuild. NCCL's own <code>ncclCommAbort()</code> only stops the hang -- it destroys the communicator entirely, requiring every surviving rank to call <code>ncclCommInitRankConfig()</code> again from scratch (a new rank count, a new <code>ncclUniqueId</code>) to get back to a workable state, which is a strictly heavier-weight recovery than ULFM's shrink-in-place.</p>
+<p><strong>5.</strong> <code>withBackupsWait()</code> computes the N-th smallest value out of a pool of N+b candidates (the required workers plus the backups), while <code>withoutBackupsWait()</code> computes the max (the N-th, and last, smallest value) of one <em>fixed</em> subset of exactly N of those same kinds of candidates. Adding more candidates to choose from and then keeping the best (smallest) N of the <em>larger</em> pool can only ever match or improve on the max of any one fixed subset of size N drawn from a similar distribution, because the larger pool's own N-th-smallest value is, at worst, equal to the smaller pool's N-th-smallest (its max) -- extra candidates can only ever displace a slower one from the "first N to finish" group, never force a faster one out.</p>
+<p><strong>6.</strong> Because the four required workers alone already finish in <code>9.0, 10.0, 11.0, 12.0</code> -- ordinary time -- and the two (very slow) backups at <code>500.0, 600.0</code> never rank among the fastest four out of all six. <code>withBackupsWait()</code>'s pooled sort places both backups at the very end, past the four required finishers, so they're the ones "dropped" for this step, not the required workers. This shows the actual cost of adding backup workers, when nothing goes wrong, is exactly zero to the step's own wait time -- the backups' work is simply wasted (extra compute spent, unused), never a wasted step.</p>
+<p><strong>7.</strong> Chen et al.'s technique tolerates a worker being <em>slow on this specific step</em>, implicitly assuming it's likely to be a normal, healthy worker again on the next step -- that assumption is what makes dropping its result, just this once, safe. A permanently dead worker breaks that assumption: it consumes one unit of the fixed <code>b</code>-sized backup budget on every single step, forever, with no chance of "catching up" next time. Section 19.2's detect-and-recover machinery (or ULFM's richer revoke-and-shrink) exists for exactly this different case, where the problem isn't transient and dropping-and-moving-on stops being a complete solution.</p>
+<p><strong>8.</strong> Chen et al.'s 100 machines are symmetric -- any 96 of them reporting first is enough, not a fixed 96 "required" plus a fixed 4 "backup" roster. With 5 of the 100 permanently dead, only 95 machines are ever live again, on every future step, and <code>withBackupsWait()</code>-style pooling can only ever draw from however many candidates are actually still alive: 95 is one short of the 96 needed to settle the step at all. No amount of waiting produces a 96th report, because the 5 that are gone are gone for every step, not just this one -- that's exactly Section 19.1's hang, not Section 19.3's designed drop-a-straggler case, because dropping assumes the dropped worker rejoins next step, and these five never will. The only way forward is to shrink the requirement itself (redefine N below 95, or exclude the dead ranks and rebuild the group), which is Section 19.2's rebuild-the-communicator move (or ULFM's <code>Comm_shrink()</code>), not anything Section 19.3's own technique does on its own.</p>
+<hr />
+<p><strong>Sources cited in this chapter:</strong></p>
+<ul>
+<li><a href="https://developer.nvidia.com/blog/building-scalable-and-fault-tolerant-nccl-applications/">"Building Scalable and Fault-Tolerant NCCL Applications" (NVIDIA Technical Blog)</a> -- the exact quotes "even healthy ranks should expect NCCL to either return an error or hang on any collective operation," "enable non-blocking NCCL communicator so that we may detect and react to timeouts," the <code>ncclCommGetAsyncError()</code> polling pattern (<code>while (asyncError == ncclInProgress)</code>), and "typical recovery for the healthy ranks starts with <code>ncclCommAbort</code> on the existing communicator," "<code>ncclCommAbort</code> will exit any operation currently in progress, and destroy the communicator."</li>
+<li>NCCL's own installed header (<code>/usr/include/nccl.h</code>, libnccl 2.18.3) -- <code>ncclConfig_t</code>, <code>NCCL_CONFIG_INITIALIZER</code>, <code>ncclCommInitRankConfig()</code>, <code>ncclCommGetAsyncError()</code>, <code>ncclCommAbort()</code>, <code>ncclGetUniqueId()</code>, confirmed present and used genuinely in this chapter's own code.</li>
+<li>Chen, J. et al., <a href="https://arxiv.org/abs/1604.00981">"Revisiting Distributed Synchronous SGD"</a> (arXiv 1604.00981, 2016) -- the exact quote "instead of having only N workers, we add b extra workers, but as soon as the parameter servers receive gradients from any N workers, they stop waiting and update their parameters using the N gradients," and their own real configuration, <code>N=96, b=4</code> out of 100 total machines.</li>
+<li><a href="https://docs.open-mpi.org/en/v5.0.2/features/ulfm.html">Open MPI's ULFM (User-Level Failure Mitigation) documentation</a> -- the exact quotes describing <code>MPIX_Comm_revoke()</code> ("interrupts any communication pending on the communicator at all ranks") and <code>MPIX_Comm_shrink()</code> ("creates a new communicator where dead processes in comm were removed, and the remaining processes are renamed to cover all the gaps"), previewing Chapter 20.</li>
+<li>This book's own Chapter 11 (<code>ncclCommInitAll()</code>, the real communicator this chapter's <code>ncclCommInitRankConfig()</code> extends), Chapter 17 (the real barrier this chapter's hangs would occur at, and MPI's <code>MPI_Barrier()</code> as a first real MPI contrast), and Chapter 18 (the makespan framing this chapter's "catastrophic straggler" scenario deliberately pushes to an extreme).</li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+    
+      
+      <nav class="md-footer__inner md-grid" aria-label="Footer" >
+        
+          
+          <a href="../18-load-balancing-across-heterogeneous-gpus/" class="md-footer__link md-footer__link--prev" aria-label="Previous: 18. Load Balancing Across Heterogeneous GPUs">
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+            </div>
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Previous
+              </span>
+              <div class="md-ellipsis">
+                18. Load Balancing Across Heterogeneous GPUs
+              </div>
+            </div>
+          </a>
+        
+        
+      </nav>
+    
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      Copyright &copy; 2026 Oluwaseyi Awoga
+    </div>
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.instant", "navigation.tracking", "navigation.sections", "navigation.expand", "navigation.top", "navigation.footer", "toc.follow", "search.suggest", "search.highlight", "content.code.copy", "content.code.annotate"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>
