@@ -90,6 +90,7 @@ nav:
   - "Part 6 -- Case Studies":
       - "24. Multi-GPU Dense Matrix Multiplication at Scale": part6/24-multi-gpu-dense-matrix-multiplication-at-scale.md
       - "25. Distributed Training of a Neural Network: Data Parallelism and Ring All-Reduce": part6/25-distributed-training-of-a-neural-network-data-parallelism-and-ring-all-reduce.md
+      - "26. Multi-GPU LLM Inference: Tensor and Pipeline Parallelism in Practice": part6/26-multi-gpu-llm-inference-tensor-and-pipeline-parallelism-in-practice.md
 
 extra:
   social: []
