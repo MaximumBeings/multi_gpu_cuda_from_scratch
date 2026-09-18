@@ -80,6 +80,7 @@ nav:
       - "16. Domain Decomposition for Scientific Computing: Halo Exchange and Distributed Stencils": part3/16-domain-decomposition-for-scientific-computing-halo-exchange-and-distributed-stencils.md
   - "Part 4 -- Synchronization, Load Balancing, and Failure":
       - "17. Barriers and Global Synchronization Across Devices": part4/17-barriers-and-global-synchronization-across-devices.md
+      - "18. Load Balancing Across Heterogeneous GPUs": part4/18-load-balancing-across-heterogeneous-gpus.md
 
 extra:
   social: []
