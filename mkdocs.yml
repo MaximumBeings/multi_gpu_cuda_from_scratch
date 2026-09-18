@@ -65,6 +65,7 @@ nav:
   - "Part 1 -- Getting Data Between GPUs":
       - "4. Peer-to-Peer Memory Access and Unified Virtual Addressing": part1/04-peer-to-peer-memory-access-and-uva.md
       - "5. Explicit Transfers: cudaMemcpyPeer, Staged Host Transfers, and When Each Wins": part1/05-explicit-transfers-cudamemcpypeer-staged-host-transfers.md
+      - "6. Streams, Events, and Cross-Device Synchronization": part1/06-streams-events-and-cross-device-synchronization.md
 
 extra:
   social: []
