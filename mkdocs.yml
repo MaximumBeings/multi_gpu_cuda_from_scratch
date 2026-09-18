@@ -67,6 +67,8 @@ nav:
       - "5. Explicit Transfers: cudaMemcpyPeer, Staged Host Transfers, and When Each Wins": part1/05-explicit-transfers-cudamemcpypeer-staged-host-transfers.md
       - "6. Streams, Events, and Cross-Device Synchronization": part1/06-streams-events-and-cross-device-synchronization.md
       - "7. CUDA Inter-Process Communication: Sharing Memory and Events Across Processes": part1/07-cuda-inter-process-communication.md
+  - "Part 2 -- Collective Communication, Built From Scratch":
+      - "8. Broadcast and Reduce: The First Two Collectives, By Hand": part2/08-broadcast-and-reduce-the-first-two-collectives-by-hand.md
 
 extra:
   social: []
