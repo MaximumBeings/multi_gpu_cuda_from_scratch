@@ -108,6 +108,7 @@ nav:
       - "40. Medical Imaging Reconstruction at Scale": part7/40-medical-imaging-reconstruction-at-scale.md
   - "Appendices":
       - "A. Installation and Setup": appendix/a-installation-and-setup.md
+      - "B. Practice Quiz": appendix/b-practice-quiz.md
 
 extra:
   social: []
