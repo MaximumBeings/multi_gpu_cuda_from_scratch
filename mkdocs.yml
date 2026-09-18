@@ -98,6 +98,7 @@ nav:
       - "31. Multi-GPU Monte Carlo Risk Simulation": part6/31-multi-gpu-monte-carlo-risk-simulation.md
   - "Part 7 -- Cutting-Edge Industrial Case Studies":
       - "32. Mixture-of-Experts at Scale: Expert Parallelism and GPU-Initiated All-to-All (DeepEP)": part7/32-mixture-of-experts-at-scale.md
+      - "33. Disaggregated LLM Inference: Prefill/Decode Splitting (DistServe)": part7/33-disaggregated-llm-inference.md
 
 extra:
   social: []
