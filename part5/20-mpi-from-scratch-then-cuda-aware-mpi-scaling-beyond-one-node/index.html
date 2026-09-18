@@ -1,0 +1,2098 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="From Peer-to-Peer Memory to Distributed Training Across the Cluster">
+      
+      
+        <meta name="author" content="Oluwaseyi Awoga">
+      
+      
+      
+        <link rel="prev" href="../../part4/19-stragglers-failures-and-fault-tolerant-collectives/">
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+    
+    
+      
+        <title>20. MPI From Scratch, Then CUDA-Aware MPI: Scaling Beyond One Node - Multi-GPU Programming in CUDA C++ -- Under Development</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#chapter-20-mpi-from-scratch-then-cuda-aware-mpi-scaling-beyond-one-node" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="Multi-GPU Programming in CUDA C++ -- Under Development" class="md-header__button md-logo" aria-label="Multi-GPU Programming in CUDA C++ -- Under Development" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 19h1a1 1 0 0 1 1 1h7v2h-7a1 1 0 0 1-1 1h-4a1 1 0 0 1-1-1H2v-2h7a1 1 0 0 1 1-1h1v-2H4a1 1 0 0 1-1-1v-4a1 1 0 0 1 1-1h16a1 1 0 0 1 1 1v4a1 1 0 0 1-1 1h-7zM4 3h16a1 1 0 0 1 1 1v4a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1m5 4h1V5H9zm0 8h1v-2H9zM5 5v2h2V5zm0 8v2h2v-2z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Multi-GPU Programming in CUDA C++ -- Under Development
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              20. MPI From Scratch, Then CUDA-Aware MPI: Scaling Beyond One Node
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m17.75 4.09-2.53 1.94.91 3.06-2.63-1.81-2.63 1.81.91-3.06-2.53-1.94L12.44 4l1.06-3 1.06 3zm3.5 6.91-1.64 1.25.59 1.98-1.7-1.17-1.7 1.17.59-1.98L15.75 11l2.06-.05L18.5 9l.69 1.95zm-2.28 4.95c.83-.08 1.72 1.1 1.19 1.85-.32.45-.66.87-1.08 1.27C15.17 23 8.84 23 4.94 19.07c-3.91-3.9-3.91-10.24 0-14.14.4-.4.82-.76 1.27-1.08.75-.53 1.93.36 1.85 1.19-.27 2.86.69 5.83 2.89 8.02a9.96 9.96 0 0 0 8.02 2.89m-1.64 2.02a12.08 12.08 0 0 1-7.8-3.47c-2.17-2.19-3.33-5-3.49-7.82-2.81 3.14-2.7 7.96.31 10.98 3.02 3.01 7.84 3.12 10.98.31"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 7a5 5 0 0 1 5 5 5 5 0 0 1-5 5 5 5 0 0 1-5-5 5 5 0 0 1 5-5m0 2a3 3 0 0 0-3 3 3 3 0 0 0 3 3 3 3 0 0 0 3-3 3 3 0 0 0-3-3m0-7 2.39 3.42C13.65 5.15 12.84 5 12 5s-1.65.15-2.39.42zM3.34 7l4.16-.35A7.2 7.2 0 0 0 5.94 8.5c-.44.74-.69 1.5-.83 2.29zm.02 10 1.76-3.77a7.131 7.131 0 0 0 2.38 4.14zM20.65 7l-1.77 3.79a7.02 7.02 0 0 0-2.38-4.15zm-.01 10-4.14.36c.59-.51 1.12-1.14 1.54-1.86.42-.73.69-1.5.83-2.29zM12 22l-2.41-3.44c.74.27 1.55.44 2.41.44.82 0 1.63-.17 2.37-.44z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="Multi-GPU Programming in CUDA C++ -- Under Development" class="md-nav__button md-logo" aria-label="Multi-GPU Programming in CUDA C++ -- Under Development" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 19h1a1 1 0 0 1 1 1h7v2h-7a1 1 0 0 1-1 1h-4a1 1 0 0 1-1-1H2v-2h7a1 1 0 0 1 1-1h1v-2H4a1 1 0 0 1-1-1v-4a1 1 0 0 1 1-1h16a1 1 0 0 1 1 1v4a1 1 0 0 1-1 1h-7zM4 3h16a1 1 0 0 1 1 1v4a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1m5 4h1V5H9zm0 8h1v-2H9zM5 5v2h2V5zm0 8v2h2v-2z"/></svg>
+
+    </a>
+    Multi-GPU Programming in CUDA C++ -- Under Development
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Part 0 -- Why Multi-GPU, and the Hardware Underneath It
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Part 0 -- Why Multi-GPU, and the Hardware Underneath It
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part0/01-why-one-gpu-is-not-enough/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    1. Why One GPU Is Not Enough
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part0/02-multi-gpu-hardware-topology/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    2. Multi-GPU Hardware Topology: PCIe, NVLink, and NVSwitch
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part0/03-the-cuda-multi-gpu-programming-model/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    3. The CUDA Multi-GPU Programming Model: Devices, Contexts, and Streams Across Them
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Part 1 -- Getting Data Between GPUs
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Part 1 -- Getting Data Between GPUs
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part1/04-peer-to-peer-memory-access-and-uva/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    4. Peer-to-Peer Memory Access and Unified Virtual Addressing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part1/05-explicit-transfers-cudamemcpypeer-staged-host-transfers/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    5. Explicit Transfers: cudaMemcpyPeer, Staged Host Transfers, and When Each Wins
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part1/06-streams-events-and-cross-device-synchronization/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    6. Streams, Events, and Cross-Device Synchronization
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part1/07-cuda-inter-process-communication/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    7. CUDA Inter-Process Communication: Sharing Memory and Events Across Processes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Part 2 -- Collective Communication, Built From Scratch
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Part 2 -- Collective Communication, Built From Scratch
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part2/08-broadcast-and-reduce-the-first-two-collectives-by-hand/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    8. Broadcast and Reduce: The First Two Collectives, By Hand
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part2/09-ring-all-reduce-the-algorithm-behind-every-multi-gpu-training-job/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    9. Ring All-Reduce: The Algorithm Behind Every Multi-GPU Training Job
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part2/10-all-gather-reduce-scatter-and-all-to-all/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    10. All-Gather, Reduce-Scatter, and All-to-All
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part2/11-nccl-what-it-actually-does-differently/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    11. NCCL: What It Actually Does Differently From What You Just Built
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Part 3 -- Parallelization Strategies
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Part 3 -- Parallelization Strategies
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part3/12-data-parallelism-replicated-model-sharded-data/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    12. Data Parallelism: Replicated Model, Sharded Data
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part3/13-model-parallelism-when-one-gpu-cant-hold-the-weights/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    13. Model Parallelism: When One GPU Can't Hold the Weights
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part3/14-tensor-parallelism-splitting-a-single-matrix-multiply-across-devices/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    14. Tensor Parallelism: Splitting a Single Matrix Multiply Across Devices
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part3/15-pipeline-parallelism-splitting-layers-across-devices-and-the-bubble-that-costs-you/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    15. Pipeline Parallelism: Splitting Layers Across Devices, and the Bubble That Costs You
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part3/16-domain-decomposition-for-scientific-computing-halo-exchange-and-distributed-stencils/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    16. Domain Decomposition for Scientific Computing: Halo Exchange and Distributed Stencils
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_7" >
+        
+          
+          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Part 4 -- Synchronization, Load Balancing, and Failure
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Part 4 -- Synchronization, Load Balancing, and Failure
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part4/17-barriers-and-global-synchronization-across-devices/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    17. Barriers and Global Synchronization Across Devices
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part4/18-load-balancing-across-heterogeneous-gpus/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    18. Load Balancing Across Heterogeneous GPUs
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part4/19-stragglers-failures-and-fault-tolerant-collectives/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    19. Stragglers, Failures, and Fault-Tolerant Collectives
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_8" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_8" id="__nav_8_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Part 5 -- Scaling Beyond One Node
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_8">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Part 5 -- Scaling Beyond One Node
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    20. MPI From Scratch, Then CUDA-Aware MPI: Scaling Beyond One Node
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    20. MPI From Scratch, Then CUDA-Aware MPI: Scaling Beyond One Node
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#201-mpi-basics-built-from-scratch-init-rank-size-and-a-real-point-to-point-ring" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        20.1 MPI Basics, Built From Scratch: Init, Rank, Size, and a Real Point-to-Point Ring
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="20.1 MPI Basics, Built From Scratch: Init, Rank, Size, and a Real Point-to-Point Ring">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#intuition" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Intuition
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#background" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Background
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#202-cuda-aware-mpi-querying-what-this-build-actually-supports" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        20.2 CUDA-Aware MPI: Querying What This Build Actually Supports
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="20.2 CUDA-Aware MPI: Querying What This Build Actually Supports">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#intuition_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Intuition
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#background_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Background
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#203-what-this-books-own-real-mpi-cant-do-ulfms-absence-and-standard-mpis-weaker-alternative" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        20.3 What This Book's Own Real MPI Can't Do: ULFM's Absence, and Standard MPI's Weaker Alternative
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="20.3 What This Book&#39;s Own Real MPI Can&#39;t Do: ULFM&#39;s Absence, and Standard MPI&#39;s Weaker Alternative">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#intuition_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Intuition
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#background_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Background
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#chapter-summary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Chapter Summary
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#self-check-questions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Self-Check Questions
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#where-we-go-next" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Where We Go Next
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#worked-solutions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Worked Solutions
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#201-mpi-basics-built-from-scratch-init-rank-size-and-a-real-point-to-point-ring" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        20.1 MPI Basics, Built From Scratch: Init, Rank, Size, and a Real Point-to-Point Ring
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="20.1 MPI Basics, Built From Scratch: Init, Rank, Size, and a Real Point-to-Point Ring">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#intuition" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Intuition
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#background" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Background
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#202-cuda-aware-mpi-querying-what-this-build-actually-supports" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        20.2 CUDA-Aware MPI: Querying What This Build Actually Supports
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="20.2 CUDA-Aware MPI: Querying What This Build Actually Supports">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#intuition_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Intuition
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#background_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Background
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#203-what-this-books-own-real-mpi-cant-do-ulfms-absence-and-standard-mpis-weaker-alternative" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        20.3 What This Book's Own Real MPI Can't Do: ULFM's Absence, and Standard MPI's Weaker Alternative
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="20.3 What This Book&#39;s Own Real MPI Can&#39;t Do: ULFM&#39;s Absence, and Standard MPI&#39;s Weaker Alternative">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#intuition_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Intuition
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#background_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Background
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#chapter-summary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Chapter Summary
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#self-check-questions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Self-Check Questions
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#where-we-go-next" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Where We Go Next
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#worked-solutions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Worked Solutions
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+
+<h1 id="chapter-20-mpi-from-scratch-then-cuda-aware-mpi-scaling-beyond-one-node">Chapter 20: MPI From Scratch, Then CUDA-Aware MPI: Scaling Beyond One Node<a class="headerlink" href="#chapter-20-mpi-from-scratch-then-cuda-aware-mpi-scaling-beyond-one-node" title="Permanent link">&para;</a></h1>
+<p><strong>What you will understand by the end of this chapter:</strong></p>
+<ul>
+<li>Why MPI is fundamentally different from every device-touching call this book has made since Chapter 3: it is a multi-<em>process</em> model that needs no GPU at all -- so for the first time in this book, <code>mpirun</code> gets a genuinely real multi-rank program running, not a simulation and not an honest device-less error.</li>
+<li>How to build <code>MPI_Init</code>/<code>MPI_Comm_rank</code>/<code>MPI_Comm_size</code> and real point-to-point <code>MPI_Send</code>/<code>MPI_Recv</code> from scratch, and the real, classic "unsafe" deadlock a naive ring of blocking sends can cause -- genuinely reproduced and genuinely fixed.</li>
+<li>What "CUDA-aware MPI" means, how to query whether a given MPI build actually has it (<code>MPIX_Query_cuda_support()</code>), and what to do instead when it doesn't -- Chapter 5's own staged-transfer pattern, reused between MPI ranks instead of GPU peers.</li>
+<li>Why this book's own real, installed Open MPI cannot run Chapter 19's own previewed ULFM calls, verified the same real way Chapter 19 verified NCCL's own API surface -- and what standard MPI offers instead, and why it is a strictly weaker guarantee.</li>
+</ul>
+<p><strong>What you need to know first:</strong></p>
+<ul>
+<li>Chapter 5's staged host-transfer fallback pattern (<code>cudaMemcpy</code> device-to-host, transfer, <code>cudaMemcpy</code> host-to-device).</li>
+<li>Chapter 9's ring communication pattern -- built here with real point-to-point calls instead of simulated buffers.</li>
+<li>Chapter 19's ULFM preview (<code>MPIX_Comm_revoke()</code>/<code>MPIX_Comm_shrink()</code>, quoted but never called) -- this chapter explains, for real, why it couldn't be built there.</li>
+</ul>
+<hr />
+<p>Every chapter since Chapter 3 has lived inside one of two honest boxes: a real device-touching call with no real device to touch (an instant, honest <code>cudaErrorNoDevice</code>/<code>ncclUnhandledCudaError</code>), or a host-side simulation standing in for N devices that were never there. MPI breaks out of both boxes at once. <code>MPI_Init()</code> doesn't ask for a GPU -- it asks the operating system for processes, and <code>mpirun</code> genuinely launches them, right now, on this machine's real CPU cores. <code>MPI_Comm_rank()</code> below doesn't simulate a rank or honestly fail to find one; it returns a real rank, because there are, for the first time in this entire book, genuinely multiple real things running. This chapter opens Part 5 by building that real multi-process model from scratch (20.1), checking honestly what it takes to move data between MPI and a GPU when the two are combined (20.2), and closing the loop this book opened in Chapter 19: why a real, richer failure-recovery mechanism (ULFM) that MPI genuinely offers still couldn't be built here, verified the same honest way Chapter 19 verified NCCL's own real limits (20.3).</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>Every earlier chapter (Ch3-19):              This chapter (Ch20), Part 5:
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>  cudaSetDevice()/ncclCommInitAll()             mpirun -np 4 ./a.out
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>  -&gt; REAL call, NO real device present          -&gt; 4 REAL operating-system processes
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>  -&gt; honest error (cudaErrorNoDevice,               launched, genuinely, right now
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>     ncclUnhandledCudaError, ...)              -&gt; MPI_Comm_rank() genuinely returns
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>  -&gt; OR: N host buffers standing in for            0, 1, 2, 3 -- a REAL world, not
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>     N devices (simulation, Ch4/Ch8 onward)        simulated, not honestly-erroring
+<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>
+<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>  MPI needs no GPU at all -- it is a multi-PROCESS model, not a multi-DEVICE one.
+<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>  Section 20.1 builds it for real, for the first time in this book.
+</code></pre></div>
+<h2 id="201-mpi-basics-built-from-scratch-init-rank-size-and-a-real-point-to-point-ring">20.1 MPI Basics, Built From Scratch: Init, Rank, Size, and a Real Point-to-Point Ring<a class="headerlink" href="#201-mpi-basics-built-from-scratch-init-rank-size-and-a-real-point-to-point-ring" title="Permanent link">&para;</a></h2>
+<h3 id="intuition">Intuition<a class="headerlink" href="#intuition" title="Permanent link">&para;</a></h3>
+<p>Every "world" this book has built so far was really one of two things: a single process juggling multiple real <code>cudaSetDevice()</code> calls (Chapter 3 onward), or a single process's own host memory standing in for several devices (Chapter 4 onward). MPI's own model is neither. <code>mpirun -np 4 ./program</code> starts four entirely separate operating-system processes -- four separate address spaces, four separate program counters, none of them able to see another's memory directly at all. <code>MPI_Init()</code> is what lets each of those otherwise-independent processes discover the others and join a shared communicator, <code>MPI_COMM_WORLD</code>; <code>MPI_Comm_rank()</code> and <code>MPI_Comm_size()</code> are the real, honest queries every earlier chapter's <code>worldSize</code>/<code>rank</code> parameters were standing in for -- except here they ask the real MPI runtime, not a hard-coded constant. Once every process knows its own rank, real point-to-point communication -- <code>MPI_Send()</code>/<code>MPI_Recv()</code> -- can build Chapter 9's own ring shape again, this time genuinely moving bytes between separate processes' separate memories instead of copying between array slots in one process's own simulation.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>GPU multi-device model (every chapter so far):     MPI multi-process model (this chapter):
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>  ONE process                                        FOUR separate OS processes
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>  |-- cudaSetDevice(0) -&gt; device 0                    rank 0 -- rank 1 -- rank 2 -- rank 3
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>  |-- cudaSetDevice(1) -&gt; device 1                     (each its own process, own memory,
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>  |-- cudaSetDevice(2) -&gt; device 2                      own program counter -- launched by
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>  |-- cudaSetDevice(3) -&gt; device 3                      mpirun, not cudaSetDevice)
+<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>  one process, many devices, one address space        many processes, no shared memory,
+<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>                                                        talking only by message (Send/Recv)
+</code></pre></div>
+<h3 id="background">Background<a class="headerlink" href="#background" title="Permanent link">&para;</a></h3>
+<p>The code below takes two optional command-line arguments so one file can drive both this section's own safe demonstration and this section's own COMMON TRAP without a second program: <code>argv[1]</code> sets how many ints each rank sends (default <code>1</code>, used here); <code>argv[2]</code>, if <code>"sendrecv"</code>, switches the ring from a naive <code>MPI_Send()</code>-then-<code>MPI_Recv()</code> shape to a single real <code>MPI_Sendrecv()</code> call, used below in the trap.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="c1">// Chapter 20: MPI From Scratch, Then CUDA-Aware MPI: Scaling Beyond One Node</span>
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="c1">// 57_mpi_ring_send_recv.c</span>
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="c1">//</span>
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="c1">// Every device-touching call this book has made since Chapter 3 needed</span>
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="c1">// EITHER a real GPU (and got an honest cudaErrorNoDevice/ncclInvalidArgument</span>
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a><span class="c1">// right back, since this environment has never had one) OR a host-side</span>
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a><span class="c1">// simulation standing in for N real devices (Chapter 4 onward). MPI needs</span>
+<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a><span class="c1">// neither. MPI_Init() doesn&#39;t ask for a GPU at all -- it&#39;s a multi-PROCESS</span>
+<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a><span class="c1">// model, and mpirun genuinely launches N separate operating-system</span>
+<a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a><span class="c1">// processes right now, on this machine&#39;s real CPU cores. MPI_Comm_rank()</span>
+<a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a><span class="c1">// below returns a REAL rank, not a simulated one and not an honest error.</span>
+<a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a><span class="c1">// This section builds the real basics -- Init/Comm_rank/Comm_size, plus a</span>
+<a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a><span class="c1">// real point-to-point ring exchange, structurally the same shape as</span>
+<a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a><span class="c1">// Chapter 9&#39;s own ring, but with every buffer now a real, separate</span>
+<a id="__codelineno-2-15" name="__codelineno-2-15" href="#__codelineno-2-15"></a><span class="c1">// process&#39;s own real memory, and every exchange a genuine MPI_Send/</span>
+<a id="__codelineno-2-16" name="__codelineno-2-16" href="#__codelineno-2-16"></a><span class="c1">// MPI_Recv pair instead of a simulated array copy.</span>
+<a id="__codelineno-2-17" name="__codelineno-2-17" href="#__codelineno-2-17"></a><span class="c1">//</span>
+<a id="__codelineno-2-18" name="__codelineno-2-18" href="#__codelineno-2-18"></a><span class="c1">// Takes two OPTIONAL arguments so this one file can also drive this</span>
+<a id="__codelineno-2-19" name="__codelineno-2-19" href="#__codelineno-2-19"></a><span class="c1">// section&#39;s own COMMON TRAP without a second program: argv[1] is how</span>
+<a id="__codelineno-2-20" name="__codelineno-2-20" href="#__codelineno-2-20"></a><span class="c1">// many ints each rank sends (default 1, the safe case Background uses);</span>
+<a id="__codelineno-2-21" name="__codelineno-2-21" href="#__codelineno-2-21"></a><span class="c1">// argv[2], if given as &quot;sendrecv&quot;, switches from a naive MPI_Send-then-</span>
+<a id="__codelineno-2-22" name="__codelineno-2-22" href="#__codelineno-2-22"></a><span class="c1">// MPI_Recv ring to a single real MPI_Sendrecv() call instead -- the</span>
+<a id="__codelineno-2-23" name="__codelineno-2-23" href="#__codelineno-2-23"></a><span class="c1">// real, standard fix for the naive version&#39;s own real deadlock risk at</span>
+<a id="__codelineno-2-24" name="__codelineno-2-24" href="#__codelineno-2-24"></a><span class="c1">// large argv[1] values, demonstrated honestly in the COMMON TRAP below</span>
+<a id="__codelineno-2-25" name="__codelineno-2-25" href="#__codelineno-2-25"></a><span class="c1">// (running the naive mode at 1,000,000 ints genuinely deadlocks and</span>
+<a id="__codelineno-2-26" name="__codelineno-2-26" href="#__codelineno-2-26"></a><span class="c1">// must be run under a bounded `timeout`, since real blocking MPI_Send</span>
+<a id="__codelineno-2-27" name="__codelineno-2-27" href="#__codelineno-2-27"></a><span class="c1">// implementation-defined buffering runs out at that size).</span>
+<a id="__codelineno-2-28" name="__codelineno-2-28" href="#__codelineno-2-28"></a><span class="c1">// Genuinely compiled with a real mpicc against the real installed</span>
+<a id="__codelineno-2-29" name="__codelineno-2-29" href="#__codelineno-2-29"></a><span class="c1">// Open MPI, genuinely run with a real mpirun.</span>
+<a id="__codelineno-2-30" name="__codelineno-2-30" href="#__codelineno-2-30"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;mpi.h&gt;</span>
+<a id="__codelineno-2-31" name="__codelineno-2-31" href="#__codelineno-2-31"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;stdio.h&gt;</span>
+<a id="__codelineno-2-32" name="__codelineno-2-32" href="#__codelineno-2-32"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;stdlib.h&gt;</span>
+<a id="__codelineno-2-33" name="__codelineno-2-33" href="#__codelineno-2-33"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;string.h&gt;</span>
+<a id="__codelineno-2-34" name="__codelineno-2-34" href="#__codelineno-2-34"></a>
+<a id="__codelineno-2-35" name="__codelineno-2-35" href="#__codelineno-2-35"></a><span class="kt">int</span><span class="w"> </span><span class="nf">main</span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">argc</span><span class="p">,</span><span class="w"> </span><span class="kt">char</span><span class="o">**</span><span class="w"> </span><span class="n">argv</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-2-36" name="__codelineno-2-36" href="#__codelineno-2-36"></a><span class="w">    </span><span class="n">MPI_Init</span><span class="p">(</span><span class="o">&amp;</span><span class="n">argc</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">argv</span><span class="p">);</span>
+<a id="__codelineno-2-37" name="__codelineno-2-37" href="#__codelineno-2-37"></a>
+<a id="__codelineno-2-38" name="__codelineno-2-38" href="#__codelineno-2-38"></a><span class="w">    </span><span class="kt">int</span><span class="w"> </span><span class="n">rank</span><span class="p">,</span><span class="w"> </span><span class="n">size</span><span class="p">;</span>
+<a id="__codelineno-2-39" name="__codelineno-2-39" href="#__codelineno-2-39"></a><span class="w">    </span><span class="n">MPI_Comm_rank</span><span class="p">(</span><span class="n">MPI_COMM_WORLD</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">rank</span><span class="p">);</span>
+<a id="__codelineno-2-40" name="__codelineno-2-40" href="#__codelineno-2-40"></a><span class="w">    </span><span class="n">MPI_Comm_size</span><span class="p">(</span><span class="n">MPI_COMM_WORLD</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">size</span><span class="p">);</span>
+<a id="__codelineno-2-41" name="__codelineno-2-41" href="#__codelineno-2-41"></a>
+<a id="__codelineno-2-42" name="__codelineno-2-42" href="#__codelineno-2-42"></a><span class="w">    </span><span class="kt">int</span><span class="w"> </span><span class="n">elems</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="n">argc</span><span class="w"> </span><span class="o">&gt;</span><span class="w"> </span><span class="mi">1</span><span class="p">)</span><span class="w"> </span><span class="o">?</span><span class="w"> </span><span class="n">atoi</span><span class="p">(</span><span class="n">argv</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="mi">1</span><span class="p">;</span>
+<a id="__codelineno-2-43" name="__codelineno-2-43" href="#__codelineno-2-43"></a><span class="w">    </span><span class="kt">int</span><span class="w"> </span><span class="n">useSendrecv</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="n">argc</span><span class="w"> </span><span class="o">&gt;</span><span class="w"> </span><span class="mi">2</span><span class="p">)</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="p">(</span><span class="n">strcmp</span><span class="p">(</span><span class="n">argv</span><span class="p">[</span><span class="mi">2</span><span class="p">],</span><span class="w"> </span><span class="s">&quot;sendrecv&quot;</span><span class="p">)</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="mi">0</span><span class="p">);</span>
+<a id="__codelineno-2-44" name="__codelineno-2-44" href="#__codelineno-2-44"></a>
+<a id="__codelineno-2-45" name="__codelineno-2-45" href="#__codelineno-2-45"></a><span class="w">    </span><span class="c1">// Chapter 9&#39;s own ring topology, real this time: rank i sends to</span>
+<a id="__codelineno-2-46" name="__codelineno-2-46" href="#__codelineno-2-46"></a><span class="w">    </span><span class="c1">// (i+1)%size and receives from (i-1+size)%size -- no wraparound</span>
+<a id="__codelineno-2-47" name="__codelineno-2-47" href="#__codelineno-2-47"></a><span class="w">    </span><span class="c1">// special-casing needed, the modular arithmetic handles it exactly</span>
+<a id="__codelineno-2-48" name="__codelineno-2-48" href="#__codelineno-2-48"></a><span class="w">    </span><span class="c1">// like Chapter 9&#39;s own ring did.</span>
+<a id="__codelineno-2-49" name="__codelineno-2-49" href="#__codelineno-2-49"></a><span class="w">    </span><span class="kt">int</span><span class="w"> </span><span class="n">next</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="n">rank</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="p">)</span><span class="w"> </span><span class="o">%</span><span class="w"> </span><span class="n">size</span><span class="p">;</span>
+<a id="__codelineno-2-50" name="__codelineno-2-50" href="#__codelineno-2-50"></a><span class="w">    </span><span class="kt">int</span><span class="w"> </span><span class="n">prev</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="n">rank</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="mi">1</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">size</span><span class="p">)</span><span class="w"> </span><span class="o">%</span><span class="w"> </span><span class="n">size</span><span class="p">;</span>
+<a id="__codelineno-2-51" name="__codelineno-2-51" href="#__codelineno-2-51"></a>
+<a id="__codelineno-2-52" name="__codelineno-2-52" href="#__codelineno-2-52"></a><span class="w">    </span><span class="kt">int</span><span class="o">*</span><span class="w"> </span><span class="n">sendBuf</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="o">*</span><span class="p">)</span><span class="n">malloc</span><span class="p">((</span><span class="kt">size_t</span><span class="p">)</span><span class="n">elems</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="k">sizeof</span><span class="p">(</span><span class="kt">int</span><span class="p">));</span>
+<a id="__codelineno-2-53" name="__codelineno-2-53" href="#__codelineno-2-53"></a><span class="w">    </span><span class="kt">int</span><span class="o">*</span><span class="w"> </span><span class="n">recvBuf</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="o">*</span><span class="p">)</span><span class="n">malloc</span><span class="p">((</span><span class="kt">size_t</span><span class="p">)</span><span class="n">elems</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="k">sizeof</span><span class="p">(</span><span class="kt">int</span><span class="p">));</span>
+<a id="__codelineno-2-54" name="__codelineno-2-54" href="#__codelineno-2-54"></a><span class="w">    </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="n">elems</span><span class="p">;</span><span class="w"> </span><span class="o">++</span><span class="n">i</span><span class="p">)</span><span class="w"> </span><span class="n">sendBuf</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">rank</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="mi">100</span><span class="p">;</span>
+<a id="__codelineno-2-55" name="__codelineno-2-55" href="#__codelineno-2-55"></a>
+<a id="__codelineno-2-56" name="__codelineno-2-56" href="#__codelineno-2-56"></a><span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">useSendrecv</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-2-57" name="__codelineno-2-57" href="#__codelineno-2-57"></a><span class="w">        </span><span class="c1">// The real, standard fix: MPI_Sendrecv() posts both the send</span>
+<a id="__codelineno-2-58" name="__codelineno-2-58" href="#__codelineno-2-58"></a><span class="w">        </span><span class="c1">// and the matching receive as one call, so there is no window</span>
+<a id="__codelineno-2-59" name="__codelineno-2-59" href="#__codelineno-2-59"></a><span class="w">        </span><span class="c1">// where every rank is blocked inside MPI_Send() waiting for a</span>
+<a id="__codelineno-2-60" name="__codelineno-2-60" href="#__codelineno-2-60"></a><span class="w">        </span><span class="c1">// receive that no rank has posted yet.</span>
+<a id="__codelineno-2-61" name="__codelineno-2-61" href="#__codelineno-2-61"></a><span class="w">        </span><span class="n">MPI_Sendrecv</span><span class="p">(</span><span class="n">sendBuf</span><span class="p">,</span><span class="w"> </span><span class="n">elems</span><span class="p">,</span><span class="w"> </span><span class="n">MPI_INT</span><span class="p">,</span><span class="w"> </span><span class="n">next</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span>
+<a id="__codelineno-2-62" name="__codelineno-2-62" href="#__codelineno-2-62"></a><span class="w">                     </span><span class="n">recvBuf</span><span class="p">,</span><span class="w"> </span><span class="n">elems</span><span class="p">,</span><span class="w"> </span><span class="n">MPI_INT</span><span class="p">,</span><span class="w"> </span><span class="n">prev</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span>
+<a id="__codelineno-2-63" name="__codelineno-2-63" href="#__codelineno-2-63"></a><span class="w">                     </span><span class="n">MPI_COMM_WORLD</span><span class="p">,</span><span class="w"> </span><span class="n">MPI_STATUS_IGNORE</span><span class="p">);</span>
+<a id="__codelineno-2-64" name="__codelineno-2-64" href="#__codelineno-2-64"></a><span class="w">    </span><span class="p">}</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-2-65" name="__codelineno-2-65" href="#__codelineno-2-65"></a><span class="w">        </span><span class="c1">// The naive shape: every rank calls MPI_Send() BEFORE any rank</span>
+<a id="__codelineno-2-66" name="__codelineno-2-66" href="#__codelineno-2-66"></a><span class="w">        </span><span class="c1">// has called MPI_Recv(). Small messages usually survive this</span>
+<a id="__codelineno-2-67" name="__codelineno-2-67" href="#__codelineno-2-67"></a><span class="w">        </span><span class="c1">// (Open MPI&#39;s own eager-send buffering just copies the data</span>
+<a id="__codelineno-2-68" name="__codelineno-2-68" href="#__codelineno-2-68"></a><span class="w">        </span><span class="c1">// into a temporary system buffer and returns) -- large ones</span>
+<a id="__codelineno-2-69" name="__codelineno-2-69" href="#__codelineno-2-69"></a><span class="w">        </span><span class="c1">// don&#39;t, which is this section&#39;s own COMMON TRAP.</span>
+<a id="__codelineno-2-70" name="__codelineno-2-70" href="#__codelineno-2-70"></a><span class="w">        </span><span class="n">fprintf</span><span class="p">(</span><span class="n">stderr</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;rank %d: about to MPI_Send %zu bytes to rank %d</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span>
+<a id="__codelineno-2-71" name="__codelineno-2-71" href="#__codelineno-2-71"></a><span class="w">                </span><span class="n">rank</span><span class="p">,</span><span class="w"> </span><span class="p">(</span><span class="kt">size_t</span><span class="p">)</span><span class="n">elems</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="k">sizeof</span><span class="p">(</span><span class="kt">int</span><span class="p">),</span><span class="w"> </span><span class="n">next</span><span class="p">);</span>
+<a id="__codelineno-2-72" name="__codelineno-2-72" href="#__codelineno-2-72"></a><span class="w">        </span><span class="n">MPI_Send</span><span class="p">(</span><span class="n">sendBuf</span><span class="p">,</span><span class="w"> </span><span class="n">elems</span><span class="p">,</span><span class="w"> </span><span class="n">MPI_INT</span><span class="p">,</span><span class="w"> </span><span class="n">next</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="n">MPI_COMM_WORLD</span><span class="p">);</span>
+<a id="__codelineno-2-73" name="__codelineno-2-73" href="#__codelineno-2-73"></a><span class="w">        </span><span class="n">fprintf</span><span class="p">(</span><span class="n">stderr</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;rank %d: MPI_Send returned; about to MPI_Recv from rank %d</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span>
+<a id="__codelineno-2-74" name="__codelineno-2-74" href="#__codelineno-2-74"></a><span class="w">                </span><span class="n">rank</span><span class="p">,</span><span class="w"> </span><span class="n">prev</span><span class="p">);</span>
+<a id="__codelineno-2-75" name="__codelineno-2-75" href="#__codelineno-2-75"></a><span class="w">        </span><span class="n">MPI_Recv</span><span class="p">(</span><span class="n">recvBuf</span><span class="p">,</span><span class="w"> </span><span class="n">elems</span><span class="p">,</span><span class="w"> </span><span class="n">MPI_INT</span><span class="p">,</span><span class="w"> </span><span class="n">prev</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="n">MPI_COMM_WORLD</span><span class="p">,</span><span class="w"> </span><span class="n">MPI_STATUS_IGNORE</span><span class="p">);</span>
+<a id="__codelineno-2-76" name="__codelineno-2-76" href="#__codelineno-2-76"></a><span class="w">    </span><span class="p">}</span>
+<a id="__codelineno-2-77" name="__codelineno-2-77" href="#__codelineno-2-77"></a>
+<a id="__codelineno-2-78" name="__codelineno-2-78" href="#__codelineno-2-78"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;rank %d of %d: sent %d, received %d (elems=%d, mode=%s)</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span>
+<a id="__codelineno-2-79" name="__codelineno-2-79" href="#__codelineno-2-79"></a><span class="w">           </span><span class="n">rank</span><span class="p">,</span><span class="w"> </span><span class="n">size</span><span class="p">,</span><span class="w"> </span><span class="n">sendBuf</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span><span class="w"> </span><span class="n">recvBuf</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span><span class="w"> </span><span class="n">elems</span><span class="p">,</span><span class="w"> </span><span class="n">useSendrecv</span><span class="w"> </span><span class="o">?</span><span class="w"> </span><span class="s">&quot;sendrecv&quot;</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="s">&quot;naive&quot;</span><span class="p">);</span>
+<a id="__codelineno-2-80" name="__codelineno-2-80" href="#__codelineno-2-80"></a>
+<a id="__codelineno-2-81" name="__codelineno-2-81" href="#__codelineno-2-81"></a><span class="w">    </span><span class="n">free</span><span class="p">(</span><span class="n">sendBuf</span><span class="p">);</span>
+<a id="__codelineno-2-82" name="__codelineno-2-82" href="#__codelineno-2-82"></a><span class="w">    </span><span class="n">free</span><span class="p">(</span><span class="n">recvBuf</span><span class="p">);</span>
+<a id="__codelineno-2-83" name="__codelineno-2-83" href="#__codelineno-2-83"></a><span class="w">    </span><span class="n">MPI_Finalize</span><span class="p">();</span>
+<a id="__codelineno-2-84" name="__codelineno-2-84" href="#__codelineno-2-84"></a><span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
+<a id="__codelineno-2-85" name="__codelineno-2-85" href="#__codelineno-2-85"></a><span class="p">}</span>
+</code></pre></div>
+<p>Compiled with <code>mpicc -Wall -Wextra 57_mpi_ring_send_recv.c -o 57_mpi_ring_send_recv</code>, genuinely run with <code>mpirun --allow-run-as-root --oversubscribe -np 4 ./57_mpi_ring_send_recv</code> (<code>--oversubscribe</code> because this real container has only 2 real CPU cores, not 4 -- a real, honest resource limit <code>mpirun</code> reports plainly if you omit it, rather than silently under-running the job). Locked output (values are exact and reproducible every run; the ORDER these four lines print in is not, and that's the point -- see below):</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>rank 0 of 4: sent 0, received 300 (elems=1, mode=naive)
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>rank 1 of 4: sent 100, received 0 (elems=1, mode=naive)
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>rank 2 of 4: sent 200, received 100 (elems=1, mode=naive)
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>rank 3 of 4: sent 300, received 200 (elems=1, mode=naive)
+</code></pre></div>
+<p>Every value above is exact and deterministic: rank <em>i</em> always sends <code>i*100</code> and always receives <code>((i-1+4)%4)*100</code>, run after run. What is genuinely <em>not</em> deterministic is the order these four lines appear on the real terminal, because these are four real, independent processes racing to reach their own <code>printf()</code> -- three real, separate runs of the exact same command produced three different real orderings (<code>rank 2, rank 3, rank 0, rank 1</code>; then <code>rank 0, rank 2, rank 3, rank 1</code>; then <code>rank 0, rank 1, rank 3, rank 2</code>). No earlier chapter's own simulation could ever produce that, because a host-side simulation of N devices was always really just one process's own sequential loop -- deterministic printing order was a side effect of never having been genuinely concurrent in the first place.</p>
+<div class="admonition warning">
+<p class="admonition-title">[COMMON TRAP] Assuming <code>MPI_Send()</code> never blocks -- the classic unsafe ring</p>
+<p>The code above calls <code>MPI_Send()</code> before any rank has called <code>MPI_Recv()</code>, in a ring where every rank is doing the same thing at once. It worked, above, because the message was a single <code>int</code> -- and the MPI standard is explicit about <em>why</em> that isn't a guarantee: depending on the implementation, either "the send call will not complete until a matching receive call occurs," so a single-threaded sender "will be blocked until this time," or, if the message is copied into a temporary system buffer instead, "the send call may return ahead of the matching receive call" -- and whether it does "will depend on the amount of buffer space available in a particular implementation... This program is unsafe." This book verified that "unsafe" label directly rather than taking it on faith: re-running the exact same file with <code>argv[1]=1000000</code> (a 4 MB message per rank, well past Open MPI's own eager-send buffering threshold) genuinely deadlocks -- every rank's stderr shows <code>about to MPI_Send</code>, and <em>none</em> of them ever prints <code>MPI_Send returned</code>, confirmed by running under a bounded <code>timeout 12 mpirun ... ./57_mpi_ring_send_recv 1000000</code>, which killed the genuinely-hung job at exactly 12 seconds (exit code 124). Re-running with <code>argv[2]=sendrecv</code> -- switching to the single real <code>MPI_Sendrecv()</code> call in the same file -- resolves it immediately and correctly:
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>rank 0 of 4: sent 0, received 300 (elems=1000000, mode=sendrecv)
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>rank 1 of 4: sent 100, received 0 (elems=1000000, mode=sendrecv)
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>rank 2 of 4: sent 200, received 100 (elems=1000000, mode=sendrecv)
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>rank 3 of 4: sent 300, received 200 (elems=1000000, mode=sendrecv)
+</code></pre></div>
+<code>MPI_Sendrecv()</code> posts both halves of the exchange in one call precisely so no rank is ever stuck waiting inside a lone <code>MPI_Send()</code> for a receive nobody has posted yet -- the real, standard fix, not a workaround specific to this book's own environment.</p>
+</div>
+<h2 id="202-cuda-aware-mpi-querying-what-this-build-actually-supports">20.2 CUDA-Aware MPI: Querying What This Build Actually Supports<a class="headerlink" href="#202-cuda-aware-mpi-querying-what-this-build-actually-supports" title="Permanent link">&para;</a></h2>
+<h3 id="intuition_1">Intuition<a class="headerlink" href="#intuition_1" title="Permanent link">&para;</a></h3>
+<p>"CUDA-aware MPI" means an MPI implementation can accept a raw device pointer directly inside <code>MPI_Send()</code>/<code>MPI_Recv()</code> and move the data GPU-to-GPU itself -- no <code>cudaMemcpy()</code> staging through host memory at all, the opposite of Chapter 5's own two-step fallback. Whether any <em>particular</em> MPI build actually has this is not something to assume from the version number or the vendor name -- it is a real, queryable fact, in two independent ways: a compile-time macro (<code>MPIX_CUDA_AWARE_SUPPORT</code>, baked in when Open MPI itself was built) and a runtime function (<code>MPIX_Query_cuda_support()</code>), which could in principle answer differently across otherwise-identical nodes of a real heterogeneous cluster. Getting this wrong -- assuming "yes" and handing a device pointer to a non-CUDA-aware build -- is a real, documented misuse with undefined results, exactly the kind of undefined behavior this book has declined to simulate since Chapter 7's own IPC chapter. The safe, correct pattern is to ask first, and fall back to Chapter 5's own staged transfer when the answer is "no."</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>CUDA-aware MPI (if MPIX_Query_cuda_support()==1):    NOT CUDA-aware (this build, ==0):
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>  rank 0: MPI_Send(devicePtr, ...)                     rank 0: cudaMemcpy(hostBuf, devicePtr, D2H)
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>  -&gt; MPI itself moves data GPU-to-GPU,                         MPI_Send(hostBuf, ...)
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>     directly, no host staging needed                          (Ch5&#39;s own staged-transfer pattern)
+<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>  rank 1: MPI_Recv(devicePtr, ...)                     rank 1: MPI_Recv(hostBuf, ...)
+<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a>  -&gt; arrives already on the receiving GPU                      cudaMemcpy(devicePtr, hostBuf, H2D)
+</code></pre></div>
+<h3 id="background_1">Background<a class="headerlink" href="#background_1" title="Permanent link">&para;</a></h3>
+<p>The code below genuinely links against both the real installed Open MPI and the real installed CUDA runtime, queries this exact environment's real answer both ways, and then -- because that answer is "no" -- performs the real, correct fallback for real.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="c1">// Chapter 20: MPI From Scratch, Then CUDA-Aware MPI: Scaling Beyond One Node</span>
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="c1">// 58_mpi_cuda_aware_query_and_fallback.cpp</span>
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="c1">//</span>
+<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="c1">// &quot;CUDA-aware MPI&quot; means an MPI implementation can accept a raw device</span>
+<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a><span class="c1">// pointer directly in MPI_Send()/MPI_Recv() and move the data GPU-to-GPU</span>
+<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a><span class="c1">// itself, with no host staging at all. Whether a given MPI BUILD actually</span>
+<a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a><span class="c1">// has this is not something to assume -- it&#39;s a real, queryable fact,</span>
+<a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a><span class="c1">// checked here two different real ways: the compile-time macro</span>
+<a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a><span class="c1">// MPIX_CUDA_AWARE_SUPPORT (baked into mpiext_cuda_c.h at Open MPI&#39;s own</span>
+<a id="__codelineno-6-10" name="__codelineno-6-10" href="#__codelineno-6-10"></a><span class="c1">// build time) and the runtime call MPIX_Query_cuda_support(). This</span>
+<a id="__codelineno-6-11" name="__codelineno-6-11" href="#__codelineno-6-11"></a><span class="c1">// program genuinely links against both the real installed Open MPI and</span>
+<a id="__codelineno-6-12" name="__codelineno-6-12" href="#__codelineno-6-12"></a><span class="c1">// the real installed CUDA runtime, and queries this EXACT environment&#39;s</span>
+<a id="__codelineno-6-13" name="__codelineno-6-13" href="#__codelineno-6-13"></a><span class="c1">// real answer -- then, because that answer is &quot;no,&quot; performs the real,</span>
+<a id="__codelineno-6-14" name="__codelineno-6-14" href="#__codelineno-6-14"></a><span class="c1">// correct fallback: Chapter 5&#39;s own staged host-transfer pattern</span>
+<a id="__codelineno-6-15" name="__codelineno-6-15" href="#__codelineno-6-15"></a><span class="c1">// (cudaMemcpy device-to-host, a real MPI_Send/MPI_Recv over plain host</span>
+<a id="__codelineno-6-16" name="__codelineno-6-16" href="#__codelineno-6-16"></a><span class="c1">// memory, cudaMemcpy host-to-device), reused here between MPI ranks</span>
+<a id="__codelineno-6-17" name="__codelineno-6-17" href="#__codelineno-6-17"></a><span class="c1">// instead of between GPU peers.</span>
+<a id="__codelineno-6-18" name="__codelineno-6-18" href="#__codelineno-6-18"></a><span class="c1">// Genuinely compiled with a real mpicxx (linked against the real</span>
+<a id="__codelineno-6-19" name="__codelineno-6-19" href="#__codelineno-6-19"></a><span class="c1">// installed libcudart) and genuinely run with a real mpirun. Defines</span>
+<a id="__codelineno-6-20" name="__codelineno-6-20" href="#__codelineno-6-20"></a><span class="c1">// OMPI_SKIP_MPICXX before &lt;mpi.h&gt; to skip Open MPI&#39;s own deprecated C++</span>
+<a id="__codelineno-6-21" name="__codelineno-6-21" href="#__codelineno-6-21"></a><span class="c1">// bindings header, whose internal function-pointer casts otherwise</span>
+<a id="__codelineno-6-22" name="__codelineno-6-22" href="#__codelineno-6-22"></a><span class="c1">// trigger -Wcast-function-type warnings that belong to Open MPI&#39;s own</span>
+<a id="__codelineno-6-23" name="__codelineno-6-23" href="#__codelineno-6-23"></a><span class="c1">// headers, not to this file&#39;s code.</span>
+<a id="__codelineno-6-24" name="__codelineno-6-24" href="#__codelineno-6-24"></a><span class="cp">#define OMPI_SKIP_MPICXX</span>
+<a id="__codelineno-6-25" name="__codelineno-6-25" href="#__codelineno-6-25"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;mpi.h&gt;</span>
+<a id="__codelineno-6-26" name="__codelineno-6-26" href="#__codelineno-6-26"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;mpi-ext.h&gt;</span>
+<a id="__codelineno-6-27" name="__codelineno-6-27" href="#__codelineno-6-27"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;cuda_runtime.h&gt;</span>
+<a id="__codelineno-6-28" name="__codelineno-6-28" href="#__codelineno-6-28"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;cstdio&gt;</span>
+<a id="__codelineno-6-29" name="__codelineno-6-29" href="#__codelineno-6-29"></a>
+<a id="__codelineno-6-30" name="__codelineno-6-30" href="#__codelineno-6-30"></a><span class="cp">#define ELEMS 4</span>
+<a id="__codelineno-6-31" name="__codelineno-6-31" href="#__codelineno-6-31"></a>
+<a id="__codelineno-6-32" name="__codelineno-6-32" href="#__codelineno-6-32"></a><span class="kt">int</span><span class="w"> </span><span class="nf">main</span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">argc</span><span class="p">,</span><span class="w"> </span><span class="kt">char</span><span class="o">**</span><span class="w"> </span><span class="n">argv</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-6-33" name="__codelineno-6-33" href="#__codelineno-6-33"></a><span class="w">    </span><span class="n">MPI_Init</span><span class="p">(</span><span class="o">&amp;</span><span class="n">argc</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">argv</span><span class="p">);</span>
+<a id="__codelineno-6-34" name="__codelineno-6-34" href="#__codelineno-6-34"></a><span class="w">    </span><span class="kt">int</span><span class="w"> </span><span class="n">rank</span><span class="p">;</span>
+<a id="__codelineno-6-35" name="__codelineno-6-35" href="#__codelineno-6-35"></a><span class="w">    </span><span class="n">MPI_Comm_rank</span><span class="p">(</span><span class="n">MPI_COMM_WORLD</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">rank</span><span class="p">);</span>
+<a id="__codelineno-6-36" name="__codelineno-6-36" href="#__codelineno-6-36"></a>
+<a id="__codelineno-6-37" name="__codelineno-6-37" href="#__codelineno-6-37"></a><span class="w">    </span><span class="c1">// Two real, independent ways to ask the SAME question. The macro is</span>
+<a id="__codelineno-6-38" name="__codelineno-6-38" href="#__codelineno-6-38"></a><span class="w">    </span><span class="c1">// decided once, when Open MPI itself was built; the function call is</span>
+<a id="__codelineno-6-39" name="__codelineno-6-39" href="#__codelineno-6-39"></a><span class="w">    </span><span class="c1">// decided at runtime and could, in principle, differ across nodes of</span>
+<a id="__codelineno-6-40" name="__codelineno-6-40" href="#__codelineno-6-40"></a><span class="w">    </span><span class="c1">// a heterogeneous cluster even when every node runs the same binary.</span>
+<a id="__codelineno-6-41" name="__codelineno-6-41" href="#__codelineno-6-41"></a><span class="w">    </span><span class="kt">int</span><span class="w"> </span><span class="n">cudaAwareBuildTime</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">MPIX_CUDA_AWARE_SUPPORT</span><span class="p">;</span>
+<a id="__codelineno-6-42" name="__codelineno-6-42" href="#__codelineno-6-42"></a><span class="w">    </span><span class="kt">int</span><span class="w"> </span><span class="n">cudaAwareRuntime</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">MPIX_Query_cuda_support</span><span class="p">();</span>
+<a id="__codelineno-6-43" name="__codelineno-6-43" href="#__codelineno-6-43"></a><span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">rank</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="mi">0</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-6-44" name="__codelineno-6-44" href="#__codelineno-6-44"></a><span class="w">        </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;MPIX_CUDA_AWARE_SUPPORT (compile-time macro): %d</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">cudaAwareBuildTime</span><span class="p">);</span>
+<a id="__codelineno-6-45" name="__codelineno-6-45" href="#__codelineno-6-45"></a><span class="w">        </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;MPIX_Query_cuda_support() (runtime query):    %d</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">cudaAwareRuntime</span><span class="p">);</span>
+<a id="__codelineno-6-46" name="__codelineno-6-46" href="#__codelineno-6-46"></a><span class="w">        </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;Both report 0 (false) for this exact installed Open MPI build -- &quot;</span>
+<a id="__codelineno-6-47" name="__codelineno-6-47" href="#__codelineno-6-47"></a><span class="w">               </span><span class="s">&quot;apt&#39;s libopenmpi-dev was built with opal_built_with_cuda_support=false, &quot;</span>
+<a id="__codelineno-6-48" name="__codelineno-6-48" href="#__codelineno-6-48"></a><span class="w">               </span><span class="s">&quot;confirmed independently via `ompi_info | grep cuda`. Passing a device &quot;</span>
+<a id="__codelineno-6-49" name="__codelineno-6-49" href="#__codelineno-6-49"></a><span class="w">               </span><span class="s">&quot;pointer straight into MPI_Send() on a build that answers 0 here is a &quot;</span>
+<a id="__codelineno-6-50" name="__codelineno-6-50" href="#__codelineno-6-50"></a><span class="w">               </span><span class="s">&quot;real, documented misuse with undefined results (this book does not &quot;</span>
+<a id="__codelineno-6-51" name="__codelineno-6-51" href="#__codelineno-6-51"></a><span class="w">               </span><span class="s">&quot;simulate that UB case, per Chapter 7&#39;s own established practice) -- &quot;</span>
+<a id="__codelineno-6-52" name="__codelineno-6-52" href="#__codelineno-6-52"></a><span class="w">               </span><span class="s">&quot;the correct move, taken below, is Chapter 5&#39;s own staged fallback.</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
+<a id="__codelineno-6-53" name="__codelineno-6-53" href="#__codelineno-6-53"></a><span class="w">    </span><span class="p">}</span>
+<a id="__codelineno-6-54" name="__codelineno-6-54" href="#__codelineno-6-54"></a>
+<a id="__codelineno-6-55" name="__codelineno-6-55" href="#__codelineno-6-55"></a><span class="w">    </span><span class="kt">void</span><span class="o">*</span><span class="w"> </span><span class="n">devPtr</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nb">nullptr</span><span class="p">;</span>
+<a id="__codelineno-6-56" name="__codelineno-6-56" href="#__codelineno-6-56"></a><span class="w">    </span><span class="n">cudaError_t</span><span class="w"> </span><span class="n">eMalloc</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">cudaMalloc</span><span class="p">(</span><span class="o">&amp;</span><span class="n">devPtr</span><span class="p">,</span><span class="w"> </span><span class="n">ELEMS</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="k">sizeof</span><span class="p">(</span><span class="kt">float</span><span class="p">));</span>
+<a id="__codelineno-6-57" name="__codelineno-6-57" href="#__codelineno-6-57"></a>
+<a id="__codelineno-6-58" name="__codelineno-6-58" href="#__codelineno-6-58"></a><span class="w">    </span><span class="kt">float</span><span class="w"> </span><span class="n">hostBuf</span><span class="p">[</span><span class="n">ELEMS</span><span class="p">];</span>
+<a id="__codelineno-6-59" name="__codelineno-6-59" href="#__codelineno-6-59"></a><span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">rank</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="mi">0</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-6-60" name="__codelineno-6-60" href="#__codelineno-6-60"></a><span class="w">        </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="n">ELEMS</span><span class="p">;</span><span class="w"> </span><span class="o">++</span><span class="n">i</span><span class="p">)</span><span class="w"> </span><span class="n">hostBuf</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">100.0f</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="p">(</span><span class="kt">float</span><span class="p">)</span><span class="n">i</span><span class="p">;</span>
+<a id="__codelineno-6-61" name="__codelineno-6-61" href="#__codelineno-6-61"></a><span class="w">        </span><span class="c1">// Real staged step 1 (Chapter 5&#39;s own device-to-host half),</span>
+<a id="__codelineno-6-62" name="__codelineno-6-62" href="#__codelineno-6-62"></a><span class="w">        </span><span class="c1">// honestly cudaErrorNoDevice since devPtr was never a real</span>
+<a id="__codelineno-6-63" name="__codelineno-6-63" href="#__codelineno-6-63"></a><span class="w">        </span><span class="c1">// allocation in this environment -- but this is the exact call</span>
+<a id="__codelineno-6-64" name="__codelineno-6-64" href="#__codelineno-6-64"></a><span class="w">        </span><span class="c1">// a real CUDA-aware-unaware MPI program issues on real hardware,</span>
+<a id="__codelineno-6-65" name="__codelineno-6-65" href="#__codelineno-6-65"></a><span class="w">        </span><span class="c1">// right before handing the now-host-resident data to MPI.</span>
+<a id="__codelineno-6-66" name="__codelineno-6-66" href="#__codelineno-6-66"></a><span class="w">        </span><span class="n">cudaError_t</span><span class="w"> </span><span class="n">eD2H</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">cudaMemcpy</span><span class="p">(</span><span class="n">hostBuf</span><span class="p">,</span><span class="w"> </span><span class="n">devPtr</span><span class="p">,</span><span class="w"> </span><span class="n">ELEMS</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="k">sizeof</span><span class="p">(</span><span class="kt">float</span><span class="p">),</span><span class="w"> </span><span class="n">cudaMemcpyDeviceToHost</span><span class="p">);</span>
+<a id="__codelineno-6-67" name="__codelineno-6-67" href="#__codelineno-6-67"></a><span class="w">        </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;rank 0: cudaMalloc()=%s cudaMemcpy(D2H)=%s -- sending host buffer via a REAL MPI_Send</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span>
+<a id="__codelineno-6-68" name="__codelineno-6-68" href="#__codelineno-6-68"></a><span class="w">               </span><span class="n">cudaGetErrorString</span><span class="p">(</span><span class="n">eMalloc</span><span class="p">),</span><span class="w"> </span><span class="n">cudaGetErrorString</span><span class="p">(</span><span class="n">eD2H</span><span class="p">));</span>
+<a id="__codelineno-6-69" name="__codelineno-6-69" href="#__codelineno-6-69"></a><span class="w">        </span><span class="n">MPI_Send</span><span class="p">(</span><span class="n">hostBuf</span><span class="p">,</span><span class="w"> </span><span class="n">ELEMS</span><span class="p">,</span><span class="w"> </span><span class="n">MPI_FLOAT</span><span class="p">,</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="n">MPI_COMM_WORLD</span><span class="p">);</span>
+<a id="__codelineno-6-70" name="__codelineno-6-70" href="#__codelineno-6-70"></a><span class="w">    </span><span class="p">}</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">rank</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="mi">1</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-6-71" name="__codelineno-6-71" href="#__codelineno-6-71"></a><span class="w">        </span><span class="n">MPI_Recv</span><span class="p">(</span><span class="n">hostBuf</span><span class="p">,</span><span class="w"> </span><span class="n">ELEMS</span><span class="p">,</span><span class="w"> </span><span class="n">MPI_FLOAT</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="n">MPI_COMM_WORLD</span><span class="p">,</span><span class="w"> </span><span class="n">MPI_STATUS_IGNORE</span><span class="p">);</span>
+<a id="__codelineno-6-72" name="__codelineno-6-72" href="#__codelineno-6-72"></a><span class="w">        </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;rank 1: REAL MPI_Recv got [%.1f, %.1f, %.1f, %.1f] -- now staging host-to-device</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span>
+<a id="__codelineno-6-73" name="__codelineno-6-73" href="#__codelineno-6-73"></a><span class="w">               </span><span class="n">hostBuf</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span><span class="w"> </span><span class="n">hostBuf</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span><span class="w"> </span><span class="n">hostBuf</span><span class="p">[</span><span class="mi">2</span><span class="p">],</span><span class="w"> </span><span class="n">hostBuf</span><span class="p">[</span><span class="mi">3</span><span class="p">]);</span>
+<a id="__codelineno-6-74" name="__codelineno-6-74" href="#__codelineno-6-74"></a><span class="w">        </span><span class="c1">// Real staged step 2 (Chapter 5&#39;s own host-to-device half),</span>
+<a id="__codelineno-6-75" name="__codelineno-6-75" href="#__codelineno-6-75"></a><span class="w">        </span><span class="c1">// honestly cudaErrorNoDevice for the same reason.</span>
+<a id="__codelineno-6-76" name="__codelineno-6-76" href="#__codelineno-6-76"></a><span class="w">        </span><span class="n">cudaError_t</span><span class="w"> </span><span class="n">eH2D</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">cudaMemcpy</span><span class="p">(</span><span class="n">devPtr</span><span class="p">,</span><span class="w"> </span><span class="n">hostBuf</span><span class="p">,</span><span class="w"> </span><span class="n">ELEMS</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="k">sizeof</span><span class="p">(</span><span class="kt">float</span><span class="p">),</span><span class="w"> </span><span class="n">cudaMemcpyHostToDevice</span><span class="p">);</span>
+<a id="__codelineno-6-77" name="__codelineno-6-77" href="#__codelineno-6-77"></a><span class="w">        </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;rank 1: cudaMalloc()=%s cudaMemcpy(H2D)=%s</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span>
+<a id="__codelineno-6-78" name="__codelineno-6-78" href="#__codelineno-6-78"></a><span class="w">               </span><span class="n">cudaGetErrorString</span><span class="p">(</span><span class="n">eMalloc</span><span class="p">),</span><span class="w"> </span><span class="n">cudaGetErrorString</span><span class="p">(</span><span class="n">eH2D</span><span class="p">));</span>
+<a id="__codelineno-6-79" name="__codelineno-6-79" href="#__codelineno-6-79"></a><span class="w">    </span><span class="p">}</span>
+<a id="__codelineno-6-80" name="__codelineno-6-80" href="#__codelineno-6-80"></a>
+<a id="__codelineno-6-81" name="__codelineno-6-81" href="#__codelineno-6-81"></a><span class="w">    </span><span class="n">MPI_Finalize</span><span class="p">();</span>
+<a id="__codelineno-6-82" name="__codelineno-6-82" href="#__codelineno-6-82"></a><span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
+<a id="__codelineno-6-83" name="__codelineno-6-83" href="#__codelineno-6-83"></a><span class="p">}</span>
+</code></pre></div>
+<p>Compiled with <code>mpicxx -Wall -Wextra 58_mpi_cuda_aware_query_and_fallback.cpp -o 58_mpi_cuda_aware_query_and_fallback -lcudart</code> (linking a real installed <code>libcudart</code> from a real <code>mpicxx</code> wrapper -- the first file in this book to genuinely combine both toolchains in one binary), genuinely run with <code>mpirun --allow-run-as-root --oversubscribe -np 2 ./58_mpi_cuda_aware_query_and_fallback</code>. Locked output, deterministic across repeated runs:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>MPIX_CUDA_AWARE_SUPPORT (compile-time macro): 0
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>MPIX_Query_cuda_support() (runtime query):    0
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>Both report 0 (false) for this exact installed Open MPI build -- apt&#39;s libopenmpi-dev was built with opal_built_with_cuda_support=false, confirmed independently via `ompi_info | grep cuda`. Passing a device pointer straight into MPI_Send() on a build that answers 0 here is a real, documented misuse with undefined results (this book does not simulate that UB case, per Chapter 7&#39;s own established practice) -- the correct move, taken below, is Chapter 5&#39;s own staged fallback.
+<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a>
+<a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a>rank 0: cudaMalloc()=no CUDA-capable device is detected cudaMemcpy(D2H)=no CUDA-capable device is detected -- sending host buffer via a REAL MPI_Send
+<a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a>rank 1: REAL MPI_Recv got [100.0, 101.0, 102.0, 103.0] -- now staging host-to-device
+<a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a>rank 1: cudaMalloc()=no CUDA-capable device is detected cudaMemcpy(H2D)=no CUDA-capable device is detected
+</code></pre></div>
+<p>Both real queries agree, independently: this exact installed Open MPI build is not CUDA-aware. The <code>cudaMalloc()</code>/<code>cudaMemcpy()</code> calls fail the same honest way every device-touching call in this book has failed since Chapter 3 -- <code>no CUDA-capable device is detected</code> -- but the real point of this section survives that failure intact: <code>MPI_Send()</code>/<code>MPI_Recv()</code> genuinely moved the real host-resident values <code>[100.0, 101.0, 102.0, 103.0]</code> from rank 0's process to rank 1's process, correctly, over real host memory, exactly as Chapter 5's own staged-transfer pattern always required when a direct path isn't available.</p>
+<div class="admonition warning">
+<p class="admonition-title">[COMMON TRAP] Assuming a newer/bigger MPI build implies CUDA-aware support</p>
+<p><code>MPIX_CUDA_AWARE_SUPPORT</code> and <code>MPIX_Query_cuda_support()</code> exist as <em>separate</em>, explicit queries precisely because CUDA-aware support is a real <em>build-time choice</em> Open MPI makes (it has to be compiled against CUDA and configured to use it), not a property that comes for free with a newer version number, a bigger package, or a vendor's name on the box. This exact chapter's own installed Open MPI is perfectly real, perfectly functional for everything Section 20.1 built, and still answers <code>0</code> to both queries -- apt's own generic <code>libopenmpi-dev</code> package was simply never built with <code>--with-cuda</code>. A real cluster's own MPI module (frequently a separately-built "CUDA-aware" variant, sometimes even a different module entirely from the same vendor) may answer differently, which is exactly why a real application checks <code>MPIX_Query_cuda_support()</code> itself at startup rather than assuming either answer from context.</p>
+</div>
+<h2 id="203-what-this-books-own-real-mpi-cant-do-ulfms-absence-and-standard-mpis-weaker-alternative">20.3 What This Book's Own Real MPI Can't Do: ULFM's Absence, and Standard MPI's Weaker Alternative<a class="headerlink" href="#203-what-this-books-own-real-mpi-cant-do-ulfms-absence-and-standard-mpis-weaker-alternative" title="Permanent link">&para;</a></h2>
+<h3 id="intuition_2">Intuition<a class="headerlink" href="#intuition_2" title="Permanent link">&para;</a></h3>
+<p>Chapter 19 quoted MPI's real ULFM extension -- <code>MPIX_Comm_revoke()</code>, <code>MPIX_Comm_shrink()</code> -- as a genuinely richer alternative to NCCL's abort-and-rebuild cycle, but never called either function. This section explains why, honestly, the same way Chapter 19 itself explained NCCL's own real limits: by checking, not assuming. ULFM has a real, documented history: it began as a separate research project (beta releases in 2012), and, per Open MPI's own current ULFM documentation and the ULFM project's own downloads page, "the ULFM codebase has been integrated into the Open MPI master branch in early 2020 and in the stable releases starting with 5.0." This exact environment's real, apt-installed Open MPI is version <code>4.1.6</code> -- built before that merge point -- and this book verified the consequence directly rather than inferring it from the version number alone: <code>ompi_info</code>'s own real <code>"MPI extensions:"</code> line lists <code>affinity, cuda, pcollreq</code> and nothing named <code>ftmpi</code>, and grepping the real installed <code>mpi-ext.h</code> for <code>MPIX_Comm_revoke</code>/<code>MPIX_Comm_shrink</code> finds nothing. This book also genuinely attempted to obtain a newer, ULFM-capable Open MPI build to close that gap for real -- and hit a real, different limit worth naming plainly rather than working around silently: this environment's network egress policy blocks <code>download.open-mpi.org</code>, and while a <code>git clone</code> of Open MPI's own GitHub mirror does succeed, building an MPI implementation directly from a git checkout needs a full Autotools bootstrap this chapter didn't gamble the rest of it on. What standard MPI <em>does</em> offer, in every version back to MPI-1.1 -- long before ULFM existed at all -- is <code>MPI_ERRORS_RETURN</code>, built for real below.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>Open MPI&#39;s real ULFM history:                  This environment&#39;s real installed MPI:
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>
+<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>  2012: ULFM beta (separate project)              apt-get install libopenmpi-dev
+<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a>  2020: merged into OMPI master branch            -&gt; Open MPI 4.1.6 (Ubuntu 24.04)
+<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a>  5.0+: stable, built-in by default                  BEFORE the 5.0 merge point
+<a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a>        (--with-ft=mpi to guarantee it)              -&gt; MPIX_Comm_revoke/shrink: ABSENT
+<a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a>                                                       (verified: mpi-ext.h, ompi_info)
+</code></pre></div>
+<h3 id="background_2">Background<a class="headerlink" href="#background_2" title="Permanent link">&para;</a></h3>
+<p>The code below installs the real, standard <code>MPI_ERRORS_RETURN</code> handler and triggers a real MPI-level error (an invalid destination rank) to show it caught, not fatal.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="c1">// Chapter 20: MPI From Scratch, Then CUDA-Aware MPI: Scaling Beyond One Node</span>
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a><span class="c1">// 59_mpi_errhandler_return.c</span>
+<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a><span class="c1">//</span>
+<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a><span class="c1">// Chapter 19 quoted MPI&#39;s own real ULFM extension (MPIX_Comm_revoke(),</span>
+<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a><span class="c1">// MPIX_Comm_shrink()) as a genuinely richer alternative to NCCL&#39;s</span>
+<a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a><span class="c1">// abort-and-rebuild cycle, but never called either function -- Section</span>
+<a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a><span class="c1">// 20.3&#39;s own Background text explains why, verified the same real way</span>
+<a id="__codelineno-9-8" name="__codelineno-9-8" href="#__codelineno-9-8"></a><span class="c1">// Chapter 19 verified NCCL&#39;s own API surface: this exact environment&#39;s</span>
+<a id="__codelineno-9-9" name="__codelineno-9-9" href="#__codelineno-9-9"></a><span class="c1">// installed Open MPI (apt&#39;s libopenmpi-dev, 4.1.6) predates ULFM&#39;s real</span>
+<a id="__codelineno-9-10" name="__codelineno-9-10" href="#__codelineno-9-10"></a><span class="c1">// merge into Open MPI&#39;s mainline (2020, stable from 5.0), confirmed by</span>
+<a id="__codelineno-9-11" name="__codelineno-9-11" href="#__codelineno-9-11"></a><span class="c1">// `ompi_info`&#39;s own real &quot;MPI extensions:&quot; list (affinity, cuda,</span>
+<a id="__codelineno-9-12" name="__codelineno-9-12" href="#__codelineno-9-12"></a><span class="c1">// pcollreq -- no ftmpi) and by grepping the installed mpi-ext.h for</span>
+<a id="__codelineno-9-13" name="__codelineno-9-13" href="#__codelineno-9-13"></a><span class="c1">// MPIX_Comm_revoke/MPIX_Comm_shrink (absent). What standard MPI DOES</span>
+<a id="__codelineno-9-14" name="__codelineno-9-14" href="#__codelineno-9-14"></a><span class="c1">// offer, in every version back to MPI-1.1, is a weaker, real</span>
+<a id="__codelineno-9-15" name="__codelineno-9-15" href="#__codelineno-9-15"></a><span class="c1">// alternative this file builds: MPI_ERRORS_RETURN, installed via</span>
+<a id="__codelineno-9-16" name="__codelineno-9-16" href="#__codelineno-9-16"></a><span class="c1">// MPI_Comm_set_errhandler(), which lets a rank get an error CODE back</span>
+<a id="__codelineno-9-17" name="__codelineno-9-17" href="#__codelineno-9-17"></a><span class="c1">// instead of the whole job aborting -- but, per the MPI standard&#39;s own</span>
+<a id="__codelineno-9-18" name="__codelineno-9-18" href="#__codelineno-9-18"></a><span class="c1">// explicit wording, does NOT guarantee the state of MPI is still usable</span>
+<a id="__codelineno-9-19" name="__codelineno-9-19" href="#__codelineno-9-19"></a><span class="c1">// afterward, which is exactly the gap ULFM&#39;s own revoke/shrink exists</span>
+<a id="__codelineno-9-20" name="__codelineno-9-20" href="#__codelineno-9-20"></a><span class="c1">// to close for real.</span>
+<a id="__codelineno-9-21" name="__codelineno-9-21" href="#__codelineno-9-21"></a><span class="c1">// Genuinely compiled with a real mpicc against the real installed</span>
+<a id="__codelineno-9-22" name="__codelineno-9-22" href="#__codelineno-9-22"></a><span class="c1">// Open MPI, genuinely run with a real mpirun.</span>
+<a id="__codelineno-9-23" name="__codelineno-9-23" href="#__codelineno-9-23"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;mpi.h&gt;</span>
+<a id="__codelineno-9-24" name="__codelineno-9-24" href="#__codelineno-9-24"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;stdio.h&gt;</span>
+<a id="__codelineno-9-25" name="__codelineno-9-25" href="#__codelineno-9-25"></a>
+<a id="__codelineno-9-26" name="__codelineno-9-26" href="#__codelineno-9-26"></a><span class="kt">int</span><span class="w"> </span><span class="nf">main</span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">argc</span><span class="p">,</span><span class="w"> </span><span class="kt">char</span><span class="o">**</span><span class="w"> </span><span class="n">argv</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-9-27" name="__codelineno-9-27" href="#__codelineno-9-27"></a><span class="w">    </span><span class="n">MPI_Init</span><span class="p">(</span><span class="o">&amp;</span><span class="n">argc</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">argv</span><span class="p">);</span>
+<a id="__codelineno-9-28" name="__codelineno-9-28" href="#__codelineno-9-28"></a>
+<a id="__codelineno-9-29" name="__codelineno-9-29" href="#__codelineno-9-29"></a><span class="w">    </span><span class="kt">int</span><span class="w"> </span><span class="n">rank</span><span class="p">,</span><span class="w"> </span><span class="n">size</span><span class="p">;</span>
+<a id="__codelineno-9-30" name="__codelineno-9-30" href="#__codelineno-9-30"></a><span class="w">    </span><span class="n">MPI_Comm_rank</span><span class="p">(</span><span class="n">MPI_COMM_WORLD</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">rank</span><span class="p">);</span>
+<a id="__codelineno-9-31" name="__codelineno-9-31" href="#__codelineno-9-31"></a><span class="w">    </span><span class="n">MPI_Comm_size</span><span class="p">(</span><span class="n">MPI_COMM_WORLD</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">size</span><span class="p">);</span>
+<a id="__codelineno-9-32" name="__codelineno-9-32" href="#__codelineno-9-32"></a>
+<a id="__codelineno-9-33" name="__codelineno-9-33" href="#__codelineno-9-33"></a><span class="w">    </span><span class="c1">// The real, standard alternative to the default MPI_ERRORS_ARE_FATAL</span>
+<a id="__codelineno-9-34" name="__codelineno-9-34" href="#__codelineno-9-34"></a><span class="w">    </span><span class="c1">// handler every earlier call in this chapter has run under, silently</span>
+<a id="__codelineno-9-35" name="__codelineno-9-35" href="#__codelineno-9-35"></a><span class="w">    </span><span class="c1">// (every MPI_Send/MPI_Recv in 57 and 58 above would have aborted the</span>
+<a id="__codelineno-9-36" name="__codelineno-9-36" href="#__codelineno-9-36"></a><span class="w">    </span><span class="c1">// whole job on a real error, exactly like this handler&#39;s own name</span>
+<a id="__codelineno-9-37" name="__codelineno-9-37" href="#__codelineno-9-37"></a><span class="w">    </span><span class="c1">// says -- they simply never hit one).</span>
+<a id="__codelineno-9-38" name="__codelineno-9-38" href="#__codelineno-9-38"></a><span class="w">    </span><span class="n">MPI_Comm_set_errhandler</span><span class="p">(</span><span class="n">MPI_COMM_WORLD</span><span class="p">,</span><span class="w"> </span><span class="n">MPI_ERRORS_RETURN</span><span class="p">);</span>
+<a id="__codelineno-9-39" name="__codelineno-9-39" href="#__codelineno-9-39"></a>
+<a id="__codelineno-9-40" name="__codelineno-9-40" href="#__codelineno-9-40"></a><span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">rank</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="mi">0</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-9-41" name="__codelineno-9-41" href="#__codelineno-9-41"></a><span class="w">        </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;rank 0: about to MPI_Send to invalid destination rank 999 &quot;</span>
+<a id="__codelineno-9-42" name="__codelineno-9-42" href="#__codelineno-9-42"></a><span class="w">               </span><span class="s">&quot;(real world size %d), now under MPI_ERRORS_RETURN</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">size</span><span class="p">);</span>
+<a id="__codelineno-9-43" name="__codelineno-9-43" href="#__codelineno-9-43"></a><span class="w">        </span><span class="kt">int</span><span class="w"> </span><span class="n">val</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">42</span><span class="p">;</span>
+<a id="__codelineno-9-44" name="__codelineno-9-44" href="#__codelineno-9-44"></a><span class="w">        </span><span class="kt">int</span><span class="w"> </span><span class="n">rc</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">MPI_Send</span><span class="p">(</span><span class="o">&amp;</span><span class="n">val</span><span class="p">,</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span><span class="w"> </span><span class="n">MPI_INT</span><span class="p">,</span><span class="w"> </span><span class="mi">999</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="n">MPI_COMM_WORLD</span><span class="p">);</span>
+<a id="__codelineno-9-45" name="__codelineno-9-45" href="#__codelineno-9-45"></a><span class="w">        </span><span class="kt">char</span><span class="w"> </span><span class="n">errStr</span><span class="p">[</span><span class="n">MPI_MAX_ERROR_STRING</span><span class="p">];</span>
+<a id="__codelineno-9-46" name="__codelineno-9-46" href="#__codelineno-9-46"></a><span class="w">        </span><span class="kt">int</span><span class="w"> </span><span class="n">errLen</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
+<a id="__codelineno-9-47" name="__codelineno-9-47" href="#__codelineno-9-47"></a><span class="w">        </span><span class="n">MPI_Error_string</span><span class="p">(</span><span class="n">rc</span><span class="p">,</span><span class="w"> </span><span class="n">errStr</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">errLen</span><span class="p">);</span>
+<a id="__codelineno-9-48" name="__codelineno-9-48" href="#__codelineno-9-48"></a><span class="w">        </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;rank 0: MPI_Send RETURNED rc=%d (%s) -- this process did NOT abort</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">rc</span><span class="p">,</span><span class="w"> </span><span class="n">errStr</span><span class="p">);</span>
+<a id="__codelineno-9-49" name="__codelineno-9-49" href="#__codelineno-9-49"></a><span class="w">        </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;rank 0: NOTE -- the MPI standard&#39;s own words on this: &#39;the state of &quot;</span>
+<a id="__codelineno-9-50" name="__codelineno-9-50" href="#__codelineno-9-50"></a><span class="w">               </span><span class="s">&quot;MPI is undefined&#39; after an error is detected, even under &quot;</span>
+<a id="__codelineno-9-51" name="__codelineno-9-51" href="#__codelineno-9-51"></a><span class="w">               </span><span class="s">&quot;MPI_ERRORS_RETURN. Catching rc above is real, but it is NOT the same &quot;</span>
+<a id="__codelineno-9-52" name="__codelineno-9-52" href="#__codelineno-9-52"></a><span class="w">               </span><span class="s">&quot;guarantee as ULFM&#39;s own MPIX_Comm_revoke()/MPIX_Comm_shrink(), which &quot;</span>
+<a id="__codelineno-9-53" name="__codelineno-9-53" href="#__codelineno-9-53"></a><span class="w">               </span><span class="s">&quot;define exactly what a communicator&#39;s surviving ranks may do next.</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
+<a id="__codelineno-9-54" name="__codelineno-9-54" href="#__codelineno-9-54"></a><span class="w">    </span><span class="p">}</span>
+<a id="__codelineno-9-55" name="__codelineno-9-55" href="#__codelineno-9-55"></a>
+<a id="__codelineno-9-56" name="__codelineno-9-56" href="#__codelineno-9-56"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;rank %d of %d: reached MPI_Finalize</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">rank</span><span class="p">,</span><span class="w"> </span><span class="n">size</span><span class="p">);</span>
+<a id="__codelineno-9-57" name="__codelineno-9-57" href="#__codelineno-9-57"></a><span class="w">    </span><span class="n">MPI_Finalize</span><span class="p">();</span>
+<a id="__codelineno-9-58" name="__codelineno-9-58" href="#__codelineno-9-58"></a><span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
+<a id="__codelineno-9-59" name="__codelineno-9-59" href="#__codelineno-9-59"></a><span class="p">}</span>
+</code></pre></div>
+<p>Compiled with <code>mpicc -Wall -Wextra 59_mpi_errhandler_return.c -o 59_mpi_errhandler_return</code>, genuinely run with <code>mpirun --allow-run-as-root --oversubscribe -np 2 ./59_mpi_errhandler_return</code>. Locked output, deterministic across repeated runs:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>rank 0: about to MPI_Send to invalid destination rank 999 (real world size 2), now under MPI_ERRORS_RETURN
+<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>rank 0: MPI_Send RETURNED rc=6 (MPI_ERR_RANK: invalid rank) -- this process did NOT abort
+<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>rank 0: NOTE -- the MPI standard&#39;s own words on this: &#39;the state of MPI is undefined&#39; after an error is detected, even under MPI_ERRORS_RETURN. Catching rc above is real, but it is NOT the same guarantee as ULFM&#39;s own MPIX_Comm_revoke()/MPIX_Comm_shrink(), which define exactly what a communicator&#39;s surviving ranks may do next.
+<a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a>rank 0: reached MPI_Finalize
+<a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a>rank 1 of 2: reached MPI_Finalize
+</code></pre></div>
+<p>This is the real, positive half of the contrast; the real negative half was verified separately, deliberately not folded into the same run since it is destructive by design: removing the <code>MPI_Comm_set_errhandler()</code> call and issuing the exact same invalid-rank <code>MPI_Send()</code> under Open MPI's own <em>default</em> handler genuinely aborts the whole job --</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>[vm:01220] *** An error occurred in MPI_Send
+<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>[vm:01220] *** reported by process [1748959233,0]
+<a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a>[vm:01220] *** on communicator MPI_COMM_WORLD
+<a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a>[vm:01220] *** MPI_ERR_RANK: invalid rank
+<a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a>[vm:01220] *** MPI_ERRORS_ARE_FATAL (processes in this communicator will now abort,
+<a id="__codelineno-11-6" name="__codelineno-11-6" href="#__codelineno-11-6"></a>[vm:01220] ***    and potentially your MPI job)
+</code></pre></div>
+<p>-- with a real nonzero exit code (<code>6</code>). The two runs together are the real, complete answer to why every earlier call in this chapter never showed an error path at all: they simply never triggered one, running silently under <code>MPI_ERRORS_ARE_FATAL</code> the whole time.</p>
+<div class="admonition warning">
+<p class="admonition-title">[COMMON TRAP] Mistaking <code>MPI_ERRORS_RETURN</code> for a fault-tolerance mechanism</p>
+<p>Catching a real error code, as the code above does, feels like recovery -- the process didn't abort, <code>MPI_Finalize()</code> was reached, the program's own exit code is clean. It isn't recovery, and the MPI standard says so directly: "after an error is detected, the state of MPI is undefined," and, more specifically, "using a user-defined error handler, or <code>MPI_ERRORS_RETURN</code>, does not necessarily allow the user to continue to use MPI after an error is detected." <code>MPI_ERRORS_RETURN</code> changes what happens when an error is <em>detected and reported</em> -- it says nothing about a peer that has genuinely died without ever reporting anything, which is precisely Chapter 19's own subject and precisely what ULFM's real <code>MPIX_Comm_revoke()</code>/<code>MPIX_Comm_shrink()</code> are built to define: a communicator that not only survives a real rank's death, but that every surviving rank agrees is now smaller, in a way the standard actually guarantees. This section's own <code>rc=6</code> catch is real and useful for catching local misuse (an invalid rank number, a malformed call) -- it is not a substitute for ULFM, and treating it as one leaves an application exactly as exposed to a genuinely dead peer as Chapter 19's own NCCL discussion found blocking communicators to be.</p>
+</div>
+<h2 id="chapter-summary">Chapter Summary<a class="headerlink" href="#chapter-summary" title="Permanent link">&para;</a></h2>
+<p>This chapter opened Part 5 by leaving single-node NCCL behind for the first time in this book. Section 20.1 built MPI's own real basics -- <code>MPI_Init</code>/<code>MPI_Comm_rank</code>/<code>MPI_Comm_size</code> and a real point-to-point ring, structurally the same shape as Chapter 9's own ring but genuinely run as real, separate operating-system processes via <code>mpirun</code>, the first time this book has ever had a genuinely real multi-rank program instead of a device-less error or a host-side simulation -- and directly reproduced, then fixed, the MPI standard's own documented "unsafe program" deadlock risk in a naive blocking-send ring, citing the standard's own exact wording. Section 20.2 checked, rather than assumed, whether this exact environment's real Open MPI build is CUDA-aware (<code>MPIX_CUDA_AWARE_SUPPORT</code>/<code>MPIX_Query_cuda_support()</code>, both genuinely <code>0</code>), and built the real, correct fallback for that answer -- Chapter 5's own staged host-transfer pattern, reused between MPI ranks. Section 20.3 closed the loop Chapter 19 opened: verified, the same real way, that this environment's Open MPI (4.1.6) predates ULFM's real 2020/5.0 mainline merge, honestly reported a real network-policy limit encountered while trying to obtain a newer build, and built standard MPI's own weaker real alternative, <code>MPI_ERRORS_RETURN</code>, explicit throughout that it is not a substitute for ULFM's own defined recovery semantics. Chapter 21 continues Part 5 with GPUDirect RDMA -- bypassing the host entirely, the natural next question after this chapter's own Section 20.2 spent its whole time staging data <em>through</em> the host because this exact build couldn't avoid it.</p>
+<h2 id="self-check-questions">Self-Check Questions<a class="headerlink" href="#self-check-questions" title="Permanent link">&para;</a></h2>
+<ol>
+<li>Explain in your own words why MPI needed neither a real GPU nor a host-side simulation to get a genuinely real multi-rank program running in this chapter, when every earlier chapter since Chapter 3 needed one or the other.</li>
+<li>Section 20.1's own locked output shows the same four values every run, but a different print ORDER across three separate runs. Explain why the values are deterministic but the order isn't, in terms of what <code>mpirun -np 4</code> actually launches.</li>
+<li>Quote the MPI standard's own exact wording (cited in Section 20.1's COMMON TRAP) for why a naive ring of blocking <code>MPI_Send()</code> calls is called "unsafe," and explain what specifically made this chapter's own 1,000,000-int version deadlock when the 1-int version didn't.</li>
+<li>Name the two independent real queries Section 20.2 used to check whether this environment's Open MPI build is CUDA-aware, and explain why relying on only one of them (say, just the version number) would not be a reliable substitute.</li>
+<li>Section 20.2's own code calls <code>cudaMalloc()</code> and <code>cudaMemcpy()</code>, both of which fail with <code>cudaErrorNoDevice</code>-style errors -- yet the section's real point (the MPI_Send/Recv data transfer) still succeeds. Explain why those two facts don't contradict each other.</li>
+<li>Using Section 20.3's own real findings, explain the two independent pieces of evidence this book used to confirm ULFM's absence in the installed Open MPI, and name the real, historical reason (a version/merge-timeline fact, not a bug) that absence exists.</li>
+<li>Quote the MPI standard's own exact wording (cited in Section 20.3's COMMON TRAP) describing what is NOT guaranteed after <code>MPI_ERRORS_RETURN</code> catches an error, and explain why that specific gap is exactly what ULFM's <code>MPIX_Comm_revoke()</code>/<code>MPIX_Comm_shrink()</code> are built to close.</li>
+<li>This chapter tried, and failed, to obtain a newer, ULFM-capable Open MPI build by two different real methods. Name both methods and the real, specific reason each one didn't work in this environment.</li>
+</ol>
+<h2 id="where-we-go-next">Where We Go Next<a class="headerlink" href="#where-we-go-next" title="Permanent link">&para;</a></h2>
+<p>Chapter 21 continues Part 5 with GPUDirect RDMA: bypassing the host entirely. Section 20.2's own staged fallback spent every byte's whole trip going device-to-host-to-network-to-host-to-device precisely because this exact environment's MPI build couldn't move it directly -- Chapter 21 asks what happens when the network itself can reach a GPU's memory without either host ever touching the data at all.</p>
+<h2 id="worked-solutions">Worked Solutions<a class="headerlink" href="#worked-solutions" title="Permanent link">&para;</a></h2>
+<p><strong>1.</strong> MPI's own model is multi-<em>process</em>, not multi-<em>device</em> -- <code>mpirun -np N</code> asks the operating system to launch N genuinely separate processes, and <code>MPI_Init()</code> lets them find each other through the OS, not through a GPU driver. No call in that sequence ever asks whether a CUDA-capable device exists, so there is nothing for this environment's real absence of one to honestly fail on, and no need to simulate N devices with N host buffers either, since the "N" here is already genuinely real operating-system processes.</p>
+<p><strong>2.</strong> The four values (<code>sent 0/100/200/300</code>, <code>received 300/0/100/200</code>) are computed purely from each rank's own fixed rank number (<code>rank*100</code>) and the fixed ring topology (<code>next</code>/<code>prev</code>), so they never depend on timing and are identical every run. The PRINT order, though, depends on which of the four genuinely separate, genuinely concurrent operating-system processes happens to reach its own <code>printf()</code> and flush to the shared terminal first on that particular run -- a race with no defined winner, unlike every earlier chapter's own single-process simulation, where "order" was just whatever a <code>for</code> loop's iteration order happened to be, always identical run to run.</p>
+<p><strong>3.</strong> The MPI standard states: "the program will deadlock... The success of this program will depend on the amount of buffer space available in a particular implementation... This program is unsafe." The 1-int version's whole message (4 bytes) fit inside Open MPI's own real eager-send buffer, so <code>MPI_Send()</code> could copy it into a temporary system buffer and return immediately, before any rank had posted a matching <code>MPI_Recv()</code>. The 1,000,000-int version (4 MB per rank) exceeded that real buffer capacity, so <code>MPI_Send()</code> genuinely had to block until a matching receive was posted -- and since every rank in the ring was doing the exact same thing at the exact same time (blocked inside its own <code>MPI_Send()</code>, never reaching its own <code>MPI_Recv()</code>), no rank could ever post the receive another rank needed, producing a real, complete deadlock.</p>
+<p><strong>4.</strong> The two queries are the compile-time macro <code>MPIX_CUDA_AWARE_SUPPORT</code> (fixed when Open MPI itself was built) and the runtime function <code>MPIX_Query_cuda_support()</code> (evaluated when the program actually runs). Relying on just a version number would not be reliable because CUDA-aware support is a real, separate <em>build-time configuration choice</em> (<code>--with-cuda</code>) that a given package maintainer may or may not have enabled for any particular version -- this chapter's own real, current Open MPI build is proof: a perfectly modern, perfectly functional install that still answers <code>0</code> to both real queries, because apt's own generic package was never built with that flag.</p>
+<p><strong>5.</strong> <code>cudaMalloc()</code>/<code>cudaMemcpy()</code> depend on a real CUDA-capable device, which this environment has never had, so they fail exactly the way every device-touching call in this book has failed since Chapter 3. <code>MPI_Send()</code>/<code>MPI_Recv()</code> depend only on the real, installed Open MPI runtime and real host memory (the <code>hostBuf</code> array) -- neither of which needs a GPU at all. The two failing calls and the two succeeding calls are testing two completely independent real systems; one being honestly broken (no device) says nothing about whether the other (real host-to-host MPI) works, and it demonstrably does.</p>
+<p><strong>6.</strong> The two pieces of evidence are: (a) <code>ompi_info</code>'s own real <code>"MPI extensions:"</code> line, which lists exactly <code>affinity, cuda, pcollreq</code> for this installed build, with no extension named <code>ftmpi</code>; and (b) grepping the real installed <code>mpi-ext.h</code> header directly for the symbol names <code>MPIX_Comm_revoke</code>/<code>MPIX_Comm_shrink</code>, which are genuinely absent from the file. The real historical reason is a version/timeline fact, not a defect: ULFM was integrated into Open MPI's own master branch in early 2020 and into stable releases starting with version 5.0, while this environment's real, apt-installed Open MPI is version 4.1.6 -- built and released before that merge point.</p>
+<p><strong>7.</strong> The standard states: "after an error is detected, the state of MPI is undefined," and that using <code>MPI_ERRORS_RETURN</code> "does not necessarily allow the user to continue to use MPI after an error is detected." That gap -- catching an error code says nothing about whether the rest of the MPI runtime is still safely usable afterward -- is exactly what ULFM's own <code>MPIX_Comm_revoke()</code> (invalidating the broken communicator consistently across every surviving rank) and <code>MPIX_Comm_shrink()</code> (producing a new, smaller communicator the standard actually defines the behavior of) are built to close: they don't just report that something went wrong, they define a real, continued-usable state afterward.</p>
+<p><strong>8.</strong> The first method was downloading a newer Open MPI release tarball directly (<code>download.open-mpi.org</code>), which failed because this environment's real network egress policy blocks that specific host outright (a <code>403</code>/connection-rejected response from the egress proxy, confirmed directly rather than assumed). The second method was <code>git clone</code>-ing Open MPI's own source from its GitHub mirror, which the network genuinely allowed -- but building a full MPI implementation from a raw git checkout (rather than a release tarball) requires running a complete Autotools bootstrap (<code>autogen.pl</code>, pulling in several of Open MPI's own submodules) that this chapter judged too large and uncertain a detour to gamble the rest of its own verified content on, so it was left as an honestly-reported real limit rather than attempted and possibly abandoned mid-chapter.</p>
+<hr />
+<p><strong>Sources cited in this chapter:</strong></p>
+<ul>
+<li><a href="https://www.mpi-forum.org/docs/mpi-1.1/mpi-11-html/node148.html">MPI Forum, MPI-1.1 standard, Section 7.2 "Error handling"</a> -- the exact quotes "The handler, when called, causes the program to abort on all executing processes" (<code>MPI_ERRORS_ARE_FATAL</code>), "The handler has no effect other than returning the error code to the user" (<code>MPI_ERRORS_RETURN</code>), "after an error is detected, the state of MPI is undefined," and "using a user-defined error handler, or MPI_ERRORS_RETURN, does not necessarily allow the user to continue to use MPI after an error is detected."</li>
+<li><a href="https://www.netlib.org/utk/papers/mpi-book/node39.html">The MPI Book (netlib.org mirror), "Buffering and Safety"</a> -- the exact quotes on <code>MPI_Send()</code>'s implementation-defined blocking behavior ("the send call will not complete until a matching receive call occurs... In the second case, the send call may return ahead of the matching receive call") and the "unsafe program" deadlock warning ("the program will deadlock... This program is unsafe"), genuinely reproduced and fixed in Section 20.1.</li>
+<li><a href="https://docs.open-mpi.org/en/v5.0.2/features/ulfm.html">Open MPI 5.0.2 documentation, "User-Level Fault Mitigation (ULFM)"</a> -- the exact quotes "As of v5.0.2, ULFM is now integrated directly into the community release of Open MPI" and the built-in-by-default/<code>--with-ft ulfm</code> build details, already cited in Chapter 19 and reused here to explain this environment's real version gap.</li>
+<li><a href="https://fault-tolerance.org/ulfm/downloads/">Fault Tolerance Research Hub, "ULFM Releases"</a> -- the exact quote "The ULFM codebase has been integrated into the Open MPI master branch in early 2020 and in the stable releases starting with 5.0 (configure with --with-ft=mpi)," and confirmation that no prebuilt ULFM binaries are offered beyond obsolete 2012 betas -- source-only, consistent with this chapter's own real build attempt.</li>
+<li>This exact environment's own real, installed Open MPI 4.1.6 (<code>apt-get install libopenmpi-dev openmpi-bin</code>): <code>/usr/lib/x86_64-linux-gnu/openmpi/include/mpi.h</code>, <code>mpi-ext.h</code>, and <code>mpiext_cuda_c.h</code>, and the real <code>ompi_info</code> command's own output -- inspected directly the same way Chapter 11 inspected the installed <code>nccl.h</code> and Chapter 19 inspected NCCL's own <code>ncclConfig_t</code>.</li>
+<li>This book's own Chapter 5 (the staged host-transfer fallback pattern, reused in Section 20.2 between MPI ranks instead of GPU peers), Chapter 7 (the established practice of declining to simulate documented undefined behavior, applied in Section 20.2's own COMMON TRAP), Chapter 9 (the ring communication pattern Section 20.1 rebuilds with real point-to-point calls), and Chapter 19 (the ULFM preview this chapter's own Section 20.3 explains the real absence of, and the NCCL abort-and-rebuild contrast reused there).</li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+    
+      
+      <nav class="md-footer__inner md-grid" aria-label="Footer" >
+        
+          
+          <a href="../../part4/19-stragglers-failures-and-fault-tolerant-collectives/" class="md-footer__link md-footer__link--prev" aria-label="Previous: 19. Stragglers, Failures, and Fault-Tolerant Collectives">
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+            </div>
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Previous
+              </span>
+              <div class="md-ellipsis">
+                19. Stragglers, Failures, and Fault-Tolerant Collectives
+              </div>
+            </div>
+          </a>
+        
+        
+      </nav>
+    
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      Copyright &copy; 2026 Oluwaseyi Awoga
+    </div>
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.instant", "navigation.tracking", "navigation.sections", "navigation.expand", "navigation.top", "navigation.footer", "toc.follow", "search.suggest", "search.highlight", "content.code.copy", "content.code.annotate"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>
