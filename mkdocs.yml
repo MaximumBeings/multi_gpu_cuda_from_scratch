@@ -85,6 +85,7 @@ nav:
   - "Part 5 -- Scaling Beyond One Node":
       - "20. MPI From Scratch, Then CUDA-Aware MPI: Scaling Beyond One Node": part5/20-mpi-from-scratch-then-cuda-aware-mpi-scaling-beyond-one-node.md
       - "21. GPUDirect RDMA: Bypassing the Host Entirely": part5/21-gpudirect-rdma-bypassing-the-host-entirely.md
+      - "22. NVSHMEM and GPU-Initiated Communication": part5/22-nvshmem-and-gpu-initiated-communication.md
 
 extra:
   social: []
