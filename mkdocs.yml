@@ -109,6 +109,7 @@ nav:
   - "Appendices":
       - "A. Installation and Setup": appendix/a-installation-and-setup.md
       - "B. Practice Quiz": appendix/b-practice-quiz.md
+      - "C. NCCL and NVSHMEM: The Standard Libraries You Get for Free": appendix/c-nccl-and-nvshmem.md
 
 extra:
   social: []
