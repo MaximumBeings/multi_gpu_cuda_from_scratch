@@ -1,0 +1,2109 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="From Peer-to-Peer Memory to Distributed Training Across the Cluster">
+      
+      
+        <meta name="author" content="Oluwaseyi Awoga">
+      
+      
+      
+        <link rel="prev" href="../21-gpudirect-rdma-bypassing-the-host-entirely/">
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+    
+    
+      
+        <title>22. NVSHMEM and GPU-Initiated Communication - Multi-GPU Programming in CUDA C++ -- Under Development</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#chapter-22-nvshmem-and-gpu-initiated-communication" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="Multi-GPU Programming in CUDA C++ -- Under Development" class="md-header__button md-logo" aria-label="Multi-GPU Programming in CUDA C++ -- Under Development" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 19h1a1 1 0 0 1 1 1h7v2h-7a1 1 0 0 1-1 1h-4a1 1 0 0 1-1-1H2v-2h7a1 1 0 0 1 1-1h1v-2H4a1 1 0 0 1-1-1v-4a1 1 0 0 1 1-1h16a1 1 0 0 1 1 1v4a1 1 0 0 1-1 1h-7zM4 3h16a1 1 0 0 1 1 1v4a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1m5 4h1V5H9zm0 8h1v-2H9zM5 5v2h2V5zm0 8v2h2v-2z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Multi-GPU Programming in CUDA C++ -- Under Development
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              22. NVSHMEM and GPU-Initiated Communication
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m17.75 4.09-2.53 1.94.91 3.06-2.63-1.81-2.63 1.81.91-3.06-2.53-1.94L12.44 4l1.06-3 1.06 3zm3.5 6.91-1.64 1.25.59 1.98-1.7-1.17-1.7 1.17.59-1.98L15.75 11l2.06-.05L18.5 9l.69 1.95zm-2.28 4.95c.83-.08 1.72 1.1 1.19 1.85-.32.45-.66.87-1.08 1.27C15.17 23 8.84 23 4.94 19.07c-3.91-3.9-3.91-10.24 0-14.14.4-.4.82-.76 1.27-1.08.75-.53 1.93.36 1.85 1.19-.27 2.86.69 5.83 2.89 8.02a9.96 9.96 0 0 0 8.02 2.89m-1.64 2.02a12.08 12.08 0 0 1-7.8-3.47c-2.17-2.19-3.33-5-3.49-7.82-2.81 3.14-2.7 7.96.31 10.98 3.02 3.01 7.84 3.12 10.98.31"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 7a5 5 0 0 1 5 5 5 5 0 0 1-5 5 5 5 0 0 1-5-5 5 5 0 0 1 5-5m0 2a3 3 0 0 0-3 3 3 3 0 0 0 3 3 3 3 0 0 0 3-3 3 3 0 0 0-3-3m0-7 2.39 3.42C13.65 5.15 12.84 5 12 5s-1.65.15-2.39.42zM3.34 7l4.16-.35A7.2 7.2 0 0 0 5.94 8.5c-.44.74-.69 1.5-.83 2.29zm.02 10 1.76-3.77a7.131 7.131 0 0 0 2.38 4.14zM20.65 7l-1.77 3.79a7.02 7.02 0 0 0-2.38-4.15zm-.01 10-4.14.36c.59-.51 1.12-1.14 1.54-1.86.42-.73.69-1.5.83-2.29zM12 22l-2.41-3.44c.74.27 1.55.44 2.41.44.82 0 1.63-.17 2.37-.44z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="Multi-GPU Programming in CUDA C++ -- Under Development" class="md-nav__button md-logo" aria-label="Multi-GPU Programming in CUDA C++ -- Under Development" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 19h1a1 1 0 0 1 1 1h7v2h-7a1 1 0 0 1-1 1h-4a1 1 0 0 1-1-1H2v-2h7a1 1 0 0 1 1-1h1v-2H4a1 1 0 0 1-1-1v-4a1 1 0 0 1 1-1h16a1 1 0 0 1 1 1v4a1 1 0 0 1-1 1h-7zM4 3h16a1 1 0 0 1 1 1v4a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1m5 4h1V5H9zm0 8h1v-2H9zM5 5v2h2V5zm0 8v2h2v-2z"/></svg>
+
+    </a>
+    Multi-GPU Programming in CUDA C++ -- Under Development
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Part 0 -- Why Multi-GPU, and the Hardware Underneath It
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Part 0 -- Why Multi-GPU, and the Hardware Underneath It
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part0/01-why-one-gpu-is-not-enough/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    1. Why One GPU Is Not Enough
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part0/02-multi-gpu-hardware-topology/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    2. Multi-GPU Hardware Topology: PCIe, NVLink, and NVSwitch
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part0/03-the-cuda-multi-gpu-programming-model/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    3. The CUDA Multi-GPU Programming Model: Devices, Contexts, and Streams Across Them
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Part 1 -- Getting Data Between GPUs
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Part 1 -- Getting Data Between GPUs
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part1/04-peer-to-peer-memory-access-and-uva/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    4. Peer-to-Peer Memory Access and Unified Virtual Addressing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part1/05-explicit-transfers-cudamemcpypeer-staged-host-transfers/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    5. Explicit Transfers: cudaMemcpyPeer, Staged Host Transfers, and When Each Wins
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part1/06-streams-events-and-cross-device-synchronization/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    6. Streams, Events, and Cross-Device Synchronization
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part1/07-cuda-inter-process-communication/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    7. CUDA Inter-Process Communication: Sharing Memory and Events Across Processes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Part 2 -- Collective Communication, Built From Scratch
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Part 2 -- Collective Communication, Built From Scratch
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part2/08-broadcast-and-reduce-the-first-two-collectives-by-hand/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    8. Broadcast and Reduce: The First Two Collectives, By Hand
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part2/09-ring-all-reduce-the-algorithm-behind-every-multi-gpu-training-job/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    9. Ring All-Reduce: The Algorithm Behind Every Multi-GPU Training Job
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part2/10-all-gather-reduce-scatter-and-all-to-all/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    10. All-Gather, Reduce-Scatter, and All-to-All
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part2/11-nccl-what-it-actually-does-differently/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    11. NCCL: What It Actually Does Differently From What You Just Built
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Part 3 -- Parallelization Strategies
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Part 3 -- Parallelization Strategies
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part3/12-data-parallelism-replicated-model-sharded-data/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    12. Data Parallelism: Replicated Model, Sharded Data
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part3/13-model-parallelism-when-one-gpu-cant-hold-the-weights/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    13. Model Parallelism: When One GPU Can't Hold the Weights
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part3/14-tensor-parallelism-splitting-a-single-matrix-multiply-across-devices/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    14. Tensor Parallelism: Splitting a Single Matrix Multiply Across Devices
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part3/15-pipeline-parallelism-splitting-layers-across-devices-and-the-bubble-that-costs-you/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    15. Pipeline Parallelism: Splitting Layers Across Devices, and the Bubble That Costs You
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part3/16-domain-decomposition-for-scientific-computing-halo-exchange-and-distributed-stencils/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    16. Domain Decomposition for Scientific Computing: Halo Exchange and Distributed Stencils
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_7" >
+        
+          
+          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Part 4 -- Synchronization, Load Balancing, and Failure
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Part 4 -- Synchronization, Load Balancing, and Failure
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part4/17-barriers-and-global-synchronization-across-devices/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    17. Barriers and Global Synchronization Across Devices
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part4/18-load-balancing-across-heterogeneous-gpus/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    18. Load Balancing Across Heterogeneous GPUs
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part4/19-stragglers-failures-and-fault-tolerant-collectives/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    19. Stragglers, Failures, and Fault-Tolerant Collectives
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_8" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_8" id="__nav_8_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Part 5 -- Scaling Beyond One Node
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_8">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Part 5 -- Scaling Beyond One Node
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../20-mpi-from-scratch-then-cuda-aware-mpi-scaling-beyond-one-node/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    20. MPI From Scratch, Then CUDA-Aware MPI: Scaling Beyond One Node
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../21-gpudirect-rdma-bypassing-the-host-entirely/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    21. GPUDirect RDMA: Bypassing the Host Entirely
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    22. NVSHMEM and GPU-Initiated Communication
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    22. NVSHMEM and GPU-Initiated Communication
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#221-nvshmems-pgas-model-and-the-symmetric-heap" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        22.1 NVSHMEM's PGAS Model and the Symmetric Heap
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="22.1 NVSHMEM&#39;s PGAS Model and the Symmetric Heap">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#intuition" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Intuition
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#background" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Background
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#222-real-multi-pe-nvshmem-via-mpi-bootstrap" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        22.2 Real Multi-PE NVSHMEM via MPI Bootstrap
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="22.2 Real Multi-PE NVSHMEM via MPI Bootstrap">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#intuition_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Intuition
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#background_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Background
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#223-gpu-initiated-communication-a-kernel-that-puts-to-a-remote-pe-by-itself" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        22.3 GPU-Initiated Communication: A Kernel That Puts to a Remote PE, By Itself
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="22.3 GPU-Initiated Communication: A Kernel That Puts to a Remote PE, By Itself">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#intuition_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Intuition
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#background_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Background
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#chapter-summary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Chapter Summary
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#self-check-questions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Self-Check Questions
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#where-we-go-next" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Where We Go Next
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#worked-solutions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Worked Solutions
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#221-nvshmems-pgas-model-and-the-symmetric-heap" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        22.1 NVSHMEM's PGAS Model and the Symmetric Heap
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="22.1 NVSHMEM&#39;s PGAS Model and the Symmetric Heap">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#intuition" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Intuition
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#background" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Background
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#222-real-multi-pe-nvshmem-via-mpi-bootstrap" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        22.2 Real Multi-PE NVSHMEM via MPI Bootstrap
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="22.2 Real Multi-PE NVSHMEM via MPI Bootstrap">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#intuition_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Intuition
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#background_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Background
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#223-gpu-initiated-communication-a-kernel-that-puts-to-a-remote-pe-by-itself" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        22.3 GPU-Initiated Communication: A Kernel That Puts to a Remote PE, By Itself
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="22.3 GPU-Initiated Communication: A Kernel That Puts to a Remote PE, By Itself">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#intuition_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Intuition
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#background_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Background
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#chapter-summary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Chapter Summary
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#self-check-questions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Self-Check Questions
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#where-we-go-next" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Where We Go Next
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#worked-solutions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Worked Solutions
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+
+<h1 id="chapter-22-nvshmem-and-gpu-initiated-communication">Chapter 22: NVSHMEM and GPU-Initiated Communication<a class="headerlink" href="#chapter-22-nvshmem-and-gpu-initiated-communication" title="Permanent link">&para;</a></h1>
+<p><strong>What you will understand by the end of this chapter:</strong></p>
+<ul>
+<li>What NVSHMEM actually is: a real implementation of OpenSHMEM's partitioned global address space (PGAS) model for GPU clusters, and how its symmetric heap differs from every earlier chapter's own device memory.</li>
+<li>Why NVSHMEM still needs a bootstrap mechanism -- and how it reuses this book's own real MPI infrastructure (Chapter 20) to solve the exact discovery problem Chapter 21 already solved for NCCL.</li>
+<li>What makes NVSHMEM structurally different from every collective this book has built since Chapter 8: a CUDA kernel can call <code>nvshmem_put()</code>/<code>nvshmem_get()</code> directly, from device code, while it is still running -- no host round-trip, no separate collective call enqueued from the CPU.</li>
+<li>How to genuinely install and link against real NVSHMEM in an environment with no GPU, and what actually happens, in real detail, when a real GPU-initiated call is attempted with no device to run it on.</li>
+</ul>
+<p><strong>What you need to know first:</strong></p>
+<ul>
+<li>Chapter 20's real <code>MPI_Init</code>/<code>MPI_Comm_rank</code>/<code>MPI_Comm_size</code> and <code>MPI_Comm</code> handle.</li>
+<li>Chapter 21's real hybrid MPI+NCCL bootstrap (<code>ncclGetUniqueId()</code> + <code>MPI_Bcast()</code> + <code>ncclCommInitRank()</code>) -- NVSHMEM's own bootstrap options mirror this directly.</li>
+<li>Chapter 11's NCCL communicator basics, for contrast: NCCL's calls are host-initiated: the CPU enqueues them.</li>
+</ul>
+<hr />
+<p>Every collective this book has built since Chapter 8 shares one property NVSHMEM breaks: a CPU thread issues the call. <code>ncclAllReduce()</code>, <code>MPI_Send()</code>, Chapter 21's own hybrid bootstrap -- all of them are the host telling the GPU (or another process) what to do next; the GPU itself never decides to communicate. A recent system-level analysis of NVSHMEM states the older model plainly: "NCCL was host-driven: the CPU enqueues collective operations, and the library selects algorithms and schedules." NVSHMEM's own model is different in kind, not just in API surface: "communication and synchronization are launched directly from GPU code rather than through a host-managed control path." This chapter builds that model for real, in three steps: 22.1 gets a genuinely installed NVSHMEM running at all, in the simplest single-process shape it falls back to with no bootstrap; 22.2 reuses this book's own real MPI infrastructure to give NVSHMEM a real multi-process world, exactly as Chapter 21 reused MPI for NCCL; 22.3 writes the one thing no earlier chapter's API could offer -- a CUDA kernel that puts data into a remote PE's memory itself, from inside a running thread -- and reports, in full, what a real GPU-initiated call does when there is genuinely no GPU underneath it.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>Host-initiated (every chapter since Ch8):
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>+--------+     +--------------------+     +------------------+
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>|  CPU   | --&gt; | ncclAllReduce(...) | --&gt; |  GPU executes    |
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>| thread |     | MPI_Send(...)      |     |  what the CPU    |
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>|        |     | Ch21 hybrid boot   |     |  already sent    |
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>+--------+     +--------------------+     +------------------+
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>  The CPU decides every time -- the GPU never decides on its own.
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>
+<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>Device-initiated (this chapter):
+<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>+--------+     +----------------------------+     +----------------------+
+<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>|  CPU   | --&gt; | nvshmemx_collective_       | --&gt; | GPU kernel, still    |
+<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>| thread |     | launch(kernel)             |     | running, issues      |
+<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>+--------+     +----------------------------+     | nvshmem_put(...)     |
+<a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>                                                   | itself -- no host   |
+<a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a>                                                   | round-trip at all   |
+<a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a>                                                   +----------------------+
+</code></pre></div>
+<h2 id="221-nvshmems-pgas-model-and-the-symmetric-heap">22.1 NVSHMEM's PGAS Model and the Symmetric Heap<a class="headerlink" href="#221-nvshmems-pgas-model-and-the-symmetric-heap" title="Permanent link">&para;</a></h2>
+<h3 id="intuition">Intuition<a class="headerlink" href="#intuition" title="Permanent link">&para;</a></h3>
+<p>Every device memory allocation this book has used since Chapter 4 -- <code>cudaMalloc()</code>, peer-accessible or not -- belongs to exactly one device, and any other device that wants to touch it needs a real mechanism (<code>cudaMemcpyPeer()</code>, IPC handles, GPUDirect RDMA) to reach across. NVSHMEM's own memory model is built differently from the start. OpenSHMEM, the real community standard NVSHMEM implements for GPU clusters, "provides a partitioned global address space (PGAS) parallel programming model" -- every participating process (a PE, OpenSHMEM's own term, short for Processing Element) allocates from a real, documented structure called the Symmetric Heap: "NVSHMEM dynamic memory allocation routines (e.g., nvshmem_malloc) allow collective allocation of Symmetric Data Objects on a special memory region called the Symmetric Heap." Every PE calls <code>nvshmem_malloc()</code> together, with the same size, and every PE ends up with an object at the corresponding location in its own copy of that heap -- "symmetric," because the layout is guaranteed to line up across every PE, which is exactly what lets any PE compute where a REMOTE PE's copy of that same object lives, without ever asking that PE first. Before any of that can matter, though, NVSHMEM has to answer the same real question Chapter 20 opened this book's whole multi-process arc with: how many PEs are there, and which one is this process? Without a real answer, there is no symmetric heap to speak of at all -- just one process, alone.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>Every cudaMalloc() since Ch4:               NVSHMEM&#39;s own nvshmem_malloc():
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>+-----------------------+                   +-------------------------------+
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>| Device 0&#39;s own memory |                   | PE 0&#39;s symmetric heap slot X  |
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>| reachable elsewhere   |                   | PE 1&#39;s symmetric heap slot X  |  (same X)
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>| only via              |                   | PE 2&#39;s symmetric heap slot X  |  (same X)
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>| cudaMemcpyPeer/IPC/    |                   | ...                           |
+<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>| GPUDirect RDMA, built  |                   +-------------------------------+
+<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>| explicitly call by    |                   Every PE allocated together, same
+<a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a>| call                  |                   size -- any PE can compute a remote
+<a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a>+-----------------------+                   PE&#39;s address at slot X without ever
+<a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a>                                             asking that PE first.
+</code></pre></div>
+<h3 id="background">Background<a class="headerlink" href="#background" title="Permanent link">&para;</a></h3>
+<p>The code below calls <code>nvshmem_init()</code> with no bootstrap plugin selected at all -- NVSHMEM's own default path when nothing else (a launcher like Hydra or Slurm, or this chapter's own later MPI bootstrap) has told it how to find other processes.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="c1">// Chapter 22: NVSHMEM and GPU-Initiated Communication</span>
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="c1">// 63_nvshmem_init_single_pe.cu</span>
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="c1">//</span>
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="c1">// Every collective this book has built since Chapter 8 was HOST-</span>
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="c1">// initiated: a CPU thread calls ncclAllReduce()/MPI_Send()/etc., and</span>
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a><span class="c1">// that call enqueues work for the GPU to do later. NVSHMEM is built on</span>
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a><span class="c1">// a different model entirely -- OpenSHMEM&#39;s own real definition: &quot;a</span>
+<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a><span class="c1">// community standard, one-sided communication API that provides a</span>
+<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a><span class="c1">// partitioned global address space (PGAS) parallel programming</span>
+<a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a><span class="c1">// model.&quot; Every NVSHMEM process is a PE (Processing Element, PGAS&#39;s</span>
+<a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a><span class="c1">// own term for a rank). nvshmem_malloc() allocates from a real,</span>
+<a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a><span class="c1">// documented structure: &quot;a special memory region called the Symmetric</span>
+<a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a><span class="c1">// Heap,&quot; created so that &quot;Symmetric Data Objects&quot; (same type, size,</span>
+<a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a><span class="c1">// and layout) exist at every PE at once. This section builds the</span>
+<a id="__codelineno-2-15" name="__codelineno-2-15" href="#__codelineno-2-15"></a><span class="c1">// plainest possible real NVSHMEM program: nvshmem_init() with no</span>
+<a id="__codelineno-2-16" name="__codelineno-2-16" href="#__codelineno-2-16"></a><span class="c1">// bootstrap plugin requested at all, genuinely installed via the pip</span>
+<a id="__codelineno-2-17" name="__codelineno-2-17" href="#__codelineno-2-17"></a><span class="c1">// package nvidia-nvshmem-cu12 (which -- unlike the incomplete pip nvcc</span>
+<a id="__codelineno-2-18" name="__codelineno-2-18" href="#__codelineno-2-18"></a><span class="c1">// package Chapter 1&#39;s own toolchain note already warned about --</span>
+<a id="__codelineno-2-19" name="__codelineno-2-19" href="#__codelineno-2-19"></a><span class="c1">// genuinely ships real headers, a real host library, and real device</span>
+<a id="__codelineno-2-20" name="__codelineno-2-20" href="#__codelineno-2-20"></a><span class="c1">// bitcode).</span>
+<a id="__codelineno-2-21" name="__codelineno-2-21" href="#__codelineno-2-21"></a><span class="c1">// Genuinely compiled with a real nvcc against the real installed</span>
+<a id="__codelineno-2-22" name="__codelineno-2-22" href="#__codelineno-2-22"></a><span class="c1">// NVSHMEM 3.7.2.</span>
+<a id="__codelineno-2-23" name="__codelineno-2-23" href="#__codelineno-2-23"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;cstdio&gt;</span>
+<a id="__codelineno-2-24" name="__codelineno-2-24" href="#__codelineno-2-24"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;nvshmem.h&gt;</span>
+<a id="__codelineno-2-25" name="__codelineno-2-25" href="#__codelineno-2-25"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;nvshmemx.h&gt;</span>
+<a id="__codelineno-2-26" name="__codelineno-2-26" href="#__codelineno-2-26"></a>
+<a id="__codelineno-2-27" name="__codelineno-2-27" href="#__codelineno-2-27"></a><span class="kt">int</span><span class="w"> </span><span class="nf">main</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-2-28" name="__codelineno-2-28" href="#__codelineno-2-28"></a><span class="w">    </span><span class="c1">// No bootstrap flags at all -- NVSHMEM&#39;s own default init path.</span>
+<a id="__codelineno-2-29" name="__codelineno-2-29" href="#__codelineno-2-29"></a><span class="w">    </span><span class="c1">// With no launcher (Hydra, Slurm, or this chapter&#39;s own later MPI</span>
+<a id="__codelineno-2-30" name="__codelineno-2-30" href="#__codelineno-2-30"></a><span class="w">    </span><span class="c1">// bootstrap) telling it otherwise, NVSHMEM genuinely falls back to</span>
+<a id="__codelineno-2-31" name="__codelineno-2-31" href="#__codelineno-2-31"></a><span class="w">    </span><span class="c1">// treating this one process as the entire, one-PE world.</span>
+<a id="__codelineno-2-32" name="__codelineno-2-32" href="#__codelineno-2-32"></a><span class="w">    </span><span class="n">nvshmem_init</span><span class="p">();</span>
+<a id="__codelineno-2-33" name="__codelineno-2-33" href="#__codelineno-2-33"></a>
+<a id="__codelineno-2-34" name="__codelineno-2-34" href="#__codelineno-2-34"></a><span class="w">    </span><span class="kt">int</span><span class="w"> </span><span class="n">myPe</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">nvshmem_my_pe</span><span class="p">();</span>
+<a id="__codelineno-2-35" name="__codelineno-2-35" href="#__codelineno-2-35"></a><span class="w">    </span><span class="kt">int</span><span class="w"> </span><span class="n">nPes</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">nvshmem_n_pes</span><span class="p">();</span>
+<a id="__codelineno-2-36" name="__codelineno-2-36" href="#__codelineno-2-36"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;nvshmem_init() returned; my_pe=%d n_pes=%d</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">myPe</span><span class="p">,</span><span class="w"> </span><span class="n">nPes</span><span class="p">);</span>
+<a id="__codelineno-2-37" name="__codelineno-2-37" href="#__codelineno-2-37"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;No bootstrap plugin was requested, so NVSHMEM had no way to &quot;</span>
+<a id="__codelineno-2-38" name="__codelineno-2-38" href="#__codelineno-2-38"></a><span class="w">           </span><span class="s">&quot;discover any other real process -- this is NOT the same &quot;</span>
+<a id="__codelineno-2-39" name="__codelineno-2-39" href="#__codelineno-2-39"></a><span class="w">           </span><span class="s">&quot;honest failure this book has shown since Chapter 3 &quot;</span>
+<a id="__codelineno-2-40" name="__codelineno-2-40" href="#__codelineno-2-40"></a><span class="w">           </span><span class="s">&quot;(cudaErrorNoDevice, ncclUnhandledCudaError, etc.). Those &quot;</span>
+<a id="__codelineno-2-41" name="__codelineno-2-41" href="#__codelineno-2-41"></a><span class="w">           </span><span class="s">&quot;calls always at least TRIED to find a device and reported &quot;</span>
+<a id="__codelineno-2-42" name="__codelineno-2-42" href="#__codelineno-2-42"></a><span class="w">           </span><span class="s">&quot;exactly why they couldn&#39;t. nvshmem_init() with no bootstrap &quot;</span>
+<a id="__codelineno-2-43" name="__codelineno-2-43" href="#__codelineno-2-43"></a><span class="w">           </span><span class="s">&quot;never tried to find a peer at all -- n_pes=1 is a correct, &quot;</span>
+<a id="__codelineno-2-44" name="__codelineno-2-44" href="#__codelineno-2-44"></a><span class="w">           </span><span class="s">&quot;honest answer to the question it was actually asked.</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
+<a id="__codelineno-2-45" name="__codelineno-2-45" href="#__codelineno-2-45"></a>
+<a id="__codelineno-2-46" name="__codelineno-2-46" href="#__codelineno-2-46"></a><span class="w">    </span><span class="c1">// nvshmem_malloc() needs a real symmetric heap, which needs a real</span>
+<a id="__codelineno-2-47" name="__codelineno-2-47" href="#__codelineno-2-47"></a><span class="w">    </span><span class="c1">// CUDA context on a real device -- this environment has neither.</span>
+<a id="__codelineno-2-48" name="__codelineno-2-48" href="#__codelineno-2-48"></a><span class="w">    </span><span class="kt">void</span><span class="w"> </span><span class="o">*</span><span class="n">sym</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">nvshmem_malloc</span><span class="p">(</span><span class="k">sizeof</span><span class="p">(</span><span class="kt">int</span><span class="p">));</span>
+<a id="__codelineno-2-49" name="__codelineno-2-49" href="#__codelineno-2-49"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;nvshmem_malloc(sizeof(int)) = %p</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">sym</span><span class="p">);</span>
+<a id="__codelineno-2-50" name="__codelineno-2-50" href="#__codelineno-2-50"></a>
+<a id="__codelineno-2-51" name="__codelineno-2-51" href="#__codelineno-2-51"></a><span class="w">    </span><span class="n">nvshmem_finalize</span><span class="p">();</span>
+<a id="__codelineno-2-52" name="__codelineno-2-52" href="#__codelineno-2-52"></a><span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
+<a id="__codelineno-2-53" name="__codelineno-2-53" href="#__codelineno-2-53"></a><span class="p">}</span>
+</code></pre></div>
+<p>Compiled with <code>nvcc -rdc=true -ccbin g++ -gencode=arch=compute_70,code=sm_70 -I $NVSHMEM_HOME/include 63_nvshmem_init_single_pe.cu -o 63_nvshmem_init_single_pe -L $LIBDIR -lnvshmem_host -lnvshmem_device -lcuda</code> (real dynamic linking against the real installed NVSHMEM, following NVIDIA's own install guide's exact command shape) and genuinely run with <code>LD_LIBRARY_PATH</code> pointed at the real installed library directory. Locked output:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>/dvs/p4/build/sw/rel/gpgpu/toolkit/r12.9/main_nvshmem/src/host/init/init.cu:580 Cuda failure. Status = CUDA_ERROR_NO_DEVICE. Description = no CUDA-capable device is detectednvshmem_init() returned; my_pe=0 n_pes=1
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>No bootstrap plugin was requested, so NVSHMEM had no way to discover any other real process -- this is NOT the same honest failure this book has shown since Chapter 3 (cudaErrorNoDevice, ncclUnhandledCudaError, etc.). Those calls always at least TRIED to find a device and reported exactly why they couldn&#39;t. nvshmem_init() with no bootstrap never tried to find a peer at all -- n_pes=1 is a correct, honest answer to the question it was actually asked.
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>/dvs/p4/build/sw/rel/gpgpu/toolkit/r12.9/main_nvshmem/src/host/init/init.cu:580 Cuda failure. Status = CUDA_ERROR_NO_DEVICE. Description = no CUDA-capable device is detectednvshmem_malloc(sizeof(int)) = (nil)
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>/dvs/p4/build/sw/rel/gpgpu/toolkit/r12.9/main_nvshmem/src/device/init/init_host.cu:nvshmemi_finalize:187: Unable to properly unregister device state.
+</code></pre></div>
+<div class="admonition warning">
+<p class="admonition-title">[COMMON TRAP] Treating n_pes=1 as an error, or as the same kind of honest failure every earlier chapter has shown</p>
+<p>Every device-touching call since Chapter 3 -- <code>cudaGetDeviceCount()</code>, <code>ncclCommInitAll()</code>, <code>MPIX_Query_cuda_support()</code> -- genuinely tried to find something real (a device, a peer, a capability) and reported, honestly, that it couldn't. <code>nvshmem_init()</code> called with no bootstrap plugin is a different case entirely: it was never ASKED to discover other processes, so <code>n_pes=1</code> is not a degraded or failed answer -- it is the exactly correct answer to a single-process program that requested nothing more. Reading <code>n_pes=1</code> as "NVSHMEM is broken here" would miss the actual lesson of this section, which Section 22.2 answers directly: NVSHMEM's own real multi-PE behavior needs a bootstrap plugin explicitly requested, the same way Chapter 21's own NCCL communicator needed an explicit <code>ncclUniqueId</code> distributed by MPI rather than assuming one process could see every rank on its own.</p>
+</div>
+<h2 id="222-real-multi-pe-nvshmem-via-mpi-bootstrap">22.2 Real Multi-PE NVSHMEM via MPI Bootstrap<a class="headerlink" href="#222-real-multi-pe-nvshmem-via-mpi-bootstrap" title="Permanent link">&para;</a></h2>
+<h3 id="intuition_1">Intuition<a class="headerlink" href="#intuition_1" title="Permanent link">&para;</a></h3>
+<p>Section 22.1's single-PE fallback is what NVSHMEM does when nothing tells it how to find other processes. Chapter 20 already solved that exact discovery problem once, for MPI itself; Chapter 21 reused MPI a second time, to bootstrap NCCL's own <code>ncclUniqueId</code>. NVSHMEM ships the same real answer as a first-class option: <code>NVSHMEMX_INIT_WITH_MPI_COMM</code>, set via <code>nvshmemx_set_attr_mpi_comm_args()</code>, hands NVSHMEM a real <code>MPI_Comm</code> this book has already built genuine multi-process programs on top of. (NVSHMEM also ships a second, structurally different bootstrap path, <code>NVSHMEMX_INIT_WITH_UNIQUEID</code> -- a uniqueid generated once and distributed to every PE, exactly like Chapter 21's own <code>ncclUniqueId</code> + <code>MPI_Bcast()</code> pattern; this section uses the MPI path because MPI is already present and simpler to reach for.) Once NVSHMEM has a real <code>MPI_Comm</code> to query, <code>nvshmem_my_pe()</code> and <code>nvshmem_n_pes()</code> stop answering "1" and start answering with the real number of processes MPI itself discovered -- the same real multi-process world every earlier Part 5 chapter has built, now handed to a third real library.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>Section 22.1 (no bootstrap):
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>+----------------+     +------------------+
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>| nvshmem_init() | --&gt; | n_pes=1, my_pe=0 |  (correct -- but the whole real
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>+----------------+     +------------------+   world really is just 1 process)
+<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>
+<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>Section 22.2 (MPI bootstrap):
+<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a>+--------------------------------+
+<a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a>| mpirun -np 2 ./program         |   (Ch20&#39;s own launch)
+<a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a>+----------------+---------------+
+<a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a>                 |
+<a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a>       +---------+---------+
+<a id="__codelineno-4-12" name="__codelineno-4-12" href="#__codelineno-4-12"></a>       |                   |
+<a id="__codelineno-4-13" name="__codelineno-4-13" href="#__codelineno-4-13"></a>   rank 0 (MPI)         rank 1 (MPI)
+<a id="__codelineno-4-14" name="__codelineno-4-14" href="#__codelineno-4-14"></a>       |                   |
+<a id="__codelineno-4-15" name="__codelineno-4-15" href="#__codelineno-4-15"></a>   nvshmemx_set_attr_mpi_comm_args(&amp;MPI_COMM_WORLD)
+<a id="__codelineno-4-16" name="__codelineno-4-16" href="#__codelineno-4-16"></a>       |                   |
+<a id="__codelineno-4-17" name="__codelineno-4-17" href="#__codelineno-4-17"></a>   nvshmemx_init_attr(NVSHMEMX_INIT_WITH_MPI_COMM)
+<a id="__codelineno-4-18" name="__codelineno-4-18" href="#__codelineno-4-18"></a>       |                   |
+<a id="__codelineno-4-19" name="__codelineno-4-19" href="#__codelineno-4-19"></a>   my_pe=0, n_pes=2     my_pe=1, n_pes=2
+</code></pre></div>
+<h3 id="background_1">Background<a class="headerlink" href="#background_1" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="c1">// Chapter 22: NVSHMEM and GPU-Initiated Communication</span>
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="c1">// 64_nvshmem_mpi_bootstrap.cu</span>
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="c1">//</span>
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="c1">// File 63&#39;s own single-PE fallback is what happens when NVSHMEM has no</span>
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a><span class="c1">// way to discover other processes. Chapter 20/21 already solved</span>
+<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a><span class="c1">// exactly this discovery problem once, for MPI and for NCCL&#39;s own</span>
+<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a><span class="c1">// bootstrap -- NVSHMEM ships the SAME real answer as a first-class</span>
+<a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a><span class="c1">// option: NVSHMEMX_INIT_WITH_MPI_COMM, set via</span>
+<a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a><span class="c1">// nvshmemx_set_attr_mpi_comm_args(), reuses a real MPI_Comm this book</span>
+<a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a><span class="c1">// has already built real multi-process programs on top of since</span>
+<a id="__codelineno-5-11" name="__codelineno-5-11" href="#__codelineno-5-11"></a><span class="c1">// Chapter 20. (NVSHMEM also ships NVSHMEMX_INIT_WITH_UNIQUEID, a</span>
+<a id="__codelineno-5-12" name="__codelineno-5-12" href="#__codelineno-5-12"></a><span class="c1">// second bootstrap path structurally identical to Chapter 21&#39;s own</span>
+<a id="__codelineno-5-13" name="__codelineno-5-13" href="#__codelineno-5-13"></a><span class="c1">// ncclUniqueId + MPI_Bcast pattern -- not used here, since the MPI</span>
+<a id="__codelineno-5-14" name="__codelineno-5-14" href="#__codelineno-5-14"></a><span class="c1">// path is simpler when MPI is already present.)</span>
+<a id="__codelineno-5-15" name="__codelineno-5-15" href="#__codelineno-5-15"></a><span class="c1">// Genuinely compiled with a real mpicxx (linked against the real</span>
+<a id="__codelineno-5-16" name="__codelineno-5-16" href="#__codelineno-5-16"></a><span class="c1">// installed NVSHMEM 3.7.2, real Open MPI, and real CUDA runtime) and</span>
+<a id="__codelineno-5-17" name="__codelineno-5-17" href="#__codelineno-5-17"></a><span class="c1">// genuinely run with a real mpirun.</span>
+<a id="__codelineno-5-18" name="__codelineno-5-18" href="#__codelineno-5-18"></a><span class="cp">#define OMPI_SKIP_MPICXX</span>
+<a id="__codelineno-5-19" name="__codelineno-5-19" href="#__codelineno-5-19"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;mpi.h&gt;</span>
+<a id="__codelineno-5-20" name="__codelineno-5-20" href="#__codelineno-5-20"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;cstdio&gt;</span>
+<a id="__codelineno-5-21" name="__codelineno-5-21" href="#__codelineno-5-21"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;nvshmem.h&gt;</span>
+<a id="__codelineno-5-22" name="__codelineno-5-22" href="#__codelineno-5-22"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;nvshmemx.h&gt;</span>
+<a id="__codelineno-5-23" name="__codelineno-5-23" href="#__codelineno-5-23"></a>
+<a id="__codelineno-5-24" name="__codelineno-5-24" href="#__codelineno-5-24"></a><span class="kt">int</span><span class="w"> </span><span class="nf">main</span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">argc</span><span class="p">,</span><span class="w"> </span><span class="kt">char</span><span class="o">**</span><span class="w"> </span><span class="n">argv</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-5-25" name="__codelineno-5-25" href="#__codelineno-5-25"></a><span class="w">    </span><span class="n">MPI_Init</span><span class="p">(</span><span class="o">&amp;</span><span class="n">argc</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">argv</span><span class="p">);</span>
+<a id="__codelineno-5-26" name="__codelineno-5-26" href="#__codelineno-5-26"></a><span class="w">    </span><span class="n">MPI_Comm</span><span class="w"> </span><span class="n">mpiComm</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">MPI_COMM_WORLD</span><span class="p">;</span>
+<a id="__codelineno-5-27" name="__codelineno-5-27" href="#__codelineno-5-27"></a>
+<a id="__codelineno-5-28" name="__codelineno-5-28" href="#__codelineno-5-28"></a><span class="w">    </span><span class="n">nvshmemx_init_attr_t</span><span class="w"> </span><span class="n">attr</span><span class="p">;</span>
+<a id="__codelineno-5-29" name="__codelineno-5-29" href="#__codelineno-5-29"></a><span class="w">    </span><span class="n">attr</span><span class="p">.</span><span class="n">mpi_comm</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">&amp;</span><span class="n">mpiComm</span><span class="p">;</span>
+<a id="__codelineno-5-30" name="__codelineno-5-30" href="#__codelineno-5-30"></a><span class="w">    </span><span class="kt">int</span><span class="w"> </span><span class="n">rc</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">nvshmemx_init_attr</span><span class="p">(</span><span class="n">NVSHMEMX_INIT_WITH_MPI_COMM</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">attr</span><span class="p">);</span>
+<a id="__codelineno-5-31" name="__codelineno-5-31" href="#__codelineno-5-31"></a>
+<a id="__codelineno-5-32" name="__codelineno-5-32" href="#__codelineno-5-32"></a><span class="w">    </span><span class="kt">int</span><span class="w"> </span><span class="n">myPe</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">nvshmem_my_pe</span><span class="p">();</span>
+<a id="__codelineno-5-33" name="__codelineno-5-33" href="#__codelineno-5-33"></a><span class="w">    </span><span class="kt">int</span><span class="w"> </span><span class="n">nPes</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">nvshmem_n_pes</span><span class="p">();</span>
+<a id="__codelineno-5-34" name="__codelineno-5-34" href="#__codelineno-5-34"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;PE %d of %d: nvshmemx_init_attr(NVSHMEMX_INIT_WITH_MPI_COMM) rc=%d</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span>
+<a id="__codelineno-5-35" name="__codelineno-5-35" href="#__codelineno-5-35"></a><span class="w">           </span><span class="n">myPe</span><span class="p">,</span><span class="w"> </span><span class="n">nPes</span><span class="p">,</span><span class="w"> </span><span class="n">rc</span><span class="p">);</span>
+<a id="__codelineno-5-36" name="__codelineno-5-36" href="#__codelineno-5-36"></a>
+<a id="__codelineno-5-37" name="__codelineno-5-37" href="#__codelineno-5-37"></a><span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">myPe</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="mi">0</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-5-38" name="__codelineno-5-38" href="#__codelineno-5-38"></a><span class="w">        </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;</span><span class="se">\n</span><span class="s">Compare this n_pes=%d to file 63&#39;s own n_pes=1: the ONLY &quot;</span>
+<a id="__codelineno-5-39" name="__codelineno-5-39" href="#__codelineno-5-39"></a><span class="w">               </span><span class="s">&quot;difference between these two files is which bootstrap path &quot;</span>
+<a id="__codelineno-5-40" name="__codelineno-5-40" href="#__codelineno-5-40"></a><span class="w">               </span><span class="s">&quot;was requested. Real MPI (Chapter 20&#39;s own MPI_Comm_rank()/&quot;</span>
+<a id="__codelineno-5-41" name="__codelineno-5-41" href="#__codelineno-5-41"></a><span class="w">               </span><span class="s">&quot;MPI_Comm_size() underneath this call) genuinely discovered &quot;</span>
+<a id="__codelineno-5-42" name="__codelineno-5-42" href="#__codelineno-5-42"></a><span class="w">               </span><span class="s">&quot;%d real processes and handed that world to NVSHMEM -- the &quot;</span>
+<a id="__codelineno-5-43" name="__codelineno-5-43" href="#__codelineno-5-43"></a><span class="w">               </span><span class="s">&quot;exact same discovery problem Chapter 21&#39;s own hybrid &quot;</span>
+<a id="__codelineno-5-44" name="__codelineno-5-44" href="#__codelineno-5-44"></a><span class="w">               </span><span class="s">&quot;bootstrap solved for NCCL, now solved for NVSHMEM instead.</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span>
+<a id="__codelineno-5-45" name="__codelineno-5-45" href="#__codelineno-5-45"></a><span class="w">               </span><span class="n">nPes</span><span class="p">,</span><span class="w"> </span><span class="n">nPes</span><span class="p">);</span>
+<a id="__codelineno-5-46" name="__codelineno-5-46" href="#__codelineno-5-46"></a><span class="w">    </span><span class="p">}</span>
+<a id="__codelineno-5-47" name="__codelineno-5-47" href="#__codelineno-5-47"></a>
+<a id="__codelineno-5-48" name="__codelineno-5-48" href="#__codelineno-5-48"></a><span class="w">    </span><span class="kt">void</span><span class="w"> </span><span class="o">*</span><span class="n">sym</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">nvshmem_malloc</span><span class="p">(</span><span class="k">sizeof</span><span class="p">(</span><span class="kt">int</span><span class="p">));</span>
+<a id="__codelineno-5-49" name="__codelineno-5-49" href="#__codelineno-5-49"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;PE %d: nvshmem_malloc(sizeof(int)) = %p (honestly NULL -- no &quot;</span>
+<a id="__codelineno-5-50" name="__codelineno-5-50" href="#__codelineno-5-50"></a><span class="w">           </span><span class="s">&quot;real device to host a symmetric heap on)</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">myPe</span><span class="p">,</span><span class="w"> </span><span class="n">sym</span><span class="p">);</span>
+<a id="__codelineno-5-51" name="__codelineno-5-51" href="#__codelineno-5-51"></a>
+<a id="__codelineno-5-52" name="__codelineno-5-52" href="#__codelineno-5-52"></a><span class="w">    </span><span class="n">nvshmem_finalize</span><span class="p">();</span>
+<a id="__codelineno-5-53" name="__codelineno-5-53" href="#__codelineno-5-53"></a><span class="w">    </span><span class="n">MPI_Finalize</span><span class="p">();</span>
+<a id="__codelineno-5-54" name="__codelineno-5-54" href="#__codelineno-5-54"></a><span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
+<a id="__codelineno-5-55" name="__codelineno-5-55" href="#__codelineno-5-55"></a><span class="p">}</span>
+</code></pre></div>
+<p>Compiled with <code>nvcc -rdc=true -ccbin mpicxx -gencode=arch=compute_70,code=sm_70 -I $NVSHMEM_HOME/include 64_nvshmem_mpi_bootstrap.cu -o 64_nvshmem_mpi_bootstrap -L $LIBDIR -lnvshmem_host -lnvshmem_device -lcuda -lmpi</code> (the same real <code>mpicxx</code>-as-host-compiler trick Chapter 20/21 already established, now driving <code>nvcc</code> itself rather than the other way around) and genuinely run with <code>mpirun --allow-run-as-root --oversubscribe -np 2 ./64_nvshmem_mpi_bootstrap</code>. Locked output:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>/dvs/p4/build/sw/rel/gpgpu/toolkit/r12.9/main_nvshmem/src/host/init/init.cu:580 Cuda failure. Status = CUDA_ERROR_NO_DEVICE. Description = no CUDA-capable device is detectedPE 0 of 2: nvshmemx_init_attr(NVSHMEMX_INIT_WITH_MPI_COMM) rc=0
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>Compare this n_pes=2 to file 63&#39;s own n_pes=1: the ONLY difference between these two files is which bootstrap path was requested. Real MPI (Chapter 20&#39;s own MPI_Comm_rank()/MPI_Comm_size() underneath this call) genuinely discovered 2 real processes and handed that world to NVSHMEM -- the exact same discovery problem Chapter 21&#39;s own hybrid bootstrap solved for NCCL, now solved for NVSHMEM instead.
+<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>/dvs/p4/build/sw/rel/gpgpu/toolkit/r12.9/main_nvshmem/src/host/init/init.cu:580 Cuda failure. Status = CUDA_ERROR_NO_DEVICE. Description = no CUDA-capable device is detectedPE 1 of 2: nvshmemx_init_attr(NVSHMEMX_INIT_WITH_MPI_COMM) rc=0
+<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>/dvs/p4/build/sw/rel/gpgpu/toolkit/r12.9/main_nvshmem/src/host/init/init.cu:580 Cuda failure. Status = CUDA_ERROR_NO_DEVICE. Description = no CUDA-capable device is detectedPE 0: nvshmem_malloc(sizeof(int)) = (nil) (honestly NULL -- no real device to host a symmetric heap on)
+<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a>/dvs/p4/build/sw/rel/gpgpu/toolkit/r12.9/main_nvshmem/src/host/init/init.cu:580 Cuda failure. Status = CUDA_ERROR_NO_DEVICE. Description = no CUDA-capable device is detectedPE 1: nvshmem_malloc(sizeof(int)) = (nil) (honestly NULL -- no real device to host a symmetric heap on)
+<a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a>/dvs/p4/build/sw/rel/gpgpu/toolkit/r12.9/main_nvshmem/src/device/init/init_host.cu:nvshmemi_finalize:187: Unable to properly unregister device state.
+<a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a>/dvs/p4/build/sw/rel/gpgpu/toolkit/r12.9/main_nvshmem/src/device/init/init_host.cu:nvshmemi_finalize:187: Unable to properly unregister device state.
+</code></pre></div>
+<div class="admonition warning">
+<p class="admonition-title">[COMMON TRAP] Assuming nvshmemx_init_attr()'s rc=0 means the symmetric heap is usable</p>
+<p><code>rc=0</code> from <code>nvshmemx_init_attr()</code> reports only that NVSHMEM's OWN bootstrap step succeeded -- MPI genuinely discovered 2 processes and NVSHMEM genuinely accepted that world. It says nothing about whether the underlying CUDA context that the symmetric heap depends on is usable, and this section's own locked output proves the gap directly: <code>rc=0</code> on both PEs, immediately followed by <code>nvshmem_malloc()</code> honestly returning <code>NULL</code> on both. A real program that checks only <code>nvshmemx_init_attr()</code>'s return value and assumes <code>nvshmem_malloc()</code> will therefore succeed is checking the wrong layer -- bootstrap success and symmetric-heap availability are two separate real facts, exactly the same kind of two-layer gap Chapter 21 named between <code>cudaDevAttrGPUDirectRDMASupported</code> (device capability) and PCIe topology (whether that capability is actually fast).</p>
+</div>
+<h2 id="223-gpu-initiated-communication-a-kernel-that-puts-to-a-remote-pe-by-itself">22.3 GPU-Initiated Communication: A Kernel That Puts to a Remote PE, By Itself<a class="headerlink" href="#223-gpu-initiated-communication-a-kernel-that-puts-to-a-remote-pe-by-itself" title="Permanent link">&para;</a></h2>
+<h3 id="intuition_2">Intuition<a class="headerlink" href="#intuition_2" title="Permanent link">&para;</a></h3>
+<p>Sections 22.1 and 22.2 only ever called NVSHMEM from the host -- <code>nvshmem_init()</code>, <code>nvshmem_malloc()</code>, <code>nvshmem_finalize()</code>. Every one of those calls could, in principle, be a slightly stranger <code>cudaMalloc()</code>. This section builds the one capability no earlier chapter's API could offer at all, host or device: a CUDA kernel that issues a PUT to another PE's memory itself, from device code, while that thread is still executing. NVSHMEM's own documentation is direct about this: "Device-side APIs can be called by CUDA kernel threads to efficiently access locations in symmetric memory through one-sided read (get), write (put), and atomic update API calls." A plain <code>&lt;&lt;&lt;&gt;&gt;&gt;</code> launch is not enough for a kernel that will call NVSHMEM's own synchronizing device APIs -- <code>nvshmemx_collective_launch()</code> exists specifically to coordinate with NVSHMEM's internal state before handing control to the GPU, the real reason this section's own kernel is launched through it rather than through the syntax every earlier chapter has used since Chapter 3.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>Every kernel launch since Ch3:                 This section&#39;s own launch:
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>+----------------------------+                 +----------------------------------+
+<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a>| plain CUDA launch syntax   |                 | nvshmemx_collective_launch(       |
+<a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a>| (triple angle-bracket      |                 |   (const void*)putKernel, grid,   |
+<a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a>| launch), no coordination   |                 |   block, args, sharedMem, stream) |
+<a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a>| with any communication     |                 +----------------------------------+
+<a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a>| library at all             |                 -- NVSHMEM&#39;s own launch path, required
+<a id="__codelineno-7-9" name="__codelineno-7-9" href="#__codelineno-7-9"></a>+----------------------------+                    because the kernel body calls a real
+<a id="__codelineno-7-10" name="__codelineno-7-10" href="#__codelineno-7-10"></a>                                                   device-side NVSHMEM API (nvshmem_int_p)
+</code></pre></div>
+<h3 id="background_2">Background<a class="headerlink" href="#background_2" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="c1">// Chapter 22: NVSHMEM and GPU-Initiated Communication</span>
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a><span class="c1">// 65_gpu_initiated_put.cu</span>
+<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a><span class="c1">//</span>
+<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a><span class="c1">// Files 63-64 only ever called NVSHMEM from the HOST -- init, malloc,</span>
+<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a><span class="c1">// finalize. This section builds the one thing no earlier chapter&#39;s</span>
+<a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a><span class="c1">// API could offer at all: a CUDA kernel that issues a PUT to another</span>
+<a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a><span class="c1">// PE&#39;s memory ITSELF, from device code, while that thread is still</span>
+<a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a><span class="c1">// running. NVSHMEM&#39;s own documentation states this plainly: &quot;Device-</span>
+<a id="__codelineno-8-9" name="__codelineno-8-9" href="#__codelineno-8-9"></a><span class="c1">// side APIs can be called by CUDA kernel threads to efficiently</span>
+<a id="__codelineno-8-10" name="__codelineno-8-10" href="#__codelineno-8-10"></a><span class="c1">// access locations in symmetric memory through one-sided read (get),</span>
+<a id="__codelineno-8-11" name="__codelineno-8-11" href="#__codelineno-8-11"></a><span class="c1">// write (put), and atomic update API calls.&quot; A plain &lt;&lt;&lt;&gt;&gt;&gt; launch</span>
+<a id="__codelineno-8-12" name="__codelineno-8-12" href="#__codelineno-8-12"></a><span class="c1">// cannot be used for a kernel that calls NVSHMEM&#39;s own synchronizing</span>
+<a id="__codelineno-8-13" name="__codelineno-8-13" href="#__codelineno-8-13"></a><span class="c1">// operations -- nvshmemx_collective_launch() exists specifically to</span>
+<a id="__codelineno-8-14" name="__codelineno-8-14" href="#__codelineno-8-14"></a><span class="c1">// launch a kernel that will use them, coordinating with NVSHMEM&#39;s own</span>
+<a id="__codelineno-8-15" name="__codelineno-8-15" href="#__codelineno-8-15"></a><span class="c1">// internal state before handing control to the GPU.</span>
+<a id="__codelineno-8-16" name="__codelineno-8-16" href="#__codelineno-8-16"></a><span class="c1">// Genuinely compiled with a real mpicxx (linked against the real</span>
+<a id="__codelineno-8-17" name="__codelineno-8-17" href="#__codelineno-8-17"></a><span class="c1">// installed NVSHMEM 3.7.2, real Open MPI, and real CUDA runtime) and</span>
+<a id="__codelineno-8-18" name="__codelineno-8-18" href="#__codelineno-8-18"></a><span class="c1">// genuinely run with a real mpirun.</span>
+<a id="__codelineno-8-19" name="__codelineno-8-19" href="#__codelineno-8-19"></a><span class="cp">#define OMPI_SKIP_MPICXX</span>
+<a id="__codelineno-8-20" name="__codelineno-8-20" href="#__codelineno-8-20"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;mpi.h&gt;</span>
+<a id="__codelineno-8-21" name="__codelineno-8-21" href="#__codelineno-8-21"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;cstdio&gt;</span>
+<a id="__codelineno-8-22" name="__codelineno-8-22" href="#__codelineno-8-22"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;nvshmem.h&gt;</span>
+<a id="__codelineno-8-23" name="__codelineno-8-23" href="#__codelineno-8-23"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;nvshmemx.h&gt;</span>
+<a id="__codelineno-8-24" name="__codelineno-8-24" href="#__codelineno-8-24"></a>
+<a id="__codelineno-8-25" name="__codelineno-8-25" href="#__codelineno-8-25"></a><span class="n">__global__</span><span class="w"> </span><span class="kt">void</span><span class="w"> </span><span class="n">putKernel</span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="o">*</span><span class="n">dest</span><span class="p">,</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">val</span><span class="p">,</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">targetPe</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-8-26" name="__codelineno-8-26" href="#__codelineno-8-26"></a><span class="w">    </span><span class="c1">// GPU-initiated communication: issued by a thread that is still</span>
+<a id="__codelineno-8-27" name="__codelineno-8-27" href="#__codelineno-8-27"></a><span class="w">    </span><span class="c1">// running, no host round-trip at all -- the one call this entire</span>
+<a id="__codelineno-8-28" name="__codelineno-8-28" href="#__codelineno-8-28"></a><span class="w">    </span><span class="c1">// book has never been able to build before this chapter.</span>
+<a id="__codelineno-8-29" name="__codelineno-8-29" href="#__codelineno-8-29"></a><span class="w">    </span><span class="n">nvshmem_int_p</span><span class="p">(</span><span class="n">dest</span><span class="p">,</span><span class="w"> </span><span class="n">val</span><span class="p">,</span><span class="w"> </span><span class="n">targetPe</span><span class="p">);</span>
+<a id="__codelineno-8-30" name="__codelineno-8-30" href="#__codelineno-8-30"></a><span class="p">}</span>
+<a id="__codelineno-8-31" name="__codelineno-8-31" href="#__codelineno-8-31"></a>
+<a id="__codelineno-8-32" name="__codelineno-8-32" href="#__codelineno-8-32"></a><span class="kt">int</span><span class="w"> </span><span class="n">main</span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">argc</span><span class="p">,</span><span class="w"> </span><span class="kt">char</span><span class="o">**</span><span class="w"> </span><span class="n">argv</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-8-33" name="__codelineno-8-33" href="#__codelineno-8-33"></a><span class="w">    </span><span class="n">MPI_Init</span><span class="p">(</span><span class="o">&amp;</span><span class="n">argc</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">argv</span><span class="p">);</span>
+<a id="__codelineno-8-34" name="__codelineno-8-34" href="#__codelineno-8-34"></a><span class="w">    </span><span class="n">MPI_Comm</span><span class="w"> </span><span class="n">mpiComm</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">MPI_COMM_WORLD</span><span class="p">;</span>
+<a id="__codelineno-8-35" name="__codelineno-8-35" href="#__codelineno-8-35"></a><span class="w">    </span><span class="n">nvshmemx_init_attr_t</span><span class="w"> </span><span class="n">attr</span><span class="p">;</span>
+<a id="__codelineno-8-36" name="__codelineno-8-36" href="#__codelineno-8-36"></a><span class="w">    </span><span class="n">attr</span><span class="p">.</span><span class="n">mpi_comm</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">&amp;</span><span class="n">mpiComm</span><span class="p">;</span>
+<a id="__codelineno-8-37" name="__codelineno-8-37" href="#__codelineno-8-37"></a><span class="w">    </span><span class="n">nvshmemx_init_attr</span><span class="p">(</span><span class="n">NVSHMEMX_INIT_WITH_MPI_COMM</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">attr</span><span class="p">);</span>
+<a id="__codelineno-8-38" name="__codelineno-8-38" href="#__codelineno-8-38"></a>
+<a id="__codelineno-8-39" name="__codelineno-8-39" href="#__codelineno-8-39"></a><span class="w">    </span><span class="kt">int</span><span class="w"> </span><span class="n">myPe</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">nvshmem_my_pe</span><span class="p">();</span>
+<a id="__codelineno-8-40" name="__codelineno-8-40" href="#__codelineno-8-40"></a><span class="w">    </span><span class="kt">int</span><span class="w"> </span><span class="n">nPes</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">nvshmem_n_pes</span><span class="p">();</span>
+<a id="__codelineno-8-41" name="__codelineno-8-41" href="#__codelineno-8-41"></a><span class="w">    </span><span class="kt">int</span><span class="w"> </span><span class="n">peer</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="n">myPe</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="p">)</span><span class="w"> </span><span class="o">%</span><span class="w"> </span><span class="n">nPes</span><span class="p">;</span>
+<a id="__codelineno-8-42" name="__codelineno-8-42" href="#__codelineno-8-42"></a>
+<a id="__codelineno-8-43" name="__codelineno-8-43" href="#__codelineno-8-43"></a><span class="w">    </span><span class="kt">int</span><span class="w"> </span><span class="o">*</span><span class="n">dest</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="o">*</span><span class="p">)</span><span class="n">nvshmem_malloc</span><span class="p">(</span><span class="k">sizeof</span><span class="p">(</span><span class="kt">int</span><span class="p">));</span>
+<a id="__codelineno-8-44" name="__codelineno-8-44" href="#__codelineno-8-44"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;PE %d of %d: nvshmem_malloc=%p, launching putKernel targeting peer PE %d</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span>
+<a id="__codelineno-8-45" name="__codelineno-8-45" href="#__codelineno-8-45"></a><span class="w">           </span><span class="n">myPe</span><span class="p">,</span><span class="w"> </span><span class="n">nPes</span><span class="p">,</span><span class="w"> </span><span class="p">(</span><span class="kt">void</span><span class="o">*</span><span class="p">)</span><span class="n">dest</span><span class="p">,</span><span class="w"> </span><span class="n">peer</span><span class="p">);</span>
+<a id="__codelineno-8-46" name="__codelineno-8-46" href="#__codelineno-8-46"></a>
+<a id="__codelineno-8-47" name="__codelineno-8-47" href="#__codelineno-8-47"></a><span class="w">    </span><span class="kt">void</span><span class="w"> </span><span class="o">*</span><span class="n">args</span><span class="p">[]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span><span class="o">&amp;</span><span class="n">dest</span><span class="p">,</span><span class="w"> </span><span class="p">(</span><span class="kt">void</span><span class="o">*</span><span class="p">)</span><span class="o">&amp;</span><span class="n">myPe</span><span class="p">,</span><span class="w"> </span><span class="p">(</span><span class="kt">void</span><span class="o">*</span><span class="p">)</span><span class="o">&amp;</span><span class="n">peer</span><span class="p">};</span>
+<a id="__codelineno-8-48" name="__codelineno-8-48" href="#__codelineno-8-48"></a><span class="w">    </span><span class="n">dim3</span><span class="w"> </span><span class="nf">grid</span><span class="p">(</span><span class="mi">1</span><span class="p">),</span><span class="w"> </span><span class="n">block</span><span class="p">(</span><span class="mi">1</span><span class="p">);</span>
+<a id="__codelineno-8-49" name="__codelineno-8-49" href="#__codelineno-8-49"></a><span class="w">    </span><span class="kt">int</span><span class="w"> </span><span class="n">rc</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">nvshmemx_collective_launch</span><span class="p">((</span><span class="k">const</span><span class="w"> </span><span class="kt">void</span><span class="o">*</span><span class="p">)</span><span class="n">putKernel</span><span class="p">,</span><span class="w"> </span><span class="n">grid</span><span class="p">,</span><span class="w"> </span><span class="n">block</span><span class="p">,</span><span class="w"> </span><span class="n">args</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">);</span>
+<a id="__codelineno-8-50" name="__codelineno-8-50" href="#__codelineno-8-50"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;PE %d: nvshmemx_collective_launch() rc=%d (%s)</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span>
+<a id="__codelineno-8-51" name="__codelineno-8-51" href="#__codelineno-8-51"></a><span class="w">           </span><span class="n">myPe</span><span class="p">,</span><span class="w"> </span><span class="n">rc</span><span class="p">,</span><span class="w"> </span><span class="n">nvshmemx_status_string</span><span class="p">(</span><span class="n">rc</span><span class="p">));</span>
+<a id="__codelineno-8-52" name="__codelineno-8-52" href="#__codelineno-8-52"></a>
+<a id="__codelineno-8-53" name="__codelineno-8-53" href="#__codelineno-8-53"></a><span class="w">    </span><span class="n">cudaError_t</span><span class="w"> </span><span class="n">syncErr</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">cudaDeviceSynchronize</span><span class="p">();</span>
+<a id="__codelineno-8-54" name="__codelineno-8-54" href="#__codelineno-8-54"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;PE %d: cudaDeviceSynchronize()=%s</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">myPe</span><span class="p">,</span><span class="w"> </span><span class="n">cudaGetErrorString</span><span class="p">(</span><span class="n">syncErr</span><span class="p">));</span>
+<a id="__codelineno-8-55" name="__codelineno-8-55" href="#__codelineno-8-55"></a>
+<a id="__codelineno-8-56" name="__codelineno-8-56" href="#__codelineno-8-56"></a><span class="w">    </span><span class="n">nvshmem_finalize</span><span class="p">();</span>
+<a id="__codelineno-8-57" name="__codelineno-8-57" href="#__codelineno-8-57"></a><span class="w">    </span><span class="n">MPI_Finalize</span><span class="p">();</span>
+<a id="__codelineno-8-58" name="__codelineno-8-58" href="#__codelineno-8-58"></a><span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
+<a id="__codelineno-8-59" name="__codelineno-8-59" href="#__codelineno-8-59"></a><span class="p">}</span>
+</code></pre></div>
+<p>Compiled the same way as file 64, and genuinely run with <code>mpirun --allow-run-as-root --oversubscribe -np 2 ./65_gpu_initiated_put</code>. Locked output -- this is the deepest real GPU-touching call this entire book has attempted, and it genuinely fails harder than anything in any earlier chapter:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>PE 0 of 2: nvshmem_malloc=(nil), launching putKernel targeting peer PE 1
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>PE 1 of 2: nvshmem_malloc=(nil), launching putKernel targeting peer PE 0
+<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>nvshmem cuda device query failed, exiting
+<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a>nvshmemi_check_state_and_init_d() failedPE 0: nvshmemx_collective_launch() rc=7 (NVSHMEMX_ERROR_INTERNAL)
+<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a>PE 0: cudaDeviceSynchronize()=no CUDA-capable device is detected
+<a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a>/dvs/p4/build/sw/rel/gpgpu/toolkit/r12.9/main_nvshmem/src/device/init/init_host.cu:nvshmemi_finalize:187: Unable to properly unregister device state.
+<a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a>/dvs/p4/build/sw/rel/gpgpu/toolkit/r12.9/main_nvshmem/src/device/init/init_host.cu:nvshmemi_get_device_state_ptrs:111: Unable to access device state. 100
+<a id="__codelineno-9-8" name="__codelineno-9-8" href="#__codelineno-9-8"></a>/dvs/p4/build/sw/rel/gpgpu/toolkit/r12.9/main_nvshmem/src/host/init/init.cu:1474: NULL value Unable to query pointer information.
+<a id="__codelineno-9-9" name="__codelineno-9-9" href="#__codelineno-9-9"></a>/dvs/p4/build/sw/rel/gpgpu/toolkit/r12.9/main_nvshmem/src/host/init/init.cu:nvshmemid_hostlib_finalize:1566: aborting due to error in nvshmem_finalize
+<a id="__codelineno-9-10" name="__codelineno-9-10" href="#__codelineno-9-10"></a>nvshmem cuda device query failed, exiting
+<a id="__codelineno-9-11" name="__codelineno-9-11" href="#__codelineno-9-11"></a>nvshmemi_check_state_and_init_d() failedPE 1: nvshmemx_collective_launch() rc=7 (NVSHMEMX_ERROR_INTERNAL)
+<a id="__codelineno-9-12" name="__codelineno-9-12" href="#__codelineno-9-12"></a>PE 1: cudaDeviceSynchronize()=no CUDA-capable device is detected
+<a id="__codelineno-9-13" name="__codelineno-9-13" href="#__codelineno-9-13"></a>/dvs/p4/build/sw/rel/gpgpu/toolkit/r12.9/main_nvshmem/src/device/init/init_host.cu:nvshmemi_finalize:187: Unable to properly unregister device state.
+<a id="__codelineno-9-14" name="__codelineno-9-14" href="#__codelineno-9-14"></a>/dvs/p4/build/sw/rel/gpgpu/toolkit/r12.9/main_nvshmem/src/device/init/init_host.cu:nvshmemi_get_device_state_ptrs:111: Unable to access device state. 100
+<a id="__codelineno-9-15" name="__codelineno-9-15" href="#__codelineno-9-15"></a>/dvs/p4/build/sw/rel/gpgpu/toolkit/r12.9/main_nvshmem/src/host/init/init.cu:1474: NULL value Unable to query pointer information.
+<a id="__codelineno-9-16" name="__codelineno-9-16" href="#__codelineno-9-16"></a>/dvs/p4/build/sw/rel/gpgpu/toolkit/r12.9/main_nvshmem/src/host/init/init.cu:nvshmemid_hostlib_finalize:1566: aborting due to error in nvshmem_finalize
+</code></pre></div>
+<p><code>mpirun</code> itself then reports the job aborted, with exit code <strong>255</strong> -- unlike every earlier chapter's clean <code>exit 0</code> after an honest error, <code>nvshmemx_collective_launch()</code>'s real internal device-state check (<code>nvshmemi_check_state_and_init_d()</code>) fails outright (<code>rc=7</code>, <code>NVSHMEMX_ERROR_INTERNAL</code>), <code>cudaDeviceSynchronize()</code> separately and honestly reports no device, and even <code>nvshmem_finalize()</code> itself cannot cleanly tear down afterward -- it reports being unable to access device state and unable to query pointer information, then aborts.</p>
+<div class="admonition warning">
+<p class="admonition-title">[COMMON TRAP] Expecting a GPU-initiated call to fail as cleanly as a host-initiated one</p>
+<p>Every host-initiated call this book has made since Chapter 3 -- <code>cudaMalloc()</code>, <code>ncclCommInitAll()</code>, <code>MPI_Send()</code> -- checks for a device (or a peer, or a valid communicator) BEFORE doing anything else, and returns one honest error code if it isn't there. <code>nvshmemx_collective_launch()</code> is asked to do something structurally harder: hand a kernel to a device, coordinate NVSHMEM's own internal per-device state for that launch, and only then let the kernel run. This section's own locked output shows that when the device itself doesn't exist, that coordination step fails first and hard (<code>NVSHMEMX_ERROR_INTERNAL</code>), the standard CUDA error only shows up SEPARATELY when <code>cudaDeviceSynchronize()</code> is called afterward, and <code>nvshmem_finalize()</code> itself -- normally just cleanup -- fails too, because it also needs real device state to tear down. A program that assumes a <code>nvshmemx_collective_launch()</code> failure means "no kernel ran, otherwise everything is fine" is wrong on the last point: the whole library's internal bookkeeping is now compromised, and this book's own real <code>mpirun</code> run above genuinely could not finalize cleanly as a result -- the honest lesson is that GPU-initiated communication concentrates failure into a much sharper, less recoverable moment than every earlier chapter's host-initiated calls ever did.</p>
+</div>
+<h2 id="chapter-summary">Chapter Summary<a class="headerlink" href="#chapter-summary" title="Permanent link">&para;</a></h2>
+<p>This chapter left every earlier chapter's host-initiated communication model behind. Section 22.1 got a genuinely installed real NVSHMEM (via the pip package <code>nvidia-nvshmem-cu12</code>, which -- unlike the incomplete pip <code>nvcc</code> package Chapter 1 warned about -- ships complete real headers, host library, and device bitcode) running in its simplest form: no bootstrap plugin, a correct single-PE world. Section 22.2 reused this book's own real MPI infrastructure (Chapter 20) to give NVSHMEM a real multi-PE world via <code>NVSHMEMX_INIT_WITH_MPI_COMM</code>, the same real discovery problem Chapter 21 already solved for NCCL, now solved for a third library. Section 22.3 built the one genuinely new capability this book has never had before: a CUDA kernel calling <code>nvshmem_int_p()</code> directly from device code, launched through <code>nvshmemx_collective_launch()</code> -- and reported, honestly and in full, that this deepest real GPU-touching call fails harder and less cleanly than any earlier chapter's device-less error, right down to <code>nvshmem_finalize()</code> itself being unable to tear down afterward.</p>
+<h2 id="self-check-questions">Self-Check Questions<a class="headerlink" href="#self-check-questions" title="Permanent link">&para;</a></h2>
+<ol>
+<li>What does "partitioned global address space" mean, and how does NVSHMEM's symmetric heap differ from a plain <code>cudaMalloc()</code> allocation from Chapter 4 onward?</li>
+<li>Section 22.1's <code>nvshmem_init()</code> call with no bootstrap plugin returns <code>n_pes=1</code>. Why is this not the same kind of honest failure as <code>cudaErrorNoDevice</code>?</li>
+<li>Name the two real bootstrap paths NVSHMEM offers that this chapter discusses, and which earlier chapter's own bootstrap pattern each one mirrors.</li>
+<li>In Section 22.2, <code>nvshmemx_init_attr()</code> returns <code>rc=0</code> on both PEs, yet <code>nvshmem_malloc()</code> still returns <code>NULL</code>. What does this prove about what <code>rc=0</code> actually guarantees?</li>
+<li>Why does the kernel in file 65 need to be launched with <code>nvshmemx_collective_launch()</code> instead of the plain <code>&lt;&lt;&lt;&gt;&gt;&gt;</code> syntax every earlier chapter has used?</li>
+<li>Contrast the failure Section 22.3 reports (<code>rc=7</code>, <code>NVSHMEMX_ERROR_INTERNAL</code>, exit 255) with every earlier chapter's own device-less failures (e.g. Chapter 11's <code>ncclUnhandledCudaError</code>, exit 0). What is genuinely different about it?</li>
+<li>What does the quoted contrast between NCCL ("host-driven: the CPU enqueues collective operations") and NVSHMEM ("launched directly from GPU code") actually change about who decides when communication happens?</li>
+<li>Why does <code>nvshmem_finalize()</code> itself fail in Section 22.3's own locked output, when it succeeded cleanly in Sections 22.1 and 22.2?</li>
+</ol>
+<h2 id="where-we-go-next">Where We Go Next<a class="headerlink" href="#where-we-go-next" title="Permanent link">&para;</a></h2>
+<p>Chapter 22 built the one thing every earlier chapter's API genuinely couldn't: communication issued by a still-running kernel, not by the host. Chapter 23 returns to something more familiar in shape -- CUDA graphs, first built single-device in earlier books this series assumes -- and asks what changes when a single graph has to span multiple GPUs and multiple nodes at once: which parts of a graph can legitimately cross a device boundary, and which of this book's own real communication primitives (peer copies, NCCL collectives, MPI calls) can actually be captured as graph nodes rather than issued one at a time.</p>
+<h2 id="worked-solutions">Worked Solutions<a class="headerlink" href="#worked-solutions" title="Permanent link">&para;</a></h2>
+<p><strong>1.</strong> A partitioned global address space means every participating process (PE) contributes memory to one logical address space, even though the underlying memory is physically distributed across separate devices -- any PE can, in principle, name and address any other PE's contribution. NVSHMEM's own symmetric heap is a real implementation of this: every PE calls <code>nvshmem_malloc()</code> together with the same size, so every PE's copy of a given allocation sits at the corresponding offset in its own heap. A plain <code>cudaMalloc()</code> allocation, by contrast, belongs to exactly one device and is not automatically nameable from any other device at all -- reaching it from elsewhere always needed an explicit mechanism this book built one chapter at a time (<code>cudaMemcpyPeer()</code>, IPC handles, GPUDirect RDMA).</p>
+<p><strong>2.</strong> <code>cudaErrorNoDevice</code> is returned by a call that genuinely tried to find a device and honestly reported that none exists. <code>nvshmem_init()</code> with no bootstrap plugin was never asked to find any OTHER process at all -- it was asked to initialize NVSHMEM for whatever world already exists, and with no launcher or bootstrap telling it otherwise, that world is genuinely just the one calling process. <code>n_pes=1</code> is therefore a correct answer to the actual question asked, not a degraded or failed answer to a question about discovering peers.</p>
+<p><strong>3.</strong> <code>NVSHMEMX_INIT_WITH_MPI_COMM</code> (used in this chapter) hands NVSHMEM a real <code>MPI_Comm</code>, mirroring Chapter 20's own real <code>MPI_Init</code>/<code>MPI_Comm_rank</code>/<code>MPI_Comm_size</code> discovery. <code>NVSHMEMX_INIT_WITH_UNIQUEID</code> (mentioned but not used) generates one id and distributes it to every PE, structurally identical to Chapter 21's own <code>ncclGetUniqueId()</code> + <code>MPI_Bcast()</code> + <code>ncclCommInitRank()</code> pattern.</p>
+<p><strong>4.</strong> It proves that bootstrap success and symmetric-heap availability are two separate real facts, checked at two different layers. <code>rc=0</code> only reports that NVSHMEM's own process-discovery step (via MPI) succeeded -- both PEs agreed on a real 2-process world. It says nothing about whether the CUDA context underneath the symmetric heap is usable, and this section's own output shows that gap directly: bootstrap succeeds on both PEs, and the very next call, <code>nvshmem_malloc()</code>, honestly fails on both.</p>
+<p><strong>5.</strong> Because the kernel's body calls <code>nvshmem_int_p()</code>, a real device-side NVSHMEM API that needs NVSHMEM's own internal per-device state to be coordinated before the kernel starts running. A plain <code>&lt;&lt;&lt;&gt;&gt;&gt;</code> launch has no way to perform that coordination; <code>nvshmemx_collective_launch()</code> exists specifically to launch kernels that will call NVSHMEM's own synchronizing device APIs.</p>
+<p><strong>6.</strong> Every earlier chapter's device-less failure was a single honest error code, cleanly returned, with the program going on to exit 0. Section 22.3's failure is structurally different: the internal state check inside <code>nvshmemx_collective_launch()</code> itself fails first (<code>NVSHMEMX_ERROR_INTERNAL</code>), a SEPARATE standard CUDA error shows up only later when <code>cudaDeviceSynchronize()</code> is called, and even <code>nvshmem_finalize()</code> -- ordinary cleanup in every earlier section -- fails too, reporting it cannot access device state or query pointer information, and the whole real <code>mpirun</code> job aborts with a non-zero exit code (255) rather than the clean 0 every earlier chapter ended with.</p>
+<p><strong>7.</strong> It moves the DECISION of when to communicate from the host to the device. In every earlier chapter, a CPU thread decided the exact moment a collective or send call happened, and the GPU simply executed whatever the CPU had already enqueued. With NVSHMEM's device-side APIs, a GPU thread that is still running can decide, on its own, to issue a put or get -- the host's only role was launching the kernel that contains that decision, not making the decision itself.</p>
+<p><strong>8.</strong> Because <code>nvshmem_finalize()</code>'s own cleanup work depends on the SAME per-device internal state that <code>nvshmemx_collective_launch()</code>'s failed check was trying to verify in the first place. In Sections 22.1 and 22.2, that internal state was never exercised by anything beyond <code>nvshmem_malloc()</code>'s own honest <code>NULL</code> return, so finalize's cleanup path, while still logging its own device-less warning, completed. In Section 22.3, the collective-launch attempt left NVSHMEM's internal bookkeeping in a state finalize could not cleanly unwind, and it failed too.</p>
+<hr />
+<p><strong>Sources cited in this chapter:</strong></p>
+<ul>
+<li><a href="https://docs.nvidia.com/nvshmem/archives/nvshmem-101/api/docs/gen/overview.html">Using NVSHMEM (NVSHMEM 1.0 archive)</a> — the real, verified definitions this chapter quotes: OpenSHMEM's own PGAS description ("a community standard, one-sided communication API that provides a partitioned global address space (PGAS) parallel programming model"), the Symmetric Heap definition, and the device-side API description ("Device-side APIs can be called by CUDA kernel threads to efficiently access locations in symmetric memory through one-sided read (get), write (put), and atomic update API calls").</li>
+<li><a href="https://arxiv.org/html/2606.05951v1">Demystifying NVSHMEM: A System-Level Analysis on Symmetric Memory and Device-Initiated Operations in GPU Communication</a> — the real, verified contrast this chapter's intro quotes between NCCL's host-driven model ("NCCL was host-driven: the CPU enqueues collective operations, and the library selects algorithms and schedules") and NVSHMEM's device-initiated model ("communication and synchronization are launched directly from GPU code rather than through a host-managed control path"), and the real symmetric-memory definition used in Section 22.1's own Background.</li>
+<li><code>nvidia-nvshmem-cu12</code> (PyPI package, version 3.7.2) — genuinely installed and used for every code file in this chapter; this exact environment's own installed headers (<code>nvshmem.h</code>, <code>nvshmemx.h</code>, <code>driver_types.h</code>-adjacent NVSHMEM headers under <code>include/host/</code>, <code>include/device/</code>, and <code>include/non_abi/</code>) were grepped directly for real API names, flag values (<code>NVSHMEMX_INIT_WITH_MPI_COMM</code>), and the real <code>nvshmemx_status</code> error enum (<code>NVSHMEMX_ERROR_INTERNAL = 7</code>), per Chapter 21's own established practice of checking installed headers directly rather than trusting a web summary.</li>
+<li><a href="https://docs.nvidia.com/nvshmem/release-notes-install-guide/install-guide/nvshmem-install-proc.html">NVSHMEM Install Guide: Compiling and Linking with nvcc</a> — the real compile-command shape this chapter's own <code>nvcc -rdc=true -ccbin ... -gencode=... -lnvshmem_host -lnvshmem_device</code> commands follow.</li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+    
+      
+      <nav class="md-footer__inner md-grid" aria-label="Footer" >
+        
+          
+          <a href="../21-gpudirect-rdma-bypassing-the-host-entirely/" class="md-footer__link md-footer__link--prev" aria-label="Previous: 21. GPUDirect RDMA: Bypassing the Host Entirely">
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+            </div>
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Previous
+              </span>
+              <div class="md-ellipsis">
+                21. GPUDirect RDMA: Bypassing the Host Entirely
+              </div>
+            </div>
+          </a>
+        
+        
+      </nav>
+    
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      Copyright &copy; 2026 Oluwaseyi Awoga
+    </div>
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.instant", "navigation.tracking", "navigation.sections", "navigation.expand", "navigation.top", "navigation.footer", "toc.follow", "search.suggest", "search.highlight", "content.code.copy", "content.code.annotate"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>
