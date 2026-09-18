@@ -93,6 +93,7 @@ nav:
       - "26. Multi-GPU LLM Inference: Tensor and Pipeline Parallelism in Practice": part6/26-multi-gpu-llm-inference-tensor-and-pipeline-parallelism-in-practice.md
       - "27. N-Body Simulation at Scale": part6/27-n-body-simulation-at-scale.md
       - "28. Distributed Breadth-First Search": part6/28-distributed-breadth-first-search.md
+      - "29. Distributed Jacobi Solver": part6/29-distributed-jacobi-solver.md
 
 extra:
   social: []
