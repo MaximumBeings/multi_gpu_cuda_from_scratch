@@ -94,6 +94,7 @@ nav:
       - "27. N-Body Simulation at Scale": part6/27-n-body-simulation-at-scale.md
       - "28. Distributed Breadth-First Search": part6/28-distributed-breadth-first-search.md
       - "29. Distributed Jacobi Solver": part6/29-distributed-jacobi-solver.md
+      - "30. Multi-GPU Ray Tracing and Rendering": part6/30-multi-gpu-ray-tracing-and-rendering.md
 
 extra:
   social: []
