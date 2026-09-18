@@ -106,6 +106,8 @@ nav:
       - "38. Real-Time Fraud Detection at Payment Scale": part7/38-real-time-fraud-detection-at-payment-scale.md
       - "39. Real-Time Genomics at Scale": part7/39-real-time-genomics-at-scale.md
       - "40. Medical Imaging Reconstruction at Scale": part7/40-medical-imaging-reconstruction-at-scale.md
+  - "Appendices":
+      - "A. Installation and Setup": appendix/a-installation-and-setup.md
 
 extra:
   social: []
