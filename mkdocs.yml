@@ -77,6 +77,7 @@ nav:
       - "13. Model Parallelism: When One GPU Can't Hold the Weights": part3/13-model-parallelism-when-one-gpu-cant-hold-the-weights.md
       - "14. Tensor Parallelism: Splitting a Single Matrix Multiply Across Devices": part3/14-tensor-parallelism-splitting-a-single-matrix-multiply-across-devices.md
       - "15. Pipeline Parallelism: Splitting Layers Across Devices, and the Bubble That Costs You": part3/15-pipeline-parallelism-splitting-layers-across-devices-and-the-bubble-that-costs-you.md
+      - "16. Domain Decomposition for Scientific Computing: Halo Exchange and Distributed Stencils": part3/16-domain-decomposition-for-scientific-computing-halo-exchange-and-distributed-stencils.md
 
 extra:
   social: []
