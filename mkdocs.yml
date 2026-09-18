@@ -87,6 +87,8 @@ nav:
       - "21. GPUDirect RDMA: Bypassing the Host Entirely": part5/21-gpudirect-rdma-bypassing-the-host-entirely.md
       - "22. NVSHMEM and GPU-Initiated Communication": part5/22-nvshmem-and-gpu-initiated-communication.md
       - "23. CUDA Graphs Across Multiple GPUs and Multiple Nodes": part5/23-cuda-graphs-across-multiple-gpus-and-multiple-nodes.md
+  - "Part 6 -- Case Studies":
+      - "24. Multi-GPU Dense Matrix Multiplication at Scale": part6/24-multi-gpu-dense-matrix-multiplication-at-scale.md
 
 extra:
   social: []
