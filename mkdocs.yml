@@ -113,6 +113,7 @@ nav:
       - "D. CUDA Graphs and Cooperative Multi-Device Kernels": appendix/d-cuda-graphs-and-cooperative-multi-device-kernels.md
       - "E. Profiling and Benchmarking Multi-GPU Communication": appendix/e-profiling-and-benchmarking-multi-gpu-communication.md
       - "F. From PyTorch Distributed and DeepSpeed to C++: A Rosetta Stone": appendix/f-pytorch-distributed-and-deepspeed-to-cpp-rosetta-stone.md
+      - "G. Common Failure Modes: Deadlocks, Silent Corruption From Missed Synchronization, and Topology Mismatches": appendix/g-common-failure-modes-deadlocks-silent-corruption-topology-mismatches.md
 
 extra:
   social: []
