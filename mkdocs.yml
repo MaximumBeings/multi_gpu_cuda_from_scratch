@@ -112,6 +112,7 @@ nav:
       - "C. NCCL and NVSHMEM: The Standard Libraries You Get for Free": appendix/c-nccl-and-nvshmem.md
       - "D. CUDA Graphs and Cooperative Multi-Device Kernels": appendix/d-cuda-graphs-and-cooperative-multi-device-kernels.md
       - "E. Profiling and Benchmarking Multi-GPU Communication": appendix/e-profiling-and-benchmarking-multi-gpu-communication.md
+      - "F. From PyTorch Distributed and DeepSpeed to C++: A Rosetta Stone": appendix/f-pytorch-distributed-and-deepspeed-to-cpp-rosetta-stone.md
 
 extra:
   social: []
