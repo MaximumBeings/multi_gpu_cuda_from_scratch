@@ -33,14 +33,15 @@ int main() {
     printf("%-20s %-45s %-10s\n", "ncclAllReduce", "(send, recv, count, type, op, comm, stream)", "Ch9 (ring)");
     printf("%-20s %-45s %-10s\n", "ncclReduceScatter", "(send, recv, recvcount, type, op, comm, stream)", "Ch10 10.2");
     printf("%-20s %-45s %-10s\n", "ncclAllGather", "(send, recv, sendcount, type, comm, stream)", "Ch10 10.1");
-    printf("\nnote: NCCL has no dedicated all-to-all call -- Ch10 10.3's "
-           "own hand-built all-to-all is built the same way real NCCL "
-           "itself builds it (Ch11's own real finding): repeated "
-           "ncclSend()/ncclRecv() calls fused inside ncclGroupStart()/"
-           "ncclGroupEnd(), not one dedicated function. Ch17 built a "
-           "Barrier the same structural way (a throwaway ncclAllReduce), "
-           "because NCCL simply does not ship either as its own named "
-           "primitive.\n\n");
+    printf("\nnote: the installed NCCL (2.18.3) has no dedicated "
+           "all-to-all call (a dedicated ncclAlltoAll() only arrived in "
+           "NCCL 2.28) -- on this version, Ch10 10.3's own hand-built "
+           "all-to-all maps to the recipe NCCL's own documentation gives "
+           "(Ch11's own real finding): repeated ncclSend()/ncclRecv() "
+           "calls fused inside ncclGroupStart()/ncclGroupEnd(). NCCL also "
+           "ships no Barrier; Ch17 worked around that gap differently, "
+           "with a single throwaway ncclAllReduce rather than a group of "
+           "point-to-point calls.\n\n");
 
     printf("=== attempting a genuine ncclCommInitRank() ===\n\n");
     ncclUniqueId id;

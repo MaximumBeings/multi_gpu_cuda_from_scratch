@@ -21,12 +21,13 @@ Imagine finally organizing a toolbox after building five different tools from ra
   |Ch10 10.3 All-to-All        |-->|ncclSend/ncclRecv         |
   +----------------------------+---+--------------------------+
 
-  note: Ch10 10.3's row has no single matching NCCL call --
-  it maps to a PATTERN (repeated ncclSend/ncclRecv fused inside
-  ncclGroupStart()/ncclGroupEnd()), not one named function.
+  note: in the installed NCCL 2.18.3, Ch10 10.3's row has no single
+  matching call -- it maps to a PATTERN (repeated ncclSend/ncclRecv
+  fused inside ncclGroupStart()/ncclGroupEnd()). NCCL 2.28 and later
+  add a dedicated ncclAlltoAll().
 ```
 
-Five of the six rows are a clean one-to-one match: whatever Chapter 8's or Chapter 9's or Chapter 10's hand-built loop over `cudaMemcpyPeerAsync` calls was doing, one real NCCL call now does the same job, dispatched to whichever real interconnect NCCL has actually detected (NVLink, PCIe, or a network fabric) -- a decision the hand-built versions in Chapters 8-10 never had to make, because they always assumed a single fixed topology. The sixth row is the interesting one. Real NCCL, as Chapter 11 already established, ships no `ncclAllToAll()` function at all. Chapter 10's own hand-built all-to-all is not an approximation of some missing NCCL primitive -- it is already built the way NCCL itself builds an all-to-all internally: a loop of paired `ncclSend`/`ncclRecv` calls, all fused inside one `ncclGroupStart()`/`ncclGroupEnd()` bracket so the underlying transport can pipeline them together instead of issuing six separate round trips. That same fused-group pattern is also exactly how Chapter 17 built its own throwaway barrier out of a one-element `ncclAllReduce` -- NCCL simply does not ship a dedicated barrier either, for the identical reason: the group primitive already covers it.
+Five of the six rows are a clean one-to-one match: whatever Chapter 8's or Chapter 9's or Chapter 10's hand-built loop over `cudaMemcpyPeerAsync` calls was doing, one real NCCL call now does the same job, dispatched to whichever real interconnect NCCL has actually detected (NVLink, PCIe, or a network fabric) -- a decision the hand-built versions in Chapters 8-10 never had to make, because they always assumed a single fixed topology. The sixth row is the interesting one, and its answer depends on the NCCL version. The NCCL this book installs and links against (2.18.3), as Chapter 11 established, ships no all-to-all function at all; a dedicated `ncclAlltoAll()` (together with `ncclGather()` and `ncclScatter()`) only arrived in NCCL 2.28, which is why Chapter 17's citation of NCCL's current documentation lists AllToAll among the collectives. On the installed 2.18.3, Chapter 10's own hand-built all-to-all maps onto the recipe NCCL's own documentation gives for that version: a loop of paired `ncclSend`/`ncclRecv` calls, all fused inside one `ncclGroupStart()`/`ncclGroupEnd()` bracket so the underlying transport can pipeline them together instead of issuing six separate round trips. NCCL ships no dedicated barrier either, but Chapter 17 filled that gap a different way: its throwaway barrier is a single one-element `ncclAllReduce` call, not a fused group of point-to-point calls -- Chapter 17 never calls `ncclGroupStart()`/`ncclGroupEnd()` at all.
 
 !!! warning
     A version number and a unique ID cost nothing -- a communicator costs a device. `ncclGetVersion()` and `ncclGetUniqueId()` are pure host-side bookkeeping and will succeed on a laptop with no GPU at all. `ncclCommInitRank()` is different: it genuinely tries to bind the communicator to a physical device, and on a machine with zero physical GPUs it fails every time, the same real, well-documented limitation Chapters 22, 23, and 32 already found for NVSHMEM init and for captured graph launches. Reading a version string back successfully is not evidence that a communicator will initialize.
@@ -69,14 +70,15 @@ int main() {
     printf("%-20s %-45s %-10s\n", "ncclAllReduce", "(send, recv, count, type, op, comm, stream)", "Ch9 (ring)");
     printf("%-20s %-45s %-10s\n", "ncclReduceScatter", "(send, recv, recvcount, type, op, comm, stream)", "Ch10 10.2");
     printf("%-20s %-45s %-10s\n", "ncclAllGather", "(send, recv, sendcount, type, comm, stream)", "Ch10 10.1");
-    printf("\nnote: NCCL has no dedicated all-to-all call -- Ch10 10.3's "
-           "own hand-built all-to-all is built the same way real NCCL "
-           "itself builds it (Ch11's own real finding): repeated "
-           "ncclSend()/ncclRecv() calls fused inside ncclGroupStart()/"
-           "ncclGroupEnd(), not one dedicated function. Ch17 built a "
-           "Barrier the same structural way (a throwaway ncclAllReduce), "
-           "because NCCL simply does not ship either as its own named "
-           "primitive.\n\n");
+    printf("\nnote: the installed NCCL (2.18.3) has no dedicated "
+           "all-to-all call (a dedicated ncclAlltoAll() only arrived in "
+           "NCCL 2.28) -- on this version, Ch10 10.3's own hand-built "
+           "all-to-all maps to the recipe NCCL's own documentation gives "
+           "(Ch11's own real finding): repeated ncclSend()/ncclRecv() "
+           "calls fused inside ncclGroupStart()/ncclGroupEnd(). NCCL also "
+           "ships no Barrier; Ch17 worked around that gap differently, "
+           "with a single throwaway ncclAllReduce rather than a group of "
+           "point-to-point calls.\n\n");
 
     printf("=== attempting a genuine ncclCommInitRank() ===\n\n");
     ncclUniqueId id;
@@ -120,14 +122,14 @@ nvcc -arch=sm_80 126_nccl_collective_reference.cu -o 126_nccl_collective_referen
 
 real installed NCCL version: 2.18.3
 
-NCCL call            signature (sendbuff, recvbuff, ...)          hand-built in
-ncclBroadcast         (send, recv, count, type, root, comm, stream) Ch8 8.1
-ncclReduce            (send, recv, count, type, op, root, comm, stream) Ch8 8.2
-ncclAllReduce         (send, recv, count, type, op, comm, stream) Ch9 (ring)
-ncclReduceScatter     (send, recv, recvcount, type, op, comm, stream) Ch10 10.2
-ncclAllGather         (send, recv, sendcount, type, comm, stream) Ch10 10.1
+NCCL call            signature (sendbuff, recvbuff, ...)           hand-built in
+ncclBroadcast        (send, recv, count, type, root, comm, stream) Ch8 8.1   
+ncclReduce           (send, recv, count, type, op, root, comm, stream) Ch8 8.2   
+ncclAllReduce        (send, recv, count, type, op, comm, stream)   Ch9 (ring)
+ncclReduceScatter    (send, recv, recvcount, type, op, comm, stream) Ch10 10.2 
+ncclAllGather        (send, recv, sendcount, type, comm, stream)   Ch10 10.1 
 
-note: NCCL has no dedicated all-to-all call -- Ch10 10.3's own hand-built all-to-all is built the same way real NCCL itself builds it (Ch11's own real finding): repeated ncclSend()/ncclRecv() calls fused inside ncclGroupStart()/ncclGroupEnd(), not one dedicated function. Ch17 built a Barrier the same structural way (a throwaway ncclAllReduce), because NCCL simply does not ship either as its own named primitive.
+note: the installed NCCL (2.18.3) has no dedicated all-to-all call (a dedicated ncclAlltoAll() only arrived in NCCL 2.28) -- on this version, Ch10 10.3's own hand-built all-to-all maps to the recipe NCCL's own documentation gives (Ch11's own real finding): repeated ncclSend()/ncclRecv() calls fused inside ncclGroupStart()/ncclGroupEnd(). NCCL also ships no Barrier; Ch17 worked around that gap differently, with a single throwaway ncclAllReduce rather than a group of point-to-point calls.
 
 === attempting a genuine ncclCommInitRank() ===
 
@@ -209,8 +211,9 @@ int main() {
 
     printf("Chapter 11's own real recipe, restated as a standalone "
            "reference (this is Chapter 10's own all-to-all, built the "
-           "SAME way Chapter 11 found real NCCL itself builds it -- no "
-           "dedicated ncclAllToAll() call exists):\n\n");
+           "SAME way Chapter 11 found NCCL's own documentation builds it -- "
+           "the installed NCCL 2.18.3 has no dedicated all-to-all call; "
+           "ncclAlltoAll() only arrived in NCCL 2.28):\n\n");
     printf("  ncclGroupStart();\n");
     printf("  for (int peer = 0; peer < nranks; peer++) {\n");
     printf("      ncclSend(sendbuf + peer*chunkSize, chunkSize, type, peer, comm, stream);\n");
@@ -301,7 +304,7 @@ nvcc -arch=sm_80 127_nccl_point_to_point.cu -o 127_nccl_point_to_point -lnccl
 
 real symbols resolved: ncclSend=0x7f2a1c3b4a10 ncclRecv=0x7f2a1c3b4c20 ncclGroupStart=0x7f2a1c3b5030 ncclGroupEnd=0x7f2a1c3b5140
 
-Chapter 11's own real recipe, restated as a standalone reference (this is Chapter 10's own all-to-all, built the SAME way Chapter 11 found real NCCL itself builds it -- no dedicated ncclAllToAll() call exists):
+Chapter 11's own real recipe, restated as a standalone reference (this is Chapter 10's own all-to-all, built the SAME way Chapter 11 found NCCL's own documentation builds it -- the installed NCCL 2.18.3 has no dedicated all-to-all call; ncclAlltoAll() only arrived in NCCL 2.28):
 
   ncclGroupStart();
   for (int peer = 0; peer < nranks; peer++) {
@@ -377,8 +380,8 @@ Every one of these calls is initiated by the PE that issues it, and the remote P
 // nvshmem_int_p() -- a device-initiated, one-sided WRITE into a remote
 // PE's memory. NVSHMEM's own real API is much larger: nvshmem_int_get()
 // (the READ-side counterpart to Ch22's own put), nvshmem_int_atomic_add()
-// (an atomic, race-free remote update -- the NVSHMEM analog of Chapter
-// 9's own atomic-add fallback for a shared accumulator), nvshmem_
+// (an atomic, race-free remote update -- the cross-PE counterpart of a
+// plain CUDA atomicAdd() across threads on one device), nvshmem_
 // barrier_all() (NVSHMEM's own collective synchronization, the same real
 // job Chapter 17's throwaway ncclAllReduce did for NCCL), and NVSHMEM's
 // TEAM abstraction (NVSHMEM_TEAM_WORLD, nvshmem_team_my_pe() -- a named
@@ -387,6 +390,11 @@ Every one of these calls is initiated by the PE that issues it, and the remote P
 // and link, genuinely attempts nvshmem_init(), and replays the logic of
 // a get+atomic-add+barrier sequence on the host.
 //
+// Setup:   NVSHMEM_DIR=$(python3 -c "import nvidia.nvshmem; print(list(nvidia.nvshmem.__path__)[0])")
+//          NVSHMEM_INC=$NVSHMEM_DIR/include
+//          NVSHMEM_LIB=$NVSHMEM_DIR/lib
+//          ln -sf libnvshmem_host.so.3 $NVSHMEM_LIB/libnvshmem_host.so  (the pip wheel
+//          ships only the versioned .so.3 -- see Appendix A, Recipe 5)
 // Compile: nvcc -rdc=true -gencode=arch=compute_70,code=sm_70 -I$NVSHMEM_INC -L$NVSHMEM_LIB 128_nvshmem_api_reference.cu -o 128_nvshmem_api_reference -lnvshmem_host -lnvshmem_device -lcuda
 // Run:     LD_LIBRARY_PATH=$NVSHMEM_LIB ./128_nvshmem_api_reference
 #include <cstdio>
@@ -422,12 +430,13 @@ int main() {
     int nPes = nvshmem_n_pes();
     printf("nvshmem_init() completed; nvshmem_my_pe()=%d, "
            "nvshmem_n_pes()=%d\n", myPe, nPes);
-    if (nPes <= 0) {
-        printf("(nPes<=0 means no bootstrap plugin found a real multi-PE "
-               "world to join -- Chapter 22's own real single-PE fallback, "
-               "not an error, since this file was run directly rather "
-               "than through mpirun with NVSHMEMX_INIT_WITH_MPI_COMM)\n");
-    }
+    printf("(run directly, with no bootstrap plugin requested, NVSHMEM "
+           "reports a world of exactly one PE -- the same n_pes=1 result "
+           "as Chapter 22's File 63. The CUDA_ERROR_NO_DEVICE line NVSHMEM "
+           "prints on stderr during init is its own real device-setup "
+           "failure on this zero-GPU machine: the PE count is answered, "
+           "but no symmetric heap or device state exists, so no real "
+           "get/atomic/barrier can run here.)\n");
 
     printf("\n=== host-side replay: 4 PEs, each fetches its right "
            "neighbor's value (nvshmem_int_get's own real job), then "
@@ -481,9 +490,16 @@ int main() {
 **Compile and run:**
 
 ```bash
+NVSHMEM_DIR=$(python3 -c "import nvidia.nvshmem; print(list(nvidia.nvshmem.__path__)[0])")
+NVSHMEM_INC=$NVSHMEM_DIR/include
+NVSHMEM_LIB=$NVSHMEM_DIR/lib
+ln -sf libnvshmem_host.so.3 $NVSHMEM_LIB/libnvshmem_host.so   # pip wheel ships only the versioned .so.3 (Appendix A, Recipe 5)
+
 nvcc -rdc=true -gencode=arch=compute_70,code=sm_70 -I$NVSHMEM_INC -L$NVSHMEM_LIB 128_nvshmem_api_reference.cu -o 128_nvshmem_api_reference -lnvshmem_host -lnvshmem_device -lcuda
 LD_LIBRARY_PATH=$NVSHMEM_LIB ./128_nvshmem_api_reference
 ```
+
+The two `NVSHMEM_*` variables are the same ones Appendix A's Makefile defines; locating the package through `__path__` rather than `__file__` is explained in Appendix A.2, and the `ln -sf` step is the same one Chapters 22 and 32 use.
 
 **Sample input:** none -- the 4-PE starting values (10, 20, 30, 40) are fixed constants in the source, standing in for whatever each PE's own real computation would have produced.
 
@@ -493,25 +509,23 @@ LD_LIBRARY_PATH=$NVSHMEM_LIB ./128_nvshmem_api_reference
 === Section C.3: NVSHMEM's fuller real API, beyond Chapter 22's own nvshmem_int_p() ===
 
 real symbols resolved:
-  nvshmem_int_get         = 0x7f88a0012c40  (one-sided READ -- the counterpart to Ch22's own nvshmem_int_p WRITE)
-  nvshmem_int_atomic_add  = 0x7f88a0013a90  (atomic remote update -- lets multiple PEs safely combine values into one shared remote location without a separate reduction collective, the same race a plain, unsynchronized shared write would risk on either a single device or across PEs)
-  nvshmem_barrier_all     = 0x7f88a0014f10  (NVSHMEM's own collective sync -- the same real job Ch17's throwaway ncclAllReduce did for NCCL)
-  nvshmem_team_my_pe      = 0x7f88a0015220  (queries this PE's own rank WITHIN a named team -- NVSHMEM_TEAM_WORLD = 0 is the default team containing every PE)
+  nvshmem_int_get         = 0x7f9aa02ec6e0  (one-sided READ -- the counterpart to Ch22's own nvshmem_int_p WRITE)
+  nvshmem_int_atomic_add  = 0x7f9aa030c090  (atomic remote update -- lets multiple PEs safely combine values into one shared remote location without a separate reduction collective, the same race a plain, unsynchronized shared write would risk on either a single device or across PEs)
+  nvshmem_barrier_all     = 0x7f9aa0250070  (NVSHMEM's own collective sync -- the same real job Ch17's throwaway ncclAllReduce did for NCCL)
+  nvshmem_team_my_pe      = 0x7f9aa0335df0  (queries this PE's own rank WITHIN a named team -- NVSHMEM_TEAM_WORLD = 0 is the default team containing every PE)
 
 === attempting a genuine nvshmem_init() ===
 
-WARN: NVSHMEM_BOOTSTRAP setting to default plugin
-WARN: No bootstrap plugin found; single-PE fallback active
-nvshmem_init() completed; nvshmem_my_pe()=0, nvshmem_n_pes()=1
-(nPes<=0 means no bootstrap plugin found a real multi-PE world to join -- Chapter 22's own real single-PE fallback, not an error, since this file was run directly rather than through mpirun with NVSHMEMX_INIT_WITH_MPI_COMM)
+./src/host/init/init.cu:709 Cuda failure. Status = CUDA_ERROR_NO_DEVICE. Description = no CUDA-capable device is detectednvshmem_init() completed; nvshmem_my_pe()=0, nvshmem_n_pes()=1
+(run directly, with no bootstrap plugin requested, NVSHMEM reports a world of exactly one PE -- the same n_pes=1 result as Chapter 22's File 63. The CUDA_ERROR_NO_DEVICE line NVSHMEM prints on stderr during init is its own real device-setup failure on this zero-GPU machine: the PE count is answered, but no symmetric heap or device state exists, so no real get/atomic/barrier can run here.)
 
 === host-side replay: 4 PEs, each fetches its right neighbor's value (nvshmem_int_get's own real job), then every PE atomically adds 1 to PE 0's shared counter (nvshmem_int_atomic_add's own real job), then all PEs barrier (nvshmem_barrier_all's own real job) before reading the final counter ===
 
-PE     own value   fetched (right neighbor)
-0      10           20
-1      20           30
-2      30           40
-3      40           10
+PE     own value    fetched (right neighbor)
+0      10           20                      
+1      20           30                      
+2      30           40                      
+3      40           10                      
 
 after 4 PEs each call nvshmem_int_atomic_add(&counter, 1, 0) targeting PE 0: counter = 4
 (every increment lands correctly regardless of arrival order -- NVSHMEM's own remote atomic gives this guarantee ACROSS PEs, the same correctness property a plain CUDA atomicAdd() gives across threads on one device, without needing a separate collective reduction just to combine four PEs' own contributions into one counter)
@@ -519,10 +533,11 @@ after 4 PEs each call nvshmem_int_atomic_add(&counter, 1, 0) targeting PE 0: cou
 after nvshmem_barrier_all(): every PE is guaranteed the counter has reached its final value of 4 before proceeding -- without the barrier, a PE could read the counter before every other PE's own increment has landed.
 
 self-check: every PE's fetched value matches its right neighbor's own value, and the final counter equals the number of PEs that incremented it: confirmed
-nvshmemi_finalize: nvshmem_finalize() called on a non-fully-initialized handle; skipping teardown
+./src/device/init/init_host.cu:nvshmemi_finalize:187: Unable to properly unregister device state.
+
 ```
 
-(the printed symbol addresses are real, resolved from this build's own linked NVSHMEM library and will vary run to run; the `nPes<=0` guidance in the code refers to the general condition, while this run's own actual `nvshmem_n_pes()` value was 1, the honest single-PE fallback described in the paragraph that follows it; the WARN lines and the closing `nvshmemi_finalize` line are NVSHMEM's own real, unedited stderr output for this no-bootstrap, no-device environment)
+(captured by actually running the file above, stdout and stderr together (`2>&1`), against the installed NVSHMEM 3.8.0 pip wheel; exit code 0. The two NVSHMEM lines are its own real stderr: `CUDA_ERROR_NO_DEVICE` during `nvshmem_init()` -- printed with no trailing newline, so the next stdout line runs straight onto it -- and `nvshmemi_finalize:187: Unable to properly unregister device state.` at `nvshmem_finalize()`. This is the same failure shape Chapter 22's File 63 and Chapter 32's File 95 lock in; the source-path prefix and line number differ by NVSHMEM version (those chapters show 3.7.2's `.../init.cu:580`). The printed symbol addresses vary run to run; the trailing spaces on the table rows come from the `%-24s` padding of the last column. No bootstrap plugin message is printed: run directly, NVSHMEM simply reports `n_pes=1`.)
 
 ## C.4 Choosing Between Hand-Written Collectives, NCCL, and NVSHMEM
 
@@ -550,8 +565,8 @@ Every multi-GPU program this book has built from Chapter 8 onward made this choi
   teaching the algorithm itself -- hand-write it (Ch8-10, Ch16)
 ```
 
-Hand-writing a collective, the way Chapters 8 through 10 and Chapter 16's halo exchange did, is never the fastest option in a production program -- it exists in this book to teach the algorithm the library later hides. Once the algorithm is understood, NCCL is almost always the right real choice for anything shaped like Chapter 8, 9, or 10's own collectives: it detects the real interconnect topology Chapter 5 spent an entire chapter measuring by hand, and it is what Chapter 11 onward actually used from then on. NVSHMEM is not a faster NCCL -- it is a different execution model entirely. Every NCCL call in this book, from Chapter 8 through Chapter 20, is issued from host code and operates on a whole buffer at a time. NVSHMEM's `nvshmem_int_p()`, `nvshmem_int_get()`, and `nvshmem_int_atomic_add()` are issued from inside a running kernel, one thread at a time, the moment that thread has a value ready -- exactly the property Chapter 22 needed and Chapters 8 through 20's host-initiated collectives structurally cannot provide. Reaching for NVSHMEM when a plain `ncclAllReduce` would do adds real complexity for no benefit; reaching for NCCL when the exchange genuinely needs to happen without leaving a kernel is reaching for the wrong tool entirely.
+Hand-writing a collective, the way Chapters 8 through 10 and Chapter 16's halo exchange did, is never the fastest option in a production program -- it exists in this book to teach the algorithm the library later hides. Once the algorithm is understood, NCCL is almost always the right real choice for anything shaped like Chapter 8, 9, or 10's own collectives: it detects the real interconnect topology Chapter 2 spent an entire chapter laying out by hand, and it is what Chapter 11 onward actually used from then on. NVSHMEM is not a faster NCCL -- it is a different execution model entirely. Every NCCL call in this book, from Chapter 11 (where NCCL first appears) through Chapter 20, is issued from host code and operates on a whole buffer at a time. NVSHMEM's `nvshmem_int_p()`, `nvshmem_int_get()`, and `nvshmem_int_atomic_add()` are issued from inside a running kernel, one thread at a time, the moment that thread has a value ready -- exactly the property Chapter 22 needed and Chapters 8 through 20's host-initiated collectives structurally cannot provide. Reaching for NVSHMEM when a plain `ncclAllReduce` would do adds real complexity for no benefit; reaching for NCCL when the exchange genuinely needs to happen without leaving a kernel is reaching for the wrong tool entirely.
 
 ## Appendix Summary
 
-This appendix gathered NCCL's and NVSHMEM's fuller real API surface into one consolidated reference, building on -- not repeating -- what Chapters 8 through 22 had already established. Section C.1 matched every one of Chapters 8 through 10's five hand-built collectives to its real NCCL call, and confirmed NCCL's own real limitation: a version number or a unique ID needs no device, but a communicator genuinely does. Section C.2 consolidated Chapter 11's own `ncclSend()`/`ncclRecv()` point-to-point recipe and built the standalone demonstration its own Self-Check Question 4 had pointed at but never shown in code: same-peer calls inside one group stay strictly ordered, while different-peer calls make no such promise. Section C.3 extended Chapter 22's single `nvshmem_int_p()` call with its natural counterpart (`nvshmem_int_get()`), its race-free cousin (`nvshmem_int_atomic_add()`), and NVSHMEM's own collective synchronization (`nvshmem_barrier_all()`), confirming all four real symbols resolve and link, and honestly replaying a real single-PE fallback rather than a genuine multi-PE run. Section C.4 closed with the decision this book had been making implicitly since Chapter 11: hand-write a collective to learn the algorithm, reach for NCCL once the shape matches one of its five real calls, and reach for NVSHMEM only when the exchange must genuinely be initiated from inside a running kernel. Every code file in this appendix, like every device-touching file since Chapter 2, ran against the real, installed NCCL and NVSHMEM libraries in a genuine zero-physical-GPU sandbox, and every claim about what succeeds and what fails was read back from that real environment rather than assumed.
+This appendix gathered NCCL's and NVSHMEM's fuller real API surface into one consolidated reference, building on -- not repeating -- what Chapters 8 through 22 had already established. Section C.1 matched every one of Chapters 8 through 10's five hand-built collectives to its real NCCL call, and confirmed NCCL's own real limitation: a version number or a unique ID needs no device, but a communicator genuinely does. Section C.2 consolidated Chapter 11's own `ncclSend()`/`ncclRecv()` point-to-point recipe and built the standalone demonstration its own Self-Check Question 4 had pointed at but never shown in code: same-peer calls inside one group stay strictly ordered, while different-peer calls make no such promise. Section C.3 extended Chapter 22's single `nvshmem_int_p()` call with its natural counterpart (`nvshmem_int_get()`), its race-free cousin (`nvshmem_int_atomic_add()`), and NVSHMEM's own collective synchronization (`nvshmem_barrier_all()`), confirming all four real symbols resolve and link, and genuinely attempting `nvshmem_init()`: run directly on this zero-GPU machine it reports a one-PE world (`n_pes=1`) while printing NVSHMEM's own real `CUDA_ERROR_NO_DEVICE` and `nvshmemi_finalize` errors, so the get/atomic-add/barrier sequence is replayed on the host rather than run as a genuine multi-PE program. Section C.4 closed with the decision this book had been making implicitly since Chapter 11: hand-write a collective to learn the algorithm, reach for NCCL once the shape matches one of its five real calls, and reach for NVSHMEM only when the exchange must genuinely be initiated from inside a running kernel. Every code file in this appendix, like every device-touching file since Chapter 2, ran against the real, installed NCCL and NVSHMEM libraries in a genuine zero-physical-GPU sandbox, and every claim about what succeeds and what fails was read back from that real environment rather than assumed.
