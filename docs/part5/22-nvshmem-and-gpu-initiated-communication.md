@@ -83,7 +83,7 @@ The code below calls `nvshmem_init()` with no bootstrap plugin selected at all -
 // genuinely ships real headers, a real host library, and real device
 // bitcode).
 // Genuinely compiled with a real nvcc against the real installed
-// NVSHMEM 3.7.2.
+// NVSHMEM 3.8.0.
 #include <cstdio>
 #include <nvshmem.h>
 #include <nvshmemx.h>
@@ -117,13 +117,27 @@ int main() {
 }
 ```
 
-Compiled with `nvcc -rdc=true -ccbin g++ -gencode=arch=compute_70,code=sm_70 -I $NVSHMEM_HOME/include 63_nvshmem_init_single_pe.cu -o 63_nvshmem_init_single_pe -L $LIBDIR -lnvshmem_host -lnvshmem_device -lcuda` (real dynamic linking against the real installed NVSHMEM, following NVIDIA's own install guide's exact command shape) and genuinely run with `LD_LIBRARY_PATH` pointed at the real installed library directory. Locked output:
+The pip package needs two setup steps NVIDIA's install guide doesn't spell out for this layout. First, define the two paths every command below uses -- `NVSHMEM_HOME` is the package directory (ask Python for the package's `__path__`; `nvidia.nvshmem` is a namespace-style package, so `__file__` is not reliable), and `LIBDIR` is its `lib/` subdirectory. Second, the wheel ships only the versioned `libnvshmem_host.so.3`, with no unversioned `libnvshmem_host.so`, so the linker's `-lnvshmem_host` fails with `cannot find -lnvshmem_host` until you provide that name -- here with a symlink in a local directory, so the installed package itself is left untouched:
+
+```bash
+export NVSHMEM_HOME=$(python3 -c "import nvidia.nvshmem; print(list(nvidia.nvshmem.__path__)[0])")
+export LIBDIR=$NVSHMEM_HOME/lib
+mkdir -p nvshmem_link
+ln -sf $LIBDIR/libnvshmem_host.so.3 nvshmem_link/libnvshmem_host.so
+
+nvcc -rdc=true -ccbin g++ -gencode=arch=compute_70,code=sm_70 -I $NVSHMEM_HOME/include \
+     63_nvshmem_init_single_pe.cu -o 63_nvshmem_init_single_pe \
+     -L nvshmem_link -L $LIBDIR -lnvshmem_host -lnvshmem_device -lcuda
+LD_LIBRARY_PATH=$LIBDIR ./63_nvshmem_init_single_pe
+```
+
+That is real dynamic linking against the installed NVSHMEM (3.8.0 here), following the command shape in NVIDIA's own install guide; at run time the binary asks for `libnvshmem_host.so.3`, which `LD_LIBRARY_PATH=$LIBDIR` supplies directly. Locked output:
 
 ```text
-/dvs/p4/build/sw/rel/gpgpu/toolkit/r12.9/main_nvshmem/src/host/init/init.cu:580 Cuda failure. Status = CUDA_ERROR_NO_DEVICE. Description = no CUDA-capable device is detectednvshmem_init() returned; my_pe=0 n_pes=1
+./src/host/init/init.cu:709 Cuda failure. Status = CUDA_ERROR_NO_DEVICE. Description = no CUDA-capable device is detectednvshmem_init() returned; my_pe=0 n_pes=1
 No bootstrap plugin was requested, so NVSHMEM had no way to discover any other real process -- this is NOT the same honest failure this book has shown since Chapter 3 (cudaErrorNoDevice, ncclUnhandledCudaError, etc.). Those calls always at least TRIED to find a device and reported exactly why they couldn't. nvshmem_init() with no bootstrap never tried to find a peer at all -- n_pes=1 is a correct, honest answer to the question it was actually asked.
-/dvs/p4/build/sw/rel/gpgpu/toolkit/r12.9/main_nvshmem/src/host/init/init.cu:580 Cuda failure. Status = CUDA_ERROR_NO_DEVICE. Description = no CUDA-capable device is detectednvshmem_malloc(sizeof(int)) = (nil)
-/dvs/p4/build/sw/rel/gpgpu/toolkit/r12.9/main_nvshmem/src/device/init/init_host.cu:nvshmemi_finalize:187: Unable to properly unregister device state.
+./src/host/init/init.cu:709 Cuda failure. Status = CUDA_ERROR_NO_DEVICE. Description = no CUDA-capable device is detectednvshmem_malloc(sizeof(int)) = (nil)
+./src/device/init/init_host.cu:nvshmemi_finalize:187: Unable to properly unregister device state.
 ```
 
 !!! warning "[COMMON TRAP] Treating n_pes=1 as an error, or as the same kind of honest failure every earlier chapter has shown"
@@ -175,7 +189,7 @@ Section 22.2 (MPI bootstrap):
 // ncclUniqueId + MPI_Bcast pattern -- not used here, since the MPI
 // path is simpler when MPI is already present.)
 // Genuinely compiled with a real mpicxx (linked against the real
-// installed NVSHMEM 3.7.2, real Open MPI, and real CUDA runtime) and
+// installed NVSHMEM 3.8.0, real Open MPI, and real CUDA runtime) and
 // genuinely run with a real mpirun.
 #define OMPI_SKIP_MPICXX
 #include <mpi.h>
@@ -187,8 +201,11 @@ int main(int argc, char** argv) {
     MPI_Init(&argc, &argv);
     MPI_Comm mpiComm = MPI_COMM_WORLD;
 
-    nvshmemx_init_attr_t attr;
-    attr.mpi_comm = &mpiComm;
+    // Start from the header's own initializer (version fields and
+    // every argument set to a known value) -- never an uninitialized
+    // struct -- then let NVSHMEM's own setter record the MPI_Comm.
+    nvshmemx_init_attr_t attr = NVSHMEMX_INIT_ATTR_INITIALIZER;
+    nvshmemx_set_attr_mpi_comm_args(&mpiComm, &attr);
     int rc = nvshmemx_init_attr(NVSHMEMX_INIT_WITH_MPI_COMM, &attr);
 
     int myPe = nvshmem_my_pe();
@@ -217,17 +234,18 @@ int main(int argc, char** argv) {
 }
 ```
 
-Compiled with `nvcc -rdc=true -ccbin mpicxx -gencode=arch=compute_70,code=sm_70 -I $NVSHMEM_HOME/include 64_nvshmem_mpi_bootstrap.cu -o 64_nvshmem_mpi_bootstrap -L $LIBDIR -lnvshmem_host -lnvshmem_device -lcuda -lmpi` (the same real `mpicxx`-as-host-compiler trick Chapter 20/21 already established, now driving `nvcc` itself rather than the other way around) and genuinely run with `mpirun --allow-run-as-root --oversubscribe -np 2 ./64_nvshmem_mpi_bootstrap`. Locked output:
+With `NVSHMEM_HOME`, `LIBDIR`, and the `nvshmem_link` symlink from Section 22.1 in place, compiled with `nvcc -rdc=true -ccbin mpicxx -gencode=arch=compute_70,code=sm_70 -I $NVSHMEM_HOME/include 64_nvshmem_mpi_bootstrap.cu -o 64_nvshmem_mpi_bootstrap -L nvshmem_link -L $LIBDIR -lnvshmem_host -lnvshmem_device -lcuda -lmpi` (the same real `mpicxx`-as-host-compiler trick Chapter 20/21 already established, now driving `nvcc` itself rather than the other way around) and genuinely run with `LD_LIBRARY_PATH=$LIBDIR mpirun --allow-run-as-root --oversubscribe -x LD_LIBRARY_PATH -np 2 ./64_nvshmem_mpi_bootstrap`. Note the setup: `attr` starts from the header's own `NVSHMEMX_INIT_ATTR_INITIALIZER`, and `nvshmemx_set_attr_mpi_comm_args()` records the communicator -- declaring a bare `nvshmemx_init_attr_t attr;` and assigning only `attr.mpi_comm` would leave its version fields and every other argument as stack garbage, and only happens to work because `nvshmemx_init_attr()` patches version fields it doesn't recognize. Locked output (stdout and NVSHMEM's stderr diagnostics from both PEs share one terminal, and NVSHMEM's `Cuda failure` messages end without a newline, so exactly how the lines interleave differs from run to run; the content does not):
 
 ```text
-/dvs/p4/build/sw/rel/gpgpu/toolkit/r12.9/main_nvshmem/src/host/init/init.cu:580 Cuda failure. Status = CUDA_ERROR_NO_DEVICE. Description = no CUDA-capable device is detectedPE 0 of 2: nvshmemx_init_attr(NVSHMEMX_INIT_WITH_MPI_COMM) rc=0
+./src/host/init/init.cu:709 Cuda failure. Status = CUDA_ERROR_NO_DEVICE. Description = no CUDA-capable device is detectedPE 0 of 2: nvshmemx_init_attr(NVSHMEMX_INIT_WITH_MPI_COMM) rc=0
 
 Compare this n_pes=2 to file 63's own n_pes=1: the ONLY difference between these two files is which bootstrap path was requested. Real MPI (Chapter 20's own MPI_Comm_rank()/MPI_Comm_size() underneath this call) genuinely discovered 2 real processes and handed that world to NVSHMEM -- the exact same discovery problem Chapter 21's own hybrid bootstrap solved for NCCL, now solved for NVSHMEM instead.
-/dvs/p4/build/sw/rel/gpgpu/toolkit/r12.9/main_nvshmem/src/host/init/init.cu:580 Cuda failure. Status = CUDA_ERROR_NO_DEVICE. Description = no CUDA-capable device is detectedPE 1 of 2: nvshmemx_init_attr(NVSHMEMX_INIT_WITH_MPI_COMM) rc=0
-/dvs/p4/build/sw/rel/gpgpu/toolkit/r12.9/main_nvshmem/src/host/init/init.cu:580 Cuda failure. Status = CUDA_ERROR_NO_DEVICE. Description = no CUDA-capable device is detectedPE 0: nvshmem_malloc(sizeof(int)) = (nil) (honestly NULL -- no real device to host a symmetric heap on)
-/dvs/p4/build/sw/rel/gpgpu/toolkit/r12.9/main_nvshmem/src/host/init/init.cu:580 Cuda failure. Status = CUDA_ERROR_NO_DEVICE. Description = no CUDA-capable device is detectedPE 1: nvshmem_malloc(sizeof(int)) = (nil) (honestly NULL -- no real device to host a symmetric heap on)
-/dvs/p4/build/sw/rel/gpgpu/toolkit/r12.9/main_nvshmem/src/device/init/init_host.cu:nvshmemi_finalize:187: Unable to properly unregister device state.
-/dvs/p4/build/sw/rel/gpgpu/toolkit/r12.9/main_nvshmem/src/device/init/init_host.cu:nvshmemi_finalize:187: Unable to properly unregister device state.
+./src/host/init/init.cu:709 Cuda failure. Status = CUDA_ERROR_NO_DEVICE. Description = no CUDA-capable device is detectedPE 1 of 2: nvshmemx_init_attr(NVSHMEMX_INIT_WITH_MPI_COMM) rc=0
+PE 0: nvshmem_malloc(sizeof(int)) = (nil) (honestly NULL -- no real device to host a symmetric heap on)
+./src/host/init/init.cu:709 Cuda failure. Status = CUDA_ERROR_NO_DEVICE. Description = no CUDA-capable device is detected./src/host/init/init.cu:709 Cuda failure. Status = CUDA_ERROR_NO_DEVICE. Description = no CUDA-capable device is detectedPE 1: nvshmem_malloc(sizeof(int)) = (nil) (honestly NULL -- no real device to host a symmetric heap on)
+./src/device/init/init_host.cu:nvshmemi_finalize:187: Unable to properly unregister device state.
+
+./src/device/init/init_host.cu:nvshmemi_finalize:187: Unable to properly unregister device state.
 ```
 
 !!! warning "[COMMON TRAP] Assuming nvshmemx_init_attr()'s rc=0 means the symmetric heap is usable"
@@ -271,7 +289,7 @@ Every kernel launch since Ch3:                 This section's own launch:
 // launch a kernel that will use them, coordinating with NVSHMEM's own
 // internal state before handing control to the GPU.
 // Genuinely compiled with a real mpicxx (linked against the real
-// installed NVSHMEM 3.7.2, real Open MPI, and real CUDA runtime) and
+// installed NVSHMEM 3.8.0, real Open MPI, and real CUDA runtime) and
 // genuinely run with a real mpirun.
 #define OMPI_SKIP_MPICXX
 #include <mpi.h>
@@ -289,8 +307,11 @@ __global__ void putKernel(int *dest, int val, int targetPe) {
 int main(int argc, char** argv) {
     MPI_Init(&argc, &argv);
     MPI_Comm mpiComm = MPI_COMM_WORLD;
-    nvshmemx_init_attr_t attr;
-    attr.mpi_comm = &mpiComm;
+    // Start from the header's own initializer (version fields and
+    // every argument set to a known value) -- never an uninitialized
+    // struct -- then let NVSHMEM's own setter record the MPI_Comm.
+    nvshmemx_init_attr_t attr = NVSHMEMX_INIT_ATTR_INITIALIZER;
+    nvshmemx_set_attr_mpi_comm_args(&mpiComm, &attr);
     nvshmemx_init_attr(NVSHMEMX_INIT_WITH_MPI_COMM, &attr);
 
     int myPe = nvshmem_my_pe();
@@ -316,25 +337,33 @@ int main(int argc, char** argv) {
 }
 ```
 
-Compiled the same way as file 64, and genuinely run with `mpirun --allow-run-as-root --oversubscribe -np 2 ./65_gpu_initiated_put`. Locked output -- this is the deepest real GPU-touching call this entire book has attempted, and it genuinely fails harder than anything in any earlier chapter:
+Compiled the same way as file 64, and genuinely run with `LD_LIBRARY_PATH=$LIBDIR mpirun --allow-run-as-root --oversubscribe -x LD_LIBRARY_PATH -np 2 ./65_gpu_initiated_put` (mpirun's own job-aborted banner is left out of the block below, and the two PEs' lines interleave differently from run to run). Locked output -- this is the deepest real GPU-touching call this entire book has attempted, and it genuinely fails harder than anything in any earlier chapter:
 
 ```text
-PE 0 of 2: nvshmem_malloc=(nil), launching putKernel targeting peer PE 1
-PE 1 of 2: nvshmem_malloc=(nil), launching putKernel targeting peer PE 0
-nvshmem cuda device query failed, exiting
+./src/host/init/init.cu:709 Cuda failure. Status = CUDA_ERROR_NO_DEVICE. Description = no CUDA-capable device is detected./src/host/init/init.cu:709 Cuda failure. Status = CUDA_ERROR_NO_DEVICE. Description = no CUDA-capable device is detectedPE 0 of 2: nvshmem_malloc=(nil), launching putKernel targeting peer PE 1
+./src/host/init/init.cu:709 Cuda failure. Status = CUDA_ERROR_NO_DEVICE. Description = no CUDA-capable device is detected./src/host/init/init.cu:709 Cuda failure. Status = CUDA_ERROR_NO_DEVICE. Description = no CUDA-capable device is detectedPE 1 of 2: nvshmem_malloc=(nil), launching putKernel targeting peer PE 0
+./src/host/init/init.cu:709 Cuda failure. Status = CUDA_ERROR_NO_DEVICE. Description = no CUDA-capable device is detected./src/host/init/init.cu:709 Cuda failure. Status = CUDA_ERROR_NO_DEVICE. Description = no CUDA-capable device is detectednvshmem cuda device query failed, exiting 
 nvshmemi_check_state_and_init_d() failedPE 0: nvshmemx_collective_launch() rc=7 (NVSHMEMX_ERROR_INTERNAL)
 PE 0: cudaDeviceSynchronize()=no CUDA-capable device is detected
-/dvs/p4/build/sw/rel/gpgpu/toolkit/r12.9/main_nvshmem/src/device/init/init_host.cu:nvshmemi_finalize:187: Unable to properly unregister device state.
-/dvs/p4/build/sw/rel/gpgpu/toolkit/r12.9/main_nvshmem/src/device/init/init_host.cu:nvshmemi_get_device_state_ptrs:111: Unable to access device state. 100
-/dvs/p4/build/sw/rel/gpgpu/toolkit/r12.9/main_nvshmem/src/host/init/init.cu:1474: NULL value Unable to query pointer information.
-/dvs/p4/build/sw/rel/gpgpu/toolkit/r12.9/main_nvshmem/src/host/init/init.cu:nvshmemid_hostlib_finalize:1566: aborting due to error in nvshmem_finalize
-nvshmem cuda device query failed, exiting
-nvshmemi_check_state_and_init_d() failedPE 1: nvshmemx_collective_launch() rc=7 (NVSHMEMX_ERROR_INTERNAL)
+./src/device/init/init_host.cu:nvshmemi_finalize:187: Unable to properly unregister device state.
+
+./src/device/init/init_host.cu:nvshmemi_get_device_state_ptrs:111: Unable to access device state. 100
+
+./src/host/init/init.cu:1592: NULL value Unable to query pointer information.
+
+./src/host/init/init.cu:nvshmemid_hostlib_finalize:1702: aborting due to error in nvshmem_finalize 
+
+nvshmem cuda device query failed, exiting 
+nvshmemi_check_state_and_init_d() failed./src/device/init/init_host.cu:nvshmemi_finalize:187: Unable to properly unregister device state.
+
+./src/device/init/init_host.cu:nvshmemi_get_device_state_ptrs:111: Unable to access device state. 100
+
+./src/host/init/init.cu:1592: NULL value Unable to query pointer information.
+
+./src/host/init/init.cu:nvshmemid_hostlib_finalize:1702: aborting due to error in nvshmem_finalize 
+
+PE 1: nvshmemx_collective_launch() rc=7 (NVSHMEMX_ERROR_INTERNAL)
 PE 1: cudaDeviceSynchronize()=no CUDA-capable device is detected
-/dvs/p4/build/sw/rel/gpgpu/toolkit/r12.9/main_nvshmem/src/device/init/init_host.cu:nvshmemi_finalize:187: Unable to properly unregister device state.
-/dvs/p4/build/sw/rel/gpgpu/toolkit/r12.9/main_nvshmem/src/device/init/init_host.cu:nvshmemi_get_device_state_ptrs:111: Unable to access device state. 100
-/dvs/p4/build/sw/rel/gpgpu/toolkit/r12.9/main_nvshmem/src/host/init/init.cu:1474: NULL value Unable to query pointer information.
-/dvs/p4/build/sw/rel/gpgpu/toolkit/r12.9/main_nvshmem/src/host/init/init.cu:nvshmemid_hostlib_finalize:1566: aborting due to error in nvshmem_finalize
 ```
 
 `mpirun` itself then reports the job aborted, with exit code **255** -- unlike every earlier chapter's clean `exit 0` after an honest error, `nvshmemx_collective_launch()`'s real internal device-state check (`nvshmemi_check_state_and_init_d()`) fails outright (`rc=7`, `NVSHMEMX_ERROR_INTERNAL`), `cudaDeviceSynchronize()` separately and honestly reports no device, and even `nvshmem_finalize()` itself cannot cleanly tear down afterward -- it reports being unable to access device state and unable to query pointer information, then aborts.
@@ -355,7 +384,7 @@ This chapter left every earlier chapter's host-initiated communication model beh
 5. Why does the kernel in file 65 need to be launched with `nvshmemx_collective_launch()` instead of the plain `<<<>>>` syntax every earlier chapter has used?
 6. Contrast the failure Section 22.3 reports (`rc=7`, `NVSHMEMX_ERROR_INTERNAL`, exit 255) with every earlier chapter's own device-less failures (e.g. Chapter 11's `ncclUnhandledCudaError`, exit 0). What is genuinely different about it?
 7. What does the quoted contrast between NCCL ("host-driven: the CPU enqueues collective operations") and NVSHMEM ("launched directly from GPU code") actually change about who decides when communication happens?
-8. Why does `nvshmem_finalize()` itself fail in Section 22.3's own locked output, when it succeeded cleanly in Sections 22.1 and 22.2?
+8. Sections 22.1 and 22.2's locked outputs already show `nvshmem_finalize()` logging `Unable to properly unregister device state`, yet those programs still exit 0. Why does finalize go further in Section 22.3 -- reporting it cannot access device state and aborting the process?
 
 ## Where We Go Next
 
@@ -377,7 +406,7 @@ Chapter 22 built the one thing every earlier chapter's API genuinely couldn't: c
 
 **7.** It moves the DECISION of when to communicate from the host to the device. In every earlier chapter, a CPU thread decided the exact moment a collective or send call happened, and the GPU simply executed whatever the CPU had already enqueued. With NVSHMEM's device-side APIs, a GPU thread that is still running can decide, on its own, to issue a put or get -- the host's only role was launching the kernel that contains that decision, not making the decision itself.
 
-**8.** Because `nvshmem_finalize()`'s own cleanup work depends on the SAME per-device internal state that `nvshmemx_collective_launch()`'s failed check was trying to verify in the first place. In Sections 22.1 and 22.2, that internal state was never exercised by anything beyond `nvshmem_malloc()`'s own honest `NULL` return, so finalize's cleanup path, while still logging its own device-less warning, completed. In Section 22.3, the collective-launch attempt left NVSHMEM's internal bookkeeping in a state finalize could not cleanly unwind, and it failed too.
+**8.** Because `nvshmem_finalize()`'s own cleanup work depends on the SAME per-device internal state that `nvshmemx_collective_launch()`'s failed check was trying to verify in the first place. In Sections 22.1 and 22.2, that internal state was never exercised by anything beyond `nvshmem_malloc()`'s own honest `NULL` return, so finalize's cleanup path logged the same `Unable to properly unregister device state` warning but did not abort, and both programs exited 0. In Section 22.3, the collective-launch attempt left NVSHMEM's internal bookkeeping in a state finalize could not cleanly unwind, and it failed too.
 
 ---
 
@@ -385,5 +414,5 @@ Chapter 22 built the one thing every earlier chapter's API genuinely couldn't: c
 
 - [Using NVSHMEM (NVSHMEM 1.0 archive)](https://docs.nvidia.com/nvshmem/archives/nvshmem-101/api/docs/gen/overview.html) — the real, verified definitions this chapter quotes: OpenSHMEM's own PGAS description ("a community standard, one-sided communication API that provides a partitioned global address space (PGAS) parallel programming model"), the Symmetric Heap definition, and the device-side API description ("Device-side APIs can be called by CUDA kernel threads to efficiently access locations in symmetric memory through one-sided read (get), write (put), and atomic update API calls").
 - [Demystifying NVSHMEM: A System-Level Analysis on Symmetric Memory and Device-Initiated Operations in GPU Communication](https://arxiv.org/html/2606.05951v1) — the real, verified contrast this chapter's intro quotes between NCCL's host-driven model ("NCCL was host-driven: the CPU enqueues collective operations, and the library selects algorithms and schedules") and NVSHMEM's device-initiated model ("communication and synchronization are launched directly from GPU code rather than through a host-managed control path"), and the real symmetric-memory definition used in Section 22.1's own Background.
-- `nvidia-nvshmem-cu12` (PyPI package, version 3.7.2) — genuinely installed and used for every code file in this chapter; this exact environment's own installed headers (`nvshmem.h`, `nvshmemx.h`, `driver_types.h`-adjacent NVSHMEM headers under `include/host/`, `include/device/`, and `include/non_abi/`) were grepped directly for real API names, flag values (`NVSHMEMX_INIT_WITH_MPI_COMM`), and the real `nvshmemx_status` error enum (`NVSHMEMX_ERROR_INTERNAL = 7`), per Chapter 21's own established practice of checking installed headers directly rather than trusting a web summary.
+- `nvidia-nvshmem-cu12` (PyPI package, version 3.8.0; the chapter was first written against 3.7.2, and the change only moved source-path/line-number prefixes in NVSHMEM's own log lines) — genuinely installed and used for every code file in this chapter; this exact environment's own installed headers (`nvshmem.h`, `nvshmemx.h`, `driver_types.h`-adjacent NVSHMEM headers under `include/host/`, `include/device/`, and `include/non_abi/`) were grepped directly for real API names, flag values (`NVSHMEMX_INIT_WITH_MPI_COMM`), and the real `nvshmemx_status` error enum (`NVSHMEMX_ERROR_INTERNAL = 7`), per Chapter 21's own established practice of checking installed headers directly rather than trusting a web summary.
 - [NVSHMEM Install Guide: Compiling and Linking with nvcc](https://docs.nvidia.com/nvshmem/release-notes-install-guide/install-guide/nvshmem-install-proc.html) — the real compile-command shape this chapter's own `nvcc -rdc=true -ccbin ... -gencode=... -lnvshmem_host -lnvshmem_device` commands follow.
