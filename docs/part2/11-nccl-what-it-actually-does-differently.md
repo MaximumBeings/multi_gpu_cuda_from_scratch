@@ -2,8 +2,8 @@
 
 **What you will understand by the end of this chapter:**
 
-- How a real `ncclComm_t` communicator relates to the `deviceCount` loops this book has used since Chapter 3, and the two genuinely different ways a real `ncclCommInitAll()` call can honestly fail.
-- That every one of this book's six hand-built collectives (Chapters 8-10) has a real, one-call NCCL equivalent -- except all-to-all, which real NCCL builds exactly the way Chapter 10 did: from repeated point-to-point transfers, not one dedicated call.
+- How a real `ncclComm_t` communicator relates to the `deviceCount` loops this book has used since Chapter 3, and the two genuinely different ways a real `ncclCommInitAll()` call can honestly fail -- a malformed argument, rejected up front, versus a well-formed request that fails inside CUDA.
+- That five of this book's six hand-built collectives (Chapters 8-10) have a real, one-call NCCL equivalent in the NCCL 2.18.3 this book links against, while all-to-all there is built exactly the way Chapter 10 did: from grouped point-to-point transfers. (Newer NCCL, from 2.28, adds a dedicated `ncclAlltoAll()`.)
 - The one genuine algorithmic gap between what this book built and what NCCL does for real: ring all-reduce's round count grows linearly with the number of devices, and at large enough scale that stops being good enough -- which is exactly why NCCL added a second algorithm.
 
 **What you need to know first:**
@@ -28,7 +28,9 @@ This book's hand-built collectives (Ch8-10)         NCCL's real API (this chapte
   reduce-scatter: host-mediated, by hand           -->  ncclReduceScatter()
   all-to-all:     direct cudaMemcpyPeer all-pairs  -->  ncclSend()/ncclRecv(),
                                                           all-pairs, grouped --
-                                                          still no dedicated call
+                                                          no dedicated call in
+                                                          2.18.3 (ncclAlltoAll()
+                                                          arrived in NCCL 2.28)
 ```
 
 ## 11.1 A Real Communicator: `ncclCommInitAll` and the World This Book Has Called `deviceCount`
@@ -42,9 +44,8 @@ Before any collective call, a real NCCL program needs a communicator:
 
   cudaGetDeviceCount()  -->  ncclCommInitAll(comms, ndev, devlist)  -->  ncclComm_t[ndev]
         |                              |
-        v                              v
-  "how many devices           "bind each of these ndev communicators
-   do I actually have?"         to a real CUDA device, as one group"
+        +--> "how many devices         +--> "bind each of these ndev communicators
+              do I actually have?"           to a real CUDA device, as one group"
 
   This chapter's own deviceCount is 0 -- so ndev=0 is exactly what an
   honest program, built the way every prior chapter has been, would
@@ -53,7 +54,7 @@ Before any collective call, a real NCCL program needs a communicator:
 
 ### Background
 
-`ncclGetVersion()` is the one call in this section that needs nothing from the machine at all -- it reads a version number baked into the library at build time, so it can genuinely succeed even here. `ncclCommInitAll()` is different: it has to actually attach communicators to real CUDA devices, and this book's own honest `deviceCount` gives it two different ways to fail depending on what's asked for.
+`ncclGetVersion()` is the one call in this section that needs nothing from the machine at all -- it reads a version number baked into the library at build time, so it can genuinely succeed even here. `ncclCommInitAll()` is different: it has to actually attach communicators to real CUDA devices, and it can fail in two genuinely different ways depending on *which argument* is wrong. NCCL first runs argument checks: a `NULL` `comms` pointer or a negative `ndev` is rejected immediately as `ncclInvalidArgument` (code 4), before any device is touched. A request that passes those checks -- and on NCCL 2.18.3 that includes `ndev=0` as well as `ndev=1`, as long as `comms` points at real storage -- proceeds into NCCL's CUDA setup and fails there as `ncclUnhandledCudaError` (code 1). The code below makes all four cases explicit, and every explanation in this section was confirmed by running it with `NCCL_DEBUG=WARN`, which makes NCCL print its own reason for each failure on stderr.
 
 ```cpp
 // Chapter 11: NCCL -- What It Actually Does Differently From What You
@@ -69,7 +70,7 @@ Before any collective call, a real NCCL program needs a communicator:
 // hand-rolled substitute -- to see exactly how a communicator gets
 // created, and what happens when it can't be. Genuinely compiled
 // with a real nvcc, genuinely linked against a real libnccl, and
-// genuinely run.
+// genuinely run (each failure's cause confirmed with NCCL_DEBUG=WARN).
 #include <cstdio>
 #include <nccl.h>
 #include <cuda_runtime.h>
@@ -90,31 +91,46 @@ int main() {
            ncclRuntimeVersion / 10000, (ncclRuntimeVersion / 100) % 100,
            ncclRuntimeVersion % 100);
 
-    // ncclCommInitAll(), used with this book's own real deviceCount:
-    // asking for a clique of ZERO communicators is itself an invalid
-    // request, and NCCL's own argument validation catches it before
-    // touching any device at all.
-    ncclResult_t eInitReal = ncclCommInitAll(nullptr, deviceCount, nullptr);
-    printf("\nncclCommInitAll(ndev=%d, this book's own real deviceCount): "
+    // ncclCommInitAll() fails in two genuinely different ways, and
+    // which one you get depends on WHICH argument is bad -- not on
+    // how many devices were asked for. Run with NCCL_DEBUG=WARN to see
+    // NCCL's own explanation of each failure on stderr.
+    ncclComm_t comms[1];
+
+    // (a) This book's own real deviceCount (0), with a real comms array.
+    // ndev=0 is NOT rejected by NCCL 2.18.3's argument checks: the call
+    // proceeds until NCCL's first CUDA call, which finds no device.
+    ncclResult_t eInitReal = ncclCommInitAll(comms, deviceCount, nullptr);
+    printf("\n(a) ncclCommInitAll(comms, ndev=%d [this book's real deviceCount]): "
            "%s (code %d)\n", deviceCount, ncclGetErrorString(eInitReal), (int)eInitReal);
 
-    // ncclCommInitAll(), asking for exactly ONE device: this passes
-    // NCCL's own argument validation (asking for 1 device is a valid
-    // request in principle), so it proceeds far enough to discover
-    // there is genuinely no CUDA device to attach that communicator
-    // to -- a different, more specific honest failure.
-    ncclComm_t oneComm;
-    ncclResult_t eInitOne = ncclCommInitAll(&oneComm, 1, nullptr);
-    printf("ncclCommInitAll(ndev=1, hypothetically): %s (code %d)\n",
+    // (b) Exactly ONE device, with a real comms array: also a well-formed
+    // request, and it fails at exactly the same point, for the same
+    // reason -- NCCL's first CUDA call finds no device.
+    ncclResult_t eInitOne = ncclCommInitAll(comms, 1, nullptr);
+    printf("(b) ncclCommInitAll(comms, ndev=1): %s (code %d)\n",
            ncclGetErrorString(eInitOne), (int)eInitOne);
 
-    printf("\nTwo different, both genuinely honest, failures: asking for\n"
-           "zero devices is a malformed request NCCL rejects immediately;\n"
-           "asking for one device is a well-formed request that only fails\n"
-           "once NCCL actually looks for a CUDA device to use, and finds\n"
-           "none. Section 11.2 assumes a communicator this far along --\n"
-           "requested, but never successfully created -- for every real\n"
-           "collective call this book's Chapters 8-10 already built by hand.\n");
+    // (c) A NULL comms pointer: NCCL's argument check rejects this
+    // before touching any device ("comms argument is NULL").
+    ncclResult_t eInitNull = ncclCommInitAll(nullptr, 1, nullptr);
+    printf("(c) ncclCommInitAll(comms=nullptr, ndev=1): %s (code %d)\n",
+           ncclGetErrorString(eInitNull), (int)eInitNull);
+
+    // (d) A negative device count: also rejected up front
+    // ("Invalid device count requested").
+    ncclResult_t eInitNeg = ncclCommInitAll(comms, -1, nullptr);
+    printf("(d) ncclCommInitAll(comms, ndev=-1): %s (code %d)\n",
+           ncclGetErrorString(eInitNeg), (int)eInitNeg);
+
+    printf("\nTwo genuinely different failure modes: a malformed ARGUMENT\n"
+           "(a NULL comms pointer, or a negative device count) is rejected\n"
+           "immediately as ncclInvalidArgument (code 4); a well-formed request\n"
+           "-- including ndev=0 -- gets past argument checking and fails as\n"
+           "ncclUnhandledCudaError (code 1) once NCCL's first CUDA call finds\n"
+           "no device. No communicator was created by any of these calls;\n"
+           "Section 11.2 shows what every collective reports when handed a\n"
+           "comm that is still NULL.\n");
 
     return 0;
 }
@@ -126,42 +142,46 @@ Genuinely compiled with a real `nvcc`, genuinely linked against a real, installe
 cudaGetDeviceCount(): 0 device(s).
 ncclGetVersion(): no error (code 0), reports version 21803 (major.minor.patch = 2.18.3)
 
-ncclCommInitAll(ndev=0, this book's own real deviceCount): invalid argument (run with NCCL_DEBUG=WARN for details) (code 4)
-ncclCommInitAll(ndev=1, hypothetically): unhandled cuda error (run with NCCL_DEBUG=INFO for details) (code 1)
+(a) ncclCommInitAll(comms, ndev=0 [this book's real deviceCount]): unhandled cuda error (run with NCCL_DEBUG=INFO for details) (code 1)
+(b) ncclCommInitAll(comms, ndev=1): unhandled cuda error (run with NCCL_DEBUG=INFO for details) (code 1)
+(c) ncclCommInitAll(comms=nullptr, ndev=1): invalid argument (run with NCCL_DEBUG=WARN for details) (code 4)
+(d) ncclCommInitAll(comms, ndev=-1): invalid argument (run with NCCL_DEBUG=WARN for details) (code 4)
 
-Two different, both genuinely honest, failures: asking for
-zero devices is a malformed request NCCL rejects immediately;
-asking for one device is a well-formed request that only fails
-once NCCL actually looks for a CUDA device to use, and finds
-none. Section 11.2 assumes a communicator this far along --
-requested, but never successfully created -- for every real
-collective call this book's Chapters 8-10 already built by hand.
+Two genuinely different failure modes: a malformed ARGUMENT
+(a NULL comms pointer, or a negative device count) is rejected
+immediately as ncclInvalidArgument (code 4); a well-formed request
+-- including ndev=0 -- gets past argument checking and fails as
+ncclUnhandledCudaError (code 1) once NCCL's first CUDA call finds
+no device. No communicator was created by any of these calls;
+Section 11.2 shows what every collective reports when handed a
+comm that is still NULL.
 ```
 
-This is the first chapter where a call in this book has genuinely succeeded without a device at all -- `ncclGetVersion()`'s "no error" is real, not a special case carved out for this environment. Everything after it fails exactly the way this book's own honesty discipline predicts it should: not with one generic "no device" error, but with two genuinely different, genuinely informative ones, depending on exactly what was asked for.
+This is the first chapter where a call in this book has genuinely succeeded without a device at all -- `ncclGetVersion()`'s "no error" is real, not a special case carved out for this environment. Everything after it fails with one of two genuinely different, genuinely informative codes, and `NCCL_DEBUG=WARN` shows exactly why. Cases (a) and (b) each print `NCCL WARN Cuda failure 'no CUDA-capable device is detected'` -- `ndev=0` is *not* rejected as malformed; it fails in the same place, for the same reason, as `ndev=1`. Case (c) prints `NCCL WARN CommInitAll : comms argument is NULL`, and case (d) prints `NCCL WARN Invalid device count requested : -1`. An earlier draft of this chapter passed `nullptr` for `comms` together with `ndev=0` and attributed the resulting code 4 to `ndev=0`; the warning text shows the `NULL` pointer was the actual cause, which is why the code now separates the two.
 
 !!! warning "[COMMON TRAP] Assuming NCCL's error codes distinguish 'no devices' from 'not enough devices' the way this book's own code always has"
-    Every prior chapter's honest failures have used a single, uniform signal -- `cudaErrorNoDevice`, code 100 -- regardless of how the loop was structured. NCCL's own error taxonomy is richer: `ncclInvalidArgument` (code 4) means the request itself was malformed before any hardware was even considered, while `ncclUnhandledCudaError` (code 1) means the request was reasonable but a lower-level CUDA call inside NCCL's own implementation failed. Reading only the numeric code without checking which one it is can make a genuinely different kind of failure look identical to this book's familiar `cudaErrorNoDevice` pattern -- it isn't the same signal, even though both, on this machine, ultimately trace back to the same root cause.
+    Every prior chapter's honest failures have used a single, uniform signal -- `cudaErrorNoDevice`, code 100 -- regardless of how the loop was structured. NCCL's own error taxonomy is richer: `ncclInvalidArgument` (code 4) means an argument itself was malformed (a `NULL` pointer, a negative count) before any hardware was even considered, while `ncclUnhandledCudaError` (code 1) means the request passed argument checking but a lower-level CUDA call inside NCCL's own implementation failed. Only code 1 traces back to this machine having no GPU; code 4 would come back identically on a fully-populated 8-GPU server, because it is a bug in the *calling code*. And the numeric code alone doesn't say *which* argument was bad -- that is what `NCCL_DEBUG=WARN` is for, and reading its output (rather than guessing from the code) is the only reliable way to attribute an NCCL failure.
 
 ## 11.2 Six Collectives, Six Real Calls (Mostly)
 
 ### Intuition
 
-Chapters 8 through 10 built six collectives by hand, one loop of `cudaMemcpyPeer()` or `cudaMemcpy()` calls at a time. Real NCCL packages five of those six as a single function call each -- the entire loop this book wrote out explicitly, hidden behind one name. The sixth, all-to-all, doesn't get that treatment even in real NCCL: it's still built from the same kind of point-to-point calls this book used, just NCCL's own `ncclSend()`/`ncclRecv()` instead of `cudaMemcpyPeer()`.
+Chapters 8 through 10 built six collectives by hand, one loop of `cudaMemcpyPeer()` or `cudaMemcpy()` calls at a time. Real NCCL packages five of those six as a single function call each -- the entire loop this book wrote out explicitly, hidden behind one name. The sixth, all-to-all, doesn't get that treatment in the NCCL 2.18.3 this book links against: there it's built from the same kind of point-to-point calls this book used, just NCCL's own `ncclSend()`/`ncclRecv()` instead of `cudaMemcpyPeer()`. That is a version-specific fact, not a permanent one: NCCL 2.28.3's release notes record "Added new host collective APIs: ncclAlltoAll, ncclScatter, and ncclGather," and the current collective-operations documentation includes `ncclAlltoAll`.
 
 ```text
-Chapter 8-10's six collectives, and their real NCCL call:
+Chapter 8-10's six collectives, and their real NCCL 2.18.3 call:
 
-  ncclBroadcast()      <-- Ch8 8.1        ncclAllGather()      <-- Ch10 10.1
-  ncclReduce()         <-- Ch8 8.2        ncclReduceScatter()  <-- Ch10 10.2
-  ncclAllReduce()      <-- Ch9            ncclSend()+ncclRecv() <-- Ch10 10.3
-                                            (grouped together, no
-                                             dedicated call at all)
+  Ch8 8.1   --> ncclBroadcast()          Ch10 10.1 --> ncclAllGather()
+  Ch8 8.2   --> ncclReduce()             Ch10 10.2 --> ncclReduceScatter()
+  Ch9       --> ncclAllReduce()          Ch10 10.3 --> ncclSend() + ncclRecv()
+                                                       (grouped; no dedicated
+                                                        call until NCCL 2.28's
+                                                        ncclAlltoAll())
 ```
 
 ### Background
 
-Every call below uses the same never-successfully-created communicator Section 11.1 ended with -- exactly the state a genuine program would be in if its own `ncclCommInitAll()` call had failed and it kept running anyway. NCCL's own argument validation catches this before any of these calls could do anything with real device memory, so every one of them reports the same honest `ncclInvalidArgument` this section predicts.
+No communicator can be created on this machine (Section 11.1), so every call below is handed a `comm` handle that is literally `nullptr`. NCCL's own argument check rejects that `NULL` handle before any of these calls could do anything with real device memory, so every one of the five collectives reports `ncclInvalidArgument` (code 4) -- and `NCCL_DEBUG=WARN` names the cause precisely, once per call: `NCCL WARN Broadcast : comm argument is NULL`, `Reduce : comm argument is NULL`, and likewise for `AllReduce`, `AllGather`, and `ReduceScatter`. This is the same `NULL`-pointer argument check as Section 11.1's case (c), not anything to do with how many devices were requested -- which also means a real program that ignored a failed `ncclCommInitAll()` and carried on would not necessarily see this particular error, since NCCL makes no promise that a failed init leaves the handle `NULL`.
 
 ```cpp
 // Chapter 11: NCCL -- What It Actually Does Differently From What You
@@ -169,12 +189,14 @@ Every call below uses the same never-successfully-created communicator Section 1
 // 31_nccl_collectives_mapped.cu
 //
 // Every collective this book built by hand in Chapters 8-10 has a
-// literal, real NCCL API call behind it -- except one. This section
-// genuinely calls each real function, using the communicator Section
-// 11.1 showed can never successfully form on this machine, and
-// honestly reports whatever ncclResult_t comes back. Genuinely
-// compiled with a real nvcc, genuinely linked against a real
-// libnccl, and genuinely run.
+// literal, real NCCL API call behind it in the installed NCCL 2.18.3
+// -- except all-to-all (a dedicated ncclAlltoAll() only arrived in
+// NCCL 2.28). This section genuinely calls each real function with a
+// comm handle that is still NULL -- no communicator can be created on
+// this machine (Section 11.1) -- and honestly reports whatever
+// ncclResult_t comes back. Genuinely compiled with a real nvcc,
+// genuinely linked against a real libnccl, and genuinely run (the
+// failure's cause confirmed with NCCL_DEBUG=WARN).
 #include <cstdio>
 #include <nccl.h>
 #include <cuda_runtime.h>
@@ -184,10 +206,12 @@ int main() {
     cudaGetDeviceCount(&deviceCount);
     printf("cudaGetDeviceCount(): %d device(s).\n", deviceCount);
 
-    // A communicator that was requested but never successfully created,
-    // exactly the state Section 11.1 left off at -- passed to every
-    // real call below, exactly as a genuine program would if its own
-    // ncclCommInitAll() call had failed and it kept going anyway.
+    // No communicator exists on this machine (Section 11.1), so the
+    // handle passed to every call below is literally nullptr. NCCL's
+    // argument check rejects it before doing anything else -- with
+    // NCCL_DEBUG=WARN it prints "<Collective> : comm argument is NULL"
+    // and returns ncclInvalidArgument (code 4). This is a NULL-handle
+    // check, not a check on how many devices were asked for.
     ncclComm_t comm = nullptr;
     cudaStream_t stream = nullptr;
     float* buf = nullptr;
@@ -217,12 +241,12 @@ int main() {
            ncclGetErrorString(eReduceScatter), (int)eReduceScatter);
 
     // All-to-all has no single dedicated call in this installed NCCL
-    // version -- it is built the same way this book built it in
+    // version (2.18.3; ncclAlltoAll() was added in 2.28) -- it is built the same way this book built it in
     // Chapter 10, Section 10.3: one point-to-point transfer per
     // ordered pair, just using ncclSend()/ncclRecv() instead of
     // cudaMemcpyPeer(), fused together with ncclGroupStart()/
     // ncclGroupEnd() into one coordinated operation.
-    printf("\n-- All-to-all [Chapter 10, Section 10.3]: no dedicated call --\n"
+    printf("\n-- All-to-all [Chapter 10, Section 10.3]: no dedicated call in 2.18.3 --\n"
            "   built from ncclSend()/ncclRecv(), exactly like this book's\n"
            "   own direct implementation: --\n\n");
 
@@ -242,14 +266,14 @@ int main() {
     printf("ncclGroupEnd(): %s (code %d)\n", ncclGetErrorString(eGroupEnd), (int)eGroupEnd);
 
     printf("\n%d device(s) worth of ncclSend()/ncclRecv() pairs attempted\n"
-           "inside the group. Every one of the six real calls above\n"
-           "reports the same honest failure this chapter's communicator\n"
-           "already earned -- a comm that was requested but never\n"
-           "successfully created can't run any collective, real or\n"
-           "hand-built, on real hardware or in this driver-less\n"
-           "environment. Section 11.3 turns to the one real difference\n"
-           "that would matter if a comm HAD been created: how NCCL\n"
-           "chooses an algorithm for ncclAllReduce().\n",
+           "inside the group, so ncclSend()/ncclRecv() were never actually\n"
+           "called. All five collective calls above report the same\n"
+           "failure: ncclInvalidArgument, because the comm handle they were\n"
+           "given is NULL (NCCL_DEBUG=WARN: \"comm argument is NULL\").\n"
+           "ncclGroupStart()/ncclGroupEnd() succeed: they touch no comm.\n"
+           "Section 11.3 turns to the one real difference that would\n"
+           "matter if a comm HAD been created: how NCCL chooses an\n"
+           "algorithm for ncclAllReduce().\n",
            p2pAttempted);
 
     return 0;
@@ -270,7 +294,7 @@ ncclAllReduce()      [Chapter 9's ring all-reduce]:             invalid argument
 ncclAllGather()      [Chapter 10, Section 10.1's all-gather]:   invalid argument (run with NCCL_DEBUG=WARN for details) (code 4)
 ncclReduceScatter()  [Chapter 10, Section 10.2's reduce-scatter]: invalid argument (run with NCCL_DEBUG=WARN for details) (code 4)
 
--- All-to-all [Chapter 10, Section 10.3]: no dedicated call --
+-- All-to-all [Chapter 10, Section 10.3]: no dedicated call in 2.18.3 --
    built from ncclSend()/ncclRecv(), exactly like this book's
    own direct implementation: --
 
@@ -278,20 +302,20 @@ ncclGroupStart(): no error (code 0)
 ncclGroupEnd(): no error (code 0)
 
 0 device(s) worth of ncclSend()/ncclRecv() pairs attempted
-inside the group. Every one of the six real calls above
-reports the same honest failure this chapter's communicator
-already earned -- a comm that was requested but never
-successfully created can't run any collective, real or
-hand-built, on real hardware or in this driver-less
-environment. Section 11.3 turns to the one real difference
-that would matter if a comm HAD been created: how NCCL
-chooses an algorithm for ncclAllReduce().
+inside the group, so ncclSend()/ncclRecv() were never actually
+called. All five collective calls above report the same
+failure: ncclInvalidArgument, because the comm handle they were
+given is NULL (NCCL_DEBUG=WARN: "comm argument is NULL").
+ncclGroupStart()/ncclGroupEnd() succeed: they touch no comm.
+Section 11.3 turns to the one real difference that would
+matter if a comm HAD been created: how NCCL chooses an
+algorithm for ncclAllReduce().
 ```
 
-`ncclGroupStart()` and `ncclGroupEnd()` genuinely succeed -- like `ncclGetVersion()`, they only manage process-local grouping state, not device state, so they need no real hardware at all. With `deviceCount = 0`, the loop between them never runs, so no `ncclSend()`/`ncclRecv()` pair is ever attempted -- the same honest degradation this book has shown for every device-count-driven loop since Chapter 4. Every one of the five direct collective calls, genuinely checked against a real, never-successfully-created communicator, reports exactly the failure Section 11.1 already predicted.
+`ncclGroupStart()` and `ncclGroupEnd()` genuinely succeed -- like `ncclGetVersion()`, they only manage process-local grouping state, not device state, and take no communicator, so they need no real hardware at all. With `deviceCount = 0`, the loop between them never runs, so `ncclSend()`/`ncclRecv()` are never actually called -- the same honest degradation this book has shown for every device-count-driven loop since Chapter 4. So exactly five real NCCL calls fail here, not six, and all five fail for the reason `NCCL_DEBUG=WARN` reports: a `NULL` comm argument.
 
-!!! warning "[COMMON TRAP] Assuming NCCL's lack of a dedicated all-to-all call means all-to-all is somehow a second-class operation in NCCL"
-    It would be easy to read "no dedicated call" as "NCCL doesn't really support this." NCCL's own documentation says otherwise: point-to-point `ncclSend()`/`ncclRecv()` calls "can be fused together with `ncclGroupStart()` and `ncclGroupEnd()` to form more complex communication patterns," and the documentation's own example for exactly this fusion is an all-to-all loop, line for line the same shape as this section's code. All-to-all is fully supported -- it's just supported as a composition of two more primitive calls, the same way this book's own Chapter 10 built it as a composition of `cudaMemcpyPeer()` calls, rather than as one specially-named function.
+!!! warning "[COMMON TRAP] Assuming the missing all-to-all call (in NCCL 2.18.3) means all-to-all is somehow a second-class operation in NCCL"
+    It would be easy to read "no dedicated call" as "NCCL doesn't really support this." Two things say otherwise. First, the gap is version-specific: NCCL 2.28 added a dedicated `ncclAlltoAll()`, so on a current NCCL the one-call form exists. Second, even in the 2.18.3 this book links against, NCCL's own documentation says otherwise: point-to-point `ncclSend()`/`ncclRecv()` calls "can be fused together with `ncclGroupStart()` and `ncclGroupEnd()` to form more complex communication patterns," and the documentation's own example for exactly this fusion is an all-to-all loop, line for line the same shape as this section's code. All-to-all is fully supported in 2.18.3 -- it's just supported there as a composition of two more primitive calls, the same way this book's own Chapter 10 built it as a composition of `cudaMemcpyPeer()` calls, rather than as one specially-named function.
 
 ## 11.3 Ring vs. Tree: The Latency Problem Chapter 9 Never Had to Solve
 
@@ -309,11 +333,19 @@ Tree: every device is a node in a tree of height ~log2(N); a value
 climbs UP to the root in ~log2(N) hops, then comes back DOWN in
 ~log2(N) more:
 
-              root
-             /    \
-          node    node
-          /  \    /  \
-        leaf leaf leaf leaf        (only log2(N) levels, for N leaves)
+                 root
+                   |
+          +--------+--------+
+          |                 |
+         node              node
+          |                 |
+      +---+---+         +---+---+
+      |       |         |       |
+     leaf    leaf      leaf    leaf
+
+  N = 4 leaves: height log2(4) = 2 hops from any leaf up to the root
+  (3 levels of nodes, counting the leaves themselves). In general a
+  balanced binary tree over N leaves has height ceil(log2(N)).
 ```
 
 ### Background
@@ -397,13 +429,13 @@ The last row uses `N=24576` deliberately: NVIDIA's own announcement cites testin
 
 ## Chapter Summary
 
-This chapter checked this book's own hand-built work in Chapters 8 through 10 against a real, genuinely-linked NCCL library, rather than building a new hand-rolled substitute. A real communicator (Section 11.1) plays exactly the role this book's own `deviceCount` loops have played informally since Chapter 3, and genuinely fails in two different, genuinely informative ways depending on whether the request itself was malformed or merely undeliverable on this hardware. Five of this book's six hand-built collectives turn out to have a literal, one-call NCCL equivalent (Section 11.2); the sixth, all-to-all, has no dedicated call even in real NCCL, and is built the same way Chapter 10 built it -- from repeated point-to-point transfers, just using `ncclSend()`/`ncclRecv()` instead of `cudaMemcpyPeer()`. The one place this book's own algorithm genuinely falls short of what NCCL does for real is scale: Chapter 9's ring all-reduce needs a round count that grows linearly with the number of devices, which is fine at the `N=4` this book has used throughout but becomes a genuine bottleneck at the thousands-of-devices scale real training clusters reach -- which is exactly why NCCL, since version 2.4, automatically chooses between the ring this book built and a second, tree-based algorithm with logarithmic round growth (Section 11.3). With this, **Part 2 is complete**: Chapters 8 through 11 took this book from broadcast and reduce, by hand, all the way to checking that hand-built work against the real library every real multi-GPU training job actually uses. Part 3 turns to what all of this communication infrastructure is actually *for*: the parallelization strategies -- data, model, tensor, and pipeline parallelism -- that decide who computes what, and when they need to talk to each other at all.
+This chapter checked this book's own hand-built work in Chapters 8 through 10 against a real, genuinely-linked NCCL library, rather than building a new hand-rolled substitute. A real communicator (Section 11.1) plays exactly the role this book's own `deviceCount` loops have played informally since Chapter 3, and genuinely fails in two different, genuinely informative ways: a malformed argument (a `NULL` `comms` pointer, a negative device count) is rejected up front as `ncclInvalidArgument`, while any well-formed request -- `ndev=0` included -- fails inside CUDA as `ncclUnhandledCudaError`, with `NCCL_DEBUG=WARN` naming the cause in each case. Five of this book's six hand-built collectives turn out to have a literal, one-call NCCL equivalent (Section 11.2), and each one, handed a `NULL` comm, reports "comm argument is NULL"; the sixth, all-to-all, has no dedicated call in the NCCL 2.18.3 this book links against (NCCL 2.28 later added `ncclAlltoAll()`), and there is built the same way Chapter 10 built it -- from repeated point-to-point transfers, just using `ncclSend()`/`ncclRecv()` instead of `cudaMemcpyPeer()`. The one place this book's own algorithm genuinely falls short of what NCCL does for real is scale: Chapter 9's ring all-reduce needs a round count that grows linearly with the number of devices, which is fine at the `N=4` this book has used throughout but becomes a genuine bottleneck at the thousands-of-devices scale real training clusters reach -- which is exactly why NCCL, since version 2.4, automatically chooses between the ring this book built and a second, tree-based algorithm with logarithmic round growth (Section 11.3). With this, **Part 2 is complete**: Chapters 8 through 11 took this book from broadcast and reduce, by hand, all the way to checking that hand-built work against the real library every real multi-GPU training job actually uses. Part 3 turns to what all of this communication infrastructure is actually *for*: the parallelization strategies -- data, model, tensor, and pipeline parallelism -- that decide who computes what, and when they need to talk to each other at all.
 
 ## Self-Check Questions
 
 1. What does `ncclGetVersion()` need that `ncclCommInitAll()` does, and why can the first genuinely succeed on this machine while the second cannot?
-2. Section 11.1 shows two different NCCL error codes for two different requests. Explain the difference between what `ndev=0` and `ndev=1` each represent, and why they fail differently.
-3. Match each of this book's six hand-built collectives (Chapters 8-10) to its one real NCCL call name from Section 11.2 -- for the one collective with no single matching call, explain what it's built from instead.
+2. Section 11.1 shows two different NCCL error codes across four requests. Explain why `ndev=0` and `ndev=1` (each with a real `comms` array) fail with the *same* code, while a `NULL` `comms` pointer or `ndev=-1` fail with a different one -- and how `NCCL_DEBUG=WARN` lets you tell which argument was at fault.
+3. Match each of this book's six hand-built collectives (Chapters 8-10) to its one real NCCL call name from Section 11.2 -- for the one collective with no single matching call in NCCL 2.18.3, explain what it's built from instead, and what changed in NCCL 2.28.
 4. Section 11.2's all-to-all code wraps `ncclSend()`/`ncclRecv()` in `ncclGroupStart()`/`ncclGroupEnd()`. Per NCCL's own documented ordering guarantee, what's different about two calls inside that group targeting the SAME peer versus two calls targeting DIFFERENT peers?
 5. Quote the specific claim this chapter cites from NVIDIA's NCCL 2.4 announcement explaining why ring all-reduce alone isn't good enough at very large scale.
 6. Using Section 11.3's model, compute the ring-to-tree round-count ratio for N=1024, and explain in your own words why that ratio keeps growing as N grows, using the formulas the code actually computes.
@@ -418,9 +450,9 @@ Part 2 is complete. Part 3 turns to parallelization strategies -- starting with 
 
 **1.** `ncclGetVersion()` only reads a version number baked into the linked library at build time -- it needs no CUDA device, no context, nothing about the actual machine's hardware. `ncclCommInitAll()` has to actually attach each requested communicator to a real CUDA device, so it can only succeed once a real device genuinely exists. That's exactly why the first call in Section 11.1's code reports "no error" while every later call reports a real failure.
 
-**2.** `ndev=0` asks NCCL to create a clique of zero communicators -- a malformed request on its face, rejected by argument validation (`ncclInvalidArgument`) before NCCL ever looks for a device. `ndev=1` asks for a completely reasonable, well-formed clique of one communicator; that request passes validation and only fails once NCCL actually tries to attach it to a CUDA device and finds none (`ncclUnhandledCudaError`). One failure is about the request being invalid; the other is about the hardware being absent.
+**2.** NCCL's argument check looks at whether the arguments are *usable*, not at whether the device count is zero. With a real `comms` array, both `ndev=0` and `ndev=1` pass that check, proceed into NCCL's CUDA setup, and fail there as `ncclUnhandledCudaError` (code 1) -- `NCCL_DEBUG=WARN` prints `Cuda failure 'no CUDA-capable device is detected'` for both. A `NULL` `comms` pointer (`comms argument is NULL`) or a negative count (`Invalid device count requested : -1`) is rejected immediately as `ncclInvalidArgument` (code 4), before any device is considered. One failure is about the *calling code* passing an unusable argument -- it would happen identically on a machine full of GPUs; the other is about the *hardware* being absent. The numeric code tells you which category; only the `NCCL_DEBUG=WARN` text tells you which argument or which CUDA call.
 
-**3.** `ncclBroadcast()` <- Chapter 8, Section 8.1 (broadcast); `ncclReduce()` <- Chapter 8, Section 8.2 (reduce); `ncclAllReduce()` <- Chapter 9 (ring all-reduce); `ncclAllGather()` <- Chapter 10, Section 10.1 (all-gather); `ncclReduceScatter()` <- Chapter 10, Section 10.2 (reduce-scatter). All-to-all (Chapter 10, Section 10.3) has no single matching call in this installed NCCL version -- it's built the same way this book built it, from repeated point-to-point transfers (`ncclSend()`/`ncclRecv()`) covering every ordered pair, fused into one operation with `ncclGroupStart()`/`ncclGroupEnd()`.
+**3.** `ncclBroadcast()` <- Chapter 8, Section 8.1 (broadcast); `ncclReduce()` <- Chapter 8, Section 8.2 (reduce); `ncclAllReduce()` <- Chapter 9 (ring all-reduce); `ncclAllGather()` <- Chapter 10, Section 10.1 (all-gather); `ncclReduceScatter()` <- Chapter 10, Section 10.2 (reduce-scatter). All-to-all (Chapter 10, Section 10.3) has no single matching call in this installed NCCL version (2.18.3) -- it's built the same way this book built it, from repeated point-to-point transfers (`ncclSend()`/`ncclRecv()`) covering every ordered pair, fused into one operation with `ncclGroupStart()`/`ncclGroupEnd()`. NCCL 2.28 added a dedicated `ncclAlltoAll()`, so on a current NCCL it does have a one-call form.
 
 **4.** Per NCCL's own documented ordering guarantee, point-to-point calls within a group targeting the SAME peer execute in order -- so two sends to the same peer inside one group would still need to be issued in the correct relative order, or that peer would receive them in the wrong sequence. Calls targeting DIFFERENT peers have no such ordering requirement and can progress concurrently -- which is exactly why Section 11.2's all-to-all loop, issuing one send and one receive per peer, can safely fuse all of them into a single group without worrying about cross-peer ordering.
 
@@ -439,4 +471,6 @@ Part 2 is complete. Part 3 turns to parallelization strategies -- starting with 
 - [Massively Scale Your Deep Learning Training with NCCL 2.4 — NVIDIA Developer Blog](https://developer.nvidia.com/blog/massively-scale-deep-learning-training-nccl-2-4) -- the ring algorithm's linear latency scaling limitation, the double binary tree's logarithmic-latency design and "each rank is at most a node in one tree and a leaf in the other" structure, NCCL's automatic ring/tree selection ("automatically switches back to rings when that pattern results in greater bandwidth"), and the Summit supercomputer test at 24,576 GPUs with "up to 180x" latency improvement.
 - [NCCL User Guide — Communicator API (comms.html)](https://docs.nvidia.com/deeplearning/nccl/user-guide/docs/api/comms.html) -- the exact `ncclGetVersion()`, `ncclCommInitAll()`, and `ncclCommInitRank()` signatures and descriptions, including how rank count and device list determine a communicator clique's size.
 - [NCCL User Guide — Point-to-Point Communication (p2p.html)](https://docs.nvidia.com/deeplearning/nccl/user-guide/docs/usage/p2p.html) -- the documented `ncclSend()`/`ncclRecv()` pairing requirement, the `ncclGroupStart()`/`ncclGroupEnd()` fusion mechanism for building "more complex communication patterns," its own all-to-all code example, and the same-peer-vs-different-peer ordering guarantee.
-- [NCCL User Guide — Collective Operations (collectives.html)](https://docs.nvidia.com/deeplearning/nccl/user-guide/docs/usage/collectives.html) -- the real `ncclBroadcast()`, `ncclReduce()`, `ncclAllReduce()`, `ncclAllGather()`, and `ncclReduceScatter()` definitions matched against this book's own Chapters 8-10.
+- [NCCL User Guide — Collective Operations (collectives.html)](https://docs.nvidia.com/deeplearning/nccl/user-guide/docs/usage/collectives.html) -- the real `ncclBroadcast()`, `ncclReduce()`, `ncclAllReduce()`, `ncclAllGather()`, and `ncclReduceScatter()` definitions matched against this book's own Chapters 8-10, and (in current versions) the dedicated `ncclAlltoAll`.
+- [NCCL Release Notes — NVIDIA](https://docs.nvidia.com/deeplearning/nccl/release-notes/index.html) -- NCCL 2.28.3: "Added new host collective APIs: ncclAlltoAll, ncclScatter, and ncclGather," which dates the end of the no-dedicated-all-to-all situation this chapter describes for 2.18.3.
+- Real `NCCL_DEBUG=WARN` output from the installed NCCL 2.18.3 (`misc/argcheck.cc`: "comms argument is NULL" / "comm argument is NULL"; `init.cc`: "Invalid device count requested" and "Cuda failure 'no CUDA-capable device is detected'") -- the evidence for every failure attribution in Sections 11.1 and 11.2.
