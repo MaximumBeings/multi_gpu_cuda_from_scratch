@@ -2,9 +2,12 @@
 // 84_distributed_jacobi_correctness_simulation.cpp
 //
 // Chapter 16's own row-strip domain decomposition and fixed top/bottom-only
-// halo exchange (matching NVIDIA's own real multi-GPU Jacobi example,
-// multi-gpu-programming-models/mpi/jacobi.cpp: "const int top = rank > 0 ?
-// rank - 1 : (size - 1); const int bottom = (rank + 1) % size;") apply
+// halo exchange (the same row-strip shape as NVIDIA's own multi-GPU Jacobi
+// example, multi-gpu-programming-models/mpi/jacobi.cpp -- although that
+// example's neighbors WRAP AROUND, "const int top = rank > 0 ? rank - 1 :
+// (size - 1); const int bottom = (rank + 1) % size;", i.e. periodic in y,
+// while this file, like Chapter 16, is non-periodic: edge ranks skip the
+// exchange on their outer side and keep the Dirichlet boundary) apply
 // almost unchanged to the classic Jacobi ITERATIVE METHOD for solving a
 // linear system (Saad, "Iterative Methods for Sparse Linear Systems", 2nd
 // ed., SIAM 2003, Ch.4 "Basic Iterative Methods") on a discretized 2D
@@ -20,8 +23,8 @@
 // as P separate per-rank partial sums later combined (modeling
 // MPI_Allreduce(..., MPI_SUM, ...), the real call in NVIDIA's own
 // jacobi.cpp) -- to check whether that reduction is ALSO bit-exact, or
-// whether it runs into the same floating-point non-associativity this
-// book's own Chapter 8 and Chapter 25 already found for other collectives.
+// whether it runs into the floating-point non-associativity Chapter 8
+// cautioned about.
 #include <cstdio>
 #include <vector>
 #include <cmath>
