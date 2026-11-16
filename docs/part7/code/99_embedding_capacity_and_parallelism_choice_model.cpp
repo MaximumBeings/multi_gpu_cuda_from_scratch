@@ -18,53 +18,62 @@
 // exactly where pure data parallelism (replicate everything) stops being
 // an option and hybrid parallelism (Chapter 12's technique for the dense
 // part, Chapter 13's technique for the embeddings) becomes necessary --
-// grounded in HugeCTR's own real cited practical single-GPU capacity
-// figure.
+// grounded in HugeCTR's own ETC documentation, which sizes memory per
+// 8-GPU NODE, not per GPU: "with a 8x Tesla A100 (80 GB per GPU) setup,
+// the cumulative GPU memory size ... is 640 GB." The per-GPU budget is
+// therefore 80 GB (and less in practice, since activations, the dense
+// model, optimizer state and workspace share the same HBM); 640 GB is
+// what a whole 8-GPU node holds in aggregate.
 #include <cstdio>
 
 int main() {
-    // HugeCTR's own real cited practical single-GPU embedding capacity
-    // figure (its own ETC -- Embedding Training Cache -- documentation
-    // describes this as the point beyond which on-demand loading, not
-    // simple replication or even simple sharding alone, becomes
-    // necessary for truly terabyte-scale tables).
-    double perGpuBudgetGB = 640.0;
+    // HugeCTR's ETC documentation's own setup: 8x A100, 80 GB per GPU.
+    double perGpuBudgetGB = 80.0;
+    int gpusPerNode = 8;
+    double perNodeAggregateGB = perGpuBudgetGB * gpusPerNode;  // 640 GB
 
     // The dense DNN part stays tiny by comparison -- illustrative size
     // for a realistic DLRM-style bottom+top MLP stack.
     double denseModelGB = 2.0;
 
+    printf("Per-GPU HBM: %.0f GB (A100 80GB); one 8-GPU node in aggregate: "
+           "%.0f GB -- the 640 GB figure in HugeCTR's ETC documentation is "
+           "this NODE aggregate, not a single-GPU capacity.\n",
+           perGpuBudgetGB, perNodeAggregateGB);
     printf("Dense model size: %.1f GB -- comfortably replicated on EVERY "
            "GPU regardless of GPU count (Chapter 12's data parallelism), "
-           "since it never approaches the %.0f GB real single-GPU budget.\n\n",
+           "since it is a small fraction of one GPU's %.0f GB.\n\n",
            denseModelGB, perGpuBudgetGB);
 
     struct Scenario { const char *label; double totalEmbeddingGB; };
     Scenario scenarios[] = {
-        {"Small catalog",          50.0},
-        {"At HugeCTR's own real single-GPU limit", 640.0},
-        {"Production-scale",       2048.0},
-        {"Real terabyte-scale (HugeCTR's own cited ETC use case)", 10240.0},
+        {"Small catalog",                                   50.0},
+        {"One 8x A100 node's aggregate (HugeCTR ETC doc)",  640.0},
+        {"Production-scale",                                2048.0},
+        {"Terabyte-scale (10 TB)",                          10240.0},
     };
 
-    printf("%-58s %-16s %-10s %-24s\n", "Scenario", "Total emb. (GB)",
-           "Fits 1 GPU?", "GPUs needed if sharded (MP)");
+    printf("%-50s %-16s %-12s %-14s %-12s\n", "Scenario", "Total emb. (GB)",
+           "Fits 1 GPU?", "GPUs (MP)", "8-GPU nodes");
     for (auto &s : scenarios) {
         bool fitsOne = s.totalEmbeddingGB <= perGpuBudgetGB;
         int gpusNeeded = (int)((s.totalEmbeddingGB + perGpuBudgetGB - 1.0) / perGpuBudgetGB);
-        printf("%-58s %-16.1f %-10s %-24d\n", s.label, s.totalEmbeddingGB,
-               fitsOne ? "YES" : "NO", gpusNeeded);
+        int nodesNeeded = (gpusNeeded + gpusPerNode - 1) / gpusPerNode;
+        printf("%-50s %-16.1f %-12s %-14d %-12d\n", s.label, s.totalEmbeddingGB,
+               fitsOne ? "YES" : "NO", gpusNeeded, nodesNeeded);
     }
 
-    printf("\nPure data parallelism (replicate the WHOLE model on every "
-           "GPU, Chapter 12's technique alone) only works for the first "
-           "scenario -- everywhere else, a full embedding replica would "
-           "not fit in a single real GPU's own %.0f GB budget, exactly "
-           "why HugeCTR's own real design shards the embeddings (Chapter "
-           "13's technique) while keeping the dense layers replicated "
-           "(Chapter 12's technique) -- a genuine HYBRID of two "
-           "techniques this book built separately, applied to two "
-           "different PARTS of the same model rather than to the whole "
-           "model uniformly.\n", perGpuBudgetGB);
+    printf("\nThese GPU counts are LOWER bounds: they assume the whole %.0f GB "
+           "of every GPU holds embedding rows and nothing else. Pure data "
+           "parallelism (replicate the WHOLE model on every GPU, Chapter 12's "
+           "technique alone) only works for the first scenario -- a 10 TB "
+           "table is %.0fx one GPU's memory, and %.0fx even a whole 8-GPU "
+           "node's aggregate. That is exactly why HugeCTR's own real design "
+           "shards the embeddings (Chapter 13's technique) while keeping the "
+           "dense layers replicated (Chapter 12's technique) -- a genuine "
+           "HYBRID of two techniques this book built separately, applied to "
+           "two different PARTS of the same model rather than to the whole "
+           "model uniformly.\n",
+           perGpuBudgetGB, 10240.0 / perGpuBudgetGB, 10240.0 / perNodeAggregateGB);
     return 0;
 }
