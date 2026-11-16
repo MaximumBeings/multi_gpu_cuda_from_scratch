@@ -131,14 +131,35 @@ std::vector<long long> naiveAllPairs(const std::vector<Body> &bodies) {
 // applied per shard instead of per thread. ---
 std::vector<long long> distributedAllPairs(const std::vector<Body> &bodies) {
     std::vector<long long> force(N, 0);
-    for (int s = 0; s < P; s++) {
-        // The all-gather itself: this shard's own view of "all bodies"
-        // is simply the full input list, standing in for a real
-        // ncclAllGather()-style collective (Chapter 10) that would, on
-        // real hardware, assemble this same complete list from every
-        // shard's own local partition.
-        const std::vector<Body> &gathered = bodies;
 
+    // Each shard starts with ONLY its own SHARD_SIZE bodies, placed in
+    // its own slot of an otherwise-EMPTY N-entry buffer (mass 0, x
+    // sentinel), so any slot the all-gather fails to fill would visibly
+    // corrupt the forces below.
+    const Body EMPTY = {-999999, 0};
+    std::vector<std::vector<Body>> buf(P, std::vector<Body>(N, EMPTY));
+    for (int s = 0; s < P; s++)
+        for (int k = 0; k < SHARD_SIZE; k++)
+            buf[s][s * SHARD_SIZE + k] = bodies[s * SHARD_SIZE + k];
+
+    // The all-gather itself, as Chapter 10's ring algorithm: P-1 steps;
+    // at step t, shard s forwards block (s - t) mod P to shard (s+1) mod
+    // P, which copies it into the same slot of its own buffer.
+    for (int t = 0; t < P - 1; t++) {
+        std::vector<std::vector<Body>> msg(P, std::vector<Body>(SHARD_SIZE));
+        for (int s = 0; s < P; s++) {
+            int blk = ((s - t) % P + P) % P;
+            for (int k = 0; k < SHARD_SIZE; k++) msg[s][k] = buf[s][blk * SHARD_SIZE + k];
+        }
+        for (int s = 0; s < P; s++) {
+            int dst = (s + 1) % P;
+            int blk = ((s - t) % P + P) % P;
+            for (int k = 0; k < SHARD_SIZE; k++) buf[dst][blk * SHARD_SIZE + k] = msg[s][k];
+        }
+    }
+
+    for (int s = 0; s < P; s++) {
+        const std::vector<Body> &gathered = buf[s];  // THIS shard's own view
         int start = s * SHARD_SIZE;
         int end = start + SHARD_SIZE;
         for (int i = start; i < end; i++) {
@@ -210,12 +231,12 @@ All 12 bodies EXACT MATCH between naive all-pairs and distributed (shard + all-g
 
 ### Intuition
 
-Section 27.1 proved WHAT collective distributed all-pairs needs. This section quantifies HOW MUCH worse that makes things as more GPUs are added, reusing Chapter 9 and Chapter 10's own real ring all-gather formula: each of P ranks ends a ring all-gather having received `(P-1)/P` of the total K bytes being gathered. For N-body, K is the ENTIRE body dataset -- so as P grows, `(P-1)/P` approaches 1, meaning every GPU's own per-step communication volume approaches the FULL dataset size and essentially never gets smaller, no matter how many GPUs are added. Chapter 16's own halo-exchange volume depended only on a FIXED boundary size between adjacent shards -- completely independent of the total domain size -- which is exactly why adding more shards there made each shard's own per-step communication SHRINK. This section applies the real formula to a real scale: Burtscher & Pingali's own cited "5,000,000 bodies" CUDA Barnes-Hut benchmark, reused here as a real-world body count (not itself a communication-volume citation).
+Section 27.1 proved WHAT collective distributed all-pairs needs. This section quantifies HOW MUCH worse that makes things as more GPUs are added, reusing Chapter 9 and Chapter 10's own real ring all-gather formula: each of P ranks ends a ring all-gather having received `(P-1)/P` of the total K bytes being gathered. For N-body, K is the ENTIRE body dataset -- so as P grows, `(P-1)/P` approaches 1, meaning every GPU's own per-step communication volume approaches the FULL dataset size and essentially never gets smaller, no matter how many GPUs are added. Chapter 16's own halo-exchange volume depended only on a FIXED boundary size between adjacent shards -- completely independent of the total domain size and of P -- which is exactly why adding more shards there left each shard's own per-step communication FLAT: it never grew with P. This section applies the real formula to a real scale: Burtscher & Pingali's own cited "5,000,000 bodies" CUDA Barnes-Hut benchmark, reused here as a real-world body count (not itself a communication-volume citation).
 
 ```text
 Ch16 halo exchange:  volume/shard = FIXED (boundary size only)
-                      more shards -> SAME per-shard volume, SHRINKS
-                      relative to the growing total problem
+                      more shards -> SAME per-shard volume,
+                      FLAT as P grows
 
 This chapter's all-gather: volume/GPU = (P-1)/P * (FULL dataset size)
                       more GPUs -> per-GPU volume APPROACHES the
@@ -236,8 +257,8 @@ This chapter's all-gather: volume/GPU = (P-1)/P * (FULL dataset size)
 // received (P-1)/P of the total K bytes being gathered. Chapter 16's
 // own halo-exchange volume, by contrast, depended only on a fixed
 // BOUNDARY size between adjacent shards -- never on the total domain
-// size -- which is exactly why adding more shards made Chapter 16's
-// own per-shard communication SHRINK. This section's own worked
+// size, and never on P -- which is exactly why adding more shards left
+// Chapter 16's own per-shard communication FLAT. This section's own worked
 // calculation, applied to a real body count from a real cited source
 // (Burtscher & Pingali's own "5,000,000 bodies" CUDA Barnes-Hut
 // benchmark), shows the opposite: N-body's own per-GPU all-gather
@@ -289,9 +310,10 @@ int main() {
            "every step. Chapter 16's own halo-exchange volume stayed "
            "FLAT at a fixed boundary size regardless of P, because a "
            "stencil update only ever reads immediately adjacent cells. "
-           "Adding more GPUs make Chapter 16's own per-GPU communication "
-           "SHRINK relative to the growing problem; it does nothing "
-           "comparable for this chapter's own all-pairs N-body case.\n",
+           "Adding more GPUs leaves Chapter 16's own per-GPU "
+           "communication flat; for this chapter's own all-pairs N-body "
+           "case it makes each GPU's receive volume GROW toward the full "
+           "dataset.\n",
            totalMiB);
 
     return 0;
@@ -312,11 +334,11 @@ P      N-body all-gather MiB/GPU    Ch16 halo-exchange MiB/GPU
 32     147.82                       0.50                        
 64     150.20                       0.50                        
 
-As P grows, N-body's own per-GPU all-gather volume APPROACHES the FULL dataset size (152.59 MiB) and never drops below it by much -- every GPU still needs every body's data, every step. Chapter 16's own halo-exchange volume stayed FLAT at a fixed boundary size regardless of P, because a stencil update only ever reads immediately adjacent cells. Adding more GPUs make Chapter 16's own per-GPU communication SHRINK relative to the growing problem; it does nothing comparable for this chapter's own all-pairs N-body case.
+As P grows, N-body's own per-GPU all-gather volume APPROACHES the FULL dataset size (152.59 MiB) and never drops below it by much -- every GPU still needs every body's data, every step. Chapter 16's own halo-exchange volume stayed FLAT at a fixed boundary size regardless of P, because a stencil update only ever reads immediately adjacent cells. Adding more GPUs leaves Chapter 16's own per-GPU communication flat; for this chapter's own all-pairs N-body case it makes each GPU's receive volume GROW toward the full dataset.
 ```
 
-!!! warning "[COMMON TRAP] Assuming more GPUs always makes per-GPU communication cheaper, the way it did in Chapter 16"
-    Chapter 16's own real finding -- that finer domain decomposition (more shards) shrinks each shard's own communication volume relative to the growing problem -- is true for LOCAL, neighbor-only update rules, and it is tempting to treat that as a general property of "adding more GPUs." This section's own locked output shows it is not: for all-pairs N-body, going from P=2 to P=64 GPUs does not shrink per-GPU communication at all -- it GROWS, from 76.29 MiB to 150.20 MiB, approaching the full 152.59 MiB dataset size and staying there. The real reason is Section 27.1's own finding: every GPU still needs every body's data, every step, so adding GPUs only ever adds MORE all-gather participants, never reduces what any one of them individually needs to receive. Whether adding GPUs helps or hurts per-GPU communication depends entirely on whether the underlying problem is LOCAL (Chapter 16) or GLOBAL (this chapter) -- it is not a property of parallelism in general.
+!!! warning "[COMMON TRAP] Assuming adding GPUs leaves per-GPU communication flat, the way it did in Chapter 16"
+    Chapter 16's own real finding -- that each shard's halo-exchange volume depends only on the fixed boundary between neighbors, so it stays flat no matter how many shards are added -- is true for LOCAL, neighbor-only update rules, and it is tempting to treat that as a general property of "adding more GPUs." This section's own locked output shows it is not: for all-pairs N-body, going from P=2 to P=64 GPUs does not keep per-GPU communication flat -- it GROWS, from 76.29 MiB to 150.20 MiB, approaching the full 152.59 MiB dataset size and staying there. The real reason is Section 27.1's own finding: every GPU still needs every body's data, every step, so adding GPUs only ever adds MORE all-gather participants, never reduces what any one of them individually needs to receive. Whether adding GPUs helps or hurts per-GPU communication depends entirely on whether the underlying problem is LOCAL (Chapter 16) or GLOBAL (this chapter) -- it is not a property of parallelism in general.
 
 ## 27.3 Barnes-Hut: The Real Algorithmic Answer
 
@@ -382,7 +404,8 @@ int main() {
     }
     printf("\nAs N grows, the ratio N/log2(N) grows WITHOUT BOUND -- "
            "all-pairs' own O(N^2) cost doesn't just stay worse than "
-           "Barnes-Hut's O(N log N), it gets combinatorially WORSE, "
+           "Barnes-Hut's O(N log N), it gets steadily WORSE (by a factor "
+           "N/log2(N), which grows almost linearly in N), "
            "relative to Barnes-Hut, the larger the simulation gets. This "
            "compounds Section 27.2's own finding that all-pairs' "
            "per-GPU COMMUNICATION also does not improve by adding more "
@@ -433,7 +456,7 @@ N            N^2 ops          N*log2(N) ops    ratio N/log2(N)
 5000000      2.500e+13        1.113e+08        224683.8        x
 50000000     2.500e+15        1.279e+09        1955001.7       x
 
-As N grows, the ratio N/log2(N) grows WITHOUT BOUND -- all-pairs' own O(N^2) cost doesn't just stay worse than Barnes-Hut's O(N log N), it gets combinatorially WORSE, relative to Barnes-Hut, the larger the simulation gets. This compounds Section 27.2's own finding that all-pairs' per-GPU COMMUNICATION also does not improve by adding more GPUs -- both the compute and the communication argument point the same real direction at scale.
+As N grows, the ratio N/log2(N) grows WITHOUT BOUND -- all-pairs' own O(N^2) cost doesn't just stay worse than Barnes-Hut's O(N log N), it gets steadily WORSE (by a factor N/log2(N), which grows almost linearly in N), relative to Barnes-Hut, the larger the simulation gets. This compounds Section 27.2's own finding that all-pairs' per-GPU COMMUNICATION also does not improve by adding more GPUs -- both the compute and the communication argument point the same real direction at scale.
 
 --- Real, cited measured numbers for an ACTUAL GPU Barnes-Hut implementation (Burtscher & Pingali) -- NOT computed by this program ---
 "Our CUDA code takes 5.2 seconds to simulate one time step with 5,000,000 bodies on a 1.3 GHz Quadro FX 5800 GPU with 240 cores, which is 74 times faster than an optimized serial implementation running on a 2.53 GHz Xeon E5540 CPU."
@@ -450,7 +473,7 @@ Burtscher & Pingali's own real speedup figures are for ONE GPU against a serial 
 
 ## Chapter Summary
 
-This chapter showed that a problem which LOOKS like Chapter 16's own domain decomposition -- splitting a large dataset across devices -- can require a completely different communication pattern once the underlying physics is examined. Section 27.1 built a real correctness simulation proving that distributed all-pairs N-body force calculation needs an all-gather, not a halo exchange, because gravity has no cutoff radius and every body genuinely needs every other body's data. Section 27.2 quantified how much worse this makes the communication shape at real scale, reusing Chapter 9/10's own ring all-gather formula: unlike Chapter 16's own halo exchange, whose per-shard volume shrinks as more shards are added, all-pairs N-body's per-GPU communication approaches the FULL dataset size and stays there, regardless of how many GPUs join. Section 27.3 closed with Barnes & Hut's own real, named 1986 algorithm, which fixes both problems at once by approximating distant clusters of bodies as single aggregate sources -- reducing compute from O(N^2) to O(N log N), with real measured numbers from an actual GPU implementation (Burtscher & Pingali) -- while being explicit about which claims are cited and which are this chapter's own reasoning about the (unmeasured, uncited) multi-GPU communication benefit.
+This chapter showed that a problem which LOOKS like Chapter 16's own domain decomposition -- splitting a large dataset across devices -- can require a completely different communication pattern once the underlying physics is examined. Section 27.1 built a real correctness simulation proving that distributed all-pairs N-body force calculation needs an all-gather, not a halo exchange, because gravity has no cutoff radius and every body genuinely needs every other body's data. Section 27.2 quantified how much worse this makes the communication shape at real scale, reusing Chapter 9/10's own ring all-gather formula: unlike Chapter 16's own halo exchange, whose per-shard volume stays flat as more shards are added, all-pairs N-body's per-GPU communication approaches the FULL dataset size and stays there, regardless of how many GPUs join. Section 27.3 closed with Barnes & Hut's own real, named 1986 algorithm, which fixes both problems at once by approximating distant clusters of bodies as single aggregate sources -- reducing compute from O(N^2) to O(N log N), with real measured numbers from an actual GPU implementation (Burtscher & Pingali) -- while being explicit about which claims are cited and which are this chapter's own reasoning about the (unmeasured, uncited) multi-GPU communication benefit.
 
 ## Self-Check Questions
 
@@ -458,7 +481,7 @@ This chapter showed that a problem which LOOKS like Chapter 16's own domain deco
 2. What real quote from GPU Gems 3's "Fast N-Body Simulation with CUDA" chapter explains why every body's force calculation needs every OTHER body?
 3. In Section 27.1's own simulation, what real collective replaces Chapter 16's halo exchange, and what does "every shard holds the full body list" mean in terms of that collective's own semantics?
 4. Section 27.2's own locked output shows N-body's per-GPU communication volume GROWING as more GPUs are added, from 76.29 MiB at P=2 to 150.20 MiB at P=64. Why does this happen, given that Chapter 9/10's own ring all-gather formula normally describes volume as staying "nearly flat"?
-5. Why does Chapter 16's own halo-exchange volume shrink as more shards are added, while this chapter's own all-gather volume does not?
+5. Why does Chapter 16's own per-shard halo-exchange volume stay flat as more shards are added, while this chapter's own per-GPU all-gather volume grows?
 6. What real, named algorithm reduces all-pairs N-body's O(N^2) compute cost, and what real quote from its own 1986 paper describes the mechanism?
 7. What real, cited numbers does Burtscher & Pingali's paper report for their GPU Barnes-Hut implementation, and what do those numbers NOT tell you about multi-GPU communication?
 8. Why does this chapter explicitly separate its own reasoning about Barnes-Hut's likely communication benefit from Burtscher & Pingali's real cited numbers?
@@ -473,11 +496,11 @@ Chapter 27 showed that communication pattern is determined by a problem's own ph
 
 **2.** "The total force F_i on body i, due to its interactions with the other N-1 bodies, is obtained by summing all interactions." This states directly that computing the correct force on any one body requires summing contributions from every other body in the system, not just nearby ones.
 
-**3.** An all-gather (Chapter 10's own real collective) replaces the halo exchange. "Every shard holds the full body list" means that, unlike an all-gather's typical use where each rank contributes a portion and receives everyone's portions to form one complete combined dataset, here the semantics are used specifically so that EVERY shard ends up with a complete, identical copy of every other shard's bodies -- not just its own boundary-adjacent neighbors' data, the way Chapter 16's halo exchange worked.
+**3.** An all-gather (Chapter 10's own real collective) replaces the halo exchange. "Every shard holds the full body list" is exactly an all-gather's own semantics: each shard contributes its own block of bodies, and after the collective every shard holds every block -- the complete, identical N-body list -- rather than just its boundary-adjacent neighbors' data, as in Chapter 16's halo exchange. File 78 runs it as Chapter 10's ring all-gather (P-1 steps, each forwarding one block), starting from buffers in which every non-owned slot is empty, so a routing mistake would show up as a wrong force.
 
 **4.** Chapter 9/10's "nearly flat volume" finding describes the per-rank communication volume relative to a FIXED total buffer size K as N (the rank count) grows -- the factor `(N-1)/N` approaches a constant. In this chapter's case, the total buffer being gathered IS the entire N-body dataset, and as P (the GPU count) grows, `(P-1)/P` also approaches 1, meaning each GPU's own share of that fixed total dataset approaches the WHOLE dataset -- which is exactly what the locked output shows growing toward 152.59 MiB. The volume is "nearly flat" in the sense that it approaches a constant, but that constant is the FULL dataset size, not a small fraction of it -- a fundamentally different situation from Chapter 16's halo exchange, whose fixed constant was a small boundary size.
 
-**5.** Chapter 16's halo-exchange volume depends only on the fixed boundary length between adjacent shards, which does not grow as more shards are added -- each shard's own boundary with its neighbors stays the same size regardless of how many total shards exist. This chapter's own all-gather volume depends on the TOTAL dataset size, which every GPU needs a complete copy of regardless of shard count, so adding more GPUs only adds more all-gather participants without reducing what each one individually needs to receive.
+**5.** Chapter 16's halo-exchange volume depends only on the fixed boundary length between adjacent shards, which does not change as more shards are added -- each shard's own boundary with its neighbors stays the same size regardless of how many total shards exist, so the per-shard volume is flat in P. This chapter's own all-gather volume depends on the TOTAL dataset size, which every GPU needs a complete copy of regardless of shard count, so each GPU must receive the `(P-1)/P` of it that it does not own -- a fraction that GROWS with P (76.29 MiB at P=2 up to 150.20 MiB at P=64).
 
 **6.** Barnes-Hut (Barnes & Hut, 1986, Nature) reduces the O(N^2) compute cost to O(N log N). Its own paper describes the mechanism as a "tree-structured hierarchical subdivision of space into cubic cells, each of which is recursively divided into eight subcells whenever more than one particle is found to occupy the same cell" -- this tree lets a distant cluster of bodies be approximated as a single aggregate source rather than visited individually.
 
