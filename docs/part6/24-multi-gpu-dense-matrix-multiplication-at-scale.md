@@ -59,7 +59,8 @@ Ch13's own question:                       This section's own question:
 // A real, closed-form model (no fabricated timings, matching this book's
 // own established practice since Ch2/Ch5/Ch16) of when a dense GEMM's
 // three matrices genuinely stop fitting on one real GPU. Reuses Chapter
-// 1's own real H100 SXM figure (80 GB HBM3) as the single-device budget.
+// 1's own real H100 SXM figure (80 GB HBM3, i.e. 80e9 bytes) as the
+// single-device budget.
 // A real NVIDIA forum thread on cuBLASXt states plainly what problem
 // this section is building toward: cuBLASXt's "main point" is to "work
 // around GPU memory capacity limits" -- i.e. out-of-core / multi-GPU
@@ -74,7 +75,9 @@ struct GemmShape {
 };
 
 int main() {
-    const double H100_SXM_HBM_BYTES = 80.0 * 1024.0 * 1024.0 * 1024.0; // Ch1's own real figure
+    // Ch1's own real figure: 80 GB, i.e. 80 x 10^9 bytes (about 74.5 GiB)
+    // -- decimal gigabytes, as memory capacities are specified.
+    const double H100_SXM_HBM_BYTES = 80.0e9;
     const double BYTES_PER_FP32 = 4.0;
 
     // Real GPT-3 175B dimensions (Brown et al. Table 2.1, already cited
@@ -85,14 +88,14 @@ int main() {
     // output C -- fit AT ONCE, at a batch size and sequence length a
     // real training run actually uses."
     GemmShape shapes[] = {
-        {"GPT-3 FFN weight alone (d_model x 4d_model)", 12288, 12288, 49152},
+        {"GPT-3 FFN GEMM, small batch (M=12288 tokens)", 12288, 12288, 49152},
         {"GPT-3 FFN forward, batch=512, seq=2048 (M=batch*seq)",
          512ull * 2048ull, 12288, 49152},
         {"A hypothetical 10x-larger FFN forward at the same batch/seq",
          512ull * 2048ull, 122880, 491520},
     };
 
-    printf("Single-device budget (Ch1's own real H100 SXM figure): %.1f GiB\n\n",
+    printf("Single-device budget (Ch1's own real H100 SXM figure): 80 GB = %.2f GiB\n\n",
            H100_SXM_HBM_BYTES / (1024.0 * 1024.0 * 1024.0));
 
     for (auto &s : shapes) {
@@ -104,6 +107,8 @@ int main() {
         printf("%s\n", s.label);
         printf("  M=%llu K=%llu N=%llu (fp32)\n",
                (unsigned long long)s.m, (unsigned long long)s.k, (unsigned long long)s.n);
+        printf("  B (weight) alone = %.2f GiB\n",
+               bytesB / (1024.0 * 1024.0 * 1024.0));
         printf("  A+B+C = %.2f GiB -> %s on one H100 SXM\n\n",
                totalGiB, fits ? "FITS" : "DOES NOT FIT");
     }
@@ -131,48 +136,59 @@ int main() {
 Compiled with `g++ -O2 69_gemm_memory_wall_model.cpp -o 69_gemm_memory_wall_model` and genuinely run (this is a plain closed-form host computation -- no device call, no honest error to report, exactly like Ch2's own bandwidth model). Locked output:
 
 ```text
-Single-device budget (Ch1's own real H100 SXM figure): 80.0 GiB
+Single-device budget (Ch1's own real H100 SXM figure): 80 GB = 74.51 GiB
 
-GPT-3 FFN weight alone (d_model x 4d_model)
+GPT-3 FFN GEMM, small batch (M=12288 tokens)
   M=12288 K=12288 N=49152 (fp32)
+  B (weight) alone = 2.25 GiB
   A+B+C = 5.06 GiB -> FITS on one H100 SXM
 
 GPT-3 FFN forward, batch=512, seq=2048 (M=batch*seq)
   M=1048576 K=12288 N=49152 (fp32)
+  B (weight) alone = 2.25 GiB
   A+B+C = 242.25 GiB -> DOES NOT FIT on one H100 SXM
 
 A hypothetical 10x-larger FFN forward at the same batch/seq
   M=1048576 K=122880 N=491520 (fp32)
+  B (weight) alone = 225.00 GiB
   A+B+C = 2625.00 GiB -> DOES NOT FIT on one H100 SXM
 
 --- Minimum device count under even block distribution (capacity only) ---
-GPT-3 FFN weight alone (d_model x 4d_model) -> minimum 1 device(s)
+GPT-3 FFN GEMM, small batch (M=12288 tokens) -> minimum 1 device(s)
 GPT-3 FFN forward, batch=512, seq=2048 (M=batch*seq) -> minimum 4 device(s)
-A hypothetical 10x-larger FFN forward at the same batch/seq -> minimum 33 device(s)
+A hypothetical 10x-larger FFN forward at the same batch/seq -> minimum 36 device(s)
 ```
 
 !!! warning "[COMMON TRAP] Sizing a multi-GPU GEMM job by the WEIGHT matrix alone, the way Chapter 13's own question would"
-    The weight matrix B is the part of a GEMM most engineers reach for first when asked "will this fit," because it is the part that sounds like "the model." This section's own locked output shows why that instinct under-sizes the real job: the GPT-3 FFN weight alone fits in 5.06 GiB, comfortably under one H100's 80 GiB budget -- but the SAME weight matrix, multiplied against one real production batch (512 sequences of length 2048), needs 242.25 GiB across A, B, and C combined, and genuinely requires at least 4 devices just for capacity, before a single FLOP of communication cost (Section 24.2's own subject) is even considered. Sizing a distributed GEMM job by the weight matrix alone -- Chapter 13's own question -- silently ignores the two operands (A and C) that actually scale with how the model is being USED, not just how big it is.
+    The weight matrix B is the part of a GEMM most engineers reach for first when asked "will this fit," because it is the part that sounds like "the model." This section's own locked output shows why that instinct under-sizes the real job: the GPT-3 FFN weight B alone is only 2.25 GiB, and even a small-batch GEMM with it (A+B+C at M=12288 tokens) is 5.06 GiB, comfortably under one H100's 80 GB (74.51 GiB) budget -- but the SAME weight matrix, multiplied against one real production batch (512 sequences of length 2048), needs 242.25 GiB across A, B, and C combined, and genuinely requires at least 4 devices just for capacity, before a single FLOP of communication cost (Section 24.2's own subject) is even considered. Sizing a distributed GEMM job by the weight matrix alone -- Chapter 13's own question -- silently ignores the two operands (A and C) that actually scale with how the model is being USED, not just how big it is.
 
 ## 24.2 SUMMA: A Real, Named Algorithm for Splitting the Whole GEMM
 
 ### Intuition
 
-Once a GEMM's operands are known to need more than one device, SOMETHING has to decide exactly which piece of A and B each device holds, and exactly what gets communicated so every device can compute its own correct piece of C. SUMMA (Van de Geijn & Watts, "SUMMA: Scalable Universal Matrix Multiplication Algorithm") is the real, named, published answer this section builds. It arranges P devices into a 2D grid; A's rows are split across the grid's rows, B's columns are split across the grid's columns, and BOTH matrices' shared K dimension is split into P panels, one per step. At step l, the device column that owns A's l-th column-panel broadcasts it across its own device row (reusing Chapter 8's own broadcast, now inside an algorithm rather than as a standalone demonstration); the device row that owns B's l-th row-panel broadcasts it across its own device column; every device then accumulates a local partial product into its own piece of C, in the paper's own notation, "Cij = Cij + a~^l_i (b~^j_l)^T." After P steps, every device's own local accumulator holds its exact, correct piece of the full result -- no device ever needed to hold all of A or all of B at once.
+Once a GEMM's operands are known to need more than one device, SOMETHING has to decide exactly which piece of A and B each device holds, and exactly what gets communicated so every device can compute its own correct piece of C. SUMMA (Van de Geijn & Watts, "SUMMA: Scalable Universal Matrix Multiplication Algorithm") is the real, named, published answer this section builds. It arranges P devices into a 2D grid; A's rows are split across the grid's rows, B's columns are split across the grid's columns, and BOTH matrices' shared K dimension is split into panels, one per step (on a square P x P grid, exactly P panels: panel l lives in grid column l for A and grid row l for B). At step l, the device column that owns A's l-th column-panel broadcasts it across its own device row (reusing Chapter 8's own broadcast, now inside an algorithm rather than as a standalone demonstration); the device row that owns B's l-th row-panel broadcasts it across its own device column; every device then accumulates a local partial product into its own piece of C, in the paper's own notation, "Cij = Cij + a~^l_i (b~^j_l)^T." After P steps, every device's own local accumulator holds its exact, correct piece of the full result -- no device ever needed to hold all of A or all of B at once.
 
 ```text
 A 3x3 device grid, step l=1 (0-indexed):
 
+A's column-panel 1 lives in device COLUMN 1 (one row-block per
+device); each of those devices broadcasts its piece ACROSS its row:
+
 Device columns:        col 0        col 1        col 2
                     +---------+  +---------+  +---------+
-Device row 0        | owns A's|  |         |  |         |
-                    | panel 1 |->|broadcast|->|broadcast|
+Device row 0        |receives | <| owns A's|> |receives |
+                    |         |  | panel 1 |  |         |
                     +---------+  +---------+  +---------+
-Device row 1        | owns A's|  |         |  |         |
-                    | panel 1 |->|broadcast|->|broadcast|
+Device row 1        |receives | <| owns A's|> |receives |
+                    |         |  | panel 1 |  |         |
                     +---------+  +---------+  +---------+
-Device row 2 owns B's row-panel 1 -- broadcasts it DOWN
-its own device column (col 0, col 1, col 2 each receive it).
+Device row 2        |receives | <| owns A's|> |receives |
+                    |         |  | panel 1 |  |         |
+                    +---------+  +---------+  +---------+
+
+B's row-panel 1 lives in device ROW 1 (one column-block per
+device); each of those devices broadcasts its piece DOWN (and up)
+its own device column, so rows 0 and 2 each receive it.
 
 Every device (r,c) then computes: Cij += (its A panel for row r)
                                             x (its B panel for col c)
@@ -185,21 +201,27 @@ Every device (r,c) then computes: Cij += (its A panel for row r)
 // 70_summa_correctness_simulation.cpp
 //
 // SUMMA (Van de Geijn & Watts, "SUMMA: Scalable Universal Matrix
-// Multiplication Algorithm") splits an M x K x N GEMM across a P x P
-// grid of processes. A (M x K) is split into P row-blocks; B (K x N)
-// is split into P column-blocks. The K dimension is ALSO split, into P
-// column-panels of A and P row-panels of B. At step l, the process
+// Multiplication Algorithm") splits an M x K x N GEMM across a Pr x Pc
+// grid of processes. A (M x K) is split into Pr row-blocks and Pc
+// column-blocks; B (K x N) is split into Pr row-blocks and Pc
+// column-blocks; process (pr, pc) owns block (pr, pc) of each. The
+// algorithm then walks the shared K dimension in panels of width kb
+// (any width dividing both K/Pc and K/Pr). At step l, the process
 // COLUMN that owns A's l-th column-panel broadcasts it across its own
 // process ROW; the process ROW that owns B's l-th row-panel broadcasts
 // it across its own process COLUMN. Every process then accumulates a
 // local partial product: "Cij = Cij + a~^l_i (b~^j_l)^T" (the paper's
-// own notation for the accumulation step). This section builds that
-// algorithm as a real host-side simulation -- P*P in-memory buffers
-// standing in for P*P real devices, exchanging exactly the panels the
-// real algorithm exchanges -- and checks the result against a plain
-// triple-loop reference, bit-exact, using INTEGER matrices (Chapter 8's
-// own non-associativity caution: this is a correctness check on the
-// ROUTING, not a claim about floating-point summation order).
+// own notation for the accumulation step). On a square P x P grid with
+// kb = K/P this is exactly P steps, panel l owned by grid column l and
+// grid row l; on a non-square grid, A's and B's panel owners advance at
+// DIFFERENT rates, which is the case worth testing separately. This
+// section builds that algorithm as a real host-side simulation -- Pr*Pc
+// in-memory buffers standing in for Pr*Pc real devices, exchanging
+// exactly the panels the real algorithm exchanges -- and checks the
+// result against a plain triple-loop reference, bit-exact, using
+// INTEGER matrices (Chapter 8's own non-associativity caution: this is
+// a correctness check on the ROUTING, not a claim about floating-point
+// summation order).
 #include <cstdio>
 #include <cstdlib>
 #include <vector>
@@ -209,6 +231,8 @@ using Matrix = std::vector<long long>; // row-major, size rows*cols
 
 long long& at(Matrix &m, int cols, int r, int c) { return m[r * cols + c]; }
 long long at(const Matrix &m, int cols, int r, int c) { return m[r * cols + c]; }
+
+int gcd(int a, int b) { return b == 0 ? a : gcd(b, a % b); }
 
 // Naive reference: C = A * B, A is M x K, B is K x N, C is M x N.
 Matrix naiveMatmul(const Matrix &A, const Matrix &B, int M, int K, int N) {
@@ -222,21 +246,20 @@ Matrix naiveMatmul(const Matrix &A, const Matrix &B, int M, int K, int N) {
     return C;
 }
 
-int main() {
-    // A square P x P process grid, matching SUMMA's own simplest
-    // presentation: A's K-split into column-panels and B's K-split
-    // into row-panels both use the SAME P, so the algorithm runs
-    // exactly P steps, one per panel.
-    const int M = 6, K = 6, N = 6;
-    const int P = 3;
-    assert(M % P == 0 && N % P == 0 && K % P == 0);
-    const int blockM = M / P;   // rows per process-row's C block
-    const int blockN = N / P;  // cols per process-column's C block
-    const int panelK = K / P;  // width of each A column-panel == height of each B row-panel
+// Runs SUMMA on a Pr x Pc grid and checks it against the reference.
+bool runSumma(int M, int K, int N, int Pr, int Pc) {
+    assert(M % Pr == 0 && N % Pc == 0 && K % Pc == 0 && K % Pr == 0);
+    const int blockM = M / Pr;      // rows of A / C per grid row
+    const int blockN = N / Pc;      // cols of B / C per grid column
+    const int aColsK = K / Pc;      // K-width of each process's A block
+    const int bRowsK = K / Pr;      // K-height of each process's B block
+    const int kb = gcd(aColsK, bRowsK); // panel width: divides both
+    const int steps = K / kb;
 
     printf("Grid: %dx%d processes, M=%d K=%d N=%d "
-           "(blockM=%d, blockN=%d, panelK=%d)\n",
-           P, P, M, K, N, blockM, blockN, panelK);
+           "(blockM=%d, blockN=%d, A block K-width=%d, B block K-height=%d, "
+           "panel kb=%d, %d steps)\n",
+           Pr, Pc, M, K, N, blockM, blockN, aColsK, bRowsK, kb, steps);
 
     // Build real A (M x K) and B (K x N) with deterministic values.
     Matrix A(M * K), B(K * N);
@@ -247,85 +270,93 @@ int main() {
 
     Matrix reference = naiveMatmul(A, B, M, K, N);
 
-    // Distribute A: process (pr, pc) initially owns A's row-block pr,
-    // column-panel pc -- exactly SUMMA's own starting distribution.
-    // Distribute B: process (pr, pc) initially owns B's row-panel pr,
-    // column-block pc.
-    std::vector<std::vector<Matrix>> myA(P, std::vector<Matrix>(P));
-    std::vector<std::vector<Matrix>> myB(P, std::vector<Matrix>(P));
-    for (int pr = 0; pr < P; pr++) {
-        for (int pc = 0; pc < P; pc++) {
-            Matrix aBlock(blockM * panelK);
+    // Distribute A: process (pr, pc) owns A's row-block pr, column-block
+    // pc (blockM x aColsK). Distribute B: process (pr, pc) owns B's
+    // row-block pr, column-block pc (bRowsK x blockN).
+    std::vector<std::vector<Matrix>> myA(Pr, std::vector<Matrix>(Pc));
+    std::vector<std::vector<Matrix>> myB(Pr, std::vector<Matrix>(Pc));
+    for (int pr = 0; pr < Pr; pr++) {
+        for (int pc = 0; pc < Pc; pc++) {
+            Matrix aBlock(blockM * aColsK);
             for (int i = 0; i < blockM; i++)
-                for (int j = 0; j < panelK; j++)
-                    aBlock[i * panelK + j] = at(A, K, pr * blockM + i, pc * panelK + j);
+                for (int j = 0; j < aColsK; j++)
+                    aBlock[i * aColsK + j] = at(A, K, pr * blockM + i, pc * aColsK + j);
             myA[pr][pc] = aBlock;
 
-            Matrix bBlock(panelK * blockN);
-            for (int i = 0; i < panelK; i++)
+            Matrix bBlock(bRowsK * blockN);
+            for (int i = 0; i < bRowsK; i++)
                 for (int j = 0; j < blockN; j++)
-                    bBlock[i * blockN + j] = at(B, N, pr * panelK + i, pc * blockN + j);
+                    bBlock[i * blockN + j] = at(B, N, pr * bRowsK + i, pc * blockN + j);
             myB[pr][pc] = bBlock;
         }
     }
 
     // Each process's own accumulator, initially zero.
-    std::vector<std::vector<Matrix>> myC(P, std::vector<Matrix>(P));
-    for (int pr = 0; pr < P; pr++)
-        for (int pc = 0; pc < P; pc++)
+    std::vector<std::vector<Matrix>> myC(Pr, std::vector<Matrix>(Pc));
+    for (int pr = 0; pr < Pr; pr++)
+        for (int pc = 0; pc < Pc; pc++)
             myC[pr][pc] = Matrix(blockM * blockN, 0);
 
-    // SUMMA's own main loop: exactly P steps, one per K-panel.
-    for (int l = 0; l < P; l++) {
-        // Step l's A column-panel is owned, before broadcast, by every
-        // process in grid-column l (one row-block each). Broadcasting
-        // it across each grid ROW gives every process in that row the
-        // SAME panel for its own row-index.
-        std::vector<Matrix> aPanelForRow(P);
-        for (int pr = 0; pr < P; pr++) aPanelForRow[pr] = myA[pr][l];
+    // SUMMA's own main loop: one step per K-panel of width kb.
+    for (int l = 0; l < steps; l++) {
+        const int k0 = l * kb;              // global K offset of this panel
+        const int ownerCol = k0 / aColsK;   // grid column holding A's panel
+        const int aOff = k0 % aColsK;       // offset inside that A block
+        const int ownerRow = k0 / bRowsK;   // grid row holding B's panel
+        const int bOff = k0 % bRowsK;       // offset inside that B block
 
-        // Step l's B row-panel is owned, before broadcast, by every
-        // process in grid-row l (one column-block each). Broadcasting
-        // it across each grid COLUMN gives every process in that
-        // column the SAME panel for its own column-index.
-        std::vector<Matrix> bPanelForCol(P);
-        for (int pc = 0; pc < P; pc++) bPanelForCol[pc] = myB[l][pc];
+        // Grid column ownerCol broadcasts A's panel across each grid
+        // ROW: every process in row pr receives the same blockM x kb
+        // slice for its own row-block.
+        std::vector<Matrix> aPanelForRow(Pr, Matrix(blockM * kb));
+        for (int pr = 0; pr < Pr; pr++)
+            for (int i = 0; i < blockM; i++)
+                for (int t = 0; t < kb; t++)
+                    aPanelForRow[pr][i * kb + t] = myA[pr][ownerCol][i * aColsK + aOff + t];
+
+        // Grid row ownerRow broadcasts B's panel down each grid COLUMN.
+        std::vector<Matrix> bPanelForCol(Pc, Matrix(kb * blockN));
+        for (int pc = 0; pc < Pc; pc++)
+            for (int t = 0; t < kb; t++)
+                for (int j = 0; j < blockN; j++)
+                    bPanelForCol[pc][t * blockN + j] = myB[ownerRow][pc][(bOff + t) * blockN + j];
 
         // Every process accumulates its local partial product using the
         // panel matching its own row index (for A) and column index
         // (for B) -- the real "Cij = Cij + a~_i * b~_j" step.
-        for (int pr = 0; pr < P; pr++) {
-            for (int pc = 0; pc < P; pc++) {
-                const Matrix &aPanel = aPanelForRow[pr];  // blockM x panelK
-                const Matrix &bPanel = bPanelForCol[pc];  // panelK x blockN
+        for (int pr = 0; pr < Pr; pr++) {
+            for (int pc = 0; pc < Pc; pc++) {
+                const Matrix &aPanel = aPanelForRow[pr];  // blockM x kb
+                const Matrix &bPanel = bPanelForCol[pc];  // kb x blockN
                 for (int i = 0; i < blockM; i++) {
                     for (int j = 0; j < blockN; j++) {
                         long long sum = 0;
-                        for (int t = 0; t < panelK; t++)
-                            sum += aPanel[i * panelK + t] * bPanel[t * blockN + j];
+                        for (int t = 0; t < kb; t++)
+                            sum += aPanel[i * kb + t] * bPanel[t * blockN + j];
                         myC[pr][pc][i * blockN + j] += sum;
                     }
                 }
             }
         }
-        printf("Step %d/%d: broadcast A's column-panel %d across each grid row, "
-               "B's row-panel %d across each grid column, accumulate locally\n",
-               l + 1, P, l, l);
+        printf("Step %d/%d: K-panel %d -- A's panel from grid column %d "
+               "broadcast across each grid row, B's panel from grid row %d "
+               "broadcast down each grid column, accumulate locally\n",
+               l + 1, steps, l, ownerCol, ownerRow);
     }
 
     // Reassemble the distributed C blocks and compare to the reference,
     // bit-exact (integer arithmetic -- no floating-point summation
     // order question here, unlike Ch14's row-parallel combine).
     Matrix summaResult(M * N, 0);
-    for (int pr = 0; pr < P; pr++)
-        for (int pc = 0; pc < P; pc++)
+    for (int pr = 0; pr < Pr; pr++)
+        for (int pc = 0; pc < Pc; pc++)
             for (int i = 0; i < blockM; i++)
                 for (int j = 0; j < blockN; j++)
                     at(summaResult, N, pr * blockM + i, pc * blockN + j) =
                         myC[pr][pc][i * blockN + j];
 
     bool exact = (summaResult == reference);
-    printf("\nSUMMA result vs. naive triple-loop reference (%d entries): %s\n",
+    printf("SUMMA result vs. naive triple-loop reference (%d entries): %s\n\n",
            M * N, exact ? "EXACT MATCH" : "MISMATCH");
     if (!exact) {
         for (int i = 0; i < M * N; i++) {
@@ -336,29 +367,57 @@ int main() {
             }
         }
     }
-    return exact ? 0 : 1;
+    return exact;
+}
+
+int main() {
+    // 1. A square 3x3 grid, SUMMA's own simplest presentation.
+    bool ok = runSumma(6, 6, 6, 3, 3);
+    // 2. A genuinely NON-square 2x3 grid (Pr != Pc) on a non-square
+    //    problem: A's and B's panel owners advance at different rates.
+    ok = runSumma(8, 12, 6, 2, 3) && ok;
+    // 3. The transposed shape, 3x2, for good measure.
+    ok = runSumma(6, 12, 8, 3, 2) && ok;
+    return ok ? 0 : 1;
 }
 ```
 
 Compiled with `g++ -O2 70_summa_correctness_simulation.cpp -o 70_summa_correctness_simulation` and genuinely run. Locked output:
 
 ```text
-Grid: 3x3 processes, M=6 K=6 N=6 (blockM=2, blockN=2, panelK=2)
-Step 1/3: broadcast A's column-panel 0 across each grid row, B's row-panel 0 across each grid column, accumulate locally
-Step 2/3: broadcast A's column-panel 1 across each grid row, B's row-panel 1 across each grid column, accumulate locally
-Step 3/3: broadcast A's column-panel 2 across each grid row, B's row-panel 2 across each grid column, accumulate locally
-
+Grid: 3x3 processes, M=6 K=6 N=6 (blockM=2, blockN=2, A block K-width=2, B block K-height=2, panel kb=2, 3 steps)
+Step 1/3: K-panel 0 -- A's panel from grid column 0 broadcast across each grid row, B's panel from grid row 0 broadcast down each grid column, accumulate locally
+Step 2/3: K-panel 1 -- A's panel from grid column 1 broadcast across each grid row, B's panel from grid row 1 broadcast down each grid column, accumulate locally
+Step 3/3: K-panel 2 -- A's panel from grid column 2 broadcast across each grid row, B's panel from grid row 2 broadcast down each grid column, accumulate locally
 SUMMA result vs. naive triple-loop reference (36 entries): EXACT MATCH
+
+Grid: 2x3 processes, M=8 K=12 N=6 (blockM=4, blockN=2, A block K-width=4, B block K-height=6, panel kb=2, 6 steps)
+Step 1/6: K-panel 0 -- A's panel from grid column 0 broadcast across each grid row, B's panel from grid row 0 broadcast down each grid column, accumulate locally
+Step 2/6: K-panel 1 -- A's panel from grid column 0 broadcast across each grid row, B's panel from grid row 0 broadcast down each grid column, accumulate locally
+Step 3/6: K-panel 2 -- A's panel from grid column 1 broadcast across each grid row, B's panel from grid row 0 broadcast down each grid column, accumulate locally
+Step 4/6: K-panel 3 -- A's panel from grid column 1 broadcast across each grid row, B's panel from grid row 1 broadcast down each grid column, accumulate locally
+Step 5/6: K-panel 4 -- A's panel from grid column 2 broadcast across each grid row, B's panel from grid row 1 broadcast down each grid column, accumulate locally
+Step 6/6: K-panel 5 -- A's panel from grid column 2 broadcast across each grid row, B's panel from grid row 1 broadcast down each grid column, accumulate locally
+SUMMA result vs. naive triple-loop reference (48 entries): EXACT MATCH
+
+Grid: 3x2 processes, M=6 K=12 N=8 (blockM=2, blockN=4, A block K-width=6, B block K-height=4, panel kb=2, 6 steps)
+Step 1/6: K-panel 0 -- A's panel from grid column 0 broadcast across each grid row, B's panel from grid row 0 broadcast down each grid column, accumulate locally
+Step 2/6: K-panel 1 -- A's panel from grid column 0 broadcast across each grid row, B's panel from grid row 0 broadcast down each grid column, accumulate locally
+Step 3/6: K-panel 2 -- A's panel from grid column 0 broadcast across each grid row, B's panel from grid row 1 broadcast down each grid column, accumulate locally
+Step 4/6: K-panel 3 -- A's panel from grid column 1 broadcast across each grid row, B's panel from grid row 1 broadcast down each grid column, accumulate locally
+Step 5/6: K-panel 4 -- A's panel from grid column 1 broadcast across each grid row, B's panel from grid row 2 broadcast down each grid column, accumulate locally
+Step 6/6: K-panel 5 -- A's panel from grid column 1 broadcast across each grid row, B's panel from grid row 2 broadcast down each grid column, accumulate locally
+SUMMA result vs. naive triple-loop reference (48 entries): EXACT MATCH
 ```
 
 !!! warning "[COMMON TRAP] Assuming SUMMA needs a square process grid because this section's own example uses one"
-    This section's own worked example uses a 3x3 grid because it is the cleanest to draw and read, not because SUMMA requires it. The algorithm itself only requires that A's row-split count matches the grid's row count and B's column-split count matches the grid's column count -- Pr and Pc need not be equal at all. This chapter's own development re-ran the identical code with a non-square 2x2 grid over a genuinely different, non-square M=8/K=12/N=4 problem and confirmed the same exact-match result, confirming the algorithm (and this implementation of it) generalizes rather than being a coincidence of one particular grid shape.
+    This section's own worked example uses a 3x3 grid because it is the cleanest to draw and read, not because SUMMA requires it. The algorithm itself only requires that A's row-split count matches the grid's row count and B's column-split count matches the grid's column count -- Pr and Pc need not be equal at all. The one thing that genuinely changes on a non-square grid is that A's K dimension is split Pc ways while B's is split Pr ways, so the two panel owners advance at different rates: the file walks K in panels of width `kb = gcd(K/Pc, K/Pr)`, and at each step picks A's owner column and B's owner row independently. The locked output tests exactly that, not just the square case: a 2x3 grid (M=8, K=12, N=6) and a 3x2 grid (M=6, K=12, N=8), six steps each, both matching the reference exactly -- and in the 2x3 run you can watch A's owner column advance every two steps while B's owner row advances every three. (A deliberately wrong owner-row computation makes all three runs report MISMATCH, so the check does catch routing errors.)
 
 ## 24.3 cuBLAS-Xt: NVIDIA's Real Single-Node Answer to This Exact Problem
 
 ### Intuition
 
-Section 24.2 built SUMMA by hand to prove the routing is correct. A real production system rarely hand-rolls SUMMA itself for a single machine with a handful of GPUs -- NVIDIA ships a real library that does this exact job: cuBLAS-Xt. Its own documentation states the problem it solves in almost the same words this chapter's own 24.1 used to motivate it: "the application may have the data on the Host or any of the devices involved in the computation, and the Library will take care of dispatching the operation to, and transferring the data to, one or multiple GPUs present in the system." The real API detail that sets it apart from every earlier cuBLAS-style call in this book: `cublasXtSgemm()` takes HOST pointers for A, B, and C directly, not device pointers -- the library manages the block splitting and the transfers itself, with `cublasXtSetBlockDim()` controlling the tile size used for that split, the real production analogue of Section 24.2's own `panelK`/`blockM`/`blockN`. cuBLAS-Xt's own product page is explicit that this is real but bounded: it operates "in a single node." For genuinely multi-node dense GEMM, at the scale this book's own Chapter 20 MPI infrastructure implies, NVIDIA's current real answer is cuBLASMp, described as "a high-performance, multi-process, GPU-accelerated library for distributed basic dense linear algebra" -- cuBLASMg, an older effort at the identically-named problem, never left the CUDA Math Library Early Access Program.
+Section 24.2 built SUMMA by hand to prove the routing is correct. A real production system rarely hand-rolls SUMMA itself for a single machine with a handful of GPUs -- NVIDIA ships a real library that does this exact job: cuBLAS-Xt. Its own documentation states the problem it solves in almost the same words this chapter's own 24.1 used to motivate it: "the application may have the data on the Host or any of the devices involved in the computation, and the Library will take care of dispatching the operation to, and transferring the data to, one or multiple GPUs present in the system." The real API detail that sets it apart from every earlier cuBLAS-style call in this book: `cublasXtSgemm()` takes HOST pointers for A, B, and C directly, not device pointers -- the library manages the block splitting and the transfers itself, with `cublasXtSetBlockDim()` controlling the tile size used for that split, the real production analogue of Section 24.2's own `panelK`/`blockM`/`blockN`. cuBLAS-Xt's own product page is explicit that this is real but bounded: it operates "in a single node." For genuinely multi-node dense GEMM, at the scale this book's own Chapter 20 MPI infrastructure implies, NVIDIA's current real answer is cuBLASMp, described as "a high-performance, multi-process, GPU-accelerated library for distributed basic dense linear algebra" -- cuBLASMg, an older effort at the same problem, was, as of NVIDIA's 2022 "Accelerating GPU Applications with NVIDIA Math Libraries" post, still offered only through the CUDA Math Library Early Access Program.
 
 ```text
 cuBLAS-Xt (this section, real, shipping):        cuBLASMp (NVIDIA's real current
@@ -400,9 +459,11 @@ cuBLAS-Xt (this section, real, shipping):        cuBLASMp (NVIDIA's real current
 // genuine multi-NODE dense GEMM at the scale Chapter 20's own MPI
 // world implies, NVIDIA's current real answer is cuBLASMp -- "a
 // high-performance, multi-process, GPU-accelerated library for
-// distributed basic dense linear algebra" -- since cuBLASMg (an older,
-// differently-named effort at the same problem) never left the CUDA
-// Math Library Early Access Program.
+// distributed basic dense linear algebra" -- while cuBLASMg (an older,
+// differently-named effort at the same problem) was, as of NVIDIA's 2022
+// "Accelerating GPU Applications with NVIDIA Math Libraries" blog post,
+// still available only through the CUDA Math Library Early Access
+// Program.
 //
 // THE GUARD. This file checks cudaGetDeviceCount() BEFORE ever calling
 // cublasXtDeviceSelect() with real device ordinals, and skips selecting
@@ -507,13 +568,13 @@ cublasXtDestroy(handle) -> cleanly destroyed (handle was never given an invalid 
 
 ## Chapter Summary
 
-This chapter opened Part 6 by building one real GEMM case study across three layers. Section 24.1 showed, with a real closed-form capacity model reusing Chapter 1's own H100 HBM figure, that a GEMM's A and C operands -- not the weight matrix most engineers reach for first -- are what actually force a real production job past one device's memory, needing at least 4 real devices for a real GPT-3-scale batch. Section 24.2 built SUMMA (Van de Geijn & Watts) as a real host-side simulation over a 2D process grid, broadcasting column-panels of A within device rows and row-panels of B within device columns exactly as the original paper describes, and verified the result bit-exact against a naive reference, confirmed to generalize to a second, non-square grid and problem shape. Section 24.3 built real NVIDIA cuBLAS-Xt, the shipping single-node library for exactly this problem, discovered a genuinely new and sharper real failure mode -- a library-internal memory corruption from destroying a handle after one specific failed call, caught by glibc's own allocator rather than returned as an honest status code -- and closed with cuBLAS-Xt's own explicitly single-node scope and NVIDIA's real current multi-node answer, cuBLASMp, built on the same real multi-process model this book's own Part 5 already established.
+This chapter opened Part 6 by building one real GEMM case study across three layers. Section 24.1 showed, with a real closed-form capacity model reusing Chapter 1's own H100 HBM figure, that a GEMM's A and C operands -- not the weight matrix most engineers reach for first -- are what actually force a real production job past one device's memory, needing at least 4 real devices for a real GPT-3-scale batch. Section 24.2 built SUMMA (Van de Geijn & Watts) as a real host-side simulation over a 2D process grid, broadcasting column-panels of A within device rows and row-panels of B within device columns exactly as the original paper describes, and verified the result bit-exact against a naive reference on a square 3x3 grid and on genuinely non-square 2x3 and 3x2 grids. Section 24.3 built real NVIDIA cuBLAS-Xt, the shipping single-node library for exactly this problem, discovered a genuinely new and sharper real failure mode -- a library-internal memory corruption from destroying a handle after one specific failed call, caught by glibc's own allocator rather than returned as an honest status code -- and closed with cuBLAS-Xt's own explicitly single-node scope and NVIDIA's real current multi-node answer, cuBLASMp, built on the same real multi-process model this book's own Part 5 already established.
 
 ## Self-Check Questions
 
 1. Why can a GEMM's weight matrix B fit comfortably on one device while the SAME multiply, at a real production batch size, still requires multiple devices?
 2. In SUMMA, what determines the number of steps the algorithm runs, and what real API from Chapter 8 does each step's own panel distribution reuse?
-3. Section 24.2's own COMMON TRAP re-tested the algorithm on a different grid shape and problem size. Why does that matter for trusting the first (3x3, M=K=N=6) result?
+3. Section 24.2's own locked output also runs the algorithm on non-square 2x3 and 3x2 grids. Why does that matter for trusting the first (3x3, M=K=N=6) result?
 4. What is the one real API detail that makes `cublasXtSgemm()` different from every earlier cuBLAS-style call this book has made?
 5. Why does `cublasXtCreate()` succeed in this device-less environment when almost every CUDA Runtime call since Chapter 3 has honestly failed?
 6. What specific sequence of two real calls produces the memory-corruption crash in Section 24.3, and what evidence rules out `cublasXtSetBlockDim()` as a contributing cause?
@@ -526,11 +587,11 @@ Chapter 24 built one complete real GEMM case study end to end: a real capacity m
 
 ## Worked Solutions
 
-**1.** The weight matrix B's size depends only on the model's own dimensions (e.g. `d_model x 4*d_model`), which stay fixed regardless of how the model is used. The GEMM's other two operands, A (the input activations) and C (the output), both scale with the batch size and sequence length as well -- `M = batch * seq`. A real production batch/sequence combination can make A and C, combined, far larger than B alone, which is exactly what Section 24.1's own locked output showed: 5.06 GiB for B alone versus 242.25 GiB for A+B+C at a real batch of 512 sequences of length 2048.
+**1.** The weight matrix B's size depends only on the model's own dimensions (e.g. `d_model x 4*d_model`), which stay fixed regardless of how the model is used. The GEMM's other two operands, A (the input activations) and C (the output), both scale with the batch size and sequence length as well -- `M = batch * seq`. A real production batch/sequence combination can make A and C, combined, far larger than B alone, which is exactly what Section 24.1's own locked output showed: 2.25 GiB for B alone versus 242.25 GiB for A+B+C at a real batch of 512 sequences of length 2048.
 
-**2.** The number of steps equals P, the size of one side of the square process grid, because K is split into exactly P column-panels of A and P row-panels of B, one panel exchanged per step. Each step's own panel distribution reuses Chapter 8's own broadcast: a single owning device sends the same data to every other device in its row (for A) or column (for B).
+**2.** The number of steps equals the number of K-panels: K divided by the panel width. On a square P x P grid with panel width K/P that is exactly P steps, because K is split into P column-panels of A and P row-panels of B. On a non-square Pr x Pc grid, the file's panel width is `gcd(K/Pc, K/Pr)`, so the step count is K divided by that (6 steps for both non-square runs in the locked output). Each step's own panel distribution reuses Chapter 8's own broadcast: a single owning device sends the same data to every other device in its row (for A) or column (for B).
 
-**3.** Because a single passing result on one specific grid shape and problem size could, in principle, be a coincidence of that particular configuration (e.g., a bug that happens to cancel out for a symmetric 3x3/6x6x6 case). Re-running the identical algorithm on a genuinely different, non-square problem (M=8, K=12, N=4) with a different grid (2x2) and getting another exact match is real evidence the algorithm -- and this implementation of it -- generalizes, rather than only appearing correct by construction.
+**3.** Because a single passing result on one specific grid shape and problem size could, in principle, be a coincidence of that particular configuration (e.g., a bug that happens to cancel out for a symmetric 3x3/6x6x6 case, where A's and B's panel owners always advance in lockstep and an index mix-up between them would go unnoticed). The 2x3 and 3x2 runs break that symmetry -- A's owner column and B's owner row advance at different rates -- and still match exactly, which is real evidence the routing logic generalizes rather than only appearing correct on a square grid.
 
 **4.** `cublasXtSgemm()` takes HOST pointers for A, B, and C directly, rather than device pointers. Every earlier cuBLAS/CUDA call in this book required the caller to already have data in device memory (via `cudaMalloc()`/`cudaMemcpy()`); cuBLAS-Xt instead accepts host memory and manages the device transfers and block dispatch itself.
 
@@ -550,6 +611,6 @@ Chapter 24 built one complete real GEMM case study end to end: a real capacity m
 - [NVIDIA cuBLAS Documentation, "Using the cuBLASXt API"](https://docs.nvidia.com/cuda/cublas/index.html) — the real, verified quote on how cuBLAS-Xt dispatches work: "the application may have the data on the Host or any of the devices involved in the computation, and the Library will take care of dispatching the operation to, and transferring the data to, one or multiple GPUs present in the system."
 - [NVIDIA cuBLASXt product page](https://developer.nvidia.com/cublasxt) — the real, verified quote on cuBLAS-Xt's single-node scope: it operates "in a single node."
 - [NVIDIA Developer Forums: "Help with cublasXt Sgemm does not scale"](https://forums.developer.nvidia.com/t/help-with-cublasxt-sgemm-does-not-scale/280016) — the real, verified quote this chapter's own 24.1 motivation is built on: cuBLAS-Xt's "main point" is to "work around GPU memory capacity limits."
-- [NVIDIA Technical Blog: "Accelerating GPU Applications with NVIDIA Math Libraries"](https://developer.nvidia.com/blog/accelerating-gpu-applications-with-nvidia-math-libraries/) — the real, verified quote confirming cuBLASMg never left the CUDA Math Library Early Access Program.
+- [NVIDIA Technical Blog: "Accelerating GPU Applications with NVIDIA Math Libraries"](https://developer.nvidia.com/blog/accelerating-gpu-applications-with-nvidia-math-libraries/) — the real, verified quote stating that cuBLASMg was, at the time of that 2022 post, available through the CUDA Math Library Early Access Program (the post does not say whether it ever left it).
 - [NVIDIA cuBLASMp Documentation](https://docs.nvidia.com/cuda/cublasmp/) — the real, verified quote describing cuBLASMp as "a high-performance, multi-process, GPU-accelerated library for distributed basic dense linear algebra," NVIDIA's current real answer for multi-node dense GEMM.
 - This exact environment's own installed CUDA 12.0 headers (`/usr/include/cublasXt.h`, `/usr/include/cublas_api.h`) — grepped directly for the real signatures of `cublasXtCreate`, `cublasXtDeviceSelect`, `cublasXtSetBlockDim`, `cublasXtSgemm`, and the real `cublasStatus_t` enum and `cublasGetStatusName`/`cublasGetStatusString` helpers, per this book's own established practice of checking installed headers directly rather than trusting a web summary.
