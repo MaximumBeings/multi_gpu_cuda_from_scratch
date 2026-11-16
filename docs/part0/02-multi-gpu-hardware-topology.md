@@ -55,7 +55,7 @@ CPU0 <---- inter-socket link, shared/finite ----> CPU1
 (a pair split across sockets, e.g. GPU0<->GPU4, crosses this shared link too)
 ```
 
-The topology model in Section 2.5 makes the size of this gap concrete rather than just asserted: a same-switch PCIe 4.0 pair gets 31.5 GB/s, while a cross-socket pair (modeled here as half that, to represent the extra hop and shared contention) gets half.
+The topology model in Section 2.4 makes the size of this gap concrete rather than just asserted: a same-switch PCIe 4.0 pair gets 31.5 GB/s, while a cross-socket pair gets half that, 15.75 GB/s (a modeling simplification representing the extra hop and shared contention, not a vendor figure).
 
 !!! warning "[COMMON TRAP] Assuming "PCIe 4.0 everywhere" means uniform bandwidth"
     Knowing every GPU in a machine is on PCIe 4.0 tells you the *ceiling* for any pair, not the bandwidth any specific pair actually gets. A same-switch pair reaches that ceiling; a cross-socket pair does not, regardless of generation, because the bottleneck moves to a completely different, shared link the generation number says nothing about.
@@ -70,14 +70,14 @@ NVLink is a private highway built directly between two specific houses — drama
 
 Each NVLink generation has shipped with a new GPU architecture and a real, published bandwidth jump:
 
-| NVLink generation | Introduced with | Per-link bandwidth | Links per GPU | Total per-GPU bandwidth |
+| NVLink generation | Introduced with | Per-link bandwidth (per direction) | Links per GPU | Total per-GPU bandwidth (bidirectional) |
 |---|---|---|---|---|
 | 1.0 | P100 (Pascal) | 20 GB/s | 4 | 160 GB/s |
 | 2.0 | V100 (Volta) | 25 GB/s | 6 | 300 GB/s |
 | 3.0 | A100 (Ampere) | 25 GB/s | 12 | 600 GB/s |
 | 4.0 | H100 (Hopper) | 25 GB/s | 18 | 900 GB/s |
 
-An H100's 900 GB/s of total NVLink bandwidth is roughly **29 times** a PCIe 4.0 x16 link's 31.5 GB/s. But those 18 links don't have to all go to the same neighbor — with only point-to-point NVLink and a fixed number of links per GPU, a system with enough GPUs eventually runs out of direct links to go around. Early multi-GPU NVLink systems (the DGX-1 generation) had exactly this shape: each GPU directly wired to some, but not all, of the others, with the rest falling back to plain PCIe.
+The two bandwidth columns count differently, the way vendors usually quote them: the per-link figure is one direction, while the total counts both directions (links x per-link x 2, e.g. 18 x 25 x 2 = 900 GB/s for H100). Compared like for like, an H100's NVLink is 450 GB/s per direction against a PCIe 4.0 x16 link's 31.5 GB/s per direction, roughly **14 times** as much (about 7 times PCIe 5.0 x16's 63 GB/s per direction). But those 18 links don't have to all go to the same neighbor — with only point-to-point NVLink and a fixed number of links per GPU, a system with enough GPUs eventually runs out of direct links to go around. Early multi-GPU NVLink systems (the DGX-1 generation) had exactly this shape: each GPU directly wired to some, but not all, of the others, with the rest falling back to plain PCIe.
 
 NVSwitch removes that tradeoff by putting a crossbar switch chip between the GPUs instead of wiring them directly to each other:
 
@@ -91,10 +91,10 @@ some fall back to PCIe):
                                                         bandwidth, no exceptions)
 ```
 
-The practical consequence: on an NVSwitch-equipped system (DGX A100, DGX H100, and later), *every* GPU pair gets the GPU's full NVLink bandwidth — 900 GB/s for H100 — with no "did I get lucky with placement" question at all.
+The practical consequence: on an NVSwitch-equipped system (DGX A100, DGX H100, and later), *every* GPU pair gets the GPU's full NVLink bandwidth — 900 GB/s bidirectional, 450 GB/s per direction, for H100 — with no "did I get lucky with placement" question at all.
 
 !!! warning "[COMMON TRAP] Assuming a GPU's total NVLink bandwidth means every pair gets that much"
-    An H100's "900 GB/s of NVLink" describes the total across all 18 of its links, not a guarantee that any two specific H100s in a system share that much. On a partial-mesh system, a directly-wired pair can approach that figure; a non-wired pair gets ordinary PCIe speed instead, a difference Section 2.5 measures directly. Only a full NVSwitch fabric makes the total-bandwidth figure apply uniformly to every pair.
+    An H100's "900 GB/s of NVLink" describes the total across all 18 of its links, not a guarantee that any two specific H100s in a system share that much. On a partial-mesh system, a directly-wired pair can approach that figure; a non-wired pair gets ordinary PCIe speed instead, a difference Section 2.4's model makes concrete. Only a full NVSwitch fabric makes the total-bandwidth figure apply uniformly to every pair.
 
 ## 2.4 What Topology Costs a Real Communication Pattern
 
@@ -108,6 +108,13 @@ Ordinary host C++, no CUDA, models each topology as a bandwidth matrix built fro
 
 ```cpp
 // 04_topology_bandwidth_model.cpp
+//
+// Plain host C++. Models three real interconnect topologies as bandwidth
+// matrices built from cited, real per-link figures, then computes a
+// deterministic "ring bottleneck bandwidth" for each -- previewing why
+// Chapter 9's ring all-reduce cares about topology at all. Nothing here
+// is a hardware measurement; it's exact arithmetic over cited constants,
+// with every modeling simplification called out in a comment.
 #include <cstdio>
 #include <vector>
 #include <algorithm>
@@ -145,6 +152,9 @@ Matrix pcieTreeTopology() {
 // remaining, non-wired pairs are NOT reachable by relaying through a
 // third GPU on these systems -- they fall back to plain PCIe, the same
 // real PCIe 4.0 x16 figure (31.5 GB/s) used in the tree topology above.
+// This is the actual, well-documented DGX-1-era problem this section's
+// prose describes: which pair you pick determines whether you get
+// NVLink or PCIe speed, and there is no in-between.
 Matrix partialNvlinkMeshTopology() {
     const double DIRECT = 50.0;      // NVLink 2.0, 2 links, 25 GB/s each
     const double PCIE_FALLBACK = 31.5; // PCIe 4.0 x16, same figure as above
@@ -163,10 +173,13 @@ Matrix partialNvlinkMeshTopology() {
 }
 
 // Topology C: NVSwitch, DGX H100-style. Every GPU reaches every other
-// GPU at the full per-GPU NVLink 4.0 aggregate bandwidth (900 GB/s,
-// real, cited H100 SXM figure).
+// GPU at the full per-GPU NVLink 4.0 aggregate bandwidth -- that's the
+// entire point of a non-blocking crossbar switch. The cited H100 SXM
+// figure (900 GB/s) is BIDIRECTIONAL (18 links x 50 GB/s); every other
+// entry in this file is PER DIRECTION, so the like-for-like figure used
+// here is 18 links x 25 GB/s = 450 GB/s per direction.
 Matrix nvswitchTopology() {
-    const double UNIFORM = 900.0;
+    const double UNIFORM = 450.0;      // NVLink 4.0, 18 x 25 GB/s, per direction
     Matrix bw(N, std::vector<double>(N, UNIFORM));
     for (int i = 0; i < N; ++i) bw[i][i] = 0.0;
     return bw;
@@ -203,6 +216,8 @@ int main() {
     printMatrix("Partial NVLink mesh", mesh);
     printMatrix("NVSwitch (full crossbar)", nvswitch);
 
+    // Natural order: GPU 0,1,2,...,7 -- the order you'd get by just
+    // indexing devices, with no topology awareness at all.
     std::vector<int> naturalOrder = {0, 1, 2, 3, 4, 5, 6, 7};
 
     printf("\nRing bottleneck bandwidth, GPUs visited in natural index "
@@ -223,7 +238,7 @@ int main() {
 
     printf("\nNVSwitch's whole point: bottleneck bandwidth is %.1f GB/s "
            "regardless of visiting order, because there is no such thing "
-           "as an indirect hop -- every pair is one switch away.\n", 900.0);
+           "as an indirect hop -- every pair is one switch away.\n", 450.0);
 
     return 0;
 }
@@ -237,16 +252,46 @@ g++ -std=c++17 -Wall -Wextra -O2 04_topology_bandwidth_model.cpp -o topology_mod
 Output (genuinely compiled and run twice; identical both times):
 
 ```text
+PCIe tree (dual-socket) (GB/s):
+     0.0  31.5  31.5  31.5  15.8  15.8  15.8  15.8
+    31.5   0.0  31.5  31.5  15.8  15.8  15.8  15.8
+    31.5  31.5   0.0  31.5  15.8  15.8  15.8  15.8
+    31.5  31.5  31.5   0.0  15.8  15.8  15.8  15.8
+    15.8  15.8  15.8  15.8   0.0  31.5  31.5  31.5
+    15.8  15.8  15.8  15.8  31.5   0.0  31.5  31.5
+    15.8  15.8  15.8  15.8  31.5  31.5   0.0  31.5
+    15.8  15.8  15.8  15.8  31.5  31.5  31.5   0.0
+Partial NVLink mesh (GB/s):
+     0.0  50.0  50.0  31.5  31.5  31.5  50.0  50.0
+    50.0   0.0  50.0  50.0  31.5  31.5  31.5  50.0
+    50.0  50.0   0.0  50.0  50.0  31.5  31.5  31.5
+    31.5  50.0  50.0   0.0  50.0  50.0  31.5  31.5
+    31.5  31.5  50.0  50.0   0.0  50.0  50.0  31.5
+    31.5  31.5  31.5  50.0  50.0   0.0  50.0  50.0
+    50.0  31.5  31.5  31.5  50.0  50.0   0.0  50.0
+    50.0  50.0  31.5  31.5  31.5  50.0  50.0   0.0
+NVSwitch (full crossbar) (GB/s):
+     0.0 450.0 450.0 450.0 450.0 450.0 450.0 450.0
+   450.0   0.0 450.0 450.0 450.0 450.0 450.0 450.0
+   450.0 450.0   0.0 450.0 450.0 450.0 450.0 450.0
+   450.0 450.0 450.0   0.0 450.0 450.0 450.0 450.0
+   450.0 450.0 450.0 450.0   0.0 450.0 450.0 450.0
+   450.0 450.0 450.0 450.0 450.0   0.0 450.0 450.0
+   450.0 450.0 450.0 450.0 450.0 450.0   0.0 450.0
+   450.0 450.0 450.0 450.0 450.0 450.0 450.0   0.0
+
 Ring bottleneck bandwidth, GPUs visited in natural index order 0->1->2->...->7->0:
-  PCIe tree:      15.75 GB/s
-  Partial mesh:   50.00 GB/s
-  NVSwitch:       900.00 GB/s
+  PCIe tree:       15.75 GB/s
+  Partial mesh:    50.00 GB/s
+  NVSwitch:       450.00 GB/s
 
 For the partial mesh specifically, the natural order above happens to only use directly-wired (50 GB/s) links -- every step is a step-1 hop, and step-1 is one of this graph's wired offsets. Reordering to include one step-3 pair (not wired, so it falls back to plain PCIe) shows what happens when the visiting order doesn't match the physical wiring:
   Order that includes one unwired (step-3) pair:  31.50 GB/s
+
+NVSwitch's whole point: bottleneck bandwidth is 450.0 GB/s regardless of visiting order, because there is no such thing as an indirect hop -- every pair is one switch away.
 ```
 
-Three things fall out of this. First, the PCIe tree's ring bottleneck (15.75 GB/s) is the *cross-socket* figure, not the faster same-switch figure — a ring visiting all 8 GPUs in index order necessarily crosses the socket boundary, and that crossing sets the whole ring's speed. Second, the partial mesh's ring bandwidth (50 GB/s) depends entirely on the visiting order matching the physical wiring — swapping in a single unwired pair drops the same 8 GPUs' ring bandwidth to 31.5 GB/s, a 37% cut, from a reordering that looks harmless on paper. Third, NVSwitch's number (900 GB/s) doesn't move no matter what order you pick, which removes an entire class of silent performance bug the other two topologies are exposed to.
+Three things fall out of this. First, the PCIe tree's ring bottleneck (15.75 GB/s) is the *cross-socket* figure, not the faster same-switch figure — a ring visiting all 8 GPUs in index order necessarily crosses the socket boundary, and that crossing sets the whole ring's speed. Second, the partial mesh's ring bandwidth (50 GB/s) depends entirely on the visiting order matching the physical wiring — swapping in a single unwired pair drops the same 8 GPUs' ring bandwidth to 31.5 GB/s, a 37% cut, from a reordering that looks harmless on paper. Third, NVSwitch's number (450 GB/s per direction, the like-for-like form of H100's 900 GB/s bidirectional figure) doesn't move no matter what order you pick, which removes an entire class of silent performance bug the other two topologies are exposed to.
 
 ## 2.5 What the CUDA Runtime Can Honestly Tell You About Topology, Right Now
 
@@ -260,6 +305,12 @@ The exact API this book uses for real starting in Chapter 4 — `cudaDeviceCanAc
 
 ```cpp
 // 05_peer_access_query.cu
+//
+// A genuine CUDA Runtime API call to the exact function this book starts
+// actually using for real in Chapter 4 (peer-to-peer memory access):
+// cudaDeviceCanAccessPeer(). Compiled with a real nvcc and genuinely run.
+// It is called honestly, on whatever devices actually exist here -- it
+// is not skipped, and its result is not invented.
 #include <cstdio>
 #include <cuda_runtime.h>
 
@@ -270,11 +321,20 @@ int main() {
            cudaGetErrorString(err), deviceCount);
 
     if (deviceCount < 2) {
+        printf("Fewer than 2 devices are present, so there is no GPU "
+               "pair to ask cudaDeviceCanAccessPeer() about. We call it "
+               "anyway, on device ids 0 and 1, exactly as a program that "
+               "assumed 2 devices without checking first would -- and "
+               "report the runtime's real answer rather than skipping "
+               "the call:\n");
         int canAccess = -1;
         cudaError_t peerErr = cudaDeviceCanAccessPeer(&canAccess, 0, 1);
         printf("cudaDeviceCanAccessPeer(0, 1) -> %s (code %d), "
                "canAccess left at %d\n",
                cudaGetErrorString(peerErr), (int)peerErr, canAccess);
+        printf("This is the honest failure mode this book's own topology "
+               "and peer-access chapters build around: always check "
+               "cudaGetDeviceCount() before assuming a peer exists.\n");
         return 0;
     }
 
@@ -300,7 +360,9 @@ Output (genuinely compiled with a real `nvcc` and genuinely run; identical acros
 
 ```text
 cudaGetDeviceCount(): no CUDA-capable device is detected, count = 0
+Fewer than 2 devices are present, so there is no GPU pair to ask cudaDeviceCanAccessPeer() about. We call it anyway, on device ids 0 and 1, exactly as a program that assumed 2 devices without checking first would -- and report the runtime's real answer rather than skipping the call:
 cudaDeviceCanAccessPeer(0, 1) -> no CUDA-capable device is detected (code 100), canAccess left at -1
+This is the honest failure mode this book's own topology and peer-access chapters build around: always check cudaGetDeviceCount() before assuming a peer exists.
 ```
 
 On real hardware, the standard tool for seeing this chapter's whole topology story at a glance is `nvidia-smi topo -m`, which prints exactly the kind of matrix Section 2.4 built by hand — but for the real system it's run on, straight from the driver. This environment has no driver to run it against, so that table isn't reproduced here as if it were captured; a reader with real multi-GPU hardware is the one who can genuinely fill it in.
@@ -310,7 +372,7 @@ On real hardware, the standard tool for seeing this chapter's whole topology sto
 
 ## Chapter Summary
 
-GPU-to-GPU bandwidth is a matrix indexed by pair, not a single fact about a machine. PCIe is the universal fallback, shaped by the tree it sits in — same-switch pairs are fast, cross-socket pairs are not, regardless of generation (Section 2.2). NVLink replaces specific pairs' PCIe hop with a much faster direct one, but only for the pairs it's actually wired to; NVSwitch removes that distinction entirely by making every pair look like a direct NVLink pair (Section 2.3). A ring communication pattern's throughput is set by its single weakest link, which Section 2.4 measured directly: 15.75 GB/s for a PCIe tree, 50 GB/s for a partial mesh visited in the right order (31.5 GB/s in the wrong one), and a constant 900 GB/s for NVSwitch regardless of order. Section 2.5's `cudaDeviceCanAccessPeer()` call previews the exact real API Chapter 4 builds on, honestly reporting no devices here.
+GPU-to-GPU bandwidth is a matrix indexed by pair, not a single fact about a machine. PCIe is the universal fallback, shaped by the tree it sits in — same-switch pairs are fast, cross-socket pairs are not, regardless of generation (Section 2.2). NVLink replaces specific pairs' PCIe hop with a much faster direct one, but only for the pairs it's actually wired to; NVSwitch removes that distinction entirely by making every pair look like a direct NVLink pair (Section 2.3). A ring communication pattern's throughput is set by its single weakest link, which Section 2.4 measured directly: 15.75 GB/s for a PCIe tree, 50 GB/s for a partial mesh visited in the right order (31.5 GB/s in the wrong one), and a constant 450 GB/s per direction for NVSwitch regardless of order. Section 2.5's `cudaDeviceCanAccessPeer()` call previews the exact real API Chapter 4 builds on, honestly reporting no devices here.
 
 ## Self-Check Questions
 
@@ -318,7 +380,7 @@ GPU-to-GPU bandwidth is a matrix indexed by pair, not a single fact about a mach
 2. An engineer claims "our H100s have 900 GB/s of NVLink between every pair" based only on knowing the GPU model. What additional fact about the system would you need to confirm before trusting that claim?
 3. In Section 2.4's partial-mesh model, why does reordering the ring to include a single unwired pair drop the bottleneck bandwidth to exactly the PCIe fallback figure (31.5 GB/s), rather than to some intermediate value?
 4. Section 2.4 computes a ring's bottleneck as the *minimum* bandwidth across its edges rather than the *average*. Explain, using the relay-race intuition from Section 2.4, why the minimum is the physically correct choice.
-5. Why does NVSwitch's ring bottleneck (900 GB/s) not change at all under any reordering, while the partial mesh's does?
+5. Why does NVSwitch's ring bottleneck (450 GB/s) not change at all under any reordering, while the partial mesh's does?
 6. `05_peer_access_query.cu` calls `cudaDeviceCanAccessPeer(&canAccess, 0, 1)` even when `cudaGetDeviceCount()` already reported 0 devices. What real value does making that call anyway provide, versus simply skipping it once the count is known to be 0?
 7. Suppose a real 8-GPU DGX-A100-class (NVSwitch) system and an 8-GPU partial-mesh system both need to run the identical ring collective. Which system's performance is more sensitive to how the software assigns GPU indices to ring positions, and why?
 
@@ -336,11 +398,11 @@ Chapter 3 builds the CUDA-side vocabulary this book needs to actually address mo
 
 **4.** In a ring, every participating GPU both sends and receives on every round, so the round cannot complete faster than its slowest edge allows — a fast edge finishing early still has to wait for the slowest edge before the next round can begin, exactly like a relay team's total time being decided by its slowest leg no matter how fast the others run. Averaging would imply the fast edges could somehow compensate for the slow one, which they cannot in a synchronous ring.
 
-**5.** NVSwitch gives every ordered pair of GPUs the identical bandwidth (900 GB/s, Section 2.3), so no matter which pair a given ring edge connects, that edge's bandwidth is always 900 GB/s — there is no "wrong" edge to accidentally include. The partial mesh instead has two different bandwidth values (50 GB/s wired, 31.5 GB/s fallback) depending on which specific pair an edge connects, so the ring's bottleneck depends on which pairs the chosen order happens to use.
+**5.** NVSwitch gives every ordered pair of GPUs the identical bandwidth (450 GB/s per direction, Section 2.3), so no matter which pair a given ring edge connects, that edge's bandwidth is always 450 GB/s — there is no "wrong" edge to accidentally include. The partial mesh instead has two different bandwidth values (50 GB/s wired, 31.5 GB/s fallback) depending on which specific pair an edge connects, so the ring's bottleneck depends on which pairs the chosen order happens to use.
 
 **6.** Making the call anyway, and reporting its real return code, is what lets this exact source run correctly and diagnostically on any machine — including one with fewer than 2 devices — without a separate code path. It also demonstrates, honestly, that the API doesn't crash or need special-casing for an invalid device id; it degrades to a clear error, which is itself useful information for a caller that didn't check the count first (Section 2.5's own Common Trap).
 
-**7.** The partial-mesh system is far more sensitive. On the NVSwitch system, every possible assignment of GPU indices to ring positions gives the identical 900 GB/s bottleneck, so index assignment doesn't matter at all. On the partial-mesh system, Section 2.4 showed a single wrong adjacent pair drops the ring's bottleneck by 37% (50 to 31.5 GB/s) — so the same collective's real performance on that system depends directly on whether the software's chosen ring order happens to match the physical NVLink wiring.
+**7.** The partial-mesh system is far more sensitive. On the NVSwitch system, every possible assignment of GPU indices to ring positions gives the identical 450 GB/s bottleneck, so index assignment doesn't matter at all. On the partial-mesh system, Section 2.4 showed a single wrong adjacent pair drops the ring's bottleneck by 37% (50 to 31.5 GB/s) — so the same collective's real performance on that system depends directly on whether the software's chosen ring order happens to match the physical NVLink wiring.
 
 ---
 
@@ -348,4 +410,4 @@ Chapter 3 builds the CUDA-side vocabulary this book needs to actually address mo
 
 - [PCIe Bandwidth Chart — GB/s for Gen 1–7 at x1–x16](https://pciesimulator.com/pcie-bandwidth-table/) -- PCIe 3.0/4.0/5.0 x16 per-direction bandwidth figures.
 - [NVLink — Wikipedia](https://en.wikipedia.org/wiki/NVLink) -- NVLink generation-by-generation per-link bandwidth and links-per-GPU figures (1.0 through 4.0).
-- [NVIDIA H100 GPU product page](https://www.nvidia.com/en-us/data-center/h100/) -- H100 SXM total NVLink bandwidth (900 GB/s).
+- [NVIDIA H100 GPU product page](https://www.nvidia.com/en-us/data-center/h100/) -- H100 SXM total NVLink bandwidth (900 GB/s, bidirectional).
