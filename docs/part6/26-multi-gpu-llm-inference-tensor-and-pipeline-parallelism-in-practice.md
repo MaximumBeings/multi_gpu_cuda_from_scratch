@@ -225,11 +225,12 @@ int main() {
     printf("\nAll %d microbatches EXACT MATCH between naive and combined "
            "TP+PP: %s\n", M, allExact ? "YES" : "NO");
 
-    // A real, direct forward-only pipeline-schedule count (NOT Chapter
-    // 15's own training bubble formula -- see this section's own COMMON
-    // TRAP for why that formula does not apply here): M microbatches
-    // through PP_STAGES stages, one stage-slot per microbatch per
-    // stage, take exactly M + PP_STAGES - 1 total time steps to drain.
+    // A real, direct forward-only pipeline-schedule count, as an
+    // independent cross-check of Chapter 15's own bubble formula
+    // (K-1)/(M+K-1), which Chapter 15 derived from exactly this kind of
+    // forward-only schedule: M microbatches through PP_STAGES stages,
+    // one stage-slot per microbatch per stage, take exactly
+    // M + PP_STAGES - 1 total time steps to drain.
     int totalSteps = M + PP_STAGES - 1;
     int totalSlots = totalSteps * PP_STAGES;
     int busySlots = M * PP_STAGES;
@@ -259,8 +260,11 @@ All 4 microbatches EXACT MATCH between naive and combined TP+PP: YES
 Forward-only inference pipeline schedule: 4 microbatches, 2 stages -> 5 total time steps, 8/10 stage-slots busy, 2 idle (20.0% bubble)
 ```
 
-!!! warning "[COMMON TRAP] Applying Chapter 15's own training bubble formula, `(K-1)/(M+K-1)`, to an inference pipeline"
-    Chapter 15's own bubble formula was built for GPipe's real TRAINING schedule, where every microbatch needs both a forward pass AND a backward pass through every stage, and the bubble comes from the ramp-up/ramp-down around that two-phase schedule. A real LLM inference server has no backward pass at all -- every microbatch (or, in a real serving system, every request or batch of requests) only ever flows forward through the pipeline once. This section's own locked output computes the inference-specific version of the SAME idea directly, by counting stage-slots rather than reusing Chapter 15's own formula unchanged: `M` microbatches through `PP_STAGES` stages take `M + PP_STAGES - 1` total time steps to fully drain, of which `M * PP_STAGES` stage-slots are genuinely busy and the rest -- here, 2 out of 10, 20% -- are idle ramp-up/ramp-down bubble. Reusing Chapter 15's own two-phase formula for this one-phase inference case would silently double-count a backward pass this chapter's own case study never has.
+Read this check for what it is, and no more. Microbatch 1 produces an all-zero output, so it would match under almost any routing; and in a host simulation the tensor-parallel "all-reduce" and the pipeline "handoff" are a plain sum and a plain copy, so they cannot fail the way a real collective on a wrong communicator can. What the three non-zero microbatches do confirm is the index bookkeeping: each TP shard multiplies the right slice of each layer's weights, and each stage consumes the previous stage's combined output rather than a partial one.
+
+!!! warning "[COMMON TRAP] Assuming Chapter 15's bubble formula, `(K-1)/(M+K-1)`, is training-only and needs re-deriving for inference"
+    It is tempting to think a pipeline-bubble formula from a training chapter must carry hidden backward-pass terms, and so cannot be reused for a forward-only inference server. Chapter 15's formula has no such terms: Chapter 15 derived it by directly counting a forward-only schedule -- micro-batches staggered one time step per stage -- exactly the shape an inference pipeline runs. It applies unchanged. This section's own locked output is an independent cross-check of that, not a replacement: counting stage-slots directly, `M` microbatches through `PP_STAGES` stages take `M + PP_STAGES - 1` total time steps, of which `M * PP_STAGES` stage-slots are busy, leaving 2 of 10 idle -- 20%. Chapter 15's formula with K=2 stages and M=4 microbatches gives `(2-1)/(4+2-1) = 1/5`, the same 20%. What genuinely differs in a real serving system is not the formula but its inputs: requests arrive continuously rather than as one fixed batch of M microbatches, so the effective M depends on load and on how the server schedules incoming requests.
+
 
 ## 26.2 Why 8-Way, Why 35-Way: A Real 530-Billion-Parameter Config
 
@@ -537,12 +541,12 @@ No published source found (vLLM docs, TensorRT-LLM docs, or an academic paper) g
 
 ## Chapter Summary
 
-This chapter combined two techniques Chapter 14 and Chapter 15 each built in isolation into one real production LLM inference case study. Section 26.1 built a real 2D device grid -- pipeline stages, each itself a tensor-parallel group -- and verified its routing bit-exact against a naive reference, isolating the real correctness property that makes the combination safe: tensor-parallel all-reduces stay inside a stage, pipeline handoffs only carry already-combined results between stages, and inference's own forward-only pipeline needs a different bubble accounting than Chapter 15's training-specific formula. Section 26.2 applied that combined shape to a real, named, 530-billion-parameter model's real published configuration (8-way TP within a node, 35-way PP across nodes, 280 GPUs total), and found, honestly, that the real reason tensor parallelism stays bounded to a node's own GPU count is round count -- which grows directly with group size -- not communication volume, which Chapter 9 and Chapter 25 already showed stays nearly flat. Section 26.3 closed with a real, cited super-linear memory effect from vLLM's own production serving system (13.9x more KV cache from TP=1 to TP=2), built a plausible mechanism for it as this chapter's own separate worked model, and named the real published gap -- no combined TP+PP throughput benchmark exists in the sources checked -- rather than fabricating a number to fill it.
+This chapter combined two techniques Chapter 14 and Chapter 15 each built in isolation into one real production LLM inference case study. Section 26.1 built a real 2D device grid -- pipeline stages, each itself a tensor-parallel group -- and verified its routing bit-exact against a naive reference, isolating the real correctness property that makes the combination safe: tensor-parallel all-reduces stay inside a stage, pipeline handoffs only carry already-combined results between stages, and a direct count of inference's forward-only pipeline schedule reproduces Chapter 15's own bubble formula exactly (20% for K=2, M=4). Section 26.2 applied that combined shape to a real, named, 530-billion-parameter model's real published configuration (8-way TP within a node, 35-way PP across nodes, 280 GPUs total), and found, honestly, that the real reason tensor parallelism stays bounded to a node's own GPU count is round count -- which grows directly with group size -- not communication volume, which Chapter 9 and Chapter 25 already showed stays nearly flat. Section 26.3 closed with a real, cited super-linear memory effect from vLLM's own production serving system (13.9x more KV cache from TP=1 to TP=2), built a plausible mechanism for it as this chapter's own separate worked model, and named the real published gap -- no combined TP+PP throughput benchmark exists in the sources checked -- rather than fabricating a number to fill it.
 
 ## Self-Check Questions
 
 1. What real correctness property does this chapter's own combined TP+PP simulation check, and why does the PP handoff step in file 75 only ever carry an already-all-reduced value?
-2. Why doesn't Chapter 15's own training bubble formula, `(K-1)/(M+K-1)`, apply unchanged to this chapter's own inference pipeline?
+2. Does Chapter 15's own bubble formula, `(K-1)/(M+K-1)`, apply unchanged to this chapter's own forward-only inference pipeline? Check it against file 75's directly-counted bubble.
 3. What real configuration does the Megatron-Turing NLG 530B paper state for its own 530-billion-parameter model, and what real multiplication confirms the reported total GPU count?
 4. Section 26.2 found that communication VOLUME is nearly flat between TP=8 and TP=280, but round count is not. Why does that distinction matter for deciding where to draw the tensor-parallel boundary?
 5. What real quote from the Megatron-LM paper explains why tensor parallelism should stay within a single server's own GPU count?
@@ -558,7 +562,7 @@ Chapter 26 combined two of this book's own earlier parallelization strategies in
 
 **1.** It checks that a real 2D device grid -- pipeline stages, each itself a tensor-parallel group -- produces the exact same result as a naive, unsplit reference, using long long integer matrices so the comparison has no floating-point rounding ambiguity (the same technique Chapter 24's own SUMMA simulation used). The PP handoff only ever carries an already-all-reduced value because every device within a stage's own TP group has, by the time that stage finishes, already combined its partial row-parallel outputs via the stage-scoped all-reduce -- so there is no partial, not-yet-combined tensor-parallel shard left to accidentally hand off across a stage boundary.
 
-**2.** Chapter 15's own bubble formula was built for GPipe's real training schedule, where every microbatch needs both a forward pass AND a backward pass through every stage. A real inference pipeline has no backward pass -- every microbatch only flows forward once -- so this chapter's own file 75 instead directly counts stage-slots for a one-phase schedule (`M + PP_STAGES - 1` total time steps), rather than reusing a formula built for a schedule with a phase this chapter's own case study doesn't have.
+**2.** Yes. Chapter 15 derived `(K-1)/(M+K-1)` by counting a forward-only schedule -- each micro-batch passes through each stage once, staggered by one time step -- which is exactly what an inference pipeline runs, so there is no backward pass to remove. Plugging in this chapter's K=2 stages and M=4 microbatches gives `1/5 = 20%`, exactly the 2-of-10 idle stage-slots file 75 counts directly (`M + PP_STAGES - 1 = 5` time steps x 2 stages = 10 slots, 8 busy).
 
 **3.** The paper states "each 530 billion parameter model replica spans 280 NVIDIA A100 GPUs, with 8-way tensor-slicing within a node and 35-way pipeline parallelism across nodes." The real multiplication confirming this is `8 (TP) x 35 (PP) = 280`, exactly matching the reported total GPU count.
 

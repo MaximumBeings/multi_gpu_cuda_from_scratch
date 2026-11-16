@@ -162,11 +162,12 @@ int main() {
     printf("\nAll %d microbatches EXACT MATCH between naive and combined "
            "TP+PP: %s\n", M, allExact ? "YES" : "NO");
 
-    // A real, direct forward-only pipeline-schedule count (NOT Chapter
-    // 15's own training bubble formula -- see this section's own COMMON
-    // TRAP for why that formula does not apply here): M microbatches
-    // through PP_STAGES stages, one stage-slot per microbatch per
-    // stage, take exactly M + PP_STAGES - 1 total time steps to drain.
+    // A real, direct forward-only pipeline-schedule count, as an
+    // independent cross-check of Chapter 15's own bubble formula
+    // (K-1)/(M+K-1), which Chapter 15 derived from exactly this kind of
+    // forward-only schedule: M microbatches through PP_STAGES stages,
+    // one stage-slot per microbatch per stage, take exactly
+    // M + PP_STAGES - 1 total time steps to drain.
     int totalSteps = M + PP_STAGES - 1;
     int totalSlots = totalSteps * PP_STAGES;
     int busySlots = M * PP_STAGES;
