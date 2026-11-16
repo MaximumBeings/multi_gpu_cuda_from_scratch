@@ -111,20 +111,35 @@ int main() {
            "(the continuous ideal predicts exactly 0.0)\n",
            equalMakespan, weightedMakespan, equalMakespan / weightedMakespan, weightedSpread);
 
-    const double SPREAD_TOLERANCE = 2.0; // whole work units' worth of rounding, not zero
-    bool spreadIsSmall = weightedSpread < SPREAD_TOLERANCE;
-    printf("\n  weighted split's spread (%.3f) is within %.1f work-units'-"
-           "worth of the continuous ideal's exact 0.0: %s\n",
-           weightedSpread, SPREAD_TOLERANCE, spreadIsSmall ? "PASS" : "FAIL");
+    // The tolerance has to be in the same units as the spread: TIME
+    // (work units / speed), not raw work units. computeWeightedShard()
+    // rounds every rank but the last DOWN, so each of those ranks
+    // receives up to (but less than) 1 unit LESS than its ideal share,
+    // finishing up to 1/speed_r early. The last rank absorbs every
+    // other rank's dropped fraction -- up to (but less than) N-1 units
+    // MORE than its ideal share -- finishing up to (N-1)/speed_last
+    // late. The worst-case spread is therefore strictly below
+    //   (N-1)/speed_last + 1/(slowest speed among the other ranks),
+    // a bound that holds for ANY speeds in ANY order, not just these.
+    double minOtherSpeed = 1e18;
+    for (int r = 0; r + 1 < WORLD_SIZE; ++r) minOtherSpeed = std::min(minOtherSpeed, speeds[r]);
+    const double spreadBound = (WORLD_SIZE - 1) / speeds[WORLD_SIZE - 1] + 1.0 / minOtherSpeed;
+    bool spreadIsSmall = weightedSpread < spreadBound;
+    printf("\n  weighted split's spread (%.3f) is below the worst-case "
+           "rounding bound (N-1)/speed_last + 1/min(other speeds) = "
+           "%.3f time units: %s\n",
+           weightedSpread, spreadBound, spreadIsSmall ? "PASS" : "FAIL");
 
     if (spreadIsSmall) {
         printf("\nThe continuous ideal's EXACT equality doesn't survive "
                "rounding to whole work units -- the fastest- and "
                "slowest-finishing ranks under the weighted split finish "
-               "%.3f apart, not identically -- but the gap is tiny "
-               "relative to either rank's own share, because "
-               "computeWeightedShard() can only be off by less than one "
-               "whole unit of work per rank. This is the same honest "
+               "%.3f apart, not identically -- but the gap is small "
+               "relative to every rank's own share, because "
+               "computeWeightedShard() rounds every rank but the last "
+               "DOWN (each loses less than one whole unit) and hands "
+               "the last rank the leftover remainder (less than N-1 = "
+               "%d whole units). This is the same honest "
                "distinction this book drew in Chapter 13 vs. Chapter 14: "
                "an exact algebraic guarantee (Chapter 13's relocation, "
                "this section's continuous ideal) is a different, "
@@ -132,7 +147,7 @@ int main() {
                "bounded one (Chapter 14's reduce, this section's real "
                "integer-quantized shares) -- and this section's own "
                "result belongs to the second kind, checked, not assumed.\n",
-               weightedSpread);
+               weightedSpread, WORLD_SIZE - 1);
     }
 
     return spreadIsSmall ? 0 : 1;
