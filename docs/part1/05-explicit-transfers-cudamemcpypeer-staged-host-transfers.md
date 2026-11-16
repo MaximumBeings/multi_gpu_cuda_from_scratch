@@ -2,8 +2,8 @@
 
 **What you will understand by the end of this chapter:**
 
-- Why cross-device copies have their own dedicated Runtime API call, `cudaMemcpyPeer()`, rather than relying on the ordinary `cudaMemcpy()` with `cudaMemcpyDefault` to infer the route automatically.
-- What `cudaMemcpyPeer()` actually falls back to, silently, whenever peer access between two devices has not been enabled -- and why that fallback is worth writing out explicitly, by hand, at least once.
+- The two ways to copy between devices: the dedicated Runtime API call `cudaMemcpyPeer()`, which names both devices explicitly, and the ordinary `cudaMemcpy()` with `cudaMemcpyDeviceToDevice` or `cudaMemcpyDefault`, which works for peer copies too under Unified Virtual Addressing.
+- What the documentation says a peer copy falls back to, silently, whenever peer access between two devices has not been enabled -- staging through the host -- and why writing that fallback out explicitly, by hand, at least once is worth doing.
 - How to reason quantitatively about which route wins, using only this book's own already-cited hardware bandwidth figures rather than any new fabricated timing.
 
 **What you need to know first:**
@@ -14,17 +14,17 @@
 
 ---
 
-Chapter 4 established *whether* two devices are allowed to touch each other's memory directly. This chapter is about the calls that actually move the bytes once that permission exists -- and, just as importantly, about what happens when it doesn't. CUDA gives cross-device copies their own dedicated function rather than folding them into the ordinary `cudaMemcpy()` interface, and that function's behavior quietly changes shape depending on Chapter 4's peer-access state: fast and direct when peer access is enabled, staged through the host and slower when it isn't, with the same function signature either way. This chapter makes both paths concrete, and then asks the question a real multi-GPU program actually has to answer: given a specific pair of devices and a specific topology, which route wins, and by how much?
+Chapter 4 established *whether* two devices are allowed to touch each other's memory directly. This chapter is about the calls that actually move the bytes once that permission exists -- and, just as importantly, about what happens when it doesn't. CUDA gives cross-device copies a dedicated function, `cudaMemcpyPeer()`, alongside the ordinary `cudaMemcpy()` interface (which also handles peer copies), and a peer copy's behavior quietly changes shape depending on Chapter 4's peer-access state: fast and direct when peer access is enabled, staged through the host and slower when it isn't, with the same function signature either way. This chapter makes both paths concrete, and then asks the question a real multi-GPU program actually has to answer: given a specific pair of devices and a specific topology, which route wins, and by how much?
 
 ## 5.1 cudaMemcpyPeer: The Dedicated Cross-Device Copy Call
 
 ### Intuition
 
-`cudaMemcpy()` with `cudaMemcpyDefault` (Chapter 4) can infer a copy's direction because UVA makes every pointer's owner identifiable. But identifying *what* a pointer is isn't the same as deciding *how* to move it when the source and destination belong to two different devices -- that decision depends on Chapter 4's peer-access state, which is per-pair, queryable, and can change at runtime. Rather than hide that decision inside the general-purpose `cudaMemcpy()`, CUDA gives cross-device copies their own explicit call, `cudaMemcpyPeer()`, that names both devices directly. One function, two very different execution paths underneath, chosen automatically based on whether Chapter 4's setup sequence has already run for that specific ordered pair.
+`cudaMemcpy()` with `cudaMemcpyDefault` (Chapter 4) can infer a copy's direction because UVA makes every pointer's owner identifiable, and that includes a copy whose source and destination live on two different devices. The CUDA Programming Guide says so directly: on systems with unified addressing, a peer copy can be done with the ordinary `cudaMemcpy()` using `cudaMemcpyDeviceToDevice` or `cudaMemcpyDefault`, not only with the dedicated peer functions. CUDA also provides an explicit call, `cudaMemcpyPeer()`, that names both devices directly instead of leaving the runtime to work them out from the pointers. This chapter uses `cudaMemcpyPeer()` because naming the two devices keeps the cross-device nature of the copy visible in the code, but either way the route the bytes take depends on Chapter 4's peer-access state, which is per-pair, queryable, and can change at runtime. One copy, two very different execution paths underneath, chosen automatically based on whether Chapter 4's setup sequence has already run for that specific ordered pair.
 
 ### Background
 
-`cudaMemcpyPeer(dst, dstDevice, src, srcDevice, count)` copies `count` bytes from `src` on `srcDevice` to `dst` on `dstDevice`. Per the CUDA Runtime API documentation, this call "is asynchronous with respect to the host, but serialized with respect [to] all pending and future asynchronous work in the current device, `srcDevice`, and `dstDevice`" -- meaning it returns to the host immediately, but the copy itself still waits its turn against other work already queued on any of the three devices involved. `cudaMemcpyPeerAsync()` adds an explicit stream argument for finer-grained ordering against other stream-issued work, the same stream-ordering model Chapter 4 introduced. Crucially, the CUDA Programming Guide's multi-GPU chapter states plainly what determines the actual route taken: "If peer-to-peer access is enabled between two devices, ... peer-to-peer memory copies between these two devices no longer need to be staged through the host and are therefore faster." The function signature and its performance are two separate questions -- the call always works the same way from the caller's side; only its internal routing depends on Chapter 4's state.
+`cudaMemcpyPeer(dst, dstDevice, src, srcDevice, count)` copies `count` bytes from `src` on `srcDevice` to `dst` on `dstDevice`. Per the CUDA Runtime API documentation, this call "is asynchronous with respect to the host, but serialized with respect [to] all pending and future asynchronous work in the current device, `srcDevice`, and `dstDevice`" -- meaning it returns to the host immediately, but the copy itself still waits its turn against other work already queued on any of the three devices involved. `cudaMemcpyPeerAsync()` adds an explicit stream argument for finer-grained ordering against other stream-issued work, the same stream-ordering model Chapter 3 introduced. Crucially, the CUDA Programming Guide's multi-GPU chapter states plainly what determines the actual route taken: "If peer-to-peer access is enabled between two devices, ... peer-to-peer memory copies between these two devices no longer need to be staged through the host and are therefore faster." The function signature and its performance are two separate questions -- the call always works the same way from the caller's side; only its internal routing depends on Chapter 4's state.
 
 ```cpp
 // Chapter 5: Explicit Transfers -- cudaMemcpyPeer, Staged Host Transfers,
@@ -91,7 +91,7 @@ Section 5.1 quoted the documentation's own description of what happens when peer
 
 ### Background
 
-The staged pattern is two ordinary `cudaMemcpy()` calls with a host buffer as the waypoint: `cudaMemcpy(hostBuffer, srcDevicePtr, bytes, cudaMemcpyDeviceToHost)` followed by `cudaMemcpy(dstDevicePtr, hostBuffer, bytes, cudaMemcpyHostToDevice)`. This is not a simplification of what `cudaMemcpyPeer()` does internally when peer access is absent -- it is, functionally, the same two-hop path, made visible instead of hidden inside one function call. Using a pinned (`cudaMallocHost()`-allocated) host buffer as the waypoint matters here for the same reason it mattered in Chapter 4's UVA discussion: a pinned allocation is a fixed, DMA-eligible physical address the driver can transfer to and from directly, rather than a page the OS might need to fault in or relocate mid-copy.
+The staged pattern is two ordinary `cudaMemcpy()` calls with a host buffer as the waypoint: `cudaMemcpy(hostBuffer, srcDevicePtr, bytes, cudaMemcpyDeviceToHost)` followed by `cudaMemcpy(dstDevicePtr, hostBuffer, bytes, cudaMemcpyHostToDevice)`. This is the book's model of what the documentation calls being "staged through the host": the same two hops, device to host and host to device, made visible instead of hidden inside one function call. It is a model, not a copy of the driver's internals, which are not documented; a driver is free to pipeline the two hops in smaller chunks so they overlap, so treat the full two-transfer cost as an upper bound on what the hidden fallback costs. Using a pinned (`cudaMallocHost()`-allocated) host buffer as the waypoint matters here because a pinned allocation is a fixed, DMA-eligible physical address the driver can transfer to and from directly, rather than a page the OS might need to fault in or relocate mid-copy.
 
 ```cpp
 // Chapter 5: Explicit Transfers -- cudaMemcpyPeer, Staged Host Transfers,
@@ -100,10 +100,12 @@ The staged pattern is two ordinary `cudaMemcpy()` calls with a host buffer as th
 //
 // The staged fallback made explicit: two ordinary cudaMemcpy() calls,
 // device 0 -> host, then host -> device 1, using a pinned host buffer
-// as the waypoint. This is the exact call pattern cudaMemcpyPeer()
-// itself falls back to internally whenever peer access between the two
-// devices has not been enabled. Genuinely compiled with a real nvcc
-// and genuinely run.
+// as the waypoint. This is the two-hop route the documentation
+// describes as "staged through the host" when peer access between the
+// two devices has not been enabled. The driver's internal staging is not
+// documented and may pipeline in smaller chunks, so treat this as the
+// book's model of that fallback, not a copy of the driver's code.
+// Genuinely compiled with a real nvcc and genuinely run.
 #include <cstdio>
 #include <cuda_runtime.h>
 
@@ -193,10 +195,11 @@ int main() {
     double peerTimePCIe   = transferSizeGB / PCIE_GBPS;
 
     // Staged route: two hops through the host, device->host and
-    // host->device, each paying the PCIe rate -- this is exactly what
-    // Section 5.2's explicit two-step transfer measured the call
-    // pattern for, and what cudaMemcpyPeer itself falls back to
-    // whenever peer access has not been enabled for that pair.
+    // host->device, each paying the PCIe rate -- the call pattern
+    // Section 5.2's explicit two-step transfer exercises. This is the
+    // book's cost model for cudaMemcpyPeer's staged fallback, an upper
+    // bound: the driver's internal staging is undocumented and may
+    // pipeline the two hops, which would bring the real cost below 2x.
     double stagedTime = 2.0 * (transferSizeGB / PCIE_GBPS);
 
     printf("Transfer size: %.1f GB\n\n", transferSizeGB);
@@ -243,14 +246,14 @@ place (Chapter 4, Section 4.2) -- staging is then not merely faster
 or slower, it is the ONLY route that exists.
 ```
 
-Peer-direct wins whenever it's *available* -- by a factor of exactly 2x when the direct link is itself PCIe (staging simply pays that same rate twice), and by a larger 3.17x when the direct link is a faster NVLink wire. But "when each wins" has a sharper answer than a speed comparison alone: peer-direct is only ever a *choice* to make when Chapter 4's `cudaDeviceCanAccessPeer()` already says the pair has a direct link at all. When it doesn't, there is no decision to make -- staging isn't the slower option, it's the only one.
+In this model, peer-direct wins whenever it's *available* -- by a factor of 2x when the direct link is itself PCIe (the model's staging pays that same rate twice, an upper bound since real staging may overlap the two hops), and by a larger 3.17x when the direct link is a faster NVLink wire. But "when each wins" has a sharper answer than a speed comparison alone: peer-direct is only ever a *choice* to make when Chapter 4's `cudaDeviceCanAccessPeer()` already says the pair has a direct link at all. When it doesn't, there is no decision to make -- staging isn't the slower option, it's the only one.
 
 !!! warning "[COMMON TRAP] Treating this cost model's numbers as real, measured transfer times"
     Every figure in this section's output is a closed-form arithmetic result from bandwidth numbers Chapter 2 already sourced and cited to real vendor documentation -- not a timing measurement taken on real hardware. Real transfer time also includes fixed per-call latency, driver overhead, and whatever else is competing for the same link, none of which this simple `size / bandwidth` model captures. This model answers "which route is structurally faster, and by roughly what multiple" honestly and exactly -- it does not, and cannot, stand in for benchmarking a real transfer on real GPUs.
 
 ## Chapter Summary
 
-`cudaMemcpyPeer()` is CUDA's dedicated cross-device copy call, and per the CUDA Programming Guide's own words, its routing -- direct or staged through the host -- depends entirely on whether Chapter 4's peer-access permission has already been granted for that specific ordered pair, with the function's return value reporting only correctness, never which path ran (Section 5.1). The staged fallback, written out explicitly in Section 5.2 as two ordinary `cudaMemcpy()` calls through a pinned host buffer, makes concrete that staging always pays the full transfer cost twice -- once per hop -- never split across the two links. Putting real, already-cited numbers into that shape (Section 5.3) shows peer-direct winning by 2x to 3.17x whenever it's available, but also reframes the real question: peer-direct is a choice only when a direct link exists between the two specific devices at all; when it doesn't, staging is not the slower option but the only one. Chapter 6 builds directly on this by bringing streams and events into the picture -- overlapping a transfer like this chapter's with concurrent kernel execution, and synchronizing correctly across devices when that overlap is in play.
+`cudaMemcpyPeer()` is CUDA's dedicated cross-device copy call, and per the CUDA Programming Guide's own words, its routing -- direct or staged through the host -- depends entirely on whether Chapter 4's peer-access permission has already been granted for that specific ordered pair, with the function's return value reporting only correctness, never which path ran (Section 5.1). The staged fallback, written out explicitly in Section 5.2 as two ordinary `cudaMemcpy()` calls through a pinned host buffer, makes concrete the book's cost model for staging: the full transfer cost paid twice, once per hop, an upper bound since the driver's undocumented internal staging may overlap the hops. Putting real, already-cited numbers into that shape (Section 5.3) shows peer-direct winning by up to 2x to 3.17x in that model whenever it's available, but also reframes the real question: peer-direct is a choice only when a direct link exists between the two specific devices at all; when it doesn't, staging is not the slower option but the only one. Chapter 6 builds directly on this by bringing streams and events into the picture -- overlapping a transfer like this chapter's with concurrent kernel execution, and synchronizing correctly across devices when that overlap is in play.
 
 ## Self-Check Questions
 
@@ -261,7 +264,7 @@ Peer-direct wins whenever it's *available* -- by a factor of exactly 2x when the
 5. A programmer concludes: "peer-direct access is always the better choice, so I'll always call `cudaDeviceEnablePeerAccess()` for every pair before transferring." Using this chapter's own conclusion, explain what's incomplete about that plan.
 6. Section 5.2's code performs two separate `cudaMemcpy()` calls. If a third device were introduced and the data needed to go from device 0 to device 2 by way of being staged through device 1's memory instead of the host, would that still be a "staged" transfer in the sense this chapter uses the term? Explain the distinction.
 7. Why does this chapter's cost model (Section 5.3) reuse Chapter 2's bandwidth figures rather than deriving new ones, and why is that a better choice than fabricating a plausible-sounding timing number?
-8. Using the field descriptions from the CUDA Runtime API reference (not the cost model), name one reason a real device's *achieved* bandwidth for a staged transfer could come in below the theoretical PCIe rate this chapter's model assumes.
+8. Reasoning about what a real transfer involves beyond the cost model's `size / bandwidth` arithmetic, name one reason a real device's *achieved* bandwidth for a staged transfer could come in below the theoretical PCIe rate this chapter's model assumes.
 
 ## Where We Go Next
 
@@ -283,13 +286,13 @@ Chapter 6 introduces streams and events as the mechanism for overlapping a trans
 
 **7.** Chapter 2's figures were already sourced from real vendor documentation (PCIe and NVLink specification tables) and cited at the end of that chapter -- reusing them keeps this chapter's numbers traceable to the same real sources rather than introducing a second, unverified data point. Fabricating a plausible-sounding timing number instead would break this book's own stated honesty discipline: every number in this book is either a genuine, verified program output or a real, cited fact, and a made-up transfer time would be neither.
 
-**8.** The CUDA Runtime API reference notes that a device's actual achieved bandwidth depends on real factors this simple `size / bandwidth` model doesn't include -- for example, fixed per-transfer latency overhead that matters more for small transfers, and contention from other traffic sharing the same PCIe root complex or switch at the same time (Chapter 2's own same-switch-vs-cross-socket distinction already showed shared links being a real, modeled cost). A real transfer's *achieved* rate is a ceiling this model's theoretical rate can approach but a real system rarely reaches under contention.
+**8.** A real transfer's achieved bandwidth depends on factors this simple `size / bandwidth` model doesn't include (this is the book's own reasoning, not a quoted documentation claim) -- for example, fixed per-transfer latency overhead that matters more for small transfers, and contention from other traffic sharing the same PCIe root complex or switch at the same time (Chapter 2's own same-switch-vs-cross-socket distinction already showed shared links being a real, modeled cost). A real transfer's *achieved* rate is a ceiling this model's theoretical rate can approach but a real system rarely reaches under contention.
 
 ---
 
 **Sources cited in this chapter:**
 
-- [CUDA Programming Guide — Multi-GPU Systems](https://docs.nvidia.com/cuda/cuda-programming-guide/03-advanced/multi-gpu-systems.html) -- peer-to-peer copies no longer needing to be staged through the host once peer access is enabled; the four dedicated peer-copy functions (`cudaMemcpyPeer`, `cudaMemcpyPeerAsync`, `cudaMemcpy3DPeer`, `cudaMemcpy3DPeerAsync`).
+- [CUDA Programming Guide — Multi-GPU Systems](https://docs.nvidia.com/cuda/cuda-programming-guide/03-advanced/multi-gpu-systems.html) -- peer-to-peer copies no longer needing to be staged through the host once peer access is enabled; the four dedicated peer-copy functions (`cudaMemcpyPeer`, `cudaMemcpyPeerAsync`, `cudaMemcpy3DPeer`, `cudaMemcpy3DPeerAsync`), and that peer copies can equally use plain `cudaMemcpy()` with `cudaMemcpyDeviceToDevice` or `cudaMemcpyDefault`.
 - [CUDA Runtime API Reference — Memory Management (`cudaMemcpyPeer`)](https://developer.download.nvidia.com/compute/DevZone/docs/html/C/doc/html/group__CUDART__MEMORY_g046702971bc5a66d9bc6000682a6d844.html) -- `cudaMemcpyPeer()` signature and its "asynchronous with respect to the host, but serialized" behavior.
 - [CUDA Programming Guide — Asynchronous Execution](https://docs.nvidia.com/cuda/cuda-programming-guide/02-basics/asynchronous-execution.html) -- pinned/page-locked host memory as the requirement for genuinely asynchronous transfers.
 - Chapter 2 of this book ("Multi-GPU Hardware Topology: PCIe, NVLink, and NVSwitch") -- the PCIe 4.0 x16 (31.5 GB/s) and direct wired NVLink (50 GB/s) figures this chapter's cost model reuses, themselves cited to real vendor sources in that chapter.

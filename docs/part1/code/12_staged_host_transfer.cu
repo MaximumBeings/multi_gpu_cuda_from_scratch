@@ -4,10 +4,12 @@
 //
 // The staged fallback made explicit: two ordinary cudaMemcpy() calls,
 // device 0 -> host, then host -> device 1, using a pinned host buffer
-// as the waypoint. This is the exact call pattern cudaMemcpyPeer()
-// itself falls back to internally whenever peer access between the two
-// devices has not been enabled. Genuinely compiled with a real nvcc
-// and genuinely run.
+// as the waypoint. This is the two-hop route the documentation
+// describes as "staged through the host" when peer access between the
+// two devices has not been enabled. The driver's internal staging is not
+// documented and may pipeline in smaller chunks, so treat this as the
+// book's model of that fallback, not a copy of the driver's code.
+// Genuinely compiled with a real nvcc and genuinely run.
 #include <cstdio>
 #include <cuda_runtime.h>
 
