@@ -63,8 +63,9 @@ int main() {
     printf("cudaDeviceGetAttribute(cudaDevAttrGPUDirectRDMAWritesOrdering): "
            "%s\n", cudaGetErrorString(eOrdering));
 
-    // cudaGetDeviceProperties() carries the SAME two facts as struct
-    // fields (Chapter 18's own query function, new fields) -- included
+    // cudaGetDeviceProperties() carries the SAME three facts as struct
+    // fields (gpuDirectRDMASupported, gpuDirectRDMAFlushWritesOptions,
+    // gpuDirectRDMAWritesOrdering, per this installed driver_types.h) (Chapter 18's own query function, new fields) -- included
     // to show both real, independent ways CUDA exposes this, exactly
     // like Chapter 20's own MPIX_CUDA_AWARE_SUPPORT (macro) vs
     // MPIX_Query_cuda_support() (function) pairing.
@@ -72,6 +73,8 @@ int main() {
     cudaError_t eProps = cudaGetDeviceProperties(&prop, 0);
     printf("\ncudaGetDeviceProperties(): %s\n", cudaGetErrorString(eProps));
     if (eProps == cudaSuccess) {
+        printf("  prop.gpuDirectRDMASupported          = %d\n",
+               prop.gpuDirectRDMASupported);
         printf("  prop.gpuDirectRDMAFlushWritesOptions = %u\n",
                prop.gpuDirectRDMAFlushWritesOptions);
         printf("  prop.gpuDirectRDMAWritesOrdering     = %d\n",
@@ -85,10 +88,12 @@ int main() {
 
     // The actual bypass-the-host action: block until pending GPUDirect
     // RDMA writes to this device are visible to the requested scope.
-    // Real, documented return values: cudaSuccess, or cudaErrorNotSupported
-    // if "the call will be a no-op" -- e.g. because the device's own
-    // ordering guarantee (queried above) already covers this scope, or
-    // because the device has no GPUDirect RDMA support at all.
+    // The installed header documents two return values, cudaSuccess and
+    // cudaErrorNotSupported (support is advertised by attribute #2
+    // above). Separately, it says that if the requested scope is already
+    // covered by the device's own ordering guarantee (attribute #3),
+    // "the call will be a no-op and can be safely omitted" -- it does
+    // NOT say that no-op case returns cudaErrorNotSupported.
     cudaError_t eFlush = cudaDeviceFlushGPUDirectRDMAWrites(
         cudaFlushGPUDirectRDMAWritesTargetCurrentDevice,
         cudaFlushGPUDirectRDMAWritesToOwner);
