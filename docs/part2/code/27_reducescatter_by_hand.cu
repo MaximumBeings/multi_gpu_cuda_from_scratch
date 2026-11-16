@@ -4,10 +4,14 @@
 // Reduce-scatter, done directly: for each chunk index c, gather that
 // ONE chunk from every device to the host, sum it, and write the sum
 // back ONLY onto device c -- the device "assigned" to that chunk.
-// This is exactly the SCATTER-REDUCE phase Chapter 9 used inside its
-// ring all-reduce (Section 9.2-9.3), stopped there instead of
-// continuing on into an all-gather. Genuinely compiled with a real
-// nvcc and genuinely run.
+// It computes the same thing as the SCATTER-REDUCE phase Chapter 9
+// used inside its ring all-reduce (Section 9.2-9.3), stopped there
+// instead of continuing on into an all-gather -- except for WHICH
+// device owns WHICH chunk: Chapter 9's ring leaves device i holding
+// chunk (i+1) mod N, while the reduce-scatter collective (and NCCL's
+// ncclReduceScatter) puts chunk i on device i, as here. cudaSetDevice()
+// is called before every per-device operation (Chapter 3's rule).
+// Genuinely compiled with a real nvcc and genuinely run.
 #include <cstdio>
 #include <cuda_runtime.h>
 
@@ -28,6 +32,7 @@ int main() {
         int devicesGathered = 0;
         for (int src = 0; src < deviceCount; ++src) {
             void* devPtr = nullptr;
+            cudaSetDevice(src);  // read src's contribution ON device src
             cudaError_t eAlloc = cudaMalloc(&devPtr, CHUNK_BYTES);
             cudaError_t eCopy = cudaMemcpy(&hostStaging, devPtr, CHUNK_BYTES, cudaMemcpyDeviceToHost);
             printf("Reduce-scatter, chunk %d: cudaMemcpy(device %d -> host): %s (code %d)\n",
@@ -45,6 +50,7 @@ int main() {
         // the entire point of reduce-scatter.
         int hostResult = (int)accumulator;
         void* ownerPtr = nullptr;
+        cudaSetDevice(owner);  // the reduced chunk lives on its owner
         cudaError_t eAllocOwner = cudaMalloc(&ownerPtr, CHUNK_BYTES);
         cudaError_t eWrite = cudaMemcpy(ownerPtr, &hostResult, CHUNK_BYTES, cudaMemcpyHostToDevice);
         printf("Reduce-scatter, chunk %d: cudaMemcpy(host reduced chunk -> owner dev%d): %s (code %d)\n\n",

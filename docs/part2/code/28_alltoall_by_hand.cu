@@ -8,8 +8,9 @@
 // one of the N*(N-1) transfers below carries genuinely distinct data
 // -- there is no way to build this out of Chapter 9's ring phases,
 // because nothing here is identical across destinations for a ring
-// hop to forward along unchanged. Genuinely compiled with a real
-// nvcc and genuinely run.
+// hop to forward along unchanged. Each slot is allocated with its
+// own device made current first (Chapter 3's rule). Genuinely
+// compiled with a real nvcc and genuinely run.
 #include <cstdio>
 #include <cuda_runtime.h>
 
@@ -30,15 +31,18 @@ int main() {
             if (dst == src) continue; // a device's own reserved slot needs no transfer
             void* sendSlotPtr = nullptr;
             void* recvSlotPtr = nullptr;
+            cudaSetDevice(src);  // send-slot lives on device src
             cudaError_t eAllocSend = cudaMalloc(&sendSlotPtr, CHUNK_BYTES);
+            cudaSetDevice(dst);  // recv-slot lives on device dst
             cudaError_t eAllocRecv = cudaMalloc(&recvSlotPtr, CHUNK_BYTES);
             cudaError_t eCopy = cudaMemcpyPeer(recvSlotPtr, dst, sendSlotPtr, src, CHUNK_BYTES);
             ++transfersAttempted;
             printf("All-to-all, cudaMemcpyPeer(dev%d's slot[from=%d] <- dev%d's slot[to=%d]): %s (code %d)\n",
                    dst, src, src, dst, cudaGetErrorString(eCopy), (int)eCopy);
             if (eCopy == cudaSuccess) ++transfersCompleted;
+            if (eAllocRecv == cudaSuccess) cudaFree(recvSlotPtr);  // dst current
+            cudaSetDevice(src);
             if (eAllocSend == cudaSuccess) cudaFree(sendSlotPtr);
-            if (eAllocRecv == cudaSuccess) cudaFree(recvSlotPtr);
         }
     }
 

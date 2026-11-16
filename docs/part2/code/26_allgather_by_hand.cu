@@ -6,8 +6,10 @@
 // reduction). This is the same all-gather PHASE Chapter 9 used inside
 // its ring all-reduce (Section 9.2-9.3) -- shown here running alone,
 // with the straightforward direct pattern instead of the ring
-// pattern, so the operation itself can be seen in isolation.
-// Genuinely compiled with a real nvcc and genuinely run.
+// pattern, so the operation itself can be seen in isolation. Each
+// buffer is allocated with its own device made current first
+// (Chapter 3's rule). Genuinely compiled with a real nvcc and
+// genuinely run.
 #include <cstdio>
 #include <cuda_runtime.h>
 
@@ -25,10 +27,12 @@ int main() {
     int transfersCompleted = 0;
     for (int src = 0; src < deviceCount; ++src) {
         void* sendPtr = nullptr;
+        cudaSetDevice(src);  // src's own chunk lives on device src
         cudaError_t eAllocSend = cudaMalloc(&sendPtr, CHUNK_BYTES);
         for (int dst = 0; dst < deviceCount; ++dst) {
             if (dst == src) continue; // a device's own chunk needs no transfer
             void* recvPtr = nullptr;
+            cudaSetDevice(dst);  // dst's receive slot lives on device dst
             cudaError_t eAllocRecv = cudaMalloc(&recvPtr, CHUNK_BYTES);
             cudaError_t eCopy = cudaMemcpyPeer(recvPtr, dst, sendPtr, src, CHUNK_BYTES);
             ++transfersAttempted;
@@ -37,6 +41,7 @@ int main() {
             if (eCopy == cudaSuccess) ++transfersCompleted;
             if (eAllocRecv == cudaSuccess) cudaFree(recvPtr);
         }
+        cudaSetDevice(src);
         if (eAllocSend == cudaSuccess) cudaFree(sendPtr);
     }
 
