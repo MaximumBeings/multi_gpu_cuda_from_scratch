@@ -23,7 +23,7 @@ A broadcast has one job: after it runs, every device in the group holds an ident
 
 ### Background
 
-The straightforward broadcast is a loop: for every non-root device, call `cudaMemcpyPeer()` with the root's pointer as the source and that device's pointer as the destination. Every call in the loop reads from the *same*, unchanging root buffer -- nothing about the root's data changes as the loop progresses, so the order the non-root devices are visited in doesn't affect the result at all. This is the exact same function Chapter 5 introduced, used here in a loop rather than for a single pair, which is really all a broadcast collective *is* at this level: a specific, repeated pattern of an operation this book already has.
+The straightforward broadcast is a loop: for every non-root device, call `cudaMemcpyPeer()` with the root's pointer as the source and that device's pointer as the destination. Every call in the loop reads from the *same*, unchanging root buffer -- nothing about the root's data changes as the loop progresses, so the order the non-root devices are visited in doesn't affect the result at all. This is the exact same function Chapter 5 introduced, used here in a loop rather than for a single pair, which is really all a broadcast collective *is* at this level: a specific, repeated pattern of an operation this book already has. One detail from Chapter 3 still applies inside the loop: `cudaMalloc()` allocates on whichever device is *current*, so the code calls `cudaSetDevice(dst)` before allocating each destination buffer -- otherwise every "per-device" buffer would silently land on the root, and passing `dst` as `cudaMemcpyPeer()`'s destination device would not make it so.
 
 ```cpp
 // Chapter 8: Broadcast and Reduce -- The First Two Collectives, By Hand
@@ -31,8 +31,10 @@ The straightforward broadcast is a loop: for every non-root device, call `cudaMe
 //
 // A broadcast, written by hand as the real API calls it actually is:
 // one cudaMemcpyPeer() per non-root device, all sourced from the same
-// unchanging root pointer. Genuinely compiled with a real nvcc and
-// genuinely run.
+// unchanging root pointer. Each destination buffer is allocated with
+// cudaSetDevice(dst) called first, so it genuinely lives on device dst
+// (Chapter 3's rule: set the device before every per-device
+// operation). Genuinely compiled with a real nvcc and genuinely run.
 #include <cstdio>
 #include <cuda_runtime.h>
 
@@ -55,6 +57,7 @@ int main() {
     for (int dst = 0; dst < deviceCount; ++dst) {
         if (dst == ROOT) continue;
         void* dstPtr = nullptr;
+        cudaSetDevice(dst);  // allocate dst's buffer ON device dst
         cudaError_t eAllocDst = cudaMalloc(&dstPtr, BYTES);
         cudaError_t eCopy = cudaMemcpyPeer(dstPtr, dst, rootPtr, ROOT, BYTES);
         printf("cudaMemcpyPeer(dst=dev%d, src=root=dev%d): %s (code %d)\n",
@@ -68,6 +71,7 @@ int main() {
            "the same unchanging root pointer -- delivers an identical copy of\n"
            "the root's data to every other device.\n", broadcastCount, deviceCount > 0 ? deviceCount - 1 : 0);
 
+    cudaSetDevice(ROOT);  // free the root's buffer with the root current
     if (eAllocRoot == cudaSuccess) cudaFree(rootPtr);
     return 0;
 }
@@ -98,15 +102,18 @@ Reduce is broadcast's mirror image: instead of one device's data reaching everyo
 
 ### Background
 
-The loop stages each device's buffer to the host with an ordinary `cudaMemcpy(..., cudaMemcpyDeviceToHost)`, then adds it, element by element, into a running host-side accumulator. Nothing here needs a device kernel: the accumulation itself is plain host arithmetic, run once per device, and the combining operation -- sum, in this section's code -- is entirely a property of what the accumulator does with each staged buffer, not of the transfer mechanism itself. A different combining operation (max, say, or a bitwise AND) would only change one line of host code; the transfer loop around it stays identical.
+The loop first makes the source device current with `cudaSetDevice(src)` (Chapter 3's rule -- without it, every iteration would allocate and read on device 0), then stages that device's buffer to the host with an ordinary `cudaMemcpy(..., cudaMemcpyDeviceToHost)`, and adds it, element by element, into a running host-side accumulator. Nothing here needs a device kernel: the accumulation itself is plain host arithmetic, run once per device, and the combining operation -- sum, in this section's code -- is entirely a property of what the accumulator does with each staged buffer, not of the transfer mechanism itself. A different combining operation (max, say, or a bitwise AND) would only change one line of host code; the transfer loop around it stays identical.
 
 ```cpp
 // Chapter 8: Broadcast and Reduce -- The First Two Collectives, By Hand
 // 21_reduce_by_hand.cu
 //
 // A reduce, written by hand: stage each device's buffer to the host
-// and accumulate there, one device at a time. Genuinely compiled with
-// a real nvcc and genuinely run.
+// and accumulate there, one device at a time. cudaSetDevice(src) is
+// called first in every iteration, so the buffer being staged genuinely
+// lives on device src (Chapter 3's rule: set the device before every
+// per-device operation). Genuinely compiled with a real nvcc and
+// genuinely run.
 #include <cstdio>
 #include <cuda_runtime.h>
 
@@ -124,6 +131,7 @@ int main() {
     int devicesReduced = 0;
     for (int src = 0; src < deviceCount; ++src) {
         void* devPtr = nullptr;
+        cudaSetDevice(src);  // every per-device call below targets src
         cudaError_t eAlloc = cudaMalloc(&devPtr, BYTES);
         cudaError_t eCopy = cudaMemcpy(hostStaging, devPtr, BYTES, cudaMemcpyDeviceToHost);
         printf("cudaMemcpy(device %d -> host staging, for accumulation): %s (code %d)\n",
@@ -201,7 +209,9 @@ void broadcast(std::vector<Buffer>& devices, int root) {
 // Reduce: sum every device's buffer, elementwise, into a single
 // result. This is the simulated equivalent of Section 8.2's
 // per-device stage-then-accumulate loop -- summed here in device
-// order 0, 1, 2, ... N-1.
+// order 0, 1, 2, ... N-1. Unlike Section 8.2's accumulator, this one
+// stays plain int (no widening to long long): the test values here sum
+// to at most 4444, far below int's range, so overflow cannot arise.
 Buffer reduceSumInOrder(const std::vector<Buffer>& devices) {
     Buffer result(devices[0].size(), 0);
     for (const Buffer& d : devices) {
@@ -211,8 +221,8 @@ Buffer reduceSumInOrder(const std::vector<Buffer>& devices) {
 }
 
 // The same reduction, summed in the REVERSE device order. For
-// integers, exactly like this section's own accumulator, addition is
-// associative and commutative, so this must produce an identical
+// integers, addition is associative and commutative, so (absent
+// overflow) this must produce an identical
 // result to reduceSumInOrder -- a guarantee that would NOT hold if
 // these were floating-point values (see this chapter's Common Trap).
 Buffer reduceSumReverseOrder(const std::vector<Buffer>& devices) {
@@ -309,7 +319,7 @@ Chapter 9 builds ring all-reduce -- the algorithm that combines every device's d
 
 **2.** Only the single line inside the accumulation loop that combines the staged buffer into the running result would change -- `accumulator[i] += hostStaging[i];` would become something like `accumulator[i] = std::max(accumulator[i], (long long)hostStaging[i]);`. The transfer loop around it -- the `cudaMalloc`, `cudaMemcpy(..., cudaMemcpyDeviceToHost)`, and the per-device iteration itself -- stays completely identical, because the combining operation and the transfer mechanism are genuinely independent, exactly as Section 8.2's Background states.
 
-**3.** Checking each ordering against the independent `reference` separately only proves each individual ordering computes the mathematically correct sum -- it says nothing about whether the two orderings agree with *each other*. In principle (though not for integers, as this chapter shows), two different accumulation orders could each happen to be "close to" a reference value without being identical to each other -- the direct `sumInOrder == sumReverse` comparison is what specifically verifies order-independence, a distinct claim from "each order is individually correct."
+**3.** Logically, nothing: the checks use exact `==`, so if `sumInOrder == reference` and `sumReverse == reference` both hold, then `sumInOrder == sumReverse` follows necessarily -- the fourth check is redundant once the first two pass. What it adds is *explicitness and diagnosis*, not extra logical coverage. It states the order-independence claim as its own named PASS line rather than leaving it implicit, and it stays meaningful in the case where the first two checks *fail*: if both orderings missed the reference but agreed with each other, that points to a shared bug (or a wrong reference), whereas if they disagree, accumulation order itself is implicated. The comparison would only become logically independent if the reference checks were relaxed to a tolerance (as floating-point checks often are) -- two results can each be within tolerance of a reference without being identical to each other.
 
 **4.** "The final values computed using IEEE 754 arithmetic can depend on implementation choices such as whether to use fused multiply-add or whether additions are organized in series or parallel." This is the specific sentence this chapter cites to establish that Section 8.3's integer-specific order-independence result does not carry over to floating-point accumulation.
 
@@ -319,7 +329,7 @@ Chapter 9 builds ring all-reduce -- the algorithm that combines every device's d
 
 **7.** This widening guards against integer overflow, not accumulation order. Summing several `int`-typed device values could exceed the range a 32-bit `int` can represent, producing a wrapped-around, silently wrong result even though the *order* of accumulation was never in question. Using `long long` for the running accumulator (while the per-device staged values remain `int`, matching what a real device buffer of that type would hold) keeps the intermediate sum correct regardless of how large it grows, which is a separate concern from the order-independence question Section 8.3's simulation focuses on.
 
-**8.** Chapters 1-7's claims were almost entirely about what a *single* real API call honestly does on this machine -- and `cudaErrorNoDevice`, reported correctly and deterministically, was itself a complete, verifiable answer to "what does this call do here." This chapter's claims are different in kind: "broadcast produces identical copies at every device" and "reduce's result doesn't depend on device order" are statements about the *relationship* between multiple devices' data after a multi-step algorithm runs -- a claim no single API call, honestly failing or otherwise, can confirm or deny on its own. Verifying a relationship between several participants' data is exactly what required promoting the simulation technique from an occasional tool (used once, in Chapter 4) to this book's primary verification method going forward.
+**8.** Chapters 1-7's claims were almost entirely about what a *single* real API call honestly does on this machine -- and `cudaErrorNoDevice`, reported correctly and deterministically, was itself a complete, verifiable answer to "what does this call do here." This chapter's claims are different in kind: "broadcast produces identical copies at every device" and "reduce's result doesn't depend on device order" are statements about the *relationship* between multiple devices' data after a multi-step algorithm runs -- a claim no single API call, honestly failing or otherwise, can confirm or deny on its own. Verifying a relationship between several participants' data is exactly what required promoting the simulation technique from an occasional tool (used in Chapter 4 and again in Chapter 7's Section 7.3) to this book's primary verification method going forward.
 
 ---
 

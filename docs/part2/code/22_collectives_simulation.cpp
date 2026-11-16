@@ -26,7 +26,9 @@ void broadcast(std::vector<Buffer>& devices, int root) {
 // Reduce: sum every device's buffer, elementwise, into a single
 // result. This is the simulated equivalent of Section 8.2's
 // per-device stage-then-accumulate loop -- summed here in device
-// order 0, 1, 2, ... N-1.
+// order 0, 1, 2, ... N-1. Unlike Section 8.2's accumulator, this one
+// stays plain int (no widening to long long): the test values here sum
+// to at most 4444, far below int's range, so overflow cannot arise.
 Buffer reduceSumInOrder(const std::vector<Buffer>& devices) {
     Buffer result(devices[0].size(), 0);
     for (const Buffer& d : devices) {
@@ -36,8 +38,8 @@ Buffer reduceSumInOrder(const std::vector<Buffer>& devices) {
 }
 
 // The same reduction, summed in the REVERSE device order. For
-// integers, exactly like this section's own accumulator, addition is
-// associative and commutative, so this must produce an identical
+// integers, addition is associative and commutative, so (absent
+// overflow) this must produce an identical
 // result to reduceSumInOrder -- a guarantee that would NOT hold if
 // these were floating-point values (see this chapter's Common Trap).
 Buffer reduceSumReverseOrder(const std::vector<Buffer>& devices) {

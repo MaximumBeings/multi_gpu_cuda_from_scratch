@@ -2,8 +2,11 @@
 // 21_reduce_by_hand.cu
 //
 // A reduce, written by hand: stage each device's buffer to the host
-// and accumulate there, one device at a time. Genuinely compiled with
-// a real nvcc and genuinely run.
+// and accumulate there, one device at a time. cudaSetDevice(src) is
+// called first in every iteration, so the buffer being staged genuinely
+// lives on device src (Chapter 3's rule: set the device before every
+// per-device operation). Genuinely compiled with a real nvcc and
+// genuinely run.
 #include <cstdio>
 #include <cuda_runtime.h>
 
@@ -21,6 +24,7 @@ int main() {
     int devicesReduced = 0;
     for (int src = 0; src < deviceCount; ++src) {
         void* devPtr = nullptr;
+        cudaSetDevice(src);  // every per-device call below targets src
         cudaError_t eAlloc = cudaMalloc(&devPtr, BYTES);
         cudaError_t eCopy = cudaMemcpy(hostStaging, devPtr, BYTES, cudaMemcpyDeviceToHost);
         printf("cudaMemcpy(device %d -> host staging, for accumulation): %s (code %d)\n",

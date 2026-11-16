@@ -3,8 +3,10 @@
 //
 // A broadcast, written by hand as the real API calls it actually is:
 // one cudaMemcpyPeer() per non-root device, all sourced from the same
-// unchanging root pointer. Genuinely compiled with a real nvcc and
-// genuinely run.
+// unchanging root pointer. Each destination buffer is allocated with
+// cudaSetDevice(dst) called first, so it genuinely lives on device dst
+// (Chapter 3's rule: set the device before every per-device
+// operation). Genuinely compiled with a real nvcc and genuinely run.
 #include <cstdio>
 #include <cuda_runtime.h>
 
@@ -27,6 +29,7 @@ int main() {
     for (int dst = 0; dst < deviceCount; ++dst) {
         if (dst == ROOT) continue;
         void* dstPtr = nullptr;
+        cudaSetDevice(dst);  // allocate dst's buffer ON device dst
         cudaError_t eAllocDst = cudaMalloc(&dstPtr, BYTES);
         cudaError_t eCopy = cudaMemcpyPeer(dstPtr, dst, rootPtr, ROOT, BYTES);
         printf("cudaMemcpyPeer(dst=dev%d, src=root=dev%d): %s (code %d)\n",
@@ -40,6 +43,7 @@ int main() {
            "the same unchanging root pointer -- delivers an identical copy of\n"
            "the root's data to every other device.\n", broadcastCount, deviceCount > 0 ? deviceCount - 1 : 0);
 
+    cudaSetDevice(ROOT);  // free the root's buffer with the root current
     if (eAllocRoot == cudaSuccess) cudaFree(rootPtr);
     return 0;
 }
