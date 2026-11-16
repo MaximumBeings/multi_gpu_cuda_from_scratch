@@ -142,6 +142,14 @@ Checking every single call's return code — rather than assuming success — is
 
 ```cpp
 // 07_multi_device_loop_pattern.cu
+//
+// The idiomatic multi-device pattern this book uses from here on: never
+// hard-code a device count, loop over whatever cudaGetDeviceCount()
+// actually reports, and call cudaSetDevice(i) before every single
+// operation meant for device i -- because "current device" is per host
+// thread, not per stream or per allocation. A stream or allocation is
+// permanently bound to whichever device was current at the moment it
+// was created; cudaSetDevice() only changes what happens *next*.
 #include <cstdio>
 #include <vector>
 #include <cuda_runtime.h>
@@ -166,6 +174,9 @@ int main() {
 
     // Phase 1: on EACH device, in turn, set it current, then create
     // that device's own stream and allocate that device's own buffer.
+    // The stream created while device i is current belongs to device i
+    // permanently -- it is illegal to later enqueue work meant for
+    // device j onto it.
     for (int i = 0; i < deviceCount; ++i) {
         cudaSetDevice(i);
         cudaStreamCreate(&streams[i]);
@@ -174,15 +185,19 @@ int main() {
                "was current.\n", i, i);
     }
 
-    // Phase 2: launch each device's own kernel on its own stream --
-    // launching everything first, then waiting, is what lets the
-    // devices actually overlap.
+    // Phase 2: launch each device's own kernel on its own stream. This
+    // is the pattern every collective in Part 2 builds on: one loop,
+    // one cudaSetDevice() per iteration, work enqueued asynchronously
+    // on each device's own stream so all devices can run concurrently.
     for (int i = 0; i < deviceCount; ++i) {
         cudaSetDevice(i);
         addOneKernel<<<1, N, 0, streams[i]>>>(buffers[i], N);
     }
 
-    // Phase 3: synchronize each device's own stream, in a SEPARATE loop.
+    // Phase 3: synchronize each device's own stream. Note this is a
+    // SEPARATE loop from phase 2 -- launching everything first, then
+    // waiting, is what lets the devices actually overlap; interleaving
+    // launch-then-wait-then-launch-then-wait would serialize them.
     for (int i = 0; i < deviceCount; ++i) {
         cudaSetDevice(i);
         cudaStreamSynchronize(streams[i]);
@@ -193,7 +208,9 @@ int main() {
     printf("Loop body executed %d time(s) total across all three "
            "phases. On real N-GPU hardware, this exact, unmodified "
            "source runs all N devices' kernels concurrently with no "
-           "code change.\n", deviceCount);
+           "code change -- that's the entire point of writing the loop "
+           "this way instead of hard-coding device 0 and device 1.\n",
+           deviceCount);
 
     return 0;
 }
@@ -216,15 +233,42 @@ Loop body executed 0 time(s) total across all three phases. On real N-GPU hardwa
 !!! warning "[COMMON TRAP] Combining the launch loop and the wait loop into one"
     Writing a single loop that launches device `i`'s kernel and immediately waits for it before moving to device `i+1` looks equivalent to the two-loop version above, but it isn't: waiting on device 0 before device 1's kernel has even been launched forces the two devices to run one after another instead of together, turning an N-GPU program into an N-times-slower single-GPU program in disguise. The separate launch-then-wait loops in Phases 2 and 3 above are what actually let the devices overlap.
 
+## 3.4 The Multithreading Pitfall: A New Thread Starts on Device 0
+
+### Intuition
+
+Go back to the switchboard from Section 3.1, but now hire a second operator and give them their own switchboard. Their lever doesn't start wherever the first operator's lever happens to be pointing; it starts in the factory position, line 0, until the new operator moves it. Telling the first operator "switch to line 1" before the second one starts work changes nothing for the second one.
+
+### Background
+
+Section 3.1's rule has a direct consequence the moment a program uses more than one host thread. Current-device state belongs to each thread separately, and the Programming Guide's default applies to every thread on its own: "until a call to `cudaSetDevice()` is made by the host thread, the current device defaults to device 0." A newly spawned thread does not inherit its parent's choice. NVIDIA's own developer blog post on this exact bug ("CUDA Pro Tip: Always Set the Current Device to Avoid Multithreading Bugs") describes it as a common source of silent errors in multi-threaded, multi-GPU code.
+
+```text
+main thread:     cudaSetDevice(1);          // main thread's current device = 1
+                 std::thread worker(work);  // spawn a worker
+
+worker thread:   cudaMalloc(&p, bytes);     // worker's current device = 0 (default),
+                                            // NOT 1 -- p is allocated on GPU 0
+                 kernel<<<g, b>>>(p);       // launched on GPU 0 as well
+
+fixed worker:    cudaSetDevice(1);          // first CUDA action in the thread
+                 cudaMalloc(&p, bytes);     // now genuinely on GPU 1
+```
+
+Nothing in the unfixed worker returns an error: device 0 exists, so the allocation and the launch both succeed, just on the wrong GPU. On a machine where device 0 is also being driven by another thread, the symptom is device 0 doing twice its share of work and running out of memory early, while device 1 sits idle. The guard is the one Section 3.3's loop already uses: every thread that touches CUDA calls `cudaSetDevice()` for the device it means to drive, as its first CUDA call, rather than relying on whatever any other thread set.
+
+!!! warning "[COMMON TRAP] Setting the device in `main()` and assuming worker threads inherit it"
+    Calling `cudaSetDevice()` once in `main()` before spawning workers only configures the main thread. Each worker starts on device 0 unless it calls `cudaSetDevice()` itself, and because device 0 is a valid device, the mistake produces wrong placement rather than an error message.
+
 ## Chapter Summary
 
-"Current device" is per-host-thread state, defaulting to device 0, changed only by `cudaSetDevice()` (Section 3.1) — and the Runtime API's context is that same state made implicit, with no separate object to manage. A stream or event is permanently bound to whichever device was current when it was created, enforced strictly for kernel launches but not for memory copies (Section 3.2), an asymmetry Chapter 6 builds on directly. Every multi-device program in this book is Section 3.3's single-device sequence, generalized into a loop that never assumes how many devices exist, with launch and wait kept in separate loops specifically so devices can run concurrently instead of one after another.
+"Current device" is per-host-thread state, defaulting to device 0, changed only by `cudaSetDevice()` (Section 3.1) — and the Runtime API's context is that same state made implicit, with no separate object to manage. A stream or event is permanently bound to whichever device was current when it was created, enforced strictly for kernel launches but not for memory copies (Section 3.2), an asymmetry Chapter 6 builds on directly. Every multi-device program in this book is Section 3.3's single-device sequence, generalized into a loop that never assumes how many devices exist, with launch and wait kept in separate loops specifically so devices can run concurrently instead of one after another. Because current-device state is per thread, a newly spawned host thread starts on device 0 regardless of what its parent set, so every thread must call `cudaSetDevice()` for itself (Section 3.4).
 
 ## Self-Check Questions
 
 1. A program calls `cudaSetDevice(1)` once, at the very top of `main()`, before spawning four worker threads. Does each worker thread then operate on device 1 by default? Justify your answer using Section 3.1's per-thread model.
 2. A stream is created while device 0 is current. Later, with device 1 current, code issues both a kernel launch and a `cudaMemcpyAsync` to that same stream. Predict the outcome of each call separately, citing the documented asymmetry from Section 3.2.
-3. Why is `cudaStreamCreate()` inside Phase 1's loop preceded by `cudaSetDevice(i)`, given that the loop already called `cudaSetDevice(i)` earlier in the same iteration for a different purpose (readability aside, is the second call load-bearing)?
+3. Phase 1's loop calls `cudaSetDevice(i)` exactly once per iteration, before both `cudaStreamCreate()` and `cudaMalloc()`. Phases 2 and 3 each call `cudaSetDevice(i)` again later. Is Phase 1's call load-bearing, or could it be deleted because the later phases set the device anyway? What would go wrong without it?
 4. Rewrite Section 3.3's three-phase loop as a single loop that launches and waits per device before moving to the next. What concurrency property does the rewritten version lose?
 5. `06_single_device_setup.cu`'s `CHECK` macro stops the program at the first failing call. In this environment, which specific call fails first, and why does every call after it depend on that one having succeeded?
 6. A newly spawned host thread does not inherit its parent thread's current-device setting. Using Section 3.1's default-device-0 rule, predict what device a new thread's very first unguarded CUDA call would act on if that thread never calls `cudaSetDevice()` itself.
@@ -240,7 +284,7 @@ Chapter 4 puts this vocabulary to work on the first real multi-device operation:
 
 **2.** The kernel launch fails: the stream belongs to device 0 (set when it was created), but the current device is 1 when the launch is issued, and Section 3.2's cited documentation states a kernel launch fails under exactly this mismatch. The `cudaMemcpyAsync` call succeeds despite the identical mismatch, because memory copies are not enforced the same way — the documented asymmetry this section is built around.
 
-**3.** Yes, it's load-bearing, not just readable. Each loop iteration's `cudaSetDevice(i)` call at the top of the iteration sets the current device for everything that follows in that same iteration — the stream creation, the allocation, and (in Phase 2/3) the launch and sync all rely on that single call having set the correct current device just before them. Removing it would leave whichever device the *previous* iteration last set as current, silently misdirecting every subsequent operation to the wrong device.
+**3.** It's load-bearing. Per Section 3.2, a stream belongs to whichever device was current when it was created, and an allocation lands on whichever device was current when `cudaMalloc()` ran; a later `cudaSetDevice(i)` in Phase 2 or 3 cannot move either one after the fact. Without Phase 1's call, nothing in Phase 1 ever changes the current device, so it stays at the default, device 0 (Section 3.1), and every stream and every buffer is created on device 0. Phase 2 then sets device `i` current and launches on `streams[i]`, which belongs to device 0, so for every `i` other than 0 the launch fails, exactly the kernel-launch mismatch Section 3.2 documents.
 
 **4.** The rewrite would call, per device in a single loop: `cudaSetDevice(i); launch kernel; cudaStreamSynchronize(streams[i]);` before moving to `i+1`. It loses concurrency across devices: waiting for device `i`'s stream to finish before ever launching device `i+1`'s kernel forces every device to run strictly one after another, rather than all launching first (Phase 2) and only then all waiting (Phase 3), which is what allows them to execute concurrently.
 
