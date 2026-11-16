@@ -49,6 +49,23 @@ int main(int argc, char **argv) {
                devErr, cudaGetErrorString(devErr), deviceCount);
     }
 
+    // Bind each PE to its OWN GPU before NVSHMEM initializes: NVSHMEM
+    // attaches to whatever device is current at init time, so without
+    // this every PE on a multi-GPU node would land on device 0. The
+    // node-local rank comes from an MPI shared-memory split.
+    MPI_Comm nodeComm;
+    MPI_Comm_split_type(MPI_COMM_WORLD, MPI_COMM_TYPE_SHARED, mpiRank,
+                        MPI_INFO_NULL, &nodeComm);
+    int localRank = 0;
+    MPI_Comm_rank(nodeComm, &localRank);
+    MPI_Comm_free(&nodeComm);
+    if (deviceCount > 0) {
+        cudaSetDevice(localRank % deviceCount);
+    } else if (mpiRank == 0) {
+        printf("no device to bind (local rank %d) -- skipping cudaSetDevice\n",
+               localRank);
+    }
+
     MPI_Comm worldComm = MPI_COMM_WORLD;
     nvshmemx_init_attr_t attr;
     attr.mpi_comm = &worldComm;
