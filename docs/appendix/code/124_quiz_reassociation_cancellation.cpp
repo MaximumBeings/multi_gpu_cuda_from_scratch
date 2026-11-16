@@ -1,8 +1,8 @@
 // Appendix B: Practice Quiz
 // 124_quiz_reassociation_cancellation.cpp
 //
-// Appendix B.4, Challenge 2 -- Chapters 25, 29, and 31 each independently
-// rediscovered that floating-point addition is not associative: summing
+// Appendix B.4, Challenge 2 -- Chapters 25, 29, and 31 each ran into
+// Chapter 8's caution that floating-point addition is not associative: summing
 // the SAME set of values in a different ORDER (a real, unavoidable
 // consequence of which rank's partial result a reduction combines first)
 // can produce a genuinely different final bit pattern, not just a
