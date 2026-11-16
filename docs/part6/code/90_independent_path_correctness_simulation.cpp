@@ -20,8 +20,9 @@
 // builds that shape: a fixed set of paths, split across P ranks (each
 // rank touching ONLY its own paths, using a counter-based deterministic
 // per-path value -- modeling NVIDIA's own real cuRAND Philox generator,
-// whose documentation states "each thread of computation should be
-// assigned a unique id number" so that independent streams need NO
+// whose device-API documentation states "each thread of computation
+// should be assigned a unique sequence number" so that independent
+// streams need NO
 // coordination between them), with each rank's own partial (count, mean,
 // M2) combined into a global statistic using Chan, Golub & LeVeque's own
 // real pairwise combination formula ("Updating Formulae and a Pairwise
@@ -124,11 +125,13 @@ int main() {
            "-- Chan et al.'s own pairwise mean formula happens to reproduce "
            "this dataset's reference mean bit-for-bit. The combined M2 does "
            "NOT match at P > 1: a real, tiny (last-few-digits) floating-point "
-           "difference, the same non-associativity finding Chapter 8, "
-           "Chapter 25, and Chapter 29 already documented -- Chan et al.'s "
-           "own real algorithm is famous for being NUMERICALLY STABLE, not "
-           "for being BIT-IDENTICAL to a differently-grouped two-pass "
-           "reference; those are two different guarantees.\n");
+           "difference. Note which side is off: computed exactly in rational "
+           "arithmetic, this dataset's true M2 rounds to 3837.9583333333335 -- "
+           "what the combined result gives at every P > 1 except P = 12 (1 ulp "
+           "low). It is the single-process two-pass REFERENCE that is 3 ulp "
+           "high. Pairwise combination is a genuinely different formula from "
+           "the two-pass one, not a regrouping of the same additions, so a "
+           "bit-for-bit match was never promised in either direction.\n");
 
     return 0;
 }
