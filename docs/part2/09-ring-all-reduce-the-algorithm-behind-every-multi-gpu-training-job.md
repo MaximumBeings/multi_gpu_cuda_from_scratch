@@ -2,7 +2,7 @@
 
 **What you will understand by the end of this chapter:**
 
-- Why all-reduce -- every device ending up with the *same* combined result, not just one root -- is a genuinely different goal from Chapter 8's reduce, and why the simplest way to get there (chain Chapter 8's two collectives together) concentrates all the real work on a single device.
+- Why all-reduce -- every device ending up with the *same* combined result, not just one root -- is a genuinely different goal from Chapter 8's reduce, and why the simplest way to get there (chain Chapter 8's two collectives together) concentrates all the real work on a single central hub.
 - How ring all-reduce spreads that same work evenly across every device by having each one talk only to its immediate ring-neighbor, in two phases: scatter-reduce, then all-gather.
 - The real, closed-form reason this algorithm is the one essentially every real multi-GPU training job actually uses for gradient synchronization: it moves a fixed, bounded amount of data per device, no matter how large the group of devices grows.
 
@@ -14,34 +14,45 @@
 
 ---
 
-Chapter 8 built reduce -- every device's data combined into one correct result, on one root device. All-reduce asks for something related but distinct: every device ending up holding that *same* combined result, not just the root. Getting there is easy in principle -- reduce to a root, then broadcast the root's result back out, using nothing but Chapter 8's own two collectives, one after the other. It's also exactly the wrong way to do it at scale, because every single byte of that approach passes through one specific device, twice. Ring all-reduce fixes this by rethinking who talks to whom: instead of a star with one root at the center, every device sits in a ring and only ever exchanges data with its two immediate neighbors. This is the algorithm underneath essentially every real multi-GPU training job's gradient synchronization step, and this chapter builds it, by hand, directly on top of what Chapters 2 and 8 already gave this book.
+Chapter 8 built reduce -- every device's data combined into one correct result, on one root device. All-reduce asks for something related but distinct: every device ending up holding that *same* combined result, not just the root. Getting there is easy in principle -- reduce to a root, then broadcast the root's result back out, using nothing but Chapter 8's own two collectives, one after the other. It's also exactly the wrong way to do it at scale, because every byte of that approach passes through one central hub on the way in and again on the way out -- in this chapter's by-hand version, the host during the reduce and the root device during the broadcast. Ring all-reduce fixes this by rethinking who talks to whom: instead of a star with one root at the center, every device sits in a ring and only ever exchanges data with its two immediate neighbors. This is the algorithm underneath essentially every real multi-GPU training job's gradient synchronization step, and this chapter builds it, by hand, directly on top of what Chapters 2 and 8 already gave this book.
 
 ```text
-NAIVE (Chapter 8's two collectives, chained):        RING (this chapter):
+NAIVE (Chapter 8's two collectives, chained):
 
-        dev1     dev2     dev3                         dev0 -----> dev1
-          \        |        /                            ^           |
-           v       v       v                              |           v
-        [        root (dev0)        ]                    dev3 <----- dev2
-           |       |        |
-           v       v        v
-        dev1     dev2     dev3
+  REDUCE:     dev0 --+
+              dev1 --+
+              dev2 --+--> [ HUB ]
+              dev3 --+
 
-  Every byte passes through the root            Every device only ever talks to
-  TWICE (in during reduce, out during            its two ring neighbors -- no
-  broadcast). The root's load grows with N;      device is ever singled out, and
-  everyone else is idle most of the time.        the per-device load stays bounded.
+  BROADCAST:            [ HUB ] --+--> dev1
+                                  +--> dev2
+                                  +--> dev3
+
+  Every byte passes through one hub on the way in (reduce) and again
+  on the way out (broadcast). The hub's load grows with N; everyone
+  else is idle most of the time. (In this chapter's by-hand code the
+  reduce hub is the host and the broadcast hub is the root, dev0.)
+
+RING (this chapter):
+
+  dev0 --> dev1 --> dev2 --> dev3 --+
+   ^                                |
+   +--------------------------------+
+        (dev3's next neighbor is dev0)
+
+  Every device only ever talks to its two ring neighbors -- no device
+  is ever singled out, and the per-device load stays bounded.
 ```
 
 ## 9.1 The Naive Baseline: Reduce-to-Root, Then Broadcast
 
 ### Intuition
 
-The most direct way to make every device hold the same combined result is to not invent anything new at all: run Chapter 8's reduce to get the correct sum onto one root device, then run Chapter 8's broadcast to send that root's result to everyone else. This is completely correct -- every device really does end up with the right answer -- and it's the natural first thing to reach for. Its cost is concentrated in exactly one place: the root device receives everyone else's data during the reduce phase, and then turns around and sends its own data to everyone else during the broadcast phase. Every other device only ever does half that work.
+The most direct way to make every device hold the same combined result is to not invent anything new at all: run Chapter 8's reduce to get the correct sum onto one root device, then run Chapter 8's broadcast to send that root's result to everyone else. This is completely correct -- every device really does end up with the right answer -- and it's the natural first thing to reach for. Its cost is concentrated in one central hub per phase: something has to receive everyone's data during the reduce phase, and then the root has to turn around and send the result to everyone else during the broadcast phase. In the textbook version of this star, the root device is the hub for both phases. In this section's by-hand code, which has no device kernel to sum on-GPU, the reduce phase's hub is actually the *host*: every device -- the root included -- copies its full buffer down to host memory, the host sums them, and writes the one result back up to the root, which then broadcasts it. Either way, every other device only ever sends once and receives once.
 
 ### Background
 
-The code below is literally Section 8.2's reduce loop followed by Section 8.1's broadcast loop, with one connecting step in between: the host-computed sum has to be written back onto the root device before it can be broadcast from there, since the accumulation itself happened on the host, not on any device. Nothing about either loop changes from Chapter 8 -- what's new here is only that they're run back-to-back, on the same buffer, which is exactly what turns "a reduce" and "a broadcast" into "an all-reduce."
+The code below is literally Section 8.2's reduce loop followed by Section 8.1's broadcast loop, with one connecting step in between: the host-computed sum has to be written back onto the root device before it can be broadcast from there, since the accumulation itself happened on the host, not on any device. Nothing about either loop changes from Chapter 8 (including Chapter 3's rule of calling `cudaSetDevice()` before each device's own allocation) -- what's new here is only that they're run back-to-back, on the same buffer, which is exactly what turns "a reduce" and "a broadcast" into "an all-reduce." Be precise about the data path this produces: `N` device-to-host copies converge on the host, one host-to-device copy goes to the root, and `N-1` peer copies leave the root. The real bottleneck of the reduce phase is the host (and its PCIe link), not the root device.
 
 ```cpp
 // Chapter 9: Ring All-Reduce -- The Algorithm Behind Every Multi-GPU
@@ -51,8 +62,12 @@ The code below is literally Section 8.2's reduce loop followed by Section 8.1's 
 // The naive baseline: reduce every device's buffer to a host
 // accumulator (Chapter 8, Section 8.2), write the result back onto
 // the root device, then broadcast it out to every other device
-// (Chapter 8, Section 8.1). Genuinely compiled with a real nvcc and
-// genuinely run.
+// (Chapter 8, Section 8.1). Note the actual data path: the reduce
+// phase funnels EVERY device's buffer (the root's included) through
+// the HOST, and only the broadcast phase is centered on the root
+// device. cudaSetDevice() is called before every per-device
+// operation (Chapter 3's rule). Genuinely compiled with a real nvcc
+// and genuinely run.
 #include <cstdio>
 #include <cuda_runtime.h>
 
@@ -66,12 +81,14 @@ int main() {
     const size_t BYTES = N_INTS * sizeof(int);
 
     // Phase 1: reduce every device's buffer to a host accumulator,
-    // exactly like Chapter 8, Section 8.2.
+    // exactly like Chapter 8, Section 8.2. The hub of this phase is
+    // the host: it receives one full buffer from every device.
     long long accumulator[N_INTS] = {0, 0, 0, 0};
     int hostStaging[N_INTS];
     int devicesReduced = 0;
     for (int src = 0; src < deviceCount; ++src) {
         void* devPtr = nullptr;
+        cudaSetDevice(src);  // every per-device call below targets src
         cudaError_t eAlloc = cudaMalloc(&devPtr, BYTES);
         cudaError_t eCopy = cudaMemcpy(hostStaging, devPtr, BYTES, cudaMemcpyDeviceToHost);
         printf("Reduce phase, cudaMemcpy(device %d -> host): %s (code %d)\n",
@@ -86,12 +103,14 @@ int main() {
     // Phase 2: write the reduced result back onto the root device, then
     // broadcast it to every other device -- exactly like Chapter 8,
     // Section 8.1. Only after this phase does every device hold the
-    // SAME reduced value; this two-phase, root-centered round trip is
-    // the "naive" all-reduce this chapter improves on.
+    // SAME reduced value; this two-phase, hub-centered round trip
+    // (host hub for the reduce, root hub for the broadcast) is the
+    // "naive" all-reduce this chapter improves on.
     int hostResult[N_INTS];
     for (size_t i = 0; i < N_INTS; ++i) hostResult[i] = (int)accumulator[i];
 
     void* rootPtr = nullptr;
+    cudaSetDevice(ROOT);  // the result buffer lives on the root
     cudaError_t eAllocRoot = cudaMalloc(&rootPtr, BYTES);
     cudaError_t eWriteRoot = cudaMemcpy(rootPtr, hostResult, BYTES, cudaMemcpyHostToDevice);
     printf("Broadcast phase, cudaMemcpy(host result -> root device): %s (code %d)\n",
@@ -101,6 +120,7 @@ int main() {
     for (int dst = 0; dst < deviceCount; ++dst) {
         if (dst == ROOT) continue;
         void* dstPtr = nullptr;
+        cudaSetDevice(dst);  // allocate dst's buffer ON device dst
         cudaError_t eAllocDst = cudaMalloc(&dstPtr, BYTES);
         cudaError_t eCopy = cudaMemcpyPeer(dstPtr, dst, rootPtr, ROOT, BYTES);
         printf("Broadcast phase, cudaMemcpyPeer(dst=dev%d, src=root): %s (code %d)\n",
@@ -109,14 +129,16 @@ int main() {
         if (eAllocDst == cudaSuccess) cudaFree(dstPtr);
     }
 
-    printf("\nReduced %d device(s), then broadcast reached %d non-root "
-           "device(s). Every byte of this all-reduce passed through the\n"
-           "root device TWICE -- once inbound during the reduce phase, "
-           "once outbound during the broadcast phase -- while every other\n"
-           "device only ever sent or received once. Section 9.3 makes this\n"
-           "asymmetry concrete with real counted data-volume numbers.\n",
+    printf("\nReduced %d device(s) through the host, then broadcast reached\n"
+           "%d non-root device(s). Each phase of this all-reduce funnels\n"
+           "everything through ONE hub: the HOST receives every device's\n"
+           "full buffer during the reduce phase, and the ROOT device sends a\n"
+           "full buffer to every other device during the broadcast phase --\n"
+           "while every other device only ever sends once and receives once.\n"
+           "Section 9.3 puts counted numbers on this star-shaped imbalance.\n",
            devicesReduced, broadcastCount);
 
+    cudaSetDevice(ROOT);  // free the root's buffer with the root current
     if (eAllocRoot == cudaSuccess) cudaFree(rootPtr);
     return 0;
 }
@@ -128,16 +150,19 @@ Genuinely compiled with a real `nvcc` and genuinely run. Locked output, determin
 cudaGetDeviceCount(): 0 device(s).
 Broadcast phase, cudaMemcpy(host result -> root device): no CUDA-capable device is detected (code 100)
 
-Reduced 0 device(s), then broadcast reached 0 non-root device(s). Every byte of this all-reduce passed through the
-root device TWICE -- once inbound during the reduce phase, once outbound during the broadcast phase -- while every other
-device only ever sent or received once. Section 9.3 makes this
-asymmetry concrete with real counted data-volume numbers.
+Reduced 0 device(s) through the host, then broadcast reached
+0 non-root device(s). Each phase of this all-reduce funnels
+everything through ONE hub: the HOST receives every device's
+full buffer during the reduce phase, and the ROOT device sends a
+full buffer to every other device during the broadcast phase --
+while every other device only ever sends once and receives once.
+Section 9.3 puts counted numbers on this star-shaped imbalance.
 ```
 
-With zero devices reported, both phases have nothing real to move, and the one call that *can* still be attempted -- writing the host's (all-zero) result onto a root device that doesn't exist -- fails with the same honest `cudaErrorNoDevice` this book has reported since Chapter 1. What this section verifies genuinely is the real, compiled call sequence the naive approach actually uses; Section 9.3 is where this book can put a real number on exactly how lopsided that approach's workload is.
+With zero devices reported, both phases have nothing real to move, and the one call that *can* still be attempted -- writing the host's (all-zero) result onto a root device that doesn't exist -- fails with the same honest `cudaErrorNoDevice` this book has reported since Chapter 1. What this section verifies genuinely is the real, compiled call sequence the naive approach actually uses; Section 9.3 is where this book puts a number on exactly how lopsided that star-shaped workload is.
 
-!!! warning "[COMMON TRAP] Assuming the root's extra work is 'fine' because it's still just one loop iteration more per call site"
-    Reading Section 9.1's code, the root device's special handling looks like a small, local detail -- one extra `cudaMemcpy()` call, one `continue` statement skipping it in the broadcast loop. What that framing hides is that the root's *total* data movement scales with the number of *other* devices in the group: it receives from every one of them during the reduce phase, and sends to every one of them during the broadcast phase. As the device count grows, the root's workload grows right along with it, while every other device's workload stays flat at "one buffer sent, one buffer received." Section 9.3 turns this into an exact ratio rather than an intuition.
+!!! warning "[COMMON TRAP] Assuming the hub's extra work is 'fine' because it's still just one loop iteration more per call site"
+    Reading Section 9.1's code, the root device's special handling looks like a small, local detail -- one extra `cudaMemcpy()` call, one `continue` statement skipping it in the broadcast loop. What that framing hides is that the hubs' *total* data movement scales with the number of devices in the group: the host receives a full buffer from every device during the reduce phase, and the root sends a full buffer to every other device during the broadcast phase. As the device count grows, the hubs' workload grows right along with it, while every other device's workload stays flat at "one buffer sent, one buffer received." Section 9.3 turns this into an exact ratio rather than an intuition.
 
 ## 9.2 Ring All-Reduce: Every Device Talks Only to Its Neighbor
 
@@ -169,7 +194,10 @@ from Section 9.1's star pattern.
 // ONE ring step: every device, symmetrically, sends its current chunk
 // to its ring-neighbor (i+1)%N. Unlike Section 9.1's reduce/broadcast
 // loops, there is no root here -- every device runs the identical
-// operation. Genuinely compiled with a real nvcc and genuinely run.
+// operation. Each buffer is allocated with its own device made
+// current first (Chapter 3's rule), so srcPtr genuinely lives on
+// device i and dstPtr on device next. Genuinely compiled with a real
+// nvcc and genuinely run.
 #include <cstdio>
 #include <cuda_runtime.h>
 
@@ -185,14 +213,17 @@ int main() {
         int next = (i + 1) % deviceCount;
         void* srcPtr = nullptr;
         void* dstPtr = nullptr;
+        cudaSetDevice(i);     // sender's chunk lives on device i
         cudaError_t eAllocSrc = cudaMalloc(&srcPtr, CHUNK_BYTES);
+        cudaSetDevice(next);  // receiver's slot lives on device next
         cudaError_t eAllocDst = cudaMalloc(&dstPtr, CHUNK_BYTES);
         cudaError_t eCopy = cudaMemcpyPeer(dstPtr, next, srcPtr, i, CHUNK_BYTES);
         printf("Ring step, cudaMemcpyPeer(dst=dev%d, src=dev%d): %s (code %d)\n",
                next, i, cudaGetErrorString(eCopy), (int)eCopy);
         if (eCopy == cudaSuccess) ++stepTransfers;
+        if (eAllocDst == cudaSuccess) cudaFree(dstPtr);  // next is current
+        cudaSetDevice(i);
         if (eAllocSrc == cudaSuccess) cudaFree(srcPtr);
-        if (eAllocDst == cudaSuccess) cudaFree(dstPtr);
     }
 
     printf("\n%d of %d device(s) completed this ring step. On real hardware,\n"
@@ -238,8 +269,8 @@ SCATTER-REDUCE phase (each hop ADDS the local value in):
 
   dev0(10) --chunk0=10--> dev1: 20+10 = 30
   dev1(30) --chunk0=30--> dev2: 30+30 = 60
-  dev2(60) --chunk0=60--> dev3: 40+60 = 100   <-- dev3 now owns the FULL
-                                                    reduced sum for chunk 0
+  dev2(60) --chunk0=60--> dev3: 40+60 = 100   (dev3 now owns the FULL
+                                                reduced sum for chunk 0)
 
 ALL-GATHER phase (each hop OVERWRITES/forwards, no more adding):
 
@@ -251,7 +282,7 @@ ALL-GATHER phase (each hop OVERWRITES/forwards, no more adding):
   independently-computed reference (10+20+30+40 = 100).
 ```
 
-The full simulation below runs this same pattern for *every* chunk simultaneously, across all `2*(N-1)` steps, using a single formula -- `sendChunk = (deviceIndex - step) mod N` -- for which chunk moves at every step of both phases; only whether that step *adds* or *overwrites* changes between the two phases. After confirming correctness, the code computes the real, counted data-volume comparison against Section 9.1's naive baseline for this exact problem size, using the same closed-form-arithmetic style Chapter 5's cost model established: no fabricated timing, only real counts.
+The full simulation below runs this same pattern for *every* chunk simultaneously, across all `2*(N-1)` steps, using a single formula -- `sendChunk = (deviceIndex - step) mod N` -- for which chunk moves at every step of both phases; only whether that step *adds* or *overwrites* changes between the two phases. After confirming correctness, the code compares data volume against Section 9.1's naive baseline for this exact problem size. The ring's figures are genuinely *counted*: the simulation loop increments a per-device `sent` and `received` counter on every hop, and the code checks that every device's count is identical. The naive figures are closed-form, in the style of Chapter 5's cost model, for the idealized root-centered star (one hub receiving `N-1` buffers, then sending `N-1`); File 23's host-staged version has the same star shape with the hub's role split between the host and the root. No fabricated timing, only element counts.
 
 ```cpp
 // Chapter 9: Ring All-Reduce -- The Algorithm Behind Every Multi-GPU
@@ -259,8 +290,9 @@ The full simulation below runs this same pattern for *every* chunk simultaneousl
 // 25_ring_allreduce_simulation.cpp
 //
 // Plain host C++ -- verifying the real ring all-reduce algorithm's
-// correctness, and computing its real, counted data-volume advantage
-// over Section 9.1's naive baseline. N real in-memory buffers stand in
+// correctness, and comparing its data volume against Section 9.1's
+// naive baseline. The ring's traffic is COUNTED from the simulation
+// loop itself; the naive baseline's is a closed-form formula. N real in-memory buffers stand in
 // for N real device memories; every step below moves exactly one
 // chunk per device, exactly like Section 9.2's single real
 // cudaMemcpyPeer step, repeated 2*(N-1) times.
@@ -287,12 +319,15 @@ int main() {
     printf("\n\n");
 
     const int totalSteps = 2 * (N - 1);
+    std::vector<long long> sent(N, 0), received(N, 0); // elements, counted
     for (int step = 0; step < totalSteps; ++step) {
         std::vector<Chunks> snapshot = devices;
         bool scatterReducePhase = (step < N - 1);
         for (int j = 0; j < N; ++j) {
             int sendChunk = ((j - step) % N + N) % N;
             int next = (j + 1) % N;
+            ++sent[j];        // one 1-element chunk leaves device j...
+            ++received[next]; // ...and arrives at device next
             if (scatterReducePhase) {
                 devices[next][sendChunk] = snapshot[next][sendChunk] + snapshot[j][sendChunk];
             } else {
@@ -309,34 +344,44 @@ int main() {
            "devices hold the reference sum: %s\n",
            totalSteps, N, allMatch ? "PASS" : "FAIL");
 
-    // Real, counted (not fabricated) data-volume comparison against
-    // Section 9.1's naive reduce-then-broadcast baseline, for this
-    // exact same problem size. "Traffic" below counts BOTH directions
-    // (sent + received) for every device, so the two algorithms are
-    // compared on the same basis.
+    // Data-volume comparison against Section 9.1's naive
+    // reduce-then-broadcast baseline, for this exact same problem size.
+    // "Traffic" below counts BOTH directions (sent + received) for
+    // every device, so the two algorithms are compared on the same
+    // basis. Gibiansky's 2(N-1)K/N counts ONE direction (what each GPU
+    // sends, which equals what it receives), so it is exactly half of
+    // the two-direction figure -- printed separately below.
     const int bufferSize = N; // elements per device (N chunks of 1 element each)
 
-    // Naive: root receives (N-1)*bufferSize during reduce, then sends
-    // (N-1)*bufferSize during broadcast -- both directions through
-    // the SAME device.
+    // Naive (closed form, idealized root-centered star): the hub
+    // receives (N-1)*bufferSize during reduce, then sends
+    // (N-1)*bufferSize during broadcast. (File 23 splits this hub
+    // between the host and the root; the star shape is the same.)
     long long naiveRootTraffic = 2LL * (N - 1) * bufferSize;
     // Every other device just sends once and receives once, each of
     // one full buffer.
     long long naiveOtherTraffic = 2LL * bufferSize;
 
-    // Ring: every device sends exactly 1 chunk AND receives exactly 1
-    // chunk at every one of the 2*(N-1) steps.
-    long long ringPerDeviceTraffic = 2LL * totalSteps * 1;
+    // Ring: counted from the loop above. Every device must have the
+    // SAME count -- that equality is the "no device singled out" claim.
+    long long ringPerDeviceTraffic = sent[0] + received[0];
+    bool ringBalanced = true;
+    for (int i = 0; i < N; ++i)
+        if (sent[i] + received[i] != ringPerDeviceTraffic || sent[i] != received[i])
+            ringBalanced = false;
 
     printf("\nData-volume comparison for this exact problem (N=%d devices, "
            "%d elements/device):\n", N, bufferSize);
-    printf("  Naive root device's traffic:      %lld elements (bottleneck)\n", naiveRootTraffic);
-    printf("  Naive non-root device's traffic:  %lld elements\n", naiveOtherTraffic);
-    printf("  Ring: EVERY device's traffic:      %lld elements\n", ringPerDeviceTraffic);
-    printf("  Ratio (naive root / ring device):  %.2fx -- equals N/2 exactly.\n",
+    printf("  Naive hub's traffic (closed form): %lld elements (bottleneck)\n", naiveRootTraffic);
+    printf("  Naive non-hub device's traffic:   %lld elements\n", naiveOtherTraffic);
+    printf("  Ring: EVERY device's traffic:      %lld elements (counted; all devices equal: %s)\n",
+           ringPerDeviceTraffic, ringBalanced ? "PASS" : "FAIL");
+    printf("  Ring: elements SENT per device:    %lld = Gibiansky's 2(N-1)K/N = %d\n",
+           sent[0], 2 * (N - 1) * bufferSize / N);
+    printf("  Ratio (naive hub / ring device):   %.2fx -- equals N/2 exactly.\n",
            (double)naiveRootTraffic / (double)ringPerDeviceTraffic);
 
-    return allMatch ? 0 : 1;
+    return (allMatch && ringBalanced) ? 0 : 1;
 }
 ```
 
@@ -348,25 +393,26 @@ Independent reference (sum of all 4 devices' chunks): 100 104 108 112
 After 6 ring steps (scatter-reduce + all-gather), all 4 devices hold the reference sum: PASS
 
 Data-volume comparison for this exact problem (N=4 devices, 4 elements/device):
-  Naive root device's traffic:      24 elements (bottleneck)
-  Naive non-root device's traffic:  8 elements
-  Ring: EVERY device's traffic:      12 elements
-  Ratio (naive root / ring device):  2.00x -- equals N/2 exactly.
+  Naive hub's traffic (closed form): 24 elements (bottleneck)
+  Naive non-hub device's traffic:   8 elements
+  Ring: EVERY device's traffic:      12 elements (counted; all devices equal: PASS)
+  Ring: elements SENT per device:    6 = Gibiansky's 2(N-1)K/N = 6
+  Ratio (naive hub / ring device):   2.00x -- equals N/2 exactly.
 ```
 
-The correctness check passes: every device genuinely ends up holding the same, correctly-summed buffer, verified against a reference computed completely independently of the ring algorithm's own logic. The data-volume comparison then makes Section 9.1's Common Trap concrete: for this N=4 example, the naive approach's root device moves exactly 2x as much data as *any single device* in the ring does -- and per Gibiansky's own description, "the total amount of data transferred to and from every GPU is `2(N−1)K/N` which, crucially, is independent of the number of GPUs" (with `K` as the full buffer size) -- meaning the ring's *per-device* load stays bounded as `N` grows, while the naive approach's root keeps absorbing more and more of the total traffic as more devices join.
+The correctness check passes: every device genuinely ends up holding the same, correctly-summed buffer, verified against a reference computed completely independently of the ring algorithm's own logic. The data-volume comparison then makes Section 9.1's Common Trap concrete: for this N=4 example, the naive approach's hub moves exactly 2x as much data as *any single device* in the ring does -- and per Gibiansky's own description, "the total amount of data transferred to and from every GPU is `2(N−1)K/N` which, crucially, is independent of the number of GPUs" (with `K` as the full buffer size). Note the factor of two between that formula and this section's "12 elements": Gibiansky's `2(N−1)K/N` counts each element once per hop -- equivalently, what each GPU *sends* (which equals what it receives) -- giving `2*3*4/4 = 6` here, exactly the counted "SENT per device" line. This section's traffic figure counts *both* directions (sent + received) for every device, naive and ring alike, so it is exactly double Gibiansky's figure; the ratio between the two algorithms is unaffected, because both sides are counted on the same basis. Either way, this means the ring's *per-device* load stays bounded as `N` grows, while the naive approach's hub keeps absorbing more and more of the total traffic as more devices join.
 
 !!! warning "[COMMON TRAP] Assuming the '2.00x' ratio measured here is the whole story as N grows"
-    This section's ratio (`naiveRootTraffic / ringPerDeviceTraffic`) works out to exactly `N/2` for the buffer size used here -- 2.00x at N=4, but 5x at N=10, and 50x at N=100. The gap between the two approaches doesn't stay fixed; it widens linearly with the number of devices in the group, because the naive root's traffic scales with `N` while the ring's per-device traffic (per Gibiansky's cited formula) is asymptotically *independent* of `N`. This section's PASS results establish correctness at N=4; the formula, not the specific number 2.00x, is what generalizes to real training runs with far more than 4 devices.
+    This section's ratio (`naiveRootTraffic / ringPerDeviceTraffic`) works out to exactly `N/2` for the buffer size used here -- 2.00x at N=4, but 5x at N=10, and 50x at N=100. The gap between the two approaches doesn't stay fixed; it widens linearly with the number of devices in the group, because the naive hub's traffic scales with `N` while the ring's per-device traffic (per Gibiansky's cited formula) is asymptotically *independent* of `N`. This section's PASS results establish correctness at N=4; the formula, not the specific number 2.00x, is what generalizes to real training runs with far more than 4 devices.
 
 ## Chapter Summary
 
-All-reduce asks for every device to hold an identical, correctly-combined result -- a stronger requirement than Chapter 8's reduce, which only guaranteed that result on one root. The most direct way to get there chains Chapter 8's two collectives together, but concentrates all the real work on the root device, whose total traffic grows with the number of other devices in the group (Section 9.1). Ring all-reduce removes the root entirely: every device talks only to its immediate ring-neighbor, running the identical single-chunk transfer at every step (Section 9.2), across two phases -- scatter-reduce, then all-gather -- that use the exact same communication pattern for fundamentally different purposes, first accumulating each chunk's sum, then spreading each completed chunk back out. Section 9.3 verified both properties genuinely: the algorithm produces the correct, identical result at every simulated device, and its data-volume advantage over the naive baseline is a real, closed-form ratio (`N/2` for this section's buffer size) that widens as the device count grows, cited directly to the standard description of Baidu's ring-allreduce implementation. Chapter 10 extends this same ring-based thinking to the remaining core collectives -- all-gather, reduce-scatter, and all-to-all -- each one either a piece of what this chapter already built, or a close relative of it.
+All-reduce asks for every device to hold an identical, correctly-combined result -- a stronger requirement than Chapter 8's reduce, which only guaranteed that result on one root. The most direct way to get there chains Chapter 8's two collectives together, but concentrates all the real work on a central hub -- in this chapter's by-hand code, the host during the reduce phase and the root device during the broadcast -- whose total traffic grows with the number of devices in the group (Section 9.1). Ring all-reduce removes the root entirely: every device talks only to its immediate ring-neighbor, running the identical single-chunk transfer at every step (Section 9.2), across two phases -- scatter-reduce, then all-gather -- that use the exact same communication pattern for fundamentally different purposes, first accumulating each chunk's sum, then spreading each completed chunk back out. Section 9.3 verified both properties genuinely: the algorithm produces the correct, identical result at every simulated device, with every device's traffic counted and found identical, and its data-volume advantage over the naive baseline is an exact ratio (`N/2` for this section's buffer size, with traffic counted in both directions -- exactly double Gibiansky's one-direction `2(N-1)K/N`) that widens as the device count grows, cited directly to the standard description of Baidu's ring-allreduce implementation. Chapter 10 extends this same ring-based thinking to the remaining core collectives -- all-gather, reduce-scatter, and all-to-all -- each one either a piece of what this chapter already built, or a close relative of it.
 
 ## Self-Check Questions
 
 1. Explain, in your own words, the difference between what Chapter 8's reduce guarantees and what this chapter's all-reduce guarantees.
-2. Section 9.1's Common Trap says the root's extra call "looks like a small, local detail" but isn't. Using the naive algorithm's two phases, explain specifically what makes the root's total workload scale with the device count while every other device's does not.
+2. Section 9.1's Common Trap says the root's extra call "looks like a small, local detail" but isn't. Using the naive algorithm's two phases, explain specifically what makes the hub's total workload scale with the device count while every other device's does not.
 3. Section 9.2 states that one ring step is "the algorithm's atomic building block, not the algorithm." How many total ring steps does the full two-phase algorithm need, for a group of N devices, and how are they split between the two phases?
 4. Using Section 9.3's chunk-0 trace, explain why device 3 (not device 0) is the device that ends up holding the fully-reduced sum for chunk 0 at the end of the scatter-reduce phase, for this specific N=4 example.
 5. Section 9.3's code uses a single formula, `sendChunk = (deviceIndex - step) mod N`, for every step of both phases. What is the one thing that actually changes between the scatter-reduce phase and the all-gather phase, if the chunk-selection formula itself doesn't?
@@ -376,13 +422,13 @@ All-reduce asks for every device to hold an identical, correctly-combined result
 
 ## Where We Go Next
 
-Chapter 10 builds the remaining core collectives -- all-gather, reduce-scatter, and all-to-all -- on the same ring-based foundation this chapter established: all-gather is exactly this chapter's second phase used on its own, reduce-scatter is exactly this chapter's first phase used on its own, and all-to-all is a related but genuinely different pattern this book builds from scratch using the same verification discipline.
+Chapter 10 builds the remaining core collectives -- all-gather, reduce-scatter, and all-to-all -- on the same ring-based foundation this chapter established: all-gather is this chapter's second phase used on its own, reduce-scatter is this chapter's first phase used on its own (with one difference in *which* device ends up owning *which* reduced chunk, which Chapter 10 makes precise), and all-to-all is a related but genuinely different pattern this book builds from scratch using the same verification discipline.
 
 ## Worked Solutions
 
 **1.** Chapter 8's reduce combines every device's data into a single correct result that exists on exactly one device -- the root. This chapter's all-reduce combines the same data into a single correct result, but requires that result to exist, identically, on *every* device in the group, not just one. All-reduce is strictly the stronger guarantee; reduce is one building block toward it (as Section 9.1's naive approach shows directly), but reduce alone does not satisfy all-reduce's requirement.
 
-**2.** During the reduce phase, the root receives one full buffer from each of the other `N-1` devices -- its inbound traffic is `(N-1)` buffers. During the broadcast phase, the root sends one full buffer to each of those same `N-1` devices -- its outbound traffic is another `(N-1)` buffers. Every other device, by contrast, sends exactly one buffer (during the reduce phase) and receives exactly one buffer (during the broadcast phase), regardless of how many total devices are in the group. The root's traffic is tied to `N-1`; everyone else's is a fixed, small constant.
+**2.** In the idealized root-centered star that Section 9.3's closed form models, the root receives one full buffer from each of the other `N-1` devices during the reduce phase -- `(N-1)` buffers inbound -- and sends one full buffer to each of those same `N-1` devices during the broadcast phase -- another `(N-1)` buffers outbound. Section 9.1's actual by-hand code splits that hub role: the *host* receives a full buffer from all `N` devices during the reduce phase (then writes one result buffer to the root), and the *root* sends `N-1` buffers during the broadcast phase. Either way, every other device sends exactly one buffer (during the reduce phase) and receives exactly one buffer (during the broadcast phase), regardless of how many total devices are in the group. The hub's traffic is tied to `N`; everyone else's is a fixed, small constant.
 
 **3.** The full algorithm needs `2*(N-1)` total ring steps: `N-1` steps for the scatter-reduce phase, and `N-1` more steps for the all-gather phase. Section 9.3's code computes this directly as `totalSteps = 2 * (N - 1)`, and for the N=4 example used throughout this chapter, that's 6 total steps (3 scatter-reduce, 3 all-gather), matching the locked output's "After 6 ring steps."
 
@@ -392,7 +438,7 @@ Chapter 10 builds the remaining core collectives -- all-gather, reduce-scatter, 
 
 **6.** "The total amount of data transferred to and from every GPU is `2(N−1)K/N` which, crucially, is independent of the number of GPUs" -- this is the specific claim, cited to the standard description of Baidu's ring-allreduce implementation, that this chapter uses to establish the ring algorithm's per-device traffic does not scale with `N`, unlike the naive approach's root.
 
-**7.** With N=8 and bufferSize=8 (one element per chunk, matching this chapter's convention): naive root traffic = `2*(N-1)*bufferSize = 2*7*8 = 112` elements. Ring per-device traffic = `2*totalSteps*1 = 2*(2*(N-1))*1 = 2*14*1 = 28` elements. The ratio is `112/28 = 4.00`, which is exactly `N/2 = 8/2 = 4` -- confirming Section 9.3's Common Trap's prediction that the ratio equals `N/2` and grows linearly with the device count (2.00 at N=4, 4.00 at N=8).
+**7.** With N=8 and bufferSize=8 (one element per chunk, matching this chapter's convention): naive hub traffic = `2*(N-1)*bufferSize = 2*7*8 = 112` elements. Ring per-device traffic (sent + received, as the simulation counts it) = `2*totalSteps*1 = 2*(2*(N-1))*1 = 2*14*1 = 28` elements -- of which 14 are sent, matching Gibiansky's `2(N-1)K/N = 2*7*8/8 = 14`. The ratio is `112/28 = 4.00`, which is exactly `N/2 = 8/2 = 4` -- confirming Section 9.3's Common Trap's prediction that the ratio equals `N/2` and grows linearly with the device count (2.00 at N=4, 4.00 at N=8).
 
 **8.** Checking the ring algorithm only against the naive algorithm's result would only prove the two approaches agree with *each other* -- which could still pass even if both happened to share an identical, unrelated bug (for instance, both silently using the wrong data type and overflowing identically). Checking against a `reference` computed by an entirely separate, independent calculation (a plain nested loop with no relationship to either algorithm's own internal logic) rules that out: the only way the ring algorithm's PASS result is meaningful is if it independently arrives at the mathematically correct answer, not merely an answer that happens to match a different algorithm built on related assumptions.
 
@@ -400,4 +446,4 @@ Chapter 10 builds the remaining core collectives -- all-gather, reduce-scatter, 
 
 **Sources cited in this chapter:**
 
-- [Bringing HPC Techniques to Deep Learning — Andrew Gibiansky](https://andrew.gibiansky.com/blog/machine-learning/baidu-allreduce/) -- the two-phase (scatter-reduce, then allgather) structure of ring all-reduce; the bandwidth-optimality claim; and the exact `2(N-1)K/N` per-device data-volume formula, independent of the number of GPUs.
+- [Bringing HPC Techniques to Deep Learning — Andrew Gibiansky](https://andrew.gibiansky.com/blog/machine-learning/baidu-allreduce/) -- the two-phase (scatter-reduce, then allgather) structure of ring all-reduce; the bandwidth-optimality claim; and the exact `2(N-1)K/N` per-device data-volume formula (one direction; this chapter's sent+received count is exactly twice it), independent of the number of GPUs.

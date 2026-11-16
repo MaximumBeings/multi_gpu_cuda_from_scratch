@@ -5,7 +5,10 @@
 // ONE ring step: every device, symmetrically, sends its current chunk
 // to its ring-neighbor (i+1)%N. Unlike Section 9.1's reduce/broadcast
 // loops, there is no root here -- every device runs the identical
-// operation. Genuinely compiled with a real nvcc and genuinely run.
+// operation. Each buffer is allocated with its own device made
+// current first (Chapter 3's rule), so srcPtr genuinely lives on
+// device i and dstPtr on device next. Genuinely compiled with a real
+// nvcc and genuinely run.
 #include <cstdio>
 #include <cuda_runtime.h>
 
@@ -21,14 +24,17 @@ int main() {
         int next = (i + 1) % deviceCount;
         void* srcPtr = nullptr;
         void* dstPtr = nullptr;
+        cudaSetDevice(i);     // sender's chunk lives on device i
         cudaError_t eAllocSrc = cudaMalloc(&srcPtr, CHUNK_BYTES);
+        cudaSetDevice(next);  // receiver's slot lives on device next
         cudaError_t eAllocDst = cudaMalloc(&dstPtr, CHUNK_BYTES);
         cudaError_t eCopy = cudaMemcpyPeer(dstPtr, next, srcPtr, i, CHUNK_BYTES);
         printf("Ring step, cudaMemcpyPeer(dst=dev%d, src=dev%d): %s (code %d)\n",
                next, i, cudaGetErrorString(eCopy), (int)eCopy);
         if (eCopy == cudaSuccess) ++stepTransfers;
+        if (eAllocDst == cudaSuccess) cudaFree(dstPtr);  // next is current
+        cudaSetDevice(i);
         if (eAllocSrc == cudaSuccess) cudaFree(srcPtr);
-        if (eAllocDst == cudaSuccess) cudaFree(dstPtr);
     }
 
     printf("\n%d of %d device(s) completed this ring step. On real hardware,\n"
