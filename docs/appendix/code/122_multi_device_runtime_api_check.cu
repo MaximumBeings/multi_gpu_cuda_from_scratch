@@ -45,8 +45,9 @@ int main() {
     } else {
         printf("NOT FOUND: driverVersion=%d (a value of 0 means the "
                "toolkit is installed but no NVIDIA driver is loaded on "
-               "this machine -- exactly this environment's own real "
-               "case, since it has no physical GPU at all)\n",
+               "this machine. Note this is NOT this book's own build "
+               "environment's case: there, a driver stub library answers "
+               "13.0 even with no physical GPU -- see case 2 below)\n",
                driverVersion);
     }
 

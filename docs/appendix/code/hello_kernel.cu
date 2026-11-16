@@ -1,4 +1,4 @@
-// Appendix A.4: Recipe 2 stub -- plain nvcc, no additional libraries.
+// hello_kernel.cu -- Recipe 2 stub: plain nvcc, no additional libraries.
 #include <cstdio>
 __global__ void helloKernel() {
     // deliberately left with an empty body -- this recipe exists to

@@ -1,4 +1,4 @@
-// Appendix A.4: Recipe 4 stub -- mpicxx, CUDA-aware host-side link line.
+// hello_mpi.cpp -- Recipe 4 stub: mpicxx, CUDA-aware host-side link line.
 #include <cstdio>
 #include <mpi.h>
 #include <cuda_runtime.h>
