@@ -148,7 +148,7 @@ Sections 4.1 and 4.2 established what this machine can honestly say about UVA an
 
 ### Background
 
-The simulation below models a 4-device system with the same "partial mesh" shape Chapter 2 used for its topology bandwidth model: device 0 has a direct link to device 1 (so peer access is possible and the direct-write path is used), but no direct link to device 2 (so the code must fall back to staging the copy through a separate host buffer). Both transfer functions are written to mirror what real code actually does at each step, not to simplify the problem: `transferDirectP2P()` performs a plain assignment only when a hardcoded peer-access table says the ordered pair is accessible — the simulated equivalent of a kernel dereferencing a UVA pointer that resolves directly into another device's memory, no host involved at all. `transferStagedViaHost()` always works, by construction, because it never depends on peer access at all — it is the same universal fallback real `cudaMemcpy` calls use when peer access isn't available for a given pair. The correctness check compares both destinations against a `reference` buffer that is never touched by either transfer function, so the check cannot pass merely because both sides share a common bug.
+The simulation below models a 4-device system wired as a ring, where each device has a direct link only to its two neighbors (device `i` to `i+1` and `i-1`, wrapping around). That is the same idea as Chapter 2's partial mesh, some pairs wired and some not, but a smaller and simpler shape: Chapter 2's model had 8 GPUs, each wired to its +/-1 and +/-2 neighbors. Here, device 0 has a direct link to device 1 (so peer access is possible and the direct-write path is used), but no direct link to device 2 (so the code must fall back to staging the copy through a separate host buffer). Both transfer functions are written to mirror what real code actually does at each step, not to simplify the problem: `transferDirectP2P()` performs a plain assignment only when a hardcoded peer-access table says the ordered pair is accessible — the simulated equivalent of a kernel dereferencing a UVA pointer that resolves directly into another device's memory, no host involved at all. `transferStagedViaHost()` always works, by construction, because it never depends on peer access at all — it is the same universal fallback real `cudaMemcpy` calls use when peer access isn't available for a given pair. The correctness check compares both destinations against a `reference` buffer that is never touched by either transfer function, so the check cannot pass merely because both sides share a common bug.
 
 ```cpp
 // Chapter 4: Peer-to-Peer Memory Access and Unified Virtual Addressing
@@ -169,9 +169,11 @@ The simulation below models a 4-device system with the same "partial mesh" shape
 using Buffer = std::vector<int>;
 
 // Which ordered pairs have peer access, in this simulated 4-device
-// system. Modeled after Chapter 2's "partial mesh" topology: device 0
-// has a direct link to device 1 (peer access possible), but NOT to
-// device 2 (no direct link -- must fall back to a host-staged copy).
+// system: a 4-device ring where each device has a direct link only to
+// its two ring neighbors (+/-1). This is a smaller, simpler shape than
+// Chapter 2's 8-GPU partial mesh (which also wired +/-2). Device 0 has a
+// direct link to device 1 (peer access possible), but NOT to device 2
+// (no direct link -- must fall back to a host-staged copy).
 bool peerAccessible(int src, int dst) {
     static const bool table[4][4] = {
         /*        d0     d1     d2     d3 */
@@ -279,13 +281,13 @@ Unified Virtual Addressing puts the host and every device's memory into one flat
 4. Section 4.2's loop iterates over every *ordered* pair `(i, j)` with `i != j`, rather than every unordered pair. Explain concretely why an unordered-pair loop would be insufficient, using the unidirectional-access fact from Section 4.2.
 5. In Section 4.3's simulation, `peerAccessible(0, 2)` returns `false`. Trace through exactly what `transferDirectP2P(devices, 0, 2)` does in that case, and explain why the calling code in `main()` correctly detects this and falls back to `transferStagedViaHost()`.
 6. Why does Section 4.3's `main()` keep a `reference` buffer that neither `transferDirectP2P()` nor `transferStagedViaHost()` ever writes to, instead of just comparing `devices[1]` and `devices[2]` to each other directly?
-7. The CUDA Programming Guide notes that non-NVSwitch systems support a maximum of eight peer connections per device. Using Chapter 2's partial-mesh topology model, explain why this ceiling is a real design constraint rather than an arbitrary software limit.
+7. The CUDA Programming Guide notes that non-NVSwitch systems support a maximum of eight peer connections per device. Using Chapter 2's partial-mesh topology model, explain what this ceiling means for how a multi-GPU program on such a system must plan its peer connections.
 8. This chapter's Common Trap in Section 4.3 warns against treating the simulation as a performance measurement. Referencing Chapter 2's actual bandwidth figures, give one concrete number the simulation cannot honestly produce, and explain why not.
 9. Suppose a fifth simulated device, device 4, is added to Section 4.3's model with peer access to device 1 but not to device 0. Would `transferDirectP2P(devices, 0, 4)` succeed? Would `transferStagedViaHost(devices, hostStaging, 0, 4)` still work? Explain both answers.
 
 ## Where We Go Next
 
-Chapter 5 picks up exactly where Section 4.3's simulation left off — the actual `cudaMemcpy` variants (including the peer-aware ones) and asynchronous, stream-ordered copies that a real multi-device program uses to perform the transfers this chapter's simulation only modeled the logic of, plus what the CUDA Runtime API can honestly report about overlapping a copy with concurrent kernel execution.
+Chapter 5 picks up exactly where Section 4.3's simulation left off — the actual `cudaMemcpy` variants (including the peer-aware ones) and asynchronous, stream-ordered copies that a real multi-device program uses to perform the transfers this chapter's simulation only modeled the logic of, and Chapter 6, Section 6.3, then covers what the CUDA Runtime API can honestly report about overlapping a copy with concurrent kernel execution.
 
 ## Worked Solutions
 
@@ -301,9 +303,9 @@ Chapter 5 picks up exactly where Section 4.3's simulation left off — the actua
 
 **6.** Comparing `devices[1]` to `devices[2]` directly would only prove the two destinations agree with *each other* — which could pass even if both had been corrupted identically by a shared bug in, say, how `Buffer` is initialized. Comparing each destination independently to a `reference` buffer that neither transfer function ever writes to rules that out: the only way both checks pass is if each destination genuinely received the correct original data, through its own transfer path, with no shared blind spot between the check and the thing being checked.
 
-**7.** On a partial-mesh system (Chapter 2's model, without NVSwitch), every peer connection corresponds to an actual physical NVLink wire between two specific GPUs, and each GPU has a genuinely finite number of NVLink connectors and PCIe/driver resources available to manage active peer mappings. Eight is a real hardware and driver ceiling on how many such physical, resource-backed connections one device can maintain simultaneously — not a software policy that could simply be raised, which is exactly the kind of physical constraint Chapter 2's bandwidth models were already built around.
+**7.** The Guide states the limit but gives no rationale for it, and it applies to peer connections in general, PCIe peer access included, not only to NVLink wires. So the safe reading is simply that it is a documented limit a program must respect, whatever its underlying cause. In practice, on a system without NVSwitch, a device cannot hold active peer mappings to more than eight others at once, so a program on a larger node cannot enable every ordered pair blindly the way Section 4.2's loop does. It has to choose which pairs get peer access, and Chapter 2's partial-mesh model suggests the natural choice: spend the connections on the pairs that are directly wired, and route the rest through a fallback path, exactly the per-pair topology decision Section 4.3's simulation models. Check `cudaDeviceEnablePeerAccess()`'s return code rather than assuming every request succeeds.
 
-**8.** The simulation cannot honestly produce the 50 GB/s wired / 31.5 GB/s fallback distinction Chapter 2's topology bandwidth model (`04_topology_bandwidth_model.cpp`) computed for exactly this same partial-mesh shape, because the host-side simulation moves `std::vector` contents with ordinary CPU memory operations — it has no relationship whatsoever to real PCIe or NVLink transfer rates, and reporting a number from it as if it were real GPU-to-GPU bandwidth would be exactly the kind of fabricated measurement this book's honesty discipline forbids.
+**8.** The simulation cannot honestly produce the 50 GB/s wired / 31.5 GB/s fallback distinction Chapter 2's topology bandwidth model (`04_topology_bandwidth_model.cpp`) computed for its 8-GPU partial mesh (this chapter's 4-device ring is a smaller, simpler wired-or-not topology of the same kind, and has no bandwidth figures of its own), because the host-side simulation moves `std::vector` contents with ordinary CPU memory operations — it has no relationship whatsoever to real PCIe or NVLink transfer rates, and reporting a number from it as if it were real GPU-to-GPU bandwidth would be exactly the kind of fabricated measurement this book's honesty discipline forbids.
 
 **9.** `transferDirectP2P(devices, 0, 4)` would fail (return `false`), because `peerAccessible(0, 4)` is `false` by the stated setup — device 4 only has peer access to device 1, not to device 0. `transferStagedViaHost(devices, hostStaging, 0, 4)` would still work without any changes at all, because that function never consults `peerAccessible()` in the first place — its entire purpose, and the reason it exists as the fallback, is that it is valid for *every* pair regardless of topology.
 
@@ -311,5 +313,5 @@ Chapter 5 picks up exactly where Section 4.3's simulation left off — the actua
 
 **Sources cited in this chapter:**
 
-- [CUDA Programming Guide — Multi-GPU Systems](https://docs.nvidia.com/cuda/cuda-programming-guide/03-advanced/multi-gpu-systems.html) -- Unified Virtual Addressing across host and devices; unidirectional nature of `cudaDeviceEnablePeerAccess()`; eight-peer-connection ceiling on non-NVSwitch systems.
-- [CUDA Runtime API — Peer Device Memory Access](https://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__PEER.html) -- `cudaDeviceCanAccessPeer()` and `cudaDeviceEnablePeerAccess()` signatures and documented semantics.
+- [CUDA Programming Guide — Multi-GPU Systems](https://docs.nvidia.com/cuda/cuda-programming-guide/03-advanced/multi-gpu-systems.html) -- Unified Virtual Addressing across host and devices; eight-peer-connection ceiling on non-NVSwitch systems.
+- [CUDA Runtime API — Peer Device Memory Access](https://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__PEER.html) -- `cudaDeviceCanAccessPeer()` and `cudaDeviceEnablePeerAccess()` signatures and documented semantics, including the unidirectional nature of access granted by `cudaDeviceEnablePeerAccess()`.

@@ -16,9 +16,11 @@
 using Buffer = std::vector<int>;
 
 // Which ordered pairs have peer access, in this simulated 4-device
-// system. Modeled after Chapter 2's "partial mesh" topology: device 0
-// has a direct link to device 1 (peer access possible), but NOT to
-// device 2 (no direct link -- must fall back to a host-staged copy).
+// system: a 4-device ring where each device has a direct link only to
+// its two ring neighbors (+/-1). This is a smaller, simpler shape than
+// Chapter 2's 8-GPU partial mesh (which also wired +/-2). Device 0 has a
+// direct link to device 1 (peer access possible), but NOT to device 2
+// (no direct link -- must fall back to a host-staged copy).
 bool peerAccessible(int src, int dst) {
     static const bool table[4][4] = {
         /*        d0     d1     d2     d3 */
