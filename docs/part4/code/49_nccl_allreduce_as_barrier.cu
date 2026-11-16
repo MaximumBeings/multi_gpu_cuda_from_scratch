@@ -1,11 +1,13 @@
 // Chapter 17: Barriers and Global Synchronization Across Devices
 // 49_nccl_allreduce_as_barrier.cu
 //
-// NCCL's own Collective Operations documentation lists AllReduce,
-// Broadcast, Reduce, AllGather, ReduceScatter, AllToAll, Gather, and
-// Scatter -- no Barrier, the same kind of gap Chapter 11 found for
-// all-to-all before NCCL added a dedicated call for it. MPI (Part 5)
-// has a real, dedicated MPI_Barrier() -- Open MPI's own docs describe
+// NCCL's current Collective Operations documentation (2.31.2) lists
+// AllReduce, Broadcast, Reduce, AllGather, ReduceScatter, AlltoAll,
+// Gather, and Scatter -- no Barrier. (AlltoAll, Gather and Scatter
+// only arrived in NCCL 2.28.3; the NCCL 2.18.3 installed here, whose
+// nccl.h this file compiles against, has none of those three -- the
+// all-to-all gap Chapter 11 found.) No NCCL version, old or new, has
+// a Barrier. MPI has a real, dedicated MPI_Barrier() -- Open MPI's own docs describe
 // it plainly: "synchronization between MPI processes in a group,"
 // completing "after all group members have entered the barrier."
 // NCCL has no equivalent, so real distributed training code fakes one

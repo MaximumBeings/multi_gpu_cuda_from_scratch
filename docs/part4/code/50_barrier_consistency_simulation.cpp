@@ -105,9 +105,10 @@ int main() {
                "see the correct total without a barrier -- purely because "
                "every other rank had already written by the time it read. "
                "That's not a guarantee, it's an accident of this particular "
-               "arrival order; swap any two arrival times and a DIFFERENT "
-               "subset of ranks would see a stale value, silently, with no "
-               "error raised anywhere. This is exactly the failure mode "
+               "arrival order; change which rank arrives LAST and a "
+               "DIFFERENT rank would be the lucky one, while every other "
+               "rank would see a stale value, silently, with no error "
+               "raised anywhere. This is exactly the failure mode "
                "Chapter 16's own halo exchange had to guard against every "
                "iteration, generalized to any shared checkpoint, not just a "
                "grid's neighboring rows.\n", arrivalTime[1]);
