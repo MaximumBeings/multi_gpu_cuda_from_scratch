@@ -4,7 +4,7 @@
 
 - Why a real training loop calls its all-reduce far more than once per step: PyTorch DDP's own real gradient-BUCKETING scheme, and why bucketing exists to let communication overlap with backward computation, not just to batch small tensors together.
 - A complete, real, multi-step distributed SGD training loop -- data sharded across replicas, gradients combined by Chapter 9's own real ring all-reduce algorithm, every step -- verified against a single-process full-batch reference, not just checked once like Chapter 12's own single-call demonstration.
-- A genuine, reproducible floating-point finding this book has not produced before: even a mathematically-correct ring all-reduce does not guarantee every replica lands on the exact same bit pattern, because each replica's OWN position in the ring gives it a different summation order over the same values.
+- Why a correctly-implemented ring all-reduce (Chapter 9's scatter-reduce followed by an all-gather that only COPIES finished chunks) leaves every replica holding the exact same bit pattern by construction -- and, by contrast, why a shortcut that has every replica add up all N values itself, in its own order, genuinely can leave replicas disagreeing in the last bit.
 - A real closed-form communication-cost model, applied to a real model's real parameter count, showing quantitatively why ring-style collectives -- not naive gather-then-broadcast -- are what every framework cited in this chapter actually ships.
 
 **What you need to know first:**
@@ -15,7 +15,7 @@
 
 ---
 
-Chapter 12 proved a real point about consistency using exactly ONE `ncclAllReduce()` call and a specially-chosen mean-target trick that made every replica land on the same value by construction. A real training loop does neither of those things: PyTorch DDP's own paper describes grouping gradient tensors into BUCKETS and launching each bucket's own all-reduce as soon as it is ready, "instead of launching a dedicated AllReduce immediately when each gradient tensor becomes available" -- and it does this not once, but every step, for the entire duration of training. This chapter builds the real thing Chapter 12's trick was standing in for: a genuine multi-step training loop (25.1's real bucketed call structure; 25.2's real multi-step convergence proof), and then asks, honestly, whether the exact-match guarantee Chapter 12 built into its own example still holds once the loop runs for real, more than once, with real sharded data (it does not, quite -- 25.2's own COMMON TRAP). It closes with a real closed-form model (25.3) of why ring all-reduce is the shape every cited framework settled on in the first place.
+Chapter 12 proved a real point about consistency using exactly ONE `ncclAllReduce()` call and a specially-chosen mean-target trick that made every replica land on the same value by construction. A real training loop does neither of those things: PyTorch DDP's own paper describes grouping gradient tensors into BUCKETS and launching each bucket's own all-reduce as soon as it is ready, "instead of launching a dedicated AllReduce immediately when each gradient tensor becomes available" -- and it does this not once, but every step, for the entire duration of training. This chapter builds the real thing Chapter 12's trick was standing in for: a genuine multi-step training loop (25.1's real bucketed call structure; 25.2's real multi-step convergence proof), and then asks, honestly, whether the exact-match guarantee Chapter 12 built into its own example still holds once the loop runs for real, more than once, with real sharded data (across replicas, it does -- by construction, for the reason 25.2's own COMMON TRAP spells out). It closes with a real closed-form model (25.3) of why ring all-reduce is the shape every cited framework settled on in the first place.
 
 ```text
 Chapter 12's own demonstration:              This chapter's own case study:
@@ -25,11 +25,11 @@ Chapter 12's own demonstration:              This chapter's own case study:
   guarantees an exact match                    checked against a reference
         |                                             |
 +------------------+                     +--------------------------+
-| exact match BY    |                    | exact match for MOST     |
-| CONSTRUCTION       |                    | replicas -- but not all, |
+| exact match BY   |                     | every replica identical  |
+| CONSTRUCTION     |                     | BY CONSTRUCTION, too --  |
 +------------------+                     | and this chapter shows   |
-                                          | exactly why (25.2)       |
-                                          +--------------------------+
+                                         | exactly why (25.2)       |
+                                         +--------------------------+
 ```
 
 ## 25.1 The Real Loop Shape: Steps, Buckets, and Overlap
@@ -90,7 +90,15 @@ int main(int argc, char** argv) {
     ncclUniqueId id;
     if (rank == 0) ncclGetUniqueId(&id);
     MPI_Bcast(&id, sizeof(id), MPI_BYTE, 0, MPI_COMM_WORLD);
-    cudaSetDevice(rank);
+    // Select a device by LOCAL rank (rank within this node), so the same
+    // code is correct on more than one node.
+    MPI_Comm nodeComm;
+    MPI_Comm_split_type(MPI_COMM_WORLD, MPI_COMM_TYPE_SHARED, rank,
+                        MPI_INFO_NULL, &nodeComm);
+    int localRank;
+    MPI_Comm_rank(nodeComm, &localRank);
+    MPI_Comm_free(&nodeComm);
+    cudaSetDevice(localRank);
     ncclComm_t comm;
     ncclResult_t commErr = ncclCommInitRank(&comm, worldSize, id, rank);
     if (rank == 0)
@@ -126,13 +134,22 @@ int main(int argc, char** argv) {
             cudaMalloc(&grad, sizeof(float) * 1024);
             ncclResult_t arErr = ncclAllReduce(grad, grad, 1024, ncclFloat,
                                                 ncclSum, comm, stream);
-            if (rank == 0)
-                printf("  Step %d, bucket %d/%d: ncclAllReduce() issued as "
-                       "SOON as this bucket's own gradients were ready -- "
-                       "not waiting for buckets %d..%d to finish backward "
-                       "first (rc=%s)\n",
-                       step + 1, bucket + 1, NUM_BUCKETS, bucket + 1,
-                       NUM_BUCKETS - 1, ncclGetErrorString(arErr));
+            if (rank == 0) {
+                if (bucket + 1 < NUM_BUCKETS)
+                    printf("  Step %d, bucket %d/%d: ncclAllReduce() issued as "
+                           "SOON as this bucket's own gradients were ready -- "
+                           "not waiting for buckets %d..%d to finish backward "
+                           "first (rc=%s)\n",
+                           step + 1, bucket + 1, NUM_BUCKETS, bucket + 2,
+                           NUM_BUCKETS, ncclGetErrorString(arErr));
+                else
+                    printf("  Step %d, bucket %d/%d: ncclAllReduce() issued "
+                           "for the last bucket (rc=%s)\n",
+                           step + 1, bucket + 1, NUM_BUCKETS,
+                           ncclGetErrorString(arErr));
+            }
+            cudaStreamSynchronize(stream);
+            cudaFree(grad);
         }
     }
 
@@ -142,6 +159,7 @@ int main(int argc, char** argv) {
                "demonstration issued exactly 1, total, ever.\n",
                NUM_STEPS * NUM_BUCKETS, NUM_STEPS, NUM_BUCKETS);
 
+    cudaStreamDestroy(stream);
     ncclCommDestroy(comm);
     MPI_Finalize();
     return 0;
@@ -162,7 +180,7 @@ STOPPING before any ncclAllReduce() calls -- comm init failed, and Chapter 23 al
 
 ### Intuition
 
-Section 25.1 proved the real bucketed CALL STRUCTURE compiles and runs; it did not prove that a distributed loop shaped that way actually trains a model correctly. This section builds the complete thing: a tiny linear-regression model (`y = w*x + b`), trained for K real steps, with its training data SHARDED across N replicas -- Chapter 12's own `computeShard()` pattern, applied to samples instead of a batch dimension -- and each step's gradient combined across replicas by Chapter 9's own real ring all-reduce algorithm, unchanged, run to completion every single step. The question this section actually tests, rather than assumes the way Chapter 12's mean-target trick did: after K real steps of this genuinely distributed loop, do all N replicas end up at the SAME learned `(w, b)` as a single-process reference trained with full-batch gradient descent on the identical data? Chapter 8's own non-associativity caution -- that summing the same numbers in a different grouping can change the result -- is not a caveat here; it is a real question this section's own comparison is built to answer honestly, one way or the other.
+Section 25.1 proved the real bucketed CALL STRUCTURE compiles and runs; it did not prove that a distributed loop shaped that way actually trains a model correctly. This section builds the complete thing: a tiny linear-regression model (`y = w*x + b`), trained for K real steps, with its training data SHARDED across N replicas -- Chapter 12's own `computeShard()` pattern, applied to samples instead of a batch dimension -- and each step's gradient combined across replicas by Chapter 9's own real two-phase ring all-reduce (scatter-reduce, then all-gather), run to completion every single step. The question this section actually tests, rather than assumes the way Chapter 12's mean-target trick did: after K real steps of this genuinely distributed loop, do all N replicas end up at bit-for-bit the SAME learned `(w, b)` as each other -- and as a single-process reference trained with full-batch gradient descent on the identical data? Chapter 8's own non-associativity caution -- that summing the same numbers in a different grouping can change the result -- is not a caveat here; it is a real question this section's own comparison is built to answer honestly, one way or the other.
 
 ```text
 Reference (single process):          Distributed (N=4 replicas):
@@ -173,7 +191,8 @@ Reference (single process):          Distributed (N=4 replicas):
         |                               shard 3: samples 6-7  -> local grad
   w_ref, b_ref after K steps                    |
                                        Chapter 9's own ring all-reduce
-                                       (real algorithm, N-1 rounds)
+                                       (scatter-reduce + all-gather,
+                                        2(N-1) rounds)
                                                 |
                                        every replica applies the SAME
                                        update -- K steps -> w[r], b[r]
@@ -194,18 +213,19 @@ Reference (single process):          Distributed (N=4 replicas):
 // multi-step SGD training loop, training a real (if tiny) model --
 // linear regression, y = w*x + b -- with the training data SHARDED
 // across N replicas (Chapter 12's own computeShard() pattern) and each
-// step's gradient combined across replicas via a real ring all-reduce
-// (Chapter 9's own algorithm, reused unchanged: pass a running sum
-// around the ring N-1 times, so every replica ends the step holding the
-// exact same combined gradient). The comparison this section actually
-// cares about: does K steps of this genuinely distributed loop end at
-// the SAME learned (w, b) as a single-process reference trained with
-// full-batch gradient descent on the SAME data, every step? Chapter 8's
-// own non-associativity caution applies here for real, not just as a
-// caveat -- summing the SAME numbers in a DIFFERENT grouping (per-shard
-// partial sums combined across replicas, vs. one flat pass over every
-// sample) is a real floating-point question this section actually
-// tests, rather than assumes.
+// step's gradient combined across replicas via Chapter 9's own two-phase
+// ring all-reduce: a SCATTER-REDUCE phase (N-1 steps) that leaves each
+// chunk fully summed on exactly one owner replica, then an ALL-GATHER
+// phase (N-1 steps) that COPIES each owner's finished chunk to everyone.
+// Two questions are tested, not assumed:
+//   1. Do all N replicas end every step with bit-identical gradients
+//      (and therefore bit-identical weights after K steps)?
+//   2. Does the distributed result match a single-process full-batch
+//      reference bit for bit, even though the distributed version sums
+//      per-shard partial sums (a different grouping than one flat pass)?
+// For contrast, it also runs a deliberately WRONG "all-reduce" in which
+// every replica adds all N values itself, starting from its own value --
+// the shape of algorithm that genuinely CAN disagree across replicas.
 #include <cstdio>
 #include <cstdlib>
 #include <vector>
@@ -221,37 +241,117 @@ void computeShard(int totalSamples, int worldSize, int rank, int &start, int &co
     count = base; // totalSamples is chosen to divide evenly below
 }
 
-// Chapter 9's own real ring all-reduce algorithm, applied to a tiny
-// fixed-size gradient vector (gradW, gradB) instead of a large array.
-// Every replica's own local value CIRCULATES around the ring exactly
-// once: at each of N-1 steps, replica r receives whatever its neighbor
-// is currently forwarding, adds it to its own running accumulator, and
-// then forwards that SAME received value onward next step (not its own
-// original value again) -- this is what guarantees every one of the N
-// local values passes every OTHER replica exactly once, so after N-1
-// steps every replica's accumulator holds the exact same full sum.
-void ringAllReduceSum(std::vector<float> &accW, std::vector<float> &accB,
-                       const std::vector<float> &localGradW,
-                       const std::vector<float> &localGradB, int N) {
-    std::vector<float> messageW = localGradW, messageB = localGradB;
-    for (int r = 0; r < N; r++) { accW[r] = localGradW[r]; accB[r] = localGradB[r]; }
+// Chapter 9's own ring all-reduce (scatter-reduce, then all-gather), on
+// N per-replica buffers of length L, where L is a multiple of N and the
+// buffer is split into N equal chunks of C = L/N elements.
+//
+// Scatter-reduce, step s = 0..N-2: replica r sends chunk (r - s) mod N
+// to replica (r+1) mod N, which ADDS it into its own copy of that chunk.
+// After N-1 steps, replica r holds the fully-reduced chunk (r+1) mod N.
+//
+// All-gather, step s = 0..N-2: replica r sends chunk (r + 1 - s) mod N
+// to replica (r+1) mod N, which OVERWRITES its copy (no arithmetic).
+//
+// Every chunk's final value is therefore computed by exactly ONE chain
+// of additions, on ONE replica, and then copied verbatim to the others:
+// all replicas end bit-identical by construction, regardless of the
+// floating-point summation order used inside that one chain.
+// Returns the number of elements each replica sent (same for all).
+long long ringAllReduceSum(std::vector<std::vector<float>> &buf, int N) {
+    const int L = (int)buf[0].size();
+    const int C = L / N;
+    long long sentPerReplica = 0;
 
-    for (int step = 0; step < N - 1; step++) {
-        std::vector<float> receivedW(N), receivedB(N);
+    // Phase 1: scatter-reduce.
+    for (int s = 0; s < N - 1; s++) {
+        // Snapshot every outgoing message first: all N sends in one step
+        // happen "simultaneously", exactly as on real hardware.
+        std::vector<std::vector<float>> msg(N, std::vector<float>(C));
         for (int r = 0; r < N; r++) {
-            int src = (r - 1 + N) % N;
-            receivedW[r] = messageW[src];
-            receivedB[r] = messageB[src];
+            int c = ((r - s) % N + N) % N;
+            for (int k = 0; k < C; k++) msg[r][k] = buf[r][c * C + k];
         }
         for (int r = 0; r < N; r++) {
-            accW[r] += receivedW[r];
-            accB[r] += receivedB[r];
+            int dst = (r + 1) % N;
+            int c = ((r - s) % N + N) % N;
+            for (int k = 0; k < C; k++) buf[dst][c * C + k] += msg[r][k];
         }
-        // Forward what was just RECEIVED, not the original local value --
-        // this is the step that makes each value circulate the whole ring.
-        messageW = receivedW;
-        messageB = receivedB;
+        sentPerReplica += C;
     }
+
+    // Phase 2: all-gather (pure copies of already-final chunks).
+    for (int s = 0; s < N - 1; s++) {
+        std::vector<std::vector<float>> msg(N, std::vector<float>(C));
+        for (int r = 0; r < N; r++) {
+            int c = ((r + 1 - s) % N + N) % N;
+            for (int k = 0; k < C; k++) msg[r][k] = buf[r][c * C + k];
+        }
+        for (int r = 0; r < N; r++) {
+            int dst = (r + 1) % N;
+            int c = ((r + 1 - s) % N + N) % N;
+            for (int k = 0; k < C; k++) buf[dst][c * C + k] = msg[r][k];
+        }
+        sentPerReplica += C;
+    }
+    return sentPerReplica;
+}
+
+// A deliberately WRONG "all-reduce", kept only as a contrast: every
+// replica receives every other replica's FULL local value and adds all N
+// of them itself, starting from its OWN value. Each replica therefore
+// performs its own chain of additions in its own order -- and fp32
+// addition is not associative, so the replicas can disagree.
+void everyReplicaSumsItself(std::vector<std::vector<float>> &buf, int N) {
+    const int L = (int)buf[0].size();
+    std::vector<std::vector<float>> orig = buf;
+    for (int r = 0; r < N; r++)
+        for (int k = 0; k < L; k++) {
+            float acc = orig[r][k];
+            for (int j = 1; j < N; j++) acc += orig[(r - j + N) % N][k];
+            buf[r][k] = acc;
+        }
+}
+
+// Runs K steps of sharded SGD with the given all-reduce; returns final
+// per-replica (w, b).
+template <typename AllReduce>
+void trainDistributed(const std::vector<Sample> &data, int N, int K, float lr,
+                      std::vector<float> &w, std::vector<float> &b,
+                      AllReduce allReduce) {
+    const int M = (int)data.size();
+    w.assign(N, 0.0f);
+    b.assign(N, 0.0f);
+    for (int step = 0; step < K; step++) {
+        // Gradient buffer = [gradW, gradB], zero-padded to N chunks of
+        // one element each so the ring can split it N ways.
+        std::vector<std::vector<float>> grad(N, std::vector<float>(N, 0.0f));
+        for (int r = 0; r < N; r++) {
+            int start, count;
+            computeShard(M, N, r, start, count);
+            float gW = 0.0f, gB = 0.0f;
+            for (int i = start; i < start + count; i++) {
+                float pred = w[r] * data[i].x + b[r];
+                float err = pred - data[i].y;
+                gW += err * data[i].x;
+                gB += err;
+            }
+            grad[r][0] = gW;
+            grad[r][1] = gB;
+        }
+        allReduce(grad, N);
+        for (int r = 0; r < N; r++) {
+            float gW = (2.0f / M) * grad[r][0];
+            float gB = (2.0f / M) * grad[r][1];
+            w[r] -= lr * gW;
+            b[r] -= lr * gB;
+        }
+    }
+}
+
+bool allSame(const std::vector<float> &w, const std::vector<float> &b) {
+    for (size_t r = 1; r < w.size(); r++)
+        if (w[r] != w[0] || b[r] != b[0]) return false;
+    return true;
 }
 
 int main() {
@@ -286,35 +386,13 @@ int main() {
         bRef -= lr * gB;
     }
 
-    // --- Distributed: N replicas, each with its own shard, each step
-    // computes a LOCAL partial sum, combines via a real ring all-reduce,
-    // then every replica applies the SAME update independently
-    // (Chapter 12's own "every replica stays identical" invariant). ---
-    std::vector<float> wDist(N, 0.0f), bDist(N, 0.0f);
-    for (int step = 0; step < K; step++) {
-        std::vector<float> localGW(N), localGB(N);
-        for (int r = 0; r < N; r++) {
-            int start, count;
-            computeShard(M, N, r, start, count);
-            float gW = 0.0f, gB = 0.0f;
-            for (int i = start; i < start + count; i++) {
-                float pred = wDist[r] * data[i].x + bDist[r];
-                float err = pred - data[i].y;
-                gW += err * data[i].x;
-                gB += err;
-            }
-            localGW[r] = gW;
-            localGB[r] = gB;
-        }
-        std::vector<float> globalGW(N), globalGB(N);
-        ringAllReduceSum(globalGW, globalGB, localGW, localGB, N);
-        for (int r = 0; r < N; r++) {
-            float gW = (2.0f / M) * globalGW[r];
-            float gB = (2.0f / M) * globalGB[r];
-            wDist[r] -= lr * gW;
-            bDist[r] -= lr * gB;
-        }
-    }
+    // --- Distributed, Chapter 9's real ring all-reduce. ---
+    std::vector<float> wDist, bDist;
+    long long sent = 0;
+    trainDistributed(data, N, K, lr, wDist, bDist,
+                     [&](std::vector<std::vector<float>> &g, int n) {
+                         sent = ringAllReduceSum(g, n);
+                     });
 
     printf("After %d steps (M=%d samples, N=%d replicas, lr=%.3f):\n", K, M, N, lr);
     printf("  Reference (full-batch, single process): w=%.9f b=%.9f\n", wRef, bRef);
@@ -322,12 +400,8 @@ int main() {
         printf("  Replica %d (sharded + ring all-reduce):  w=%.9f b=%.9f\n",
                r, wDist[r], bDist[r]);
 
-    bool allReplicasIdentical = true;
-    for (int r = 1; r < N; r++)
-        if (wDist[r] != wDist[0] || bDist[r] != bDist[0]) allReplicasIdentical = false;
     printf("\nEvery replica identical to each other: %s\n",
-           allReplicasIdentical ? "YES" : "NO");
-
+           allSame(wDist, bDist) ? "YES" : "NO");
     bool exactMatchToReference = (wDist[0] == wRef && bDist[0] == bRef);
     printf("Distributed result EXACTLY matches full-batch reference: %s\n",
            exactMatchToReference ? "YES" : "NO");
@@ -335,12 +409,27 @@ int main() {
         printf("  w difference: %.3e   b difference: %.3e\n",
                (double)std::fabs(wDist[0] - wRef), (double)std::fabs(bDist[0] - bRef));
     }
+    printf("Elements sent per replica per all-reduce: %lld "
+           "(= 2(N-1)/N * L with L=%d, Ch9's formula)\n", sent, N);
+
+    // --- Contrast: the WRONG all-reduce where each replica sums all N
+    // values itself, in its own rotated order. ---
+    std::vector<float> wBad, bBad;
+    trainDistributed(data, N, K, lr, wBad, bBad,
+                     [](std::vector<std::vector<float>> &g, int n) {
+                         everyReplicaSumsItself(g, n);
+                     });
+    printf("\nContrast -- every replica sums all %d values itself, own order:\n", N);
+    for (int r = 0; r < N; r++)
+        printf("  Replica %d:  w=%.9f b=%.9f\n", r, wBad[r], bBad[r]);
+    printf("Every replica identical to each other: %s\n",
+           allSame(wBad, bBad) ? "YES" : "NO");
 
     return 0;
 }
 ```
 
-Compiled with `g++ -O2 -ffp-contract=off 73_distributed_sgd_convergence_simulation.cpp -o 73_distributed_sgd_convergence_simulation` (Chapter 14's own established practice for any exact-bit float comparison) and genuinely run -- twice in a row, to confirm the result is deterministic and not a fluke. Both runs, and an independent re-run of the identical source on the device, produced byte-identical output. Locked output:
+Compiled with `g++ -O2 -ffp-contract=off 73_distributed_sgd_convergence_simulation.cpp -o 73_distributed_sgd_convergence_simulation` (Chapter 14's own established practice for any exact-bit float comparison) and run with `./73_distributed_sgd_convergence_simulation` -- twice in a row, with byte-identical output both times. Locked output:
 
 ```text
 After 20 steps (M=8 samples, N=4 replicas, lr=0.010):
@@ -348,20 +437,29 @@ After 20 steps (M=8 samples, N=4 replicas, lr=0.010):
   Replica 0 (sharded + ring all-reduce):  w=3.221214533 b=0.702814102
   Replica 1 (sharded + ring all-reduce):  w=3.221214533 b=0.702814102
   Replica 2 (sharded + ring all-reduce):  w=3.221214533 b=0.702814102
-  Replica 3 (sharded + ring all-reduce):  w=3.221214771 b=0.702814102
+  Replica 3 (sharded + ring all-reduce):  w=3.221214533 b=0.702814102
 
-Every replica identical to each other: NO
+Every replica identical to each other: YES
 Distributed result EXACTLY matches full-batch reference: YES
+Elements sent per replica per all-reduce: 6 (= 2(N-1)/N * L with L=4, Ch9's formula)
+
+Contrast -- every replica sums all 4 values itself, own order:
+  Replica 0:  w=3.221214533 b=0.702814102
+  Replica 1:  w=3.221214533 b=0.702814102
+  Replica 2:  w=3.221214533 b=0.702814102
+  Replica 3:  w=3.221214771 b=0.702814102
+Every replica identical to each other: NO
 ```
 
-!!! warning "[COMMON TRAP] Assuming a mathematically correct ring all-reduce guarantees every replica lands on the SAME bit pattern"
-    This section's own first implementation of `ringAllReduceSum()` had a real bug -- it re-read a fixed neighbor's ORIGINAL value at every one of its `N-1` rounds instead of forwarding what had just been received, so each replica ended up adding the same neighbor's value repeatedly rather than circulating every replica's contribution around the ring. That bug produced wildly wrong, non-identical results (differences on the order of 10-16 in `w`) and was fixed by forwarding the RECEIVED message each round rather than the original local value -- the fix is what produced the locked output above. But the locked output above is not a clean "problem solved" result either: Replica 3 differs from Replicas 0-2 and from the single-process reference in the last representable bit of `w` (`3.221214771` versus `3.221214533`), and this was confirmed to be a genuine, reproducible artifact -- re-running the fixed program twice produced the identical discrepancy both times, not randomness or uninitialized memory. The real cause is Chapter 8's own non-associativity caution, now showing up inside the ring all-reduce mechanism itself rather than as an abstract warning: each replica's OWN position in the ring determines a different order in which the same four partial sums are added together as they circulate, and floating-point addition is not associative. Chapter 9's own integer-only verification and Chapter 12's own specially-chosen mean-target trick were BOTH specifically designed to sidestep this exact issue -- Chapter 9 by using integers, where addition genuinely is associative, and Chapter 12 by choosing a target value that every replica's own computation converges to regardless of summation order. This section's real fp32 multi-step loop has no such shelter, and the one-bit discrepancy it surfaces is the real, honest price of that.
+!!! warning "[COMMON TRAP] Hand-rolling an all-reduce in which every replica adds up all N values itself"
+    The first two blocks of the locked output above are the real result: with Chapter 9's genuine two-phase ring, all four replicas are bit-identical, and that is not luck. In the scatter-reduce phase, each chunk of the gradient buffer is summed by exactly ONE chain of additions that travels around the ring and finishes on exactly one owner replica; in the all-gather phase, that finished chunk is only ever COPIED onward, never re-added. Every replica therefore ends up holding the very same bits for every chunk -- whatever floating-point rounding happened inside that one chain happened once, and everyone receives its result. This is the same reason a production NCCL ring all-reduce leaves every rank with identical output. The trap is a tempting shortcut that looks equivalent on paper: circulate every replica's FULL local value around the ring and have each replica add all N of them into its own accumulator, starting from its own value. That shape (the program's `everyReplicaSumsItself()` contrast) gives each replica its own summation order over the same four partial sums, and fp32 addition is not associative -- so, as the last block of the locked output shows, replica 3 lands on `w=3.221214771` while replicas 0-2 land on `w=3.221214533`, one bit apart, reproducibly. Chapter 8's non-associativity caution is real; a correct ring all-reduce simply never gives it a chance to make replicas disagree. Two separate questions are worth keeping apart here. Replica-to-replica agreement is guaranteed by the algorithm's structure. Agreement with the single-process reference is NOT guaranteed by anything: the distributed version adds per-shard partial sums, a different grouping from the reference's one flat pass. It happens to match bit-for-bit for this N=4, M=8 configuration; re-running the same file with N=3, 5 or 8 (with M scaled to divide evenly) still gives bit-identical replicas every time, but a result that differs from the reference in the last bits.
+
 
 ## 25.3 Why Ring All-Reduce, Not Naive Gather-and-Broadcast: A Closed-Form Cost Model
 
 ### Intuition
 
-Sections 25.1 and 25.2 both simply USED ring all-reduce, the way every earlier chapter since Chapter 9 has, without re-justifying why that specific algorithm's shape is worth the real implementation complexity Section 25.2's own COMMON TRAP just exposed. Chapter 9 already derived the real formula for ring all-reduce's own communication cost -- `2(N-1)/N` times a buffer's size `K`, moved by each rank -- but that formula's real consequence is easiest to see applied to a real number, not left abstract. This section applies it, unchanged, to a real model's real gradient buffer: ResNet-50, which has exactly 25,557,032 trainable parameters, so its fp32 gradient buffer is a fixed, known `K`. The formula's own shape has a real property worth naming plainly: `2(N-1)/N` approaches the constant `2` as `N` grows, meaning each rank's OWN communication cost stays almost flat no matter how many ranks join. The real alternative every framework cited in this chapter had to reject -- gathering every replica's gradient to one rank, summing there, then broadcasting the result back out -- has no such property: the busiest rank's traffic is `2(N-1)*K`, which grows LINEARLY with `N`, without the `/N` that keeps ring all-reduce flat.
+Sections 25.1 and 25.2 both simply USED ring all-reduce, the way every earlier chapter since Chapter 9 has, without re-justifying why that specific algorithm's shape is worth the real two-phase implementation Section 25.2 just built. Chapter 9 already derived the real formula for ring all-reduce's own communication cost -- `2(N-1)/N` times a buffer's size `K`, moved by each rank -- but that formula's real consequence is easiest to see applied to a real number, not left abstract. This section applies it, unchanged, to a real model's real gradient buffer: ResNet-50, which has exactly 25,557,032 trainable parameters, so its fp32 gradient buffer is a fixed, known `K`. The formula's own shape has a real property worth naming plainly: `2(N-1)/N` approaches the constant `2` as `N` grows, meaning each rank's OWN communication cost stays almost flat no matter how many ranks join. The real alternative every framework cited in this chapter had to reject -- gathering every replica's gradient to one rank, summing there, then broadcasting the result back out -- has no such property: the busiest rank's traffic is `2(N-1)*K`, which grows LINEARLY with `N`, without the `/N` that keeps ring all-reduce flat.
 
 ```text
 Ring all-reduce's own real cost (Ch9's formula), per rank:  2(N-1)/N * K
@@ -499,22 +597,22 @@ None of these three percentages are outputs of this program's own formula -- the
 
 ## Chapter Summary
 
-This chapter built the complete, real, multi-step case study that Chapter 12's own single-call consistency demonstration was standing in for. Section 25.1 built the real nested STEPS-times-BUCKETS call structure a production training loop actually uses, citing PyTorch DDP's own paper on why gradient bucketing exists specifically to overlap communication with the still-running backward pass, not merely to batch calls together. Section 25.2 built a genuine multi-step distributed SGD training loop -- sharded data, Chapter 9's own real ring all-reduce, run to completion every step -- and checked it against a single-process reference, discovering and fixing a real ring-forwarding bug along the way, then surfacing a genuine, reproducible one-bit floating-point discrepancy in one of four replicas: real evidence that Chapter 8's own non-associativity caution applies to ring all-reduce itself, not just in the abstract, once the specially-chosen shelters Chapter 9 and Chapter 12 each built for their own demonstrations are removed. Section 25.3 closed with a real closed-form cost model, applying Chapter 9's own `2(N-1)/N*K` formula to ResNet-50's real 25,557,032 parameters, quantifying exactly why ring all-reduce's near-flat per-rank cost beats a naive gather-and-broadcast's linearly growing cost -- and citing, separately and honestly, the real measured Horovod and PyTorch DDP numbers that this cost model's shape helps explain.
+This chapter built the complete, real, multi-step case study that Chapter 12's own single-call consistency demonstration was standing in for. Section 25.1 built the real nested STEPS-times-BUCKETS call structure a production training loop actually uses, citing PyTorch DDP's own paper on why gradient bucketing exists specifically to overlap communication with the still-running backward pass, not merely to batch calls together. Section 25.2 built a genuine multi-step distributed SGD training loop -- sharded data, Chapter 9's own real ring all-reduce, run to completion every step -- and checked it against a single-process reference, showing that every replica ends bit-identical because scatter-reduce computes each chunk exactly once and all-gather only copies it -- and contrasting that with a tempting shortcut (every replica adds all N values itself, in its own order) that genuinely does leave one of four replicas a bit off, which is where Chapter 8's non-associativity caution actually bites. Agreement with the single-process reference, by contrast, is a separate question that no all-reduce structure guarantees. Section 25.3 closed with a real closed-form cost model, applying Chapter 9's own `2(N-1)/N*K` formula to ResNet-50's real 25,557,032 parameters, quantifying exactly why ring all-reduce's near-flat per-rank cost beats a naive gather-and-broadcast's linearly growing cost -- and citing, separately and honestly, the real measured Horovod and PyTorch DDP numbers that this cost model's shape helps explain.
 
 ## Self-Check Questions
 
 1. Why does PyTorch DDP group gradients into buckets rather than issuing one all-reduce call per gradient tensor as soon as each one is ready?
 2. What real number is PyTorch DDP's own default bucket size, and what happens to that overlap benefit if a bucket is made too large?
-3. What was the actual bug in this chapter's own first implementation of `ringAllReduceSum()`, and what specific change fixed it?
-4. After the fix, three of four replicas in Section 25.2's own locked output matched the single-process reference exactly, but one did not. What causes that one replica to differ, and why does the fix from question 3 not also fix this?
-5. Why did Chapter 9's own verification and Chapter 12's own mean-target trick both avoid ever surfacing the discrepancy Section 25.2 found?
+3. In `ringAllReduceSum()`, what is the difference between what a replica does with a received chunk in the scatter-reduce phase and in the all-gather phase?
+4. In the `everyReplicaSumsItself()` contrast, replica 3 ends one bit away from the other three. What causes that, and why can the same thing never happen with `ringAllReduceSum()`?
+5. Section 25.2's ring result matches the single-process reference exactly for N=4, but not for N=3, 5 or 8. Why is agreement with the reference not guaranteed, even though agreement between replicas is?
 6. In Chapter 9's own cost formula `2(N-1)/N*K`, what happens to this expression as N grows large, and why does that make ring all-reduce different from a naive gather-then-broadcast reduction?
 7. Section 25.3's own COMMON TRAP warns against treating its `ratio` column as a prediction of real training speedup. What, specifically, does that ratio column measure instead?
 8. Which of this chapter's three cited real-world numbers (88%, >90%, 38.0%/35.2%) comes from Horovod, and which comes from PyTorch DDP?
 
 ## Where We Go Next
 
-Chapter 25 completed one full training-loop case study: real bucketed communication, a real multi-step convergence proof with an honest floating-point finding, and a real cost model for why ring all-reduce is the shape every framework here actually ships. Chapter 26, "Multi-GPU LLM Inference: Tensor and Pipeline Parallelism in Practice," turns from training to inference, returning to Chapter 14's own tensor parallelism and Chapter 15's own pipeline parallelism -- not as two separate concept demonstrations this time, but combined the way a real production LLM-serving system actually combines them.
+Chapter 25 completed one full training-loop case study: real bucketed communication, a real multi-step convergence check with an honest look at where floating-point order does and does not matter, and a real cost model for why ring all-reduce is the shape every framework here actually ships. Chapter 26, "Multi-GPU LLM Inference: Tensor and Pipeline Parallelism in Practice," turns from training to inference, returning to Chapter 14's own tensor parallelism and Chapter 15's own pipeline parallelism -- not as two separate concept demonstrations this time, but combined the way a real production LLM-serving system actually combines them.
 
 ## Worked Solutions
 
@@ -522,11 +620,11 @@ Chapter 25 completed one full training-loop case study: real bucketed communicat
 
 **2.** PyTorch DDP's own real default bucket size is 25MB ("By default, each bucket is 25MB in size"). If a bucket is made too large -- for instance, one bucket covering the entire model's gradients -- there is no longer any portion of the backward pass left running when that bucket's all-reduce is issued, because the bucket only becomes ready once every gradient in it (i.e., the whole model) has finished backward; this eliminates the overlap window DDP's own paper credits with the 38.0%/35.2% (NCCL) speedup.
 
-**3.** The bug was that at each of the `N-1` ring rounds, the code repeatedly read a FIXED neighbor's ORIGINAL local value (`localGradW[src]`) rather than forwarding whatever had just been received in the previous round. This meant each replica added the same neighbor's original contribution `N-1` times instead of having every one of the N replicas' contributions circulate past it exactly once. The fix maintains a `messageW`/`messageB` array that is reassigned to whatever was just received (`messageW = receivedW`) at the end of each round, so each replica's original value genuinely travels around the entire ring.
+**3.** In the scatter-reduce phase, the receiving replica ADDS the incoming chunk into its own copy of that chunk (`buf[dst][...] += msg[r][...]`), extending that chunk's single chain of additions by one more replica's contribution. In the all-gather phase, the receiver OVERWRITES its copy (`buf[dst][...] = msg[r][...]`): by then the chunk is already fully summed on its owner, and the only job left is to deliver those exact bits to everyone.
 
-**4.** Replica 3 differs because ring all-reduce's own real algorithm gives each replica a different POSITION in the ring, and therefore a different ORDER in which the same four partial sums are added together as they circulate -- and fp32 addition is not associative, so a different summation order can produce a different bit pattern even when every input value is identical. The fix in question 3 corrected the ROUTING (making sure every replica's contribution reaches every other replica exactly once); it does not, and cannot, change the fact that different replicas still combine those correctly-routed contributions in a different order from each other.
+**4.** In the contrast, every replica receives all N full local values and adds them itself, starting from its own value -- so replica 0 computes `((g0 + g3) + g2) + g1`, replica 3 computes `((g3 + g2) + g1) + g0`, and so on. Those are different groupings of the same four fp32 numbers, and fp32 addition is not associative, so some replicas can round differently. `ringAllReduceSum()` cannot do this because each chunk's sum is formed exactly once, on one replica, and every other replica only receives a copy of that result -- there is only one summation order per chunk, shared by everyone.
 
-**5.** Chapter 9's own verification used integer values, for which addition genuinely is associative -- any summation order produces the identical result, so there was no discrepancy to find. Chapter 12's own mean-target trick chose a specific target value that every replica's own local computation converges toward regardless of summation order, which sidesteps the question rather than testing it. Section 25.2's own real fp32, multi-step loop uses neither shelter.
+**5.** Because the reference sums all M per-sample terms in one flat pass, while the distributed loop first sums each shard's samples locally and then sums those N partial sums inside the ring. Those are different groupings of the same additions, and in fp32 they can round differently. Whether they happen to agree depends on the specific values (they do for N=4, M=8 here; they do not for N=3, 5 or 8). The ring's structure guarantees replica-to-replica agreement; nothing guarantees agreement with a differently-grouped reference.
 
 **6.** As N grows large, `(N-1)/N` approaches 1, so `2(N-1)/N` approaches the constant 2 -- meaning each rank's own ring all-reduce communication volume stays almost flat regardless of how many ranks participate. A naive gather-then-broadcast's busiest rank instead moves `2(N-1)*K`, which has no such `/N` term and therefore grows linearly, without bound, as more ranks join.
 
@@ -541,4 +639,4 @@ Chapter 25 completed one full training-loop case study: real bucketed communicat
 - [PyTorch Distributed: Experiences on Accelerating Data Parallel Training (arXiv:2006.15704)](https://arxiv.org/abs/2006.15704) — the real, verified quotes on gradient bucketing ("instead of launching a dedicated AllReduce immediately when each gradient tensor becomes available, DDP can achieve higher throughput and lower latency if it waits for a short period of time and buckets multiple gradients into one AllReduce operation"; "By default, each bucket is 25MB in size"), on overlap ("with relatively small bucket sizes, DDP can launch AllReduce operations concurrently with the backward pass to overlap communication with computation"), and on measured overlap speedup ("The overlapping approach helps ResNet and BERT on NCCL attain 38.0% and 35.2% speedup. With GLOO backend, the gain shrinks to 26.8% and 21.5% respectively," Section 5.1, independently re-verified against the ar5iv HTML rendering of the same paper).
 - [Uber Engineering Blog: "Meet Horovod: Uber's Open Source Distributed Deep Learning Framework for TensorFlow"](https://eng.uber.com/horovod/) — the real, verified quotes on measured scaling efficiency ("scaling using both Inception V3 and ResNet-101 models achieved an 88 percent efficiency mark" over 1-to-128 GPUs; "RDMA did help Horovod exceed 90 percent scaling efficiency on both models").
 - [torchvision resnet50 model documentation](https://docs.pytorch.org/vision/stable/models/generated/torchvision.models.resnet50.html) — the real, verified parameter count (`num_params: 25557032`) this chapter's Section 25.3 uses as ResNet-50's fixed gradient-buffer size.
-- Chapter 8's own real integer-sum order-independence verification, Chapter 9's own real ring all-reduce algorithm and `2(N-1)K/N` cost formula, and Chapter 12's own real `computeShard()` pattern and mean-target consistency trick — all reused directly in this chapter, not re-derived.
+- Chapter 8's own real integer-sum order-independence verification and floating-point non-associativity caution, Chapter 9's own real two-phase ring all-reduce algorithm and `2(N-1)K/N` cost formula, and Chapter 12's own real `computeShard()` pattern and mean-target consistency trick — all reused directly in this chapter, not re-derived.

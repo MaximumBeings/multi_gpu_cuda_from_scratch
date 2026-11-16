@@ -34,7 +34,15 @@ int main(int argc, char** argv) {
     ncclUniqueId id;
     if (rank == 0) ncclGetUniqueId(&id);
     MPI_Bcast(&id, sizeof(id), MPI_BYTE, 0, MPI_COMM_WORLD);
-    cudaSetDevice(rank);
+    // Select a device by LOCAL rank (rank within this node), so the same
+    // code is correct on more than one node.
+    MPI_Comm nodeComm;
+    MPI_Comm_split_type(MPI_COMM_WORLD, MPI_COMM_TYPE_SHARED, rank,
+                        MPI_INFO_NULL, &nodeComm);
+    int localRank;
+    MPI_Comm_rank(nodeComm, &localRank);
+    MPI_Comm_free(&nodeComm);
+    cudaSetDevice(localRank);
     ncclComm_t comm;
     ncclResult_t commErr = ncclCommInitRank(&comm, worldSize, id, rank);
     if (rank == 0)
@@ -70,13 +78,22 @@ int main(int argc, char** argv) {
             cudaMalloc(&grad, sizeof(float) * 1024);
             ncclResult_t arErr = ncclAllReduce(grad, grad, 1024, ncclFloat,
                                                 ncclSum, comm, stream);
-            if (rank == 0)
-                printf("  Step %d, bucket %d/%d: ncclAllReduce() issued as "
-                       "SOON as this bucket's own gradients were ready -- "
-                       "not waiting for buckets %d..%d to finish backward "
-                       "first (rc=%s)\n",
-                       step + 1, bucket + 1, NUM_BUCKETS, bucket + 1,
-                       NUM_BUCKETS - 1, ncclGetErrorString(arErr));
+            if (rank == 0) {
+                if (bucket + 1 < NUM_BUCKETS)
+                    printf("  Step %d, bucket %d/%d: ncclAllReduce() issued as "
+                           "SOON as this bucket's own gradients were ready -- "
+                           "not waiting for buckets %d..%d to finish backward "
+                           "first (rc=%s)\n",
+                           step + 1, bucket + 1, NUM_BUCKETS, bucket + 2,
+                           NUM_BUCKETS, ncclGetErrorString(arErr));
+                else
+                    printf("  Step %d, bucket %d/%d: ncclAllReduce() issued "
+                           "for the last bucket (rc=%s)\n",
+                           step + 1, bucket + 1, NUM_BUCKETS,
+                           ncclGetErrorString(arErr));
+            }
+            cudaStreamSynchronize(stream);
+            cudaFree(grad);
         }
     }
 
@@ -86,6 +103,7 @@ int main(int argc, char** argv) {
                "demonstration issued exactly 1, total, ever.\n",
                NUM_STEPS * NUM_BUCKETS, NUM_STEPS, NUM_BUCKETS);
 
+    cudaStreamDestroy(stream);
     ncclCommDestroy(comm);
     MPI_Finalize();
     return 0;
