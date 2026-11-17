@@ -3,12 +3,14 @@
 // 31_nccl_collectives_mapped.cu
 //
 // Every collective this book built by hand in Chapters 8-10 has a
-// literal, real NCCL API call behind it -- except one. This section
-// genuinely calls each real function, using the communicator Section
-// 11.1 showed can never successfully form on this machine, and
-// honestly reports whatever ncclResult_t comes back. Genuinely
-// compiled with a real nvcc, genuinely linked against a real
-// libnccl, and genuinely run.
+// literal, real NCCL API call behind it in the installed NCCL 2.18.3
+// -- except all-to-all (a dedicated ncclAlltoAll() only arrived in
+// NCCL 2.28). This section genuinely calls each real function with a
+// comm handle that is still NULL -- no communicator can be created on
+// this machine (Section 11.1) -- and honestly reports whatever
+// ncclResult_t comes back. Genuinely compiled with a real nvcc,
+// genuinely linked against a real libnccl, and genuinely run (the
+// failure's cause confirmed with NCCL_DEBUG=WARN).
 #include <cstdio>
 #include <nccl.h>
 #include <cuda_runtime.h>
@@ -18,10 +20,12 @@ int main() {
     cudaGetDeviceCount(&deviceCount);
     printf("cudaGetDeviceCount(): %d device(s).\n", deviceCount);
 
-    // A communicator that was requested but never successfully created,
-    // exactly the state Section 11.1 left off at -- passed to every
-    // real call below, exactly as a genuine program would if its own
-    // ncclCommInitAll() call had failed and it kept going anyway.
+    // No communicator exists on this machine (Section 11.1), so the
+    // handle passed to every call below is literally nullptr. NCCL's
+    // argument check rejects it before doing anything else -- with
+    // NCCL_DEBUG=WARN it prints "<Collective> : comm argument is NULL"
+    // and returns ncclInvalidArgument (code 4). This is a NULL-handle
+    // check, not a check on how many devices were asked for.
     ncclComm_t comm = nullptr;
     cudaStream_t stream = nullptr;
     float* buf = nullptr;
@@ -51,12 +55,12 @@ int main() {
            ncclGetErrorString(eReduceScatter), (int)eReduceScatter);
 
     // All-to-all has no single dedicated call in this installed NCCL
-    // version -- it is built the same way this book built it in
+    // version (2.18.3; ncclAlltoAll() was added in 2.28) -- it is built the same way this book built it in
     // Chapter 10, Section 10.3: one point-to-point transfer per
     // ordered pair, just using ncclSend()/ncclRecv() instead of
     // cudaMemcpyPeer(), fused together with ncclGroupStart()/
     // ncclGroupEnd() into one coordinated operation.
-    printf("\n-- All-to-all [Chapter 10, Section 10.3]: no dedicated call --\n"
+    printf("\n-- All-to-all [Chapter 10, Section 10.3]: no dedicated call in 2.18.3 --\n"
            "   built from ncclSend()/ncclRecv(), exactly like this book's\n"
            "   own direct implementation: --\n\n");
 
@@ -76,14 +80,14 @@ int main() {
     printf("ncclGroupEnd(): %s (code %d)\n", ncclGetErrorString(eGroupEnd), (int)eGroupEnd);
 
     printf("\n%d device(s) worth of ncclSend()/ncclRecv() pairs attempted\n"
-           "inside the group. Every one of the six real calls above\n"
-           "reports the same honest failure this chapter's communicator\n"
-           "already earned -- a comm that was requested but never\n"
-           "successfully created can't run any collective, real or\n"
-           "hand-built, on real hardware or in this driver-less\n"
-           "environment. Section 11.3 turns to the one real difference\n"
-           "that would matter if a comm HAD been created: how NCCL\n"
-           "chooses an algorithm for ncclAllReduce().\n",
+           "inside the group, so ncclSend()/ncclRecv() were never actually\n"
+           "called. All five collective calls above report the same\n"
+           "failure: ncclInvalidArgument, because the comm handle they were\n"
+           "given is NULL (NCCL_DEBUG=WARN: \"comm argument is NULL\").\n"
+           "ncclGroupStart()/ncclGroupEnd() succeed: they touch no comm.\n"
+           "Section 11.3 turns to the one real difference that would\n"
+           "matter if a comm HAD been created: how NCCL chooses an\n"
+           "algorithm for ncclAllReduce().\n",
            p2pAttempted);
 
     return 0;

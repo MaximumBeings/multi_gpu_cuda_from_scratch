@@ -2,7 +2,7 @@
 
 **What you will understand by the end of this chapter:**
 
-- Why all-gather (every device ends up holding *all* the original data, unmodified) and reduce-scatter (every device ends up holding exactly *one* reduced chunk) are, respectively, exactly Chapter 9's all-gather phase and scatter-reduce phase, run alone instead of chained together.
+- Why all-gather (every device ends up holding *all* the original data, unmodified) and reduce-scatter (every device ends up holding exactly *one* reduced chunk) are, respectively, Chapter 9's all-gather phase and scatter-reduce phase, run alone instead of chained together -- and the one detail (which device owns which reduced chunk) where reduce-scatter's contract differs from what Chapter 9's ring phase happened to produce.
 - Why all-to-all -- every device sending a *different* chunk to every other device -- cannot be built from either of Chapter 9's ring phases, and needs its own direct implementation and its own verification.
 - Why reduce-scatter needs the host to do real arithmetic (like Chapter 8's reduce), while all-gather and all-to-all never do (like Chapter 8's broadcast) -- because moving bytes and combining values are different operations, and only one of them ever needs a `+`.
 
@@ -14,7 +14,7 @@
 
 ---
 
-Chapter 9 built ring all-reduce as one continuous two-phase algorithm -- scatter-reduce, then all-gather -- with a single ring pattern doing double duty for two different purposes. Both of those phases turn out to be useful operations in their own right, with their own names and their own uses outside of all-reduce entirely. This chapter isolates them: **all-gather** is Chapter 9's all-gather phase, run alone, starting from each device's own original data rather than a partially-reduced one; **reduce-scatter** is Chapter 9's scatter-reduce phase, run alone, stopping before the all-gather step that would normally follow it. A third collective, **all-to-all**, is a genuinely different pattern with no reduction step and, as Section 10.3 shows, no ring shortcut at all -- it needs its own implementation built from scratch. Together with Chapter 8's broadcast and reduce and Chapter 9's all-reduce, this completes the standard set of collective operations this book builds by hand, before Chapter 11 turns to NCCL, the library that implements all of them for real.
+Chapter 9 built ring all-reduce as one continuous two-phase algorithm -- scatter-reduce, then all-gather -- with a single ring pattern doing double duty for two different purposes. Both of those phases turn out to be useful operations in their own right, with their own names and their own uses outside of all-reduce entirely. This chapter isolates them: **all-gather** is Chapter 9's all-gather phase, run alone, starting from each device's own original data rather than a partially-reduced one; **reduce-scatter** is Chapter 9's scatter-reduce phase, run alone, stopping before the all-gather step that would normally follow it -- with one difference in chunk ownership, covered in Section 10.2. A third collective, **all-to-all**, is a genuinely different pattern with no reduction step and, as Section 10.3 shows, no ring shortcut at all -- it needs its own implementation built from scratch. Together with Chapter 8's broadcast and reduce and Chapter 9's all-reduce, this completes the standard set of collective operations this book builds by hand, before Chapter 11 turns to NCCL, the library that implements all of them for real -- five as dedicated calls in the NCCL 2.18.3 this book links against, and all-to-all as grouped `ncclSend()`/`ncclRecv()` pairs (a dedicated `ncclAlltoAll()` call only arrived in NCCL 2.28).
 
 ```text
 This chapter's three collectives, N=4 devices, one chunk per device:
@@ -73,8 +73,10 @@ Because nothing here is combined, all-gather never needs the host at all -- ever
 // reduction). This is the same all-gather PHASE Chapter 9 used inside
 // its ring all-reduce (Section 9.2-9.3) -- shown here running alone,
 // with the straightforward direct pattern instead of the ring
-// pattern, so the operation itself can be seen in isolation.
-// Genuinely compiled with a real nvcc and genuinely run.
+// pattern, so the operation itself can be seen in isolation. Each
+// buffer is allocated with its own device made current first
+// (Chapter 3's rule). Genuinely compiled with a real nvcc and
+// genuinely run.
 #include <cstdio>
 #include <cuda_runtime.h>
 
@@ -92,10 +94,12 @@ int main() {
     int transfersCompleted = 0;
     for (int src = 0; src < deviceCount; ++src) {
         void* sendPtr = nullptr;
+        cudaSetDevice(src);  // src's own chunk lives on device src
         cudaError_t eAllocSend = cudaMalloc(&sendPtr, CHUNK_BYTES);
         for (int dst = 0; dst < deviceCount; ++dst) {
             if (dst == src) continue; // a device's own chunk needs no transfer
             void* recvPtr = nullptr;
+            cudaSetDevice(dst);  // dst's receive slot lives on device dst
             cudaError_t eAllocRecv = cudaMalloc(&recvPtr, CHUNK_BYTES);
             cudaError_t eCopy = cudaMemcpyPeer(recvPtr, dst, sendPtr, src, CHUNK_BYTES);
             ++transfersAttempted;
@@ -104,6 +108,7 @@ int main() {
             if (eCopy == cudaSuccess) ++transfersCompleted;
             if (eAllocRecv == cudaSuccess) cudaFree(recvPtr);
         }
+        cudaSetDevice(src);
         if (eAllocSend == cudaSuccess) cudaFree(sendPtr);
     }
 
@@ -155,7 +160,9 @@ Reduce-scatter as N independent single-chunk reduces:
 
 ### Background
 
-Summing values is arithmetic, and neither `cudaMemcpy()` nor `cudaMemcpyPeer()` performs arithmetic -- they only move bytes. That is why reduce-scatter, like Chapter 8's reduce and Chapter 9's naive baseline, has to pull every device's contribution to a host accumulator, add it there with ordinary C++ `+=`, and write only the final sum back -- there is no way to do this reduction purely with device-to-device copies. The code below runs exactly this pattern once per chunk, writing chunk `c`'s reduced sum back only onto device `c`, its owner:
+Summing values is arithmetic, and neither `cudaMemcpy()` nor `cudaMemcpyPeer()` performs arithmetic -- they only move bytes. That is why reduce-scatter, like Chapter 8's reduce and Chapter 9's naive baseline, has to pull every device's contribution to a host accumulator, add it there with ordinary C++ `+=`, and write only the final sum back -- there is no way to do this reduction purely with device-to-device copies. The code below runs exactly this pattern once per chunk, writing chunk `c`'s reduced sum back only onto device `c`, its owner.
+
+One precise point about "owner." Reduce-scatter's contract is that device `i` ends up holding reduced chunk `i` -- NCCL's own collective documentation states that after `ncclReduceScatter`, the "recvbuff on rank i contains the i-th block" of the result, and the diagram above and this section's code both follow that convention. Chapter 9's ring scatter-reduce phase, run unchanged, does *not* land chunks that way: with its `sendChunk = (deviceIndex - step) mod N` formula, the first `N-1` steps leave device 0 holding the full sum of chunk 1, device 1 chunk 2, device 2 chunk 3, and device 3 chunk 0 (Chapter 9's own Question 4: device 3 owns chunk 0) -- a rotation of the ownership reduce-scatter requires. A ring reduce-scatter fixes this by shifting its starting chunk by one, `sendChunk = (deviceIndex - step - 1) mod N`, which (checked for N = 3, 4, 5, and 8) leaves device `i` holding chunk `i`. So reduce-scatter is Chapter 9's scatter-reduce phase run alone, up to a one-position rotation of which chunk each device owns -- not *exactly* that phase.
 
 ```cpp
 // Chapter 10: All-Gather, Reduce-Scatter, and All-to-All
@@ -164,10 +171,14 @@ Summing values is arithmetic, and neither `cudaMemcpy()` nor `cudaMemcpyPeer()` 
 // Reduce-scatter, done directly: for each chunk index c, gather that
 // ONE chunk from every device to the host, sum it, and write the sum
 // back ONLY onto device c -- the device "assigned" to that chunk.
-// This is exactly the SCATTER-REDUCE phase Chapter 9 used inside its
-// ring all-reduce (Section 9.2-9.3), stopped there instead of
-// continuing on into an all-gather. Genuinely compiled with a real
-// nvcc and genuinely run.
+// It computes the same thing as the SCATTER-REDUCE phase Chapter 9
+// used inside its ring all-reduce (Section 9.2-9.3), stopped there
+// instead of continuing on into an all-gather -- except for WHICH
+// device owns WHICH chunk: Chapter 9's ring leaves device i holding
+// chunk (i+1) mod N, while the reduce-scatter collective (and NCCL's
+// ncclReduceScatter) puts chunk i on device i, as here. cudaSetDevice()
+// is called before every per-device operation (Chapter 3's rule).
+// Genuinely compiled with a real nvcc and genuinely run.
 #include <cstdio>
 #include <cuda_runtime.h>
 
@@ -188,6 +199,7 @@ int main() {
         int devicesGathered = 0;
         for (int src = 0; src < deviceCount; ++src) {
             void* devPtr = nullptr;
+            cudaSetDevice(src);  // read src's contribution ON device src
             cudaError_t eAlloc = cudaMalloc(&devPtr, CHUNK_BYTES);
             cudaError_t eCopy = cudaMemcpy(&hostStaging, devPtr, CHUNK_BYTES, cudaMemcpyDeviceToHost);
             printf("Reduce-scatter, chunk %d: cudaMemcpy(device %d -> host): %s (code %d)\n",
@@ -205,6 +217,7 @@ int main() {
         // the entire point of reduce-scatter.
         int hostResult = (int)accumulator;
         void* ownerPtr = nullptr;
+        cudaSetDevice(owner);  // the reduced chunk lives on its owner
         cudaError_t eAllocOwner = cudaMalloc(&ownerPtr, CHUNK_BYTES);
         cudaError_t eWrite = cudaMemcpy(ownerPtr, &hostResult, CHUNK_BYTES, cudaMemcpyHostToDevice);
         printf("Reduce-scatter, chunk %d: cudaMemcpy(host reduced chunk -> owner dev%d): %s (code %d)\n\n",
@@ -276,8 +289,9 @@ Nothing about this pattern can be built from Chapter 9's ring phases: a ring hop
 // one of the N*(N-1) transfers below carries genuinely distinct data
 // -- there is no way to build this out of Chapter 9's ring phases,
 // because nothing here is identical across destinations for a ring
-// hop to forward along unchanged. Genuinely compiled with a real
-// nvcc and genuinely run.
+// hop to forward along unchanged. Each slot is allocated with its
+// own device made current first (Chapter 3's rule). Genuinely
+// compiled with a real nvcc and genuinely run.
 #include <cstdio>
 #include <cuda_runtime.h>
 
@@ -298,15 +312,18 @@ int main() {
             if (dst == src) continue; // a device's own reserved slot needs no transfer
             void* sendSlotPtr = nullptr;
             void* recvSlotPtr = nullptr;
+            cudaSetDevice(src);  // send-slot lives on device src
             cudaError_t eAllocSend = cudaMalloc(&sendSlotPtr, CHUNK_BYTES);
+            cudaSetDevice(dst);  // recv-slot lives on device dst
             cudaError_t eAllocRecv = cudaMalloc(&recvSlotPtr, CHUNK_BYTES);
             cudaError_t eCopy = cudaMemcpyPeer(recvSlotPtr, dst, sendSlotPtr, src, CHUNK_BYTES);
             ++transfersAttempted;
             printf("All-to-all, cudaMemcpyPeer(dev%d's slot[from=%d] <- dev%d's slot[to=%d]): %s (code %d)\n",
                    dst, src, src, dst, cudaGetErrorString(eCopy), (int)eCopy);
             if (eCopy == cudaSuccess) ++transfersCompleted;
+            if (eAllocRecv == cudaSuccess) cudaFree(recvSlotPtr);  // dst current
+            cudaSetDevice(src);
             if (eAllocSend == cudaSuccess) cudaFree(sendSlotPtr);
-            if (eAllocRecv == cudaSuccess) cudaFree(recvSlotPtr);
         }
     }
 
@@ -445,8 +462,10 @@ int main() {
     // remote devices -- the same "farther-apart" communication pattern
     // Thakur, Rabenseifner, and Gropp identify as recursive doubling's
     // weakness relative to a ring's nearest-neighbor-only pattern (see
-    // Sources). Chapter 9 already built the ring version of exactly
-    // these two operations (its scatter-reduce and all-gather phases);
+    // Sources). Chapter 9 already built the ring version of these two
+    // operations (its scatter-reduce and all-gather phases -- the ring
+    // scatter-reduce just needs its starting chunk shifted by one so
+    // device c ends up owning chunk c, as reduce-scatter requires);
     // swapping that same ring pattern in here gets the same nearest-
     // neighbor advantage for these two collectives run alone. All-to-all
     // has no such shortcut: every one of its N*(N-1) chunks is genuinely
@@ -488,7 +507,7 @@ All three collectives check out against references computed completely independe
 
 ## Chapter Summary
 
-All-gather and reduce-scatter are not new algorithms this chapter invents -- they are Chapter 9's own two ring-all-reduce phases, named and run in isolation: all-gather is the phase that spreads an already-known value out to everyone (Section 10.1, here shown starting from each device's own untouched chunk rather than a partially-summed one), and reduce-scatter is the phase that combines values down to one owner per chunk (Section 10.2, here shown stopping short of the all-gather that would turn it into a full all-reduce). Because summing needs real arithmetic and moving bytes doesn't, reduce-scatter mirrors Chapter 8's host-mediated reduce while all-gather mirrors Chapter 8's direct, host-free broadcast. All-to-all (Section 10.3) breaks that pattern entirely: every one of its `N*(N-1)` transfers carries data no other transfer could carry, so there is no reduction, no ring relay, and no shortcut borrowed from Chapter 9 -- it needed its own direct implementation and its own independent verification, alongside the other two, in this chapter's simulation. Together with Chapter 8's broadcast and reduce and Chapter 9's all-reduce, this chapter completes the standard set of collective operations this book builds by hand. Chapter 11 turns to NCCL -- the library that implements every one of these operations for real, and this book's chance to check what, if anything, six chapters of hand-built collectives actually got right about how the real thing works.
+All-gather and reduce-scatter are not new algorithms this chapter invents -- they are Chapter 9's own two ring-all-reduce phases, named and run in isolation: all-gather is the phase that spreads an already-known value out to everyone (Section 10.1, here shown starting from each device's own untouched chunk rather than a partially-summed one), and reduce-scatter is the phase that combines values down to one owner per chunk (Section 10.2, here shown stopping short of the all-gather that would turn it into a full all-reduce, and with chunk `i` owned by device `i` rather than Chapter 9's rotated ownership). Because summing needs real arithmetic and moving bytes doesn't, reduce-scatter mirrors Chapter 8's host-mediated reduce while all-gather mirrors Chapter 8's direct, host-free broadcast. All-to-all (Section 10.3) breaks that pattern entirely: every one of its `N*(N-1)` transfers carries data no other transfer could carry, so there is no reduction, no ring relay, and no shortcut borrowed from Chapter 9 -- it needed its own direct implementation and its own independent verification, alongside the other two, in this chapter's simulation. Together with Chapter 8's broadcast and reduce and Chapter 9's all-reduce, this chapter completes the standard set of collective operations this book builds by hand. Chapter 11 turns to NCCL -- the library that implements every one of these operations for real, and this book's chance to check what, if anything, three chapters of hand-built collectives actually got right about how the real thing works.
 
 ## Self-Check Questions
 
@@ -503,7 +522,7 @@ All-gather and reduce-scatter are not new algorithms this chapter invents -- the
 
 ## Where We Go Next
 
-Chapter 11 turns to NCCL, the standard library that implements broadcast, reduce, all-reduce, all-gather, reduce-scatter, and all-to-all for real, on real hardware -- the same six operations this book has now built by hand across Chapters 8 through 10. Rather than introducing new algorithms, Chapter 11 is where this book checks its own work: which of NCCL's real design choices (ring topologies, tree topologies, topology auto-detection, multi-node scaling) match what these chapters already predicted, and which go further than a from-scratch implementation would, on its own, ever have reason to.
+Chapter 11 turns to NCCL, the standard library that implements broadcast, reduce, all-reduce, all-gather, reduce-scatter, and all-to-all for real, on real hardware -- the same six operations this book has now built by hand across Chapters 8 through 10. In the NCCL 2.18.3 this book links against, the first five are dedicated one-call collectives and all-to-all is built from grouped `ncclSend()`/`ncclRecv()` point-to-point calls; NCCL 2.28 later added a dedicated `ncclAlltoAll()`. Rather than introducing new algorithms, Chapter 11 is where this book checks its own work: which of NCCL's real design choices (ring topologies, tree topologies, topology auto-detection, multi-node scaling) match what these chapters already predicted, and which go further than a from-scratch implementation would, on its own, ever have reason to.
 
 ## Worked Solutions
 
@@ -511,7 +530,7 @@ Chapter 11 turns to NCCL, the standard library that implements broadcast, reduce
 
 **2.** All-gather is structurally identical to the ALL-GATHER PHASE of Chapter 9's ring all-reduce -- the phase that forwards/overwrites each already-completed chunk the rest of the way around the ring. The one difference: Chapter 9's all-gather phase starts from chunks that have ALREADY been summed by the preceding scatter-reduce phase, while this chapter's all-gather starts directly from each device's own untouched original chunk, since there is no reduction step involved at all.
 
-**3.** Reduce-scatter is structurally identical to the SCATTER-REDUCE PHASE of Chapter 9's ring all-reduce -- the first `N-1` steps, where each hop adds the incoming chunk into the receiving device's own running value. To turn a reduce-scatter into a full all-reduce, you would need to run an all-gather afterward: forward each now-fully-reduced chunk the rest of the way around (or, as this chapter's direct implementation would, send it to everyone directly) so every device ends up holding every reduced chunk, not just the one it owns.
+**3.** Reduce-scatter is structurally the SCATTER-REDUCE PHASE of Chapter 9's ring all-reduce -- the first `N-1` steps, where each hop adds the incoming chunk into the receiving device's own running value -- with one caveat: run unchanged, Chapter 9's phase leaves device `i` owning chunk `(i+1) mod N`, while reduce-scatter's contract puts chunk `i` on device `i`, so a ring reduce-scatter shifts its starting chunk by one (Section 10.2). To turn a reduce-scatter into a full all-reduce, you would need to run an all-gather afterward: forward each now-fully-reduced chunk the rest of the way around (or, as this chapter's direct implementation would, send it to everyone directly) so every device ends up holding every reduced chunk, not just the one it owns.
 
 **4.** Summing values is arithmetic, and neither `cudaMemcpy` nor `cudaMemcpyPeer` performs arithmetic -- both only move bytes from one place to another. Reduce-scatter needs a `+=` at every accumulation step, so, exactly like Chapter 8's reduce and Chapter 9's naive baseline, it has to pull every device's contribution to the host, add it there with ordinary C++ arithmetic, and write only the final sum back. All-gather and all-to-all never combine two chunks' values together -- they only relocate bytes from one device's memory to another's -- so a direct `cudaMemcpyPeer` call, with no host round-trip and no arithmetic, is all either operation ever needs.
 
@@ -527,5 +546,5 @@ Chapter 11 turns to NCCL, the standard library that implements broadcast, reduce
 
 **Sources cited in this chapter:**
 
-- [Collective Operations — NCCL User Guide](https://docs.nvidia.com/deeplearning/nccl/user-guide/docs/usage/collectives.html) -- the exact AllGather ("gathers N values from k ranks into an output buffer of size k*N, and distributes that result to all ranks," and NCCL's `ncclAllGather` leaving "identical copies of the result in each recvbuff") and ReduceScatter ("the result is scattered in equal-sized blocks between ranks, each rank getting a chunk of data based on its rank index") definitions.
-- [Optimization of Collective Communication Operations in MPICH — Thakur, Rabenseifner, Gropp](https://web.cels.anl.gov/~thakur/papers/ijhpca-coll.pdf) -- the nearest-neighbor-vs-farther-apart comparison between ring and recursive-doubling algorithms for allgather/reduce-scatter ("for long messages, the ring algorithm performs better than recursive doubling... because it uses a nearest-neighbor communication pattern, whereas in recursive doubling, processes that are much farther apart communicate"); the reduce-scatter-then-allgather decomposition of allreduce; and the Bruck algorithm for short-message all-to-all.
+- [Collective Operations — NCCL User Guide](https://docs.nvidia.com/deeplearning/nccl/user-guide/docs/usage/collectives.html) -- the exact AllGather ("gathers N values from k ranks into an output buffer of size k*N, and distributes that result to all ranks," and NCCL's `ncclAllGather` leaving "identical copies of the result in each recvbuff") and ReduceScatter ("the result is scattered in equal-sized blocks between ranks, each rank getting a chunk of data based on its rank index") definitions, and reduce-scatter's ownership contract (`ncclReduceScatter`'s "recvbuff on rank i contains the i-th block"), which Section 10.2 uses to pin down which device owns which reduced chunk.
+- [Optimization of Collective Communication Operations in MPICH — Thakur, Rabenseifner, Gropp](https://web.cels.anl.gov/~thakur/papers/ijhpca-coll.pdf) -- the nearest-neighbor-vs-farther-apart comparison between ring and recursive-doubling algorithms for allgather/reduce-scatter (the authors offer this explanation as a hedged belief, not a proven cause: "for long messages, the ring algorithm performs better than recursive doubling... We believe this is because it uses a nearest-neighbor communication pattern, whereas in recursive doubling, processes that are much farther apart communicate"); the reduce-scatter-then-allgather decomposition of allreduce; and the Bruck algorithm for short-message all-to-all.

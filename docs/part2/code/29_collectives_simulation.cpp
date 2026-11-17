@@ -105,8 +105,10 @@ int main() {
     // remote devices -- the same "farther-apart" communication pattern
     // Thakur, Rabenseifner, and Gropp identify as recursive doubling's
     // weakness relative to a ring's nearest-neighbor-only pattern (see
-    // Sources). Chapter 9 already built the ring version of exactly
-    // these two operations (its scatter-reduce and all-gather phases);
+    // Sources). Chapter 9 already built the ring version of these two
+    // operations (its scatter-reduce and all-gather phases -- the ring
+    // scatter-reduce just needs its starting chunk shifted by one so
+    // device c ends up owning chunk c, as reduce-scatter requires);
     // swapping that same ring pattern in here gets the same nearest-
     // neighbor advantage for these two collectives run alone. All-to-all
     // has no such shortcut: every one of its N*(N-1) chunks is genuinely
