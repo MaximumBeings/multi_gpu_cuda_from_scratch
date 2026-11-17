@@ -4,8 +4,8 @@
 // DeepSeek-AI's own real DeepEP library ships TWO separate kernel
 // families for the exact same operation (MoE dispatch and combine), not
 // one "best" kernel -- and its own real documented numbers (V1, at
-// docs/legacy.md in the deepseek-ai/DeepEP GitHub repository, freshly
-// re-verified this session) explain why. "Normal kernels" are described
+// docs/legacy.md in the deepseek-ai/DeepEP GitHub repository -- since
+// removed from the current repository along with V1 itself) explain why. "Normal kernels" are described
 // as "high-throughput and low-latency all-to-all GPU kernels" tuned for
 // TRAINING-sized batches; "low-latency kernels" are "a set of low-
 // latency kernels with pure RDMA to minimize delays," built specifically

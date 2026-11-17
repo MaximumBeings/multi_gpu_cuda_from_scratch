@@ -19,9 +19,19 @@
 // samples -- and checks whether every sample's own complete, reassembled
 // feature vector matches a single-process reference exactly, at every P.
 // Every value here is a plain integer, deliberately, so this file's own
-// answer is about the RESHARDING itself (a pure data-movement/ownership
-// change, not a value combination), not about floating-point
-// associativity, which Chapter 8/25/29/31/32 already covered in detail.
+// answer is about the RESHARDING itself -- the pack/send/unpack index
+// bookkeeping -- not about floating-point associativity.
+//
+// What makes this a real test rather than a tautology: the P-rank path
+// never reads the global answer. Each rank computes only its own feature
+// shard (features f with f % P == r -- CYCLIC striping, HugeCTR-style
+// "feature index modulo P"), packs one send buffer per destination rank,
+// the all-to-all delivers buffers, and each destination rank (owning a
+// CONTIGUOUS block of B/P samples) must unpack every received value into
+// the right (sample, feature) slot using only the schedule. A wrong
+// assumption about the schedule produces wrong vectors -- which the file
+// demonstrates with a second, deliberately buggy unpacker that assumes
+// each source rank sent a CONTIGUOUS block of features.
 #include <cstdio>
 #include <vector>
 
@@ -53,47 +63,67 @@ std::vector<std::vector<long long>> runReference() {
     return full;
 }
 
-// P-rank simulation: each rank owns a contiguous shard of FEATURES (F/P
-// features per rank, computed for ALL B samples -- the "model-parallel,
-// full batch" phase), then an all-to-all reshards so each rank instead
-// owns a contiguous shard of SAMPLES (B/P samples per rank), each with
-// its COMPLETE F-length feature vector -- the "data-parallel, full
-// features" phase HugeCTR's own real dense layers need.
-std::vector<std::vector<long long>> runWithP(int P) {
-    // Phase 1 (model-parallel by feature): each rank computes its own
-    // feature shard for every sample.
-    std::vector<std::vector<std::vector<long long>>> perRankFeatureShard(P);
-    for (int r = 0; r < P; r++) {
-        perRankFeatureShard[r].assign(B, std::vector<long long>());
-        for (int f = r; f < F; f += P) {
-            for (int s = 0; s < B; s++) {
-                perRankFeatureShard[r][s].push_back(embeddingValue(s, f));
-            }
-        }
-    }
+// Feature ownership: CYCLIC, rank r owns features r, r+P, r+2P, ...
+int featureOwner(int f, int P) { return f % P; }
+// Sample ownership after the all-to-all: CONTIGUOUS blocks of B/P.
+int sampleOwner(int s, int P) { return s / (B / P); }
 
-    // Phase 2 (the real all-to-all): reshard from "every rank has a
-    // feature-slice of every sample" to "every rank has every feature of
-    // its own sample-slice." This is pure data movement -- no value is
-    // ever combined with another, only relocated -- so it is checked
-    // here as a real resharding, not a reduction.
-    std::vector<std::vector<long long>> resharded(B, std::vector<long long>());
-    for (int r = 0; r < P; r++) {
-        // Reconstruct which feature indices rank r owned (matches the
-        // exact striping used above).
-        std::vector<int> ownedFeatures;
-        for (int f = r; f < F; f += P) ownedFeatures.push_back(f);
+// One rank's view after the all-to-all: its B/P samples, each with a full
+// F-length feature vector (-1 marks a slot nobody filled).
+typedef std::vector<std::vector<long long>> LocalSamples;
 
+// P-rank simulation. Returns the global (B x F) matrix stitched together
+// from every rank's LOCAL post-all-to-all samples, so it can be compared
+// with the reference. contiguousBug selects the deliberately wrong unpack.
+std::vector<std::vector<long long>> runWithP(int P, bool contiguousBug,
+                                             long long *valuesOffRank) {
+    // Phase 1 (model-parallel): rank r looks up ITS features for ALL B
+    // samples, and packs them into one send buffer per destination rank d,
+    // ordered (sample in d's block, then r's features in ascending order).
+    // sendBuf[r][d] is the message rank r sends to rank d.
+    std::vector<std::vector<std::vector<long long>>> sendBuf(
+        P, std::vector<std::vector<long long>>(P));
+    for (int r = 0; r < P; r++) {
         for (int s = 0; s < B; s++) {
-            for (size_t k = 0; k < ownedFeatures.size(); k++) {
-                int f = ownedFeatures[k];
-                long long v = perRankFeatureShard[r][s][k];
-                if ((int)resharded[s].size() <= f) resharded[s].resize(F, -1);
-                resharded[s][f] = v;
+            int d = sampleOwner(s, P);
+            for (int f = r; f < F; f += P) sendBuf[r][d].push_back(embeddingValue(s, f));
+        }
+    }
+
+    // Phase 2 (the all-to-all): message (r -> d) arrives at d as recvBuf[d][r].
+    *valuesOffRank = 0;
+    std::vector<std::vector<std::vector<long long>>> recvBuf(
+        P, std::vector<std::vector<long long>>(P));
+    for (int r = 0; r < P; r++)
+        for (int d = 0; d < P; d++) {
+            recvBuf[d][r] = sendBuf[r][d];
+            if (d != r) *valuesOffRank += (long long)sendBuf[r][d].size();
+        }
+
+    // Phase 3 (unpack, data-parallel): rank d rebuilds full feature vectors
+    // for its own contiguous sample block from the P received messages.
+    int samplesPerRank = B / P;
+    std::vector<LocalSamples> local(P, LocalSamples(samplesPerRank, std::vector<long long>(F, -1)));
+    for (int d = 0; d < P; d++) {
+        for (int r = 0; r < P; r++) {
+            const std::vector<long long> &msg = recvBuf[d][r];
+            int featuresFromR = (int)msg.size() / samplesPerRank;
+            size_t pos = 0;
+            for (int ls = 0; ls < samplesPerRank; ls++) {
+                for (int k = 0; k < featuresFromR; k++) {
+                    // Correct: the k-th feature rank r owns is r + k*P (cyclic).
+                    // Bug: assume r owned a contiguous block r*(F/P) + k.
+                    int f = contiguousBug ? r * (F / P) + k : r + k * P;
+                    local[d][ls][f] = msg[pos++];
+                }
             }
         }
     }
-    return resharded;
+
+    // Stitch the per-rank local results into a global matrix for checking.
+    std::vector<std::vector<long long>> global(B);
+    for (int s = 0; s < B; s++) global[s] = local[sampleOwner(s, P)][s % samplesPerRank];
+    return global;
 }
 
 int main() {
@@ -103,29 +133,33 @@ int main() {
     printf("\n\n");
 
     int Ps[] = {1, 2, 3, 4, 6, 12};
-    printf("%-6s %-10s\n", "P", "all match");
+    printf("%-6s %-22s %-26s %-28s\n", "P", "values sent off-rank",
+           "cyclic unpack: all match", "contiguous-bug unpack: wrong");
     for (int P : Ps) {
-        auto resharded = runWithP(P);
+        long long offRank = 0, offRankBug = 0;
+        auto good = runWithP(P, false, &offRank);
+        auto bad = runWithP(P, true, &offRankBug);
         bool allMatch = true;
-        for (int s = 0; s < B && allMatch; s++) {
+        int wrongSlots = 0;
+        for (int s = 0; s < B; s++)
             for (int f = 0; f < F; f++) {
-                if (resharded[s][f] != reference[s][f]) { allMatch = false; break; }
+                if (good[s][f] != reference[s][f]) allMatch = false;
+                if (bad[s][f] != reference[s][f]) wrongSlots++;
             }
-        }
-        printf("%-6d %-10s\n", P, allMatch ? "YES" : "NO");
+        printf("%-6d %-22lld %-26s %d of %d slots\n", P, offRank,
+               allMatch ? "YES" : "NO", wrongSlots, B * F);
     }
 
-    printf("\nEvery P reproduces the exact same per-sample feature vectors "
-           "as the single-process reference. Unlike Chapter 32's MoE "
-           "dispatch/combine -- where a GATING NETWORK decided, per token, "
-           "where data would go, and capacity overflow could silently drop "
-           "a contribution -- this embedding all-to-all follows a FIXED, "
-           "deterministic schedule known in advance (feature index modulo "
-           "P), with no equivalent of capacity overflow: every value has a "
-           "single, predetermined destination, and the operation is pure "
-           "resharding, never a reduction. That is precisely why it is "
-           "bit-exact regardless of P even using ordinary values -- there "
-           "is no combination step here for floating-point (non-)"
-           "associativity to ever act on.\n");
+    printf("\nThe correct unpacker reproduces every sample's feature vector "
+           "at every P, and the number of values that cross the network is "
+           "exactly B*F*(P-1)/P. The buggy unpacker -- which assumes each "
+           "rank owned a CONTIGUOUS block of features when the schedule "
+           "actually stripes them CYCLICALLY (feature index modulo P) -- "
+           "scrambles feature slots at every P where the two layouts differ "
+           "(they coincide only at P=1 and P=F, where each rank owns either "
+           "every feature or exactly one). Nothing here is ever summed, so "
+           "the operation is exact; what CAN go wrong is the bookkeeping, "
+           "which is why the pack and unpack sides of an all-to-all must "
+           "agree on one layout.\n");
     return 0;
 }

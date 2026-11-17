@@ -13,11 +13,10 @@
 // techniques, for a user-specified number of Monte Carlo paths and set
 // of future observation dates" -- and gives a real illustrative tenor
 // example, "30Y:1M," meaning one observation date every month for 30
-// years, T=360 dates. This file reuses Chapter 9's own real (P-1)/P
-// round-count formula (Chapter 31's own tool) to show that computing a
-// full exposure PROFILE costs exactly T copies of Chapter 31's own
-// single-reduction cost -- the same technique this book already built,
-// repeated along a new axis (time), not a new technique.
+// years, T=360 dates. This file asks what computing a full exposure
+// PROFILE costs in communication, compared with Chapter 31's single
+// reduction -- both if the T per-date reductions are issued one at a
+// time, and if they are batched into one reduction of a T-entry vector.
 #include <cstdio>
 
 int main() {
@@ -32,35 +31,35 @@ int main() {
            "observation dates, each needing its own EPE/PFE reduction "
            "across all simulated paths.\n\n", realObservationDates);
 
-    // Illustrative per-date message size: each rank contributes a tiny
-    // (count, mean, M2) tuple per date -- Chapter 31's own real
-    // Chan/Golub/LeVeque combination payload, 3 doubles = 24 bytes.
+    // Per-date message size: each rank contributes a tiny (count, mean,
+    // M2) tuple per date -- 3 x 8 bytes = 24 bytes.
     long long bytesPerRankPerDate = 24;
 
     int Ps[] = {8, 16, 32, 64};  // real STAC-A2 GPU counts (8x V100/A100 cited)
-    printf("%-6s %-24s %-28s %-28s\n", "P", "Off-rank frac (Ch9)",
-           "Bytes/date crossing network", "Total bytes crossing (all T dates)");
+    printf("%-6s %-18s %-22s %-24s %-22s\n", "P", "Off-rank fraction",
+           "Bytes/date on network", "Unbatched: T reductions", "Batched: 1 reduction");
     for (int P : Ps) {
-        // Chapter 9's own real formula, reused unchanged from Chapter
-        // 31: in a full reduction among P ranks, (P-1)/P of the payload
-        // that must be combined has to leave its origin rank.
+        // In a reduction among P ranks, the (P-1) non-root ranks' tuples
+        // must leave their origin rank: (P-1)/P of the P*24 bytes.
         double offRankFraction = (P > 1) ? (double)(P - 1) / (double)P : 0.0;
         double bytesPerDate = (double)P * (double)bytesPerRankPerDate * offRankFraction;
-        double totalBytes = bytesPerDate * (double)realObservationDates;
-        printf("%-6d %-24.4f %-28.1f %-28.1f\n", P, offRankFraction, bytesPerDate, totalBytes);
+        printf("%-6d %-18.4f %-22.1f %-24s %-22s\n", P, offRankFraction, bytesPerDate,
+               "360 x 24 B msgs/rank", "1 x 8640 B msg/rank");
     }
 
-    printf("\nEvery column reuses Chapter 9's own real formula exactly as "
-           "Chapter 31 already applied it -- nothing new is invented here. "
-           "The ONLY new variable Chapter 31's own cost model never had is "
-           "T, the observation-date count: a Chapter-31-style VaR "
-           "calculation pays this reduction cost ONCE (T=1); a real XVA "
-           "exposure profile pays it T=%d times, once per real cited "
-           "observation date, because each date's EPE/PFE is its own "
-           "independent reduction over the same P paths. The per-date "
-           "message size stays tiny at any P (a handful of bytes per "
-           "rank) -- what actually grows the real cost here is T, not P, "
-           "a genuinely different scaling axis than any Ch8-Ch34 "
-           "reduction faced.\n", realObservationDates);
+    printf("\nTwo things this table shows. First, the bytes on the network "
+           "per date grow LINEARLY with P (24 x (P-1): 168 B at P=8, 1512 B "
+           "at P=64), because every additional rank contributes its own "
+           "tuple. Second, the T dates are independent reductions over the "
+           "same P ranks, so nothing forces them to be separate collectives: "
+           "packing all T=%d (count, mean, M2) tuples into one %d-byte "
+           "vector per rank turns the profile into ONE reduction. Issued "
+           "one date at a time, the profile pays the per-collective latency "
+           "T=%d times; batched, it pays it once, and the extra bytes are "
+           "still tiny. So a full exposure profile is not \"T times Chapter "
+           "31's cost\" in any implementation that batches the dates -- "
+           "the real cost of XVA is the T-fold larger SIMULATION work, "
+           "not the reduction.\n", realObservationDates,
+           realObservationDates * (int)bytesPerRankPerDate, realObservationDates);
     return 0;
 }
