@@ -72,17 +72,40 @@ int main() {
     printf("  (this attribute's own real doc comment in driver_types.h reads, verbatim:\n");
     printf("   \"Deprecated, cudaLaunchCooperativeKernelMultiDevice is deprecated.\")\n\n");
 
+    // cuda_runtime_api.h documents cudaLaunchParams::stream as "the handle
+    // to the stream to perform the launch in. This cannot be the NULL
+    // stream or cudaStreamLegacy or cudaStreamPerThread" -- so this file
+    // creates a real, explicit stream for it rather than passing 0. On
+    // this zero-GPU machine the creation itself fails, which is reported.
+    cudaStream_t launchStream = nullptr;
+    cudaError_t eStream = cudaStreamCreate(&launchStream);
+    report("cudaStreamCreate(&launchStream)", eStream);
+
+    int n = 8;
+    int* dData = nullptr;
+    void* kernelArgs[] = { &dData, &n };
     struct cudaLaunchParams launchParamsList[1];
     launchParamsList[0].func = (void*)multi_device_kernel;
     launchParamsList[0].gridDim = dim3(1);
     launchParamsList[0].blockDim = dim3(8);
-    launchParamsList[0].args = nullptr;
+    launchParamsList[0].args = kernelArgs;
     launchParamsList[0].sharedMem = 0;
-    launchParamsList[0].stream = 0;
-    printf("real cudaLaunchParams built (func=%p, gridDim=1, blockDim=8) -- this file has\n", launchParamsList[0].func);
-    printf("everything cudaLaunchCooperativeKernelMultiDevice() itself needs except a real\n");
-    printf("device to launch on; the function symbol itself is real -- %s\n\n",
+    launchParamsList[0].stream = launchStream;  // explicit stream, never NULL
+    printf("\nreal cudaLaunchParams built (func=%p, gridDim=1, blockDim=8, an explicit\n", launchParamsList[0].func);
+    printf("non-NULL stream from cudaStreamCreate() as the header requires) -- on a real\n");
+    printf("device, this is the struct cudaLaunchCooperativeKernelMultiDevice() consumes.\n");
+    printf("Here stream creation itself fails (no device), so the launch is not attempted;\n");
+    printf("the kernel function symbol itself is real -- %s\n\n",
            launchParamsList[0].func != nullptr ? "confirmed non-null" : "MISSING");
+
+    printf("the host launch function is itself deprecated, not just the device side:\n");
+    printf("cuda_runtime_api.h declares it as\n");
+    printf("  extern __CUDA_DEPRECATED __host__ cudaError_t CUDARTAPI\n");
+    printf("  cudaLaunchCooperativeKernelMultiDevice(struct cudaLaunchParams *launchParamsList,\n");
+    printf("      unsigned int numDevices, unsigned int flags __dv(0));\n");
+    printf("so any call to it draws its own deprecation warning at compile time (this file\n");
+    printf("deliberately does not call it, so its two warnings below come from the\n");
+    printf("device-side API only).\n\n");
 
     printf("compiling this file requires -rdc=true and -lcudadevrt (relocatable device\n");
     printf("code + the device runtime library) just for multi_device_kernel() to LINK at\n");
@@ -97,8 +120,9 @@ int main() {
     printf("self-check: cudaDevAttrCooperativeMultiDeviceLaunch resolves to a real integer\n");
     printf("attribute id, cudaLaunchParams accepted a real, non-null kernel function\n");
     printf("pointer, and the kernel using cg::this_multi_grid()/multi_grid_group::sync()\n");
-    printf("compiled and linked successfully (with -rdc=true/-lcudadevrt) despite both\n");
-    printf("APIs being genuinely deprecated in this installed CUDA 12.0 toolkit: %s\n",
+    printf("compiled and linked successfully (with -rdc=true/-lcudadevrt) despite the\n");
+    printf("multi-device API, host and device side, being deprecated in this installed\n");
+    printf("CUDA 12.0 toolkit: %s\n",
            (launchParamsList[0].func != nullptr) ? "confirmed" : "MISMATCH");
 
     return (launchParamsList[0].func != nullptr) ? 0 : 1;

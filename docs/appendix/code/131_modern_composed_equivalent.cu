@@ -28,6 +28,12 @@ namespace cg = cooperative_groups;
 // still-current cg::this_grid()/grid.sync() DSA's own Appendix D.3
 // established -- no deprecated API here at all) that doubles every
 // element, grid-syncs WITHIN device 0's own grid, then adds 1.
+// cooperative_groups.h requires a kernel that calls grid.sync() to be
+// launched with cuLaunchCooperativeKernel "(or the CUDA Runtime
+// equivalent)" -- a plain <<<...>>> launch is NOT valid for it. Inside a
+// stream capture, this file therefore launches it with cudaLaunchKernelEx()
+// and the cudaLaunchAttributeCooperative attribute, which driver_types.h
+// documents as "Valid for graph nodes, launches."
 __global__ void device0_kernel(int* data, int n) {
     cg::grid_group grid = cg::this_grid();
     int tid = blockIdx.x * blockDim.x + threadIdx.x;
@@ -36,9 +42,10 @@ __global__ void device0_kernel(int* data, int n) {
     if (tid < n) data[tid] += 1;
 }
 
-// Runs on device 1, only after device 0's own event fires: reads device
-// 0's own result via a real cudaMemcpyPeerAsync() (Chapter 5's own API,
-// reused exactly as Chapter 23 File 66 reused it) then does its own work.
+// Runs on device 1, only after device 0's own event fires, on device 1's
+// own buffer. (A real pipeline would also copy device 0's result across,
+// e.g. with Chapter 5's cudaMemcpyPeerAsync(); this file keeps only the
+// dependency edge itself, so no copy is issued here.)
 __global__ void device1_kernel(int* data, int n) {
     int tid = blockIdx.x * blockDim.x + threadIdx.x;
     if (tid < n) data[tid] += 100;
@@ -60,14 +67,23 @@ int main() {
     printf("=== the composed real API sequence this file genuinely attempts ===\n\n");
     printf("  1. cudaSetDevice(0); cudaStreamCreate(&stream0)\n");
     printf("  2. cudaStreamBeginCapture(stream0, Global)          <- Chapter 23 File 66's origin stream\n");
-    printf("  3. device0_kernel<<<...,stream0>>>(...)              (grid.sync() WITHIN device 0)\n");
+    printf("  3. cudaLaunchKernelEx(&coopCfg, device0_kernel, ...) (grid.sync() WITHIN device 0)\n");
     printf("  4. cudaEventRecord(ev, stream0)                     <- the real cross-device edge\n");
     printf("  5. cudaSetDevice(1); cudaStreamCreate(&stream1)\n");
     printf("  6. cudaStreamWaitEvent(stream1, ev, 0)               <- Chapter 6's own real API,\n");
     printf("                                                          captured (Chapter 23's finding)\n");
     printf("  7. device1_kernel<<<...,stream1>>>(...)\n");
-    printf("  8. cudaStreamEndCapture(stream0, &graph)             <- ONE graph, TWO devices\n");
-    printf("  9. cudaGraphInstantiate(...); cudaGraphLaunch(...)\n\n");
+    printf("  8. cudaEventRecord(evJoin, stream1)                 <- JOIN stream1 back...\n");
+    printf("  9. cudaSetDevice(0); cudaStreamWaitEvent(stream0, evJoin, 0)\n");
+    printf("                                                      ...into the origin stream\n");
+    printf(" 10. cudaStreamEndCapture(stream0, &graph)            <- ONE graph, TWO devices\n");
+    printf(" 11. cudaGraphInstantiate(...); cudaGraphLaunch(...)\n\n");
+    printf("  step 3 uses cudaLaunchKernelEx() with cudaLaunchAttributeCooperative, not a\n");
+    printf("  plain <<<...>>> launch: grid.sync() is only valid in a cooperative launch.\n");
+    printf("  steps 8-9 are required: a forked stream that is not joined back before\n");
+    printf("  cudaStreamEndCapture() makes capture fail with\n");
+    printf("  cudaErrorStreamCaptureUnjoined (%d) on real hardware.\n\n",
+           (int)cudaErrorStreamCaptureUnjoined);
 
     cudaError_t eSet0 = cudaSetDevice(0);
     report("cudaSetDevice(0)", eSet0);
@@ -79,8 +95,20 @@ int main() {
     report("cudaStreamBeginCapture(stream0)", eCap);
 
     int* dataDev0 = nullptr;
-    cudaMallocAsync(&dataDev0, 8 * sizeof(int), stream0);
-    device0_kernel<<<1, 8, 0, stream0>>>(dataDev0, 8);
+    int n = 8;
+    cudaMallocAsync(&dataDev0, n * sizeof(int), stream0);
+    cudaLaunchAttribute coopAttr[1];
+    coopAttr[0].id = cudaLaunchAttributeCooperative;
+    coopAttr[0].val.cooperative = 1;
+    cudaLaunchConfig_t cfg = {};
+    cfg.gridDim = dim3(1);
+    cfg.blockDim = dim3(8);
+    cfg.dynamicSmemBytes = 0;
+    cfg.stream = stream0;
+    cfg.attrs = coopAttr;
+    cfg.numAttrs = 1;
+    cudaError_t eCoop = cudaLaunchKernelEx(&cfg, device0_kernel, dataDev0, n);
+    report("cudaLaunchKernelEx(cooperative)", eCoop);
 
     cudaEvent_t ev;
     cudaEventCreate(&ev);
@@ -99,6 +127,16 @@ int main() {
     int* dataDev1 = nullptr;
     cudaMallocAsync(&dataDev1, 8 * sizeof(int), stream1);
     device1_kernel<<<1, 8, 0, stream1>>>(dataDev1, 8);
+
+    // Join stream1 back into the origin stream before ending capture.
+    cudaEvent_t evJoin;
+    cudaEventCreate(&evJoin);
+    cudaError_t eJoinRec = cudaEventRecord(evJoin, stream1);
+    report("cudaEventRecord(evJoin, stream1)", eJoinRec);
+    cudaError_t eSetBack = cudaSetDevice(0);
+    report("cudaSetDevice(0) (back)", eSetBack);
+    cudaError_t eJoinWait = cudaStreamWaitEvent(stream0, evJoin, 0);
+    report("cudaStreamWaitEvent(stream0, evJoin)", eJoinWait);
 
     cudaGraph_t graph = nullptr;
     cudaError_t eEndCap = cudaStreamEndCapture(stream0, &graph);
@@ -130,8 +168,11 @@ int main() {
     printf("each device's own kernel, and a captured cudaEventRecord()/cudaStreamWaitEvent()\n");
     printf("pair (Chapter 23's own real finding, itself resting on Chapter 6's own real\n");
     printf("cross-stream synchronization) handles the dependency BETWEEN devices -- two\n");
-    printf("separate, well-supported tools reaching the two different granularities the\n");
-    printf("single deprecated call used to blur together.\n");
+    printf("separate, well-supported tools. Note what the composition does NOT give back:\n");
+    printf("the captured event is a stream-level edge between whole kernels, not a\n");
+    printf("barrier device code can call mid-kernel. Device 1's kernel starts only after\n");
+    printf("device 0's kernel has finished; no thread on one device can wait, inside a\n");
+    printf("running kernel, for a thread on another the way multi_grid_group::sync() did.\n");
 
     bool allNoDevice = (e0 != cudaSuccess);
     printf("\nself-check: every real API call in this composed sequence reports the SAME\n");
