@@ -5,7 +5,7 @@
 // than Chapter 12's computeShard(), Chapter 13's computeLayerRange(),
 // and Chapter 16's computeRowRange() ever did: each rank's OWN
 // relative speed, not just its rank and the world size. The real
-// technique it implements is the one Um et al.'s "Cephalo" paper
+// technique it implements is the one Guo et al.'s "Cephalo" paper
 // (2024) describes plainly: "the batch of inputs is distributed
 // unevenly across GPUs according to their relative computational
 // speeds," and, in describing Cephalo's own design, "partitions the

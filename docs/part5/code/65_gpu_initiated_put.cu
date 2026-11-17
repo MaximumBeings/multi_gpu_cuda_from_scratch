@@ -14,7 +14,7 @@
 // launch a kernel that will use them, coordinating with NVSHMEM's own
 // internal state before handing control to the GPU.
 // Genuinely compiled with a real mpicxx (linked against the real
-// installed NVSHMEM 3.7.2, real Open MPI, and real CUDA runtime) and
+// installed NVSHMEM 3.8.0, real Open MPI, and real CUDA runtime) and
 // genuinely run with a real mpirun.
 #define OMPI_SKIP_MPICXX
 #include <mpi.h>
@@ -32,8 +32,11 @@ __global__ void putKernel(int *dest, int val, int targetPe) {
 int main(int argc, char** argv) {
     MPI_Init(&argc, &argv);
     MPI_Comm mpiComm = MPI_COMM_WORLD;
-    nvshmemx_init_attr_t attr;
-    attr.mpi_comm = &mpiComm;
+    // Start from the header's own initializer (version fields and
+    // every argument set to a known value) -- never an uninitialized
+    // struct -- then let NVSHMEM's own setter record the MPI_Comm.
+    nvshmemx_init_attr_t attr = NVSHMEMX_INIT_ATTR_INITIALIZER;
+    nvshmemx_set_attr_mpi_comm_args(&mpiComm, &attr);
     nvshmemx_init_attr(NVSHMEMX_INIT_WITH_MPI_COMM, &attr);
 
     int myPe = nvshmem_my_pe();

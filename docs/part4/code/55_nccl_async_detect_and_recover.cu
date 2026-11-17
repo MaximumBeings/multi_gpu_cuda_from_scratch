@@ -105,6 +105,9 @@ int main() {
     // recovery for the healthy ranks starts with ncclCommAbort on the
     // existing communicator, followed by ncclCommInit." Abort is not
     // recovery; it just stops the hang so the process can move on.
+    // (In THIS environment the failed init never allocated anything,
+    // so comm is still the nullptr it was initialized to above, and
+    // ncclCommAbort(nullptr) is simply a no-op that returns success.)
     ncclResult_t eAbort = ncclCommAbort(comm);
     printf("\nncclCommAbort(): %s (code %d)\n",
            ncclGetErrorString(eAbort), (int)eAbort);
@@ -122,14 +125,16 @@ int main() {
            "peer that already knows to give up), and MPIX_Comm_shrink() "
            "then produces a NEW communicator that simply excludes the "
            "dead rank -- survivors keep going with a smaller world, no "
-           "full rebuild required. NCCL has no equivalent to shrink(): "
-           "ncclCommAbort() only stops the hang, and rebuilding an NCCL "
-           "communicator to exclude one dead rank means calling "
-           "ncclCommInitRankConfig() again with an entirely new rank "
-           "count and a new ncclUniqueId, involving every surviving rank "
-           "from scratch. Chapter 20 opens Part 5 with MPI's own first "
-           "dedicated chapter, where ULFM gets built and run directly, "
-           "not just described.\n");
+           "full rebuild required. NCCL's own counterpart, "
+           "ncclCommShrink(), arrived in NCCL 2.27; the NCCL 2.18.3 "
+           "installed here predates it (its nccl.h does offer "
+           "ncclCommSplit(), which carves smaller communicators out of an "
+           "existing one), so on THIS version the documented recovery "
+           "path is abort-and-rebuild: ncclCommInitRankConfig() again "
+           "with a new rank count and a new ncclUniqueId. Chapter 20 "
+           "opens Part 5 with MPI's own first dedicated chapter, and "
+           "checks whether this environment's Open MPI ships ULFM at "
+           "all.\n");
 
     return 0;
 }

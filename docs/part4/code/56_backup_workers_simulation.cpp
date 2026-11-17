@@ -13,9 +13,11 @@
 // report, dropping whichever b (or fewer) stragglers haven't finished
 // yet. This file simulates that rule directly on fixed, named
 // timings (no randomness -- every number below is chosen to make one
-// concrete point) and checks, across every scenario, the one
-// invariant Chen et al.'s own technique promises: waiting for backups
-// is NEVER slower than waiting for the fixed required set alone.
+// concrete point) and checks, across every scenario, one invariant
+// that follows from the selection rule itself -- pure combinatorics,
+// true for ANY timings, not a measured or probabilistic claim from
+// Chen et al.'s paper: waiting for the first N of N+b candidates is
+// NEVER slower than waiting for the fixed required set of N alone.
 #include <cstdio>
 #include <vector>
 #include <algorithm>

@@ -36,7 +36,7 @@ Equal split (every chapter since Ch12):    Weighted split (this chapter):
 
 ### Intuition
 
-Look back at every partitioning function this book has written: Chapter 12's `computeShard()` divides a batch by `worldSize`. Chapter 13's `computeLayerRange()` divides a stack of layers by `worldSize`. Chapter 16's `computeRowRange()` divides a grid's rows by `worldSize`. Every single one of them takes exactly two real inputs -- a total, and a device count -- and none of them has ever asked how fast any particular device actually is. That was a reasonable simplification for building the underlying mechanisms Part 2 and Part 3 needed, but it's not how real clusters work. A real, well-known paper on training across heterogeneous GPU clusters, Um et al.'s "Cephalo" (2024), states the consequence in one sentence: "In clusters with varying GPU capabilities, training is bottlenecked by the slowest GPU, leaving faster GPUs idle." That's exactly Chapter 17's barrier, applied to real, unequal hardware: no matter how fast three of your four devices are, the fourth one sets the pace for all of them.
+Look back at every partitioning function this book has written: Chapter 12's `computeShard()` divides a batch by `worldSize`. Chapter 13's `computeLayerRange()` divides a stack of layers by `worldSize`. Chapter 16's `computeRowRange()` divides a grid's rows by `worldSize`. Every single one of them takes exactly two real inputs -- a total, and a device count -- and none of them has ever asked how fast any particular device actually is. That was a reasonable simplification for building the underlying mechanisms Part 2 and Part 3 needed, but it's not how real clusters work. A real, well-known paper on training across heterogeneous GPU clusters, Guo et al.'s "Cephalo" (2024), states the consequence in one sentence: "In clusters with varying GPU capabilities, training is bottlenecked by the slowest GPU, leaving faster GPUs idle." That's exactly Chapter 17's barrier, applied to real, unequal hardware: no matter how fast three of your four devices are, the fourth one sets the pace for all of them.
 
 ```text
 A real cluster, growing over time:
@@ -65,7 +65,7 @@ The one real signal this book hasn't used before is a device's own physical capa
 // FAST any given rank actually is. That's a silent assumption:
 // every real cluster eventually mixes GPU generations, and even
 // identical GPUs throttle differently under heat. A real, well-known
-// paper on training across heterogeneous GPU clusters (Um et al.,
+// paper on training across heterogeneous GPU clusters (Guo et al.,
 // "Cephalo," 2024) states the consequence plainly: "In clusters with
 // varying GPU capabilities, training is bottlenecked by the slowest
 // GPU, leaving faster GPUs idle." This section queries the one real
@@ -171,7 +171,7 @@ Every computeShard()-style function this book has written would still hand all f
 
 ### Intuition
 
-If an equal split is wrong for a heterogeneous cluster, the fix is the obvious one: give each device a share of the work proportional to how fast it actually is, instead of an equal share regardless of speed. This is not a hypothetical technique -- Um et al.'s "Cephalo" paper describes exactly this as the established approach real heterogeneity-aware training systems use: "the batch of inputs is distributed unevenly across GPUs according to their relative computational speeds," and Cephalo's own design does precisely that, "partition[ing] the global batch of training inputs unevenly across GPUs to control the computational workload assigned to each GPU." Think of it as a relay race where each runner's leg is sized to their own pace, not divided into four identical distances -- the goal isn't fairness in how much ground each runner covers, it's making sure they all cross the finish line at close to the same time.
+If an equal split is wrong for a heterogeneous cluster, the fix is the obvious one: give each device a share of the work proportional to how fast it actually is, instead of an equal share regardless of speed. This is not a hypothetical technique -- Guo et al.'s "Cephalo" paper describes exactly this as the established approach real heterogeneity-aware training systems use: "the batch of inputs is distributed unevenly across GPUs according to their relative computational speeds," and Cephalo's own design does precisely that, "partition[ing] the global batch of training inputs unevenly across GPUs to control the computational workload assigned to each GPU." Think of it as a relay race where each runner's leg is sized to their own pace, not divided into four identical distances -- the goal isn't fairness in how much ground each runner covers, it's making sure they all cross the finish line at close to the same time.
 
 ```text
 Equal split (fair in WORK, not in TIME):     Weighted split (fair in TIME):
@@ -196,7 +196,7 @@ Section 18.2's `computeWeightedShard()` takes one more real input than every equ
 // than Chapter 12's computeShard(), Chapter 13's computeLayerRange(),
 // and Chapter 16's computeRowRange() ever did: each rank's OWN
 // relative speed, not just its rank and the world size. The real
-// technique it implements is the one Um et al.'s "Cephalo" paper
+// technique it implements is the one Guo et al.'s "Cephalo" paper
 // (2024) describes plainly: "the batch of inputs is distributed
 // unevenly across GPUs according to their relative computational
 // speeds," and, in describing Cephalo's own design, "partitions the
@@ -307,7 +307,7 @@ Every rank's equal share is identical (225 units each) regardless of speed -- ex
 Both splits genuinely sum back to the full 900 work units -- that's the easy check. The interesting column is the last one, `weighted/speed`, which is each rank's weighted share divided by its own speed: 225.00, 225.00, 224.67, 226.00. Those four numbers are almost, but not quite, identical, and that "almost" is worth sitting with rather than rounding away -- Section 18.3 checks exactly how close it really is, and why.
 
 !!! warning "[COMMON TRAP] Assuming a compute-proportional split also balances memory"
-    It's tempting to treat "faster device, more work" as the whole story, but Cephalo's own paper explicitly warns against exactly this conflation, calling out prior systems that coupled the two: a device's relative *compute* speed and its available *memory* capacity are genuinely different constraints, and "GPU memory capacity doesn't always scale with compute speed." A newer GPU generation is often both faster and larger, which can hide this trap in practice -- but a thermally throttled device, this chapter's own rank 3, has *less effective compute* with *no change in memory capacity at all*. Handing rank 3 a smaller batch to keep pace with the other ranks' finish times is correct; assuming it therefore also needs a smaller memory allocation is a separate claim this section's own arithmetic says nothing about, and getting it wrong risks under-utilizing memory on the exact rank that has the least compute headroom to spare.
+    It's tempting to treat "faster device, more work" as the whole story, but Cephalo's own paper explicitly warns against exactly this conflation, calling out prior systems that coupled the two: a device's relative *compute* speed and its available *memory* capacity are genuinely different constraints, and, in the paper's own words, a GPU's memory capacity "does not always scale with its compute speed." A newer GPU generation is often both faster and larger, which can hide this trap in practice -- but a thermally throttled device, this chapter's own rank 3, has *less effective compute* with *no change in memory capacity at all*. Handing rank 3 a smaller batch to keep pace with the other ranks' finish times is correct; assuming it therefore also needs a smaller memory allocation is a separate claim this section's own arithmetic says nothing about, and getting it wrong risks under-utilizing memory on the exact rank that has the least compute headroom to spare.
 
 ## 18.3 What Balancing Buys You, and What Survives Rounding
 
@@ -448,20 +448,35 @@ int main() {
            "(the continuous ideal predicts exactly 0.0)\n",
            equalMakespan, weightedMakespan, equalMakespan / weightedMakespan, weightedSpread);
 
-    const double SPREAD_TOLERANCE = 2.0; // whole work units' worth of rounding, not zero
-    bool spreadIsSmall = weightedSpread < SPREAD_TOLERANCE;
-    printf("\n  weighted split's spread (%.3f) is within %.1f work-units'-"
-           "worth of the continuous ideal's exact 0.0: %s\n",
-           weightedSpread, SPREAD_TOLERANCE, spreadIsSmall ? "PASS" : "FAIL");
+    // The tolerance has to be in the same units as the spread: TIME
+    // (work units / speed), not raw work units. computeWeightedShard()
+    // rounds every rank but the last DOWN, so each of those ranks
+    // receives up to (but less than) 1 unit LESS than its ideal share,
+    // finishing up to 1/speed_r early. The last rank absorbs every
+    // other rank's dropped fraction -- up to (but less than) N-1 units
+    // MORE than its ideal share -- finishing up to (N-1)/speed_last
+    // late. The worst-case spread is therefore strictly below
+    //   (N-1)/speed_last + 1/(slowest speed among the other ranks),
+    // a bound that holds for ANY speeds in ANY order, not just these.
+    double minOtherSpeed = 1e18;
+    for (int r = 0; r + 1 < WORLD_SIZE; ++r) minOtherSpeed = std::min(minOtherSpeed, speeds[r]);
+    const double spreadBound = (WORLD_SIZE - 1) / speeds[WORLD_SIZE - 1] + 1.0 / minOtherSpeed;
+    bool spreadIsSmall = weightedSpread < spreadBound;
+    printf("\n  weighted split's spread (%.3f) is below the worst-case "
+           "rounding bound (N-1)/speed_last + 1/min(other speeds) = "
+           "%.3f time units: %s\n",
+           weightedSpread, spreadBound, spreadIsSmall ? "PASS" : "FAIL");
 
     if (spreadIsSmall) {
         printf("\nThe continuous ideal's EXACT equality doesn't survive "
                "rounding to whole work units -- the fastest- and "
                "slowest-finishing ranks under the weighted split finish "
-               "%.3f apart, not identically -- but the gap is tiny "
-               "relative to either rank's own share, because "
-               "computeWeightedShard() can only be off by less than one "
-               "whole unit of work per rank. This is the same honest "
+               "%.3f apart, not identically -- but the gap is small "
+               "relative to every rank's own share, because "
+               "computeWeightedShard() rounds every rank but the last "
+               "DOWN (each loses less than one whole unit) and hands "
+               "the last rank the leftover remainder (less than N-1 = "
+               "%d whole units). This is the same honest "
                "distinction this book drew in Chapter 13 vs. Chapter 14: "
                "an exact algebraic guarantee (Chapter 13's relocation, "
                "this section's continuous ideal) is a different, "
@@ -469,7 +484,7 @@ int main() {
                "bounded one (Chapter 14's reduce, this section's real "
                "integer-quantized shares) -- and this section's own "
                "result belongs to the second kind, checked, not assumed.\n",
-               weightedSpread);
+               weightedSpread, WORLD_SIZE - 1);
     }
 
     return spreadIsSmall ? 0 : 1;
@@ -498,12 +513,12 @@ rank   speed    equal share    equal finish   weighted share weighted finish
   real speedup from weighted partitioning:                    1.99x
   weighted split's own finish-time spread (max - min):        1.333 (the continuous ideal predicts exactly 0.0)
 
-  weighted split's spread (1.333) is within 2.0 work-units'-worth of the continuous ideal's exact 0.0: PASS
+  weighted split's spread (1.333) is below the worst-case rounding bound (N-1)/speed_last + 1/min(other speeds) = 7.000 time units: PASS
 
-The continuous ideal's EXACT equality doesn't survive rounding to whole work units -- the fastest- and slowest-finishing ranks under the weighted split finish 1.333 apart, not identically -- but the gap is tiny relative to either rank's own share, because computeWeightedShard() can only be off by less than one whole unit of work per rank. This is the same honest distinction this book drew in Chapter 13 vs. Chapter 14: an exact algebraic guarantee (Chapter 13's relocation, this section's continuous ideal) is a different, stronger claim than an empirically-checked, epsilon-bounded one (Chapter 14's reduce, this section's real integer-quantized shares) -- and this section's own result belongs to the second kind, checked, not assumed.
+The continuous ideal's EXACT equality doesn't survive rounding to whole work units -- the fastest- and slowest-finishing ranks under the weighted split finish 1.333 apart, not identically -- but the gap is small relative to every rank's own share, because computeWeightedShard() rounds every rank but the last DOWN (each loses less than one whole unit) and hands the last rank the leftover remainder (less than N-1 = 3 whole units). This is the same honest distinction this book drew in Chapter 13 vs. Chapter 14: an exact algebraic guarantee (Chapter 13's relocation, this section's continuous ideal) is a different, stronger claim than an empirically-checked, epsilon-bounded one (Chapter 14's reduce, this section's real integer-quantized shares) -- and this section's own result belongs to the second kind, checked, not assumed.
 ```
 
-The continuous ideal's own algebra checks out exactly: every rank finishes at `t=225.0000` under a weighted split, a 2.00x improvement over the equal split's `t=450.0000` makespan. The real, integer-quantized version doesn't quite hit that exact number -- rank 2 and rank 3 finish 1.333 apart, not zero apart -- but the real makespan still drops from 450.000 to 226.000, a 1.99x speedup that's nearly identical to the continuous ideal's promise. The gap between "exactly equal" and "equal to within 1.333 units" is rounding, not a flaw in the technique: `computeWeightedShard()` can only round each rank's share to the nearest whole unit, and with hundreds of units per rank, being off by a fraction of one unit barely moves the needle. That's the honest, checked version of this section's claim -- not the algebra's idealized promise taken on faith.
+The continuous ideal's own algebra checks out exactly: every rank finishes at `t=225.0000` under a weighted split, a 2.00x improvement over the equal split's `t=450.0000` makespan. The real, integer-quantized version doesn't quite hit that exact number -- rank 2 and rank 3 finish 1.333 apart, not zero apart -- but the real makespan still drops from 450.000 to 226.000, a 1.99x speedup that's nearly identical to the continuous ideal's promise. The gap between "exactly equal" and "equal to within 1.333 units" is rounding, not a flaw in the technique: `computeWeightedShard()` rounds every rank but the last *down* (each loses less than one whole unit) and hands the last rank the accumulated remainder (here, fewer than N-1 = 3 extra units), and with hundreds of units per rank, being off by a few units barely moves the needle. The PASS check is now an honest one: it compares the spread, a *time*, against a worst-case rounding bound in time units, (N-1)/speed_last + 1/min(other speeds) = 3/0.5 + 1/1.0 = 7.000, which holds for any speeds in any order. (An earlier version of this check compared the spread against a fixed 2.0 "work units" and would have failed on the same four speeds simply reordered to 0.5/1.0/1.5/1.0, whose spread is exactly 2.000; under the derived bound of 3/1.0 + 1/0.5 = 5.000 that ordering passes too.) That's the honest, checked version of this section's claim -- not the algebra's idealized promise taken on faith.
 
 !!! warning "[COMMON TRAP] Treating a barrier's imbalance as fixed once, forever"
     It's tempting to compute a weighted split once -- query each device's speed, call `computeWeightedShard()`, done -- and assume the imbalance problem is solved for the life of the job. Section 18.1 already named a source of slowdown that a one-time query can't see: thermal throttling, which changes a device's *effective* speed over time without changing anything `cudaGetDeviceProperties()` can report. A real system has to re-measure actual per-rank finish times periodically and re-weight the split when they drift, not just partition once at startup and trust the initial numbers forever. This chapter's own simulation used fixed, given speeds precisely to isolate the *partitioning* technique from the *measurement* problem -- a real deployment still has to solve both.
@@ -535,7 +550,7 @@ Chapter 19 asks the question this chapter's own barrier-and-makespan framing doe
 
 **3.** `multiProcessorCount` reports how many streaming multiprocessors a device physically has, a fixed hardware fact that doesn't change when the device is thermally throttled. Throttling doesn't remove any SMs; it reduces the clock speed (or otherwise limits) the SMs that are still physically present, so the device runs genuinely slower without `multiProcessorCount` ever changing. Detecting throttling requires either a different queryable signal (like a live clock-rate reading) or, as Section 18.3's own trap notes, direct measurement of actual finish times over time.
 
-**4.** A compute-proportional split changes how much *work* each rank gets, based on how fast each rank can *process* it. A device's *memory capacity* is a separate physical constraint -- how much data it can hold at once -- that doesn't necessarily move in lockstep with compute speed. Cephalo's paper makes this explicit: "GPU memory capacity doesn't always scale with compute speed." A throttled GPU is the clearest case: its compute speed has dropped, but its physical memory is completely unchanged, so shrinking its workload to match its slower compute says nothing about whether its memory allocation should also shrink.
+**4.** A compute-proportional split changes how much *work* each rank gets, based on how fast each rank can *process* it. A device's *memory capacity* is a separate physical constraint -- how much data it can hold at once -- that doesn't necessarily move in lockstep with compute speed. Cephalo's paper makes this explicit: a GPU's memory capacity "does not always scale with its compute speed." A throttled GPU is the clearest case: its compute speed has dropped, but its physical memory is completely unchanged, so shrinking its workload to match its slower compute says nothing about whether its memory allocation should also shrink.
 
 **5.** Under a continuous, proportional split, rank `i`'s work is `work_i = totalWork * (speed_i / speedSum)`. Its finish time is `finish_i = work_i / speed_i = (totalWork * speed_i / speedSum) / speed_i`. The `speed_i` term appears once in the numerator and once in the denominator, so it cancels algebraically, leaving `finish_i = totalWork / speedSum` -- a value with no `i` in it at all, meaning it is identical for every rank regardless of that rank's own speed.
 
@@ -549,7 +564,7 @@ Chapter 19 asks the question this chapter's own barrier-and-makespan framing doe
 
 **Sources cited in this chapter:**
 
-- Um, T. et al., ["Cephalo: Harnessing Heterogeneous GPU Clusters for Training Transformer Models"](https://arxiv.org/abs/2411.01075) (2024) -- the exact quotes "In homogeneous clusters, distributed strategies allocate resources evenly, but this approach is inefficient for heterogeneous clusters, where GPUs differ in power and memory," "In clusters with varying GPU capabilities, training is bottlenecked by the slowest GPU, leaving faster GPUs idle," "the batch of inputs is distributed unevenly across GPUs according to their relative computational speeds," "Cephalo partitions the global batch of training inputs unevenly across GPUs to control the computational workload assigned to each GPU," and the memory/compute decoupling point ("GPU memory capacity doesn't always scale with compute speed").
+- Guo, R. B., Anand, U., Chen, A., and Daudjee, K. (University of Waterloo), ["Cephalo: Harnessing Heterogeneous GPU Clusters for Training Transformer Models"](https://arxiv.org/abs/2411.01075) (arXiv 2024; ICS 2025) -- the exact quotes "In homogeneous clusters, distributed strategies allocate resources evenly, but this approach is inefficient for heterogeneous clusters, where GPUs differ in power and memory," "In clusters with varying GPU capabilities, training is bottlenecked by the slowest GPU, leaving faster GPUs idle," "the batch of inputs is distributed unevenly across GPUs according to their relative computational speeds," "Cephalo partitions the global batch of training inputs unevenly across GPUs to control the computational workload assigned to each GPU," and the memory/compute decoupling point (a GPU's memory capacity "does not always scale with its compute speed").
 - ["NVIDIA H100 Tensor Core GPU Architecture" whitepaper](https://www.advancedclustering.com/wp-content/uploads/2022/03/gtc22-whitepaper-hopper.pdf) -- the real, cited SM counts: "132 SMs per GPU" for the H100 SXM5, and "132 SMs providing a 22% SM count increase over A100's 108 SMs."
 - [How to Query Device Properties and Handle Errors in CUDA C/C++ (NVIDIA Technical Blog)](https://developer.nvidia.com/blog/how-query-device-properties-and-handle-errors-cuda-cc/) -- `cudaGetDeviceProperties()` and the `cudaDeviceProp` struct, already cited in Chapter 6 for `asyncEngineCount`/`concurrentKernels`, extended here to `multiProcessorCount` and `clockRate`.
 - This book's own Chapter 2 (the closed-form cost-model technique of reusing an already-measured real figure rather than re-deriving one), Chapter 3 (the per-device loop pattern this chapter's own COMMON TRAP examines), Chapter 6 (`cudaDeviceProp`), Chapter 12/13/16 (`computeShard()`, `computeLayerRange()`, `computeRowRange()`, the equal-split pattern this chapter generalizes), Chapter 13 (the exact-vs-epsilon distinction Section 18.3 reuses), Chapter 14 (the epsilon-checked reduce this section's own rounding result is compared against), and Chapter 17 (the real barrier whose cost this chapter's makespan model is built on).

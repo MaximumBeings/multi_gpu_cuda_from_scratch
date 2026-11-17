@@ -41,10 +41,10 @@ Per-device sync (Chapter 6):              A global barrier (this chapter):
 ```text
 What the loop from Chapter 3 actually checks, one device at a time:
 
-  t=0: cudaSetDevice(0); cudaDeviceSynchronize();  <- dev0's queue confirmed empty NOW
-  t=1: cudaSetDevice(1); cudaDeviceSynchronize();  <- dev1's queue confirmed empty NOW
-  t=2: cudaSetDevice(2); cudaDeviceSynchronize();  <- dev2's queue confirmed empty NOW
-  t=3: cudaSetDevice(3); cudaDeviceSynchronize();  <- dev3's queue confirmed empty NOW
+  t=0: cudaSetDevice(0); cudaDeviceSynchronize();  --> dev0's queue confirmed empty NOW
+  t=1: cudaSetDevice(1); cudaDeviceSynchronize();  --> dev1's queue confirmed empty NOW
+  t=2: cudaSetDevice(2); cudaDeviceSynchronize();  --> dev2's queue confirmed empty NOW
+  t=3: cudaSetDevice(3); cudaDeviceSynchronize();  --> dev3's queue confirmed empty NOW
 
   By t=1, dev0 could ALREADY be running its next kernel -- nothing here
   stopped it, and nothing here checks it again. Each check is a snapshot
@@ -139,16 +139,18 @@ Every one of the four `cudaSetDevice()`/`cudaDeviceSynchronize()` pairs reports 
 
 ### Intuition
 
-If `cudaDeviceSynchronize()` can't cross devices, what can? The honest answer, for this book's own NCCL, is: nothing built specifically for it. NCCL's own Collective Operations documentation lists AllReduce, Broadcast, Reduce, AllGather, ReduceScatter, AllToAll, Gather, and Scatter -- no Barrier, the same kind of gap Chapter 11 found when it discovered all-to-all had no dedicated real NCCL call either. MPI, which Part 5 will introduce, has the real thing: Open MPI's own documentation describes `MPI_Barrier()` plainly as "synchronization between MPI processes in a group," completing "after all group members have entered the barrier." NCCL simply doesn't offer that primitive. What real distributed training code does instead is exploit a property every one of this book's own collectives already has: a collective operation cannot report completion on *any* rank until *every* rank participating has issued the matching call. Call `ncclAllReduce()` on a single, throwaway element and ignore the result entirely -- what you're really using is the fact that the call had to wait for everyone. A real, publicly filed GitHub issue on NVIDIA's own NCCL repository (#808, "Understanding Barriers") shows a user discovering exactly this in practice, from the outside, watching what a "barrier" actually turns into: a real barrier operation, they report, can "show up as a ringreduce kernel" -- because, under the hood, that's precisely what it is.
+If `cudaDeviceSynchronize()` can't cross devices, what can? The honest answer, for this book's own NCCL, is: nothing built specifically for it. NCCL's current Collective Operations documentation (2.31.2) lists AllReduce, Broadcast, Reduce, AllGather, ReduceScatter, AlltoAll, Gather, and Scatter -- no Barrier. Be careful with the version, though: AlltoAll, Gather, and Scatter only became dedicated NCCL calls in NCCL 2.28.3. The NCCL 2.18.3 actually installed here (its `nccl.h` defines `NCCL_VERSION_CODE 21803`) has none of those three -- that version-specific absence is the all-to-all gap Chapter 11 found, and on 2.18.3 an all-to-all still has to be composed from grouped `ncclSend()`/`ncclRecv()` calls. Barrier, by contrast, is missing from every NCCL version, old or new. MPI, which Part 5 introduces (Part 5 itself concentrates on point-to-point messaging and bootstrapping, and does not come back to `MPI_Barrier()`), has the real thing: Open MPI's own documentation describes `MPI_Barrier()` plainly as "synchronization between MPI processes in a group," completing "after all group members have entered the barrier." NCCL simply doesn't offer that primitive. What real distributed training code does instead is exploit a property every one of this book's own collectives already has: a collective operation cannot report completion on *any* rank until *every* rank participating has issued the matching call. Call `ncclAllReduce()` on a single, throwaway element and ignore the result entirely -- what you're really using is the fact that the call had to wait for everyone. A real, publicly filed GitHub issue on NVIDIA's own NCCL repository (#808, "Understanding Barriers") shows a user discovering exactly this in practice, from the outside, watching what a "barrier" actually turns into: a real barrier operation, they report, can "show up as a ringreduce kernel" -- because, under the hood, that's precisely what it is.
 
 ```text
-NCCL's real collectives (Ch8-16):          MPI's real barrier (Part 5):
+NCCL's documented collectives (2.31.2):     MPI's real barrier:
 
   AllReduce, Broadcast, Reduce,              MPI_Barrier() -- "synchronization
-  AllGather, ReduceScatter, AllToAll,        between MPI processes in a group,"
-  Gather, Scatter                            completing only after EVERY
-                                              process has entered it.
-  No Barrier in this list.
+  AllGather, ReduceScatter, AlltoAll,        between MPI processes in a group,"
+  Gather, Scatter (the last three only       completing only after EVERY
+  since NCCL 2.28.3; absent in the           process has entered it.
+  installed 2.18.3).
+
+  No Barrier in ANY NCCL version.
                                               A dedicated primitive that does
   This chapter's workaround: call             exactly one thing.
   ncclAllReduce() on a throwaway
@@ -165,11 +167,13 @@ Faking a barrier this way takes two real calls, not one, and the order matters. 
 // Chapter 17: Barriers and Global Synchronization Across Devices
 // 49_nccl_allreduce_as_barrier.cu
 //
-// NCCL's own Collective Operations documentation lists AllReduce,
-// Broadcast, Reduce, AllGather, ReduceScatter, AllToAll, Gather, and
-// Scatter -- no Barrier, the same kind of gap Chapter 11 found for
-// all-to-all before NCCL added a dedicated call for it. MPI (Part 5)
-// has a real, dedicated MPI_Barrier() -- Open MPI's own docs describe
+// NCCL's current Collective Operations documentation (2.31.2) lists
+// AllReduce, Broadcast, Reduce, AllGather, ReduceScatter, AlltoAll,
+// Gather, and Scatter -- no Barrier. (AlltoAll, Gather and Scatter
+// only arrived in NCCL 2.28.3; the NCCL 2.18.3 installed here, whose
+// nccl.h this file compiles against, has none of those three -- the
+// all-to-all gap Chapter 11 found.) No NCCL version, old or new, has
+// a Barrier. MPI has a real, dedicated MPI_Barrier() -- Open MPI's own docs describe
 // it plainly: "synchronization between MPI processes in a group,"
 // completing "after all group members have entered the barrier."
 // NCCL has no equivalent, so real distributed training code fakes one
@@ -388,9 +392,10 @@ int main() {
                "see the correct total without a barrier -- purely because "
                "every other rank had already written by the time it read. "
                "That's not a guarantee, it's an accident of this particular "
-               "arrival order; swap any two arrival times and a DIFFERENT "
-               "subset of ranks would see a stale value, silently, with no "
-               "error raised anywhere. This is exactly the failure mode "
+               "arrival order; change which rank arrives LAST and a "
+               "DIFFERENT rank would be the lucky one, while every other "
+               "rank would see a stale value, silently, with no error "
+               "raised anywhere. This is exactly the failure mode "
                "Chapter 16's own halo exchange had to guard against every "
                "iteration, generalized to any shared checkpoint, not just a "
                "grid's neighboring rows.\n", arrivalTime[1]);
@@ -449,7 +454,7 @@ WITH a barrier -- every write finishes before any read:
   rank 3: observed total = 100   matches reference
   4 of 4 ranks saw the correct, complete total: PASS
 
-Only the LAST rank to arrive (rank 1, at t=7) happened to see the correct total without a barrier -- purely because every other rank had already written by the time it read. That's not a guarantee, it's an accident of this particular arrival order; swap any two arrival times and a DIFFERENT subset of ranks would see a stale value, silently, with no error raised anywhere. This is exactly the failure mode Chapter 16's own halo exchange had to guard against every iteration, generalized to any shared checkpoint, not just a grid's neighboring rows.
+Only the LAST rank to arrive (rank 1, at t=7) happened to see the correct total without a barrier -- purely because every other rank had already written by the time it read. That's not a guarantee, it's an accident of this particular arrival order; change which rank arrives LAST and a DIFFERENT rank would be the lucky one, while every other rank would see a stale value, silently, with no error raised anywhere. This is exactly the failure mode Chapter 16's own halo exchange had to guard against every iteration, generalized to any shared checkpoint, not just a grid's neighboring rows.
 
 Part B: a barrier's real communication cost, in rounds -- reusing Chapter 9's ring formula 2*(N-1) and Chapter 11's tree formula 2*ceil(log2(N)).
 
@@ -468,12 +473,12 @@ Without a barrier, only rank 1 -- the *last* to arrive, purely by the accident o
 
 ## Chapter Summary
 
-This chapter opened Part 4 by addressing a concern that cuts across every parallelization strategy Part 3 built, rather than introducing a new one. Section 17.1 established the gap directly: Chapter 6's `cudaDeviceSynchronize()`, looped over every device, only confirms each device's own queue was empty at the moment it was checked -- it never makes any device wait for any other device's progress. Section 17.2 closed that gap the way real distributed training code actually does, since NCCL itself has no dedicated barrier call (confirmed against NCCL's own Collective Operations documentation, and contrasted with MPI's real, dedicated `MPI_Barrier()`, previewing Part 5): a throwaway `ncclAllReduce()` on a one-element buffer, exploiting the fact that no rank's call can complete until every rank has issued it, followed by a real `cudaStreamSynchronize()` to actually block the CPU thread -- both calls are required, since the collective alone only enqueues work asynchronously. Section 17.3 verified what that combination buys: with heterogeneous per-rank arrival times, only a barrier guarantees every rank observes the same, complete shared state, rather than some ranks silently reading a stale, partial view -- and quantified what it costs, reusing Chapter 9's and Chapter 11's own round-count formulas to show a barrier's latency cost scales with the number of ranks exactly like any other collective, regardless of its tiny payload. Chapter 18 picks up directly where this chapter's heterogeneous-arrival-time simulation left off: why devices make progress at different speeds in the first place, and what to do about it besides just waiting for the slowest one.
+This chapter opened Part 4 by addressing a concern that cuts across every parallelization strategy Part 3 built, rather than introducing a new one. Section 17.1 established the gap directly: Chapter 6's `cudaDeviceSynchronize()`, looped over every device, only confirms each device's own queue was empty at the moment it was checked -- it never makes any device wait for any other device's progress. Section 17.2 closed that gap the way real distributed training code actually does, since NCCL itself has no dedicated barrier call (confirmed against NCCL's own Collective Operations documentation and the installed 2.18.3 `nccl.h`, and contrasted with MPI's real, dedicated `MPI_Barrier()`): a throwaway `ncclAllReduce()` on a one-element buffer, exploiting the fact that no rank's call can complete until every rank has issued it, followed by a real `cudaStreamSynchronize()` to actually block the CPU thread -- both calls are required, since the collective alone only enqueues work asynchronously. Section 17.3 verified what that combination buys: with heterogeneous per-rank arrival times, only a barrier guarantees every rank observes the same, complete shared state, rather than some ranks silently reading a stale, partial view -- and quantified what it costs, reusing Chapter 9's and Chapter 11's own round-count formulas to show a barrier's latency cost scales with the number of ranks exactly like any other collective, regardless of its tiny payload. Chapter 18 picks up directly where this chapter's heterogeneous-arrival-time simulation left off: why devices make progress at different speeds in the first place, and what to do about it besides just waiting for the slowest one.
 
 ## Self-Check Questions
 
 1. Explain, in your own words, why a loop of `cudaSetDevice()`/`cudaDeviceSynchronize()` calls over every device does not constitute a global barrier, even though it touches every device.
-2. Name the exact real NCCL collectives Section 17.2 lists from NCCL's own documentation. Which one is conspicuously absent, and how does Section 17.2 work around its absence?
+2. Name the exact real NCCL collectives Section 17.2 lists from NCCL's current documentation, and say which of them the installed NCCL 2.18.3 lacks. Which operation is absent from every NCCL version, and how does Section 17.2 work around its absence?
 3. Quote Open MPI's own description of `MPI_Barrier()`, and explain the one structural difference between it and this chapter's NCCL-based workaround.
 4. Section 17.2's COMMON TRAP distinguishes "the collective can't complete until every rank calls it" from "the CPU thread waits for it to complete." Explain the difference, and name the real API call that closes that gap.
 5. In Section 17.3's Part A, only rank 1 sees the correct total without a barrier. Explain precisely why, and describe an arrival-time assignment under which a *different* rank (not rank 1) would be the only one to see the correct total.
@@ -489,7 +494,7 @@ Chapter 18 addresses directly what this chapter's own Part A simulation only mod
 
 **1.** The loop checks each device's own command queue independently and sequentially, one device at a time, on a single CPU thread. `cudaDeviceSynchronize()`'s guarantee is scoped to exactly one device: it confirms that device's queue is empty at the moment it's called. Nothing in the loop prevents a device that was checked earlier from launching new work immediately afterward, and nothing makes any device's progress depend on any other device's -- so by the time the loop finishes, the four devices could be at four completely different points in their own execution, which is the opposite of what a barrier guarantees.
 
-**2.** Section 17.2 lists AllReduce, Broadcast, Reduce, AllGather, ReduceScatter, AllToAll, Gather, and Scatter, cited from NCCL's own Collective Operations documentation. Barrier is conspicuously absent. The workaround is calling `ncclAllReduce()` on a single throwaway element purely for its synchronization side effect -- exploiting that the call cannot complete on any rank until every rank in the communicator has issued it, without caring what value comes back.
+**2.** Section 17.2 lists AllReduce, Broadcast, Reduce, AllGather, ReduceScatter, AlltoAll, Gather, and Scatter, cited from NCCL's current (2.31.2) Collective Operations documentation. AlltoAll, Gather, and Scatter were only added in NCCL 2.28.3, so the installed 2.18.3 has none of them (grep its `nccl.h` and you'll find `ncclSend`/`ncclRecv` but no `ncclAlltoAll`). Barrier is absent from every version. The workaround is calling `ncclAllReduce()` on a single throwaway element purely for its synchronization side effect -- exploiting that the call cannot complete on any rank until every rank in the communicator has issued it, without caring what value comes back.
 
 **3.** Open MPI describes `MPI_Barrier()` as providing "synchronization between MPI processes in a group," completing "after all group members have entered the barrier." The structural difference is that MPI's version is a single, dedicated, purpose-built primitive, while this chapter's NCCL-based version repurposes a collective (`ncclAllReduce()`) that was designed to move and combine real data, using only its side effect and discarding the result entirely.
 
@@ -507,7 +512,7 @@ Chapter 18 addresses directly what this chapter's own Part A simulation only mod
 
 **Sources cited in this chapter:**
 
-- [Overview of NCCL, Collective Operations -- NCCL 2.31.2 documentation](https://docs.nvidia.com/deeplearning/nccl/user-guide/docs/usage/collectives.html) -- the real, current list of NCCL's named collectives (AllReduce, Broadcast, Reduce, AllGather, ReduceScatter, AllToAll, Gather, Scatter), confirming Barrier's absence, and each collective's own definition, already cited in earlier chapters and reused here for completeness.
-- [MPI_Barrier(3) -- Open MPI v4.1.8 documentation](https://www.open-mpi.org/doc/current/man3/MPI_Barrier.3.php) -- the exact quotes "synchronization between MPI processes in a group" and "an MPI barrier completes after all group members have entered the barrier," used to preview Part 5's real, dedicated barrier primitive as a contrast to this chapter's NCCL workaround.
+- [Overview of NCCL, Collective Operations -- NCCL 2.31.2 documentation](https://docs.nvidia.com/deeplearning/nccl/user-guide/docs/usage/collectives.html) -- the current list of NCCL's named collectives (AllReduce, Broadcast, Reduce, AllGather, ReduceScatter, AlltoAll, Gather, Scatter; the last three added in NCCL 2.28.3 and absent from the installed 2.18.3), confirming Barrier's absence, and each collective's own definition, already cited in earlier chapters and reused here for completeness.
+- [MPI_Barrier(3) -- Open MPI v4.1.8 documentation](https://www.open-mpi.org/doc/current/man3/MPI_Barrier.3.php) -- the exact quotes "synchronization between MPI processes in a group" and "an MPI barrier completes after all group members have entered the barrier," used as a contrast to this chapter's NCCL workaround (MPI itself is introduced in Part 5, which does not revisit `MPI_Barrier()`).
 - [Understanding Barriers, Issue #808, NVIDIA/nccl (GitHub)](https://github.com/NVIDIA/nccl/issues/808) -- a real, publicly filed issue in which a user building shared buffers coordinated by a barrier reports observing that a "barrier action show[s] up as a ringreduce kernel," independent confirmation of Section 17.2's own throwaway-AllReduce technique.
 - This book's own Chapter 3 (the per-device loop pattern and asynchronous kernel-launch semantics), Chapter 6 (`cudaDeviceSynchronize()`, `cudaStreamSynchronize()`), Chapter 9 (the ring round-count formula `2*(N-1)`, reused unchanged in Section 17.3's Part B), Chapter 11 (the real installed NCCL communicator, its honest failure codes, and the tree round-count formula `2*ceil(log2(N))`), Chapter 13 (the 35-way GPT-3 shard count reused as a `N` value in Section 17.3), and Chapter 16 (the halo-exchange consistency argument Section 17.3 generalizes).

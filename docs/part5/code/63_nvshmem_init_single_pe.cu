@@ -19,7 +19,7 @@
 // genuinely ships real headers, a real host library, and real device
 // bitcode).
 // Genuinely compiled with a real nvcc against the real installed
-// NVSHMEM 3.7.2.
+// NVSHMEM 3.8.0.
 #include <cstdio>
 #include <nvshmem.h>
 #include <nvshmemx.h>

@@ -8,7 +8,7 @@
 // FAST any given rank actually is. That's a silent assumption:
 // every real cluster eventually mixes GPU generations, and even
 // identical GPUs throttle differently under heat. A real, well-known
-// paper on training across heterogeneous GPU clusters (Um et al.,
+// paper on training across heterogeneous GPU clusters (Guo et al.,
 // "Cephalo," 2024) states the consequence plainly: "In clusters with
 // varying GPU capabilities, training is bottlenecked by the slowest
 // GPU, leaving faster GPUs idle." This section queries the one real

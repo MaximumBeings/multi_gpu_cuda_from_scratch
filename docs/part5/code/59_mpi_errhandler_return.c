@@ -12,8 +12,9 @@
 // pcollreq -- no ftmpi) and by grepping the installed mpi-ext.h for
 // MPIX_Comm_revoke/MPIX_Comm_shrink (absent). What standard MPI DOES
 // offer, in every version back to MPI-1.1, is a weaker, real
-// alternative this file builds: MPI_ERRORS_RETURN, installed via
-// MPI_Comm_set_errhandler(), which lets a rank get an error CODE back
+// alternative this file builds: MPI_ERRORS_RETURN (MPI-1.1), installed
+// via MPI_Comm_set_errhandler() (the MPI-2 name for what MPI-1 called
+// MPI_Errhandler_set()), which lets a rank get an error CODE back
 // instead of the whole job aborting -- but, per the MPI standard's own
 // explicit wording, does NOT guarantee the state of MPI is still usable
 // afterward, which is exactly the gap ULFM's own revoke/shrink exists

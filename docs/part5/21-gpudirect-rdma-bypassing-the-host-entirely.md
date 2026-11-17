@@ -97,6 +97,34 @@ NCCL's own installed header states the requirement directly, in its own comment 
 #include <nccl.h>
 #include <cuda_runtime.h>
 #include <cstdio>
+#include <cstdint>
+#include <unistd.h>
+
+// A node-local rank: how many LOWER-numbered ranks share this rank's
+// host. NCCL's own MPI example computes exactly this (hash each
+// rank's hostname, MPI_Allgather the hashes, count matches below
+// myRank) because cudaSetDevice() takes a device index that only
+// means something on THIS node: with 2 nodes x 8 GPUs, global rank 9
+// is node-local rank 1, and cudaSetDevice(9) would name a device
+// that node doesn't have.
+static uint64_t hostHash(const char* s) {
+    uint64_t h = 5381; // djb2, the same hash NCCL's example uses
+    for (int i = 0; s[i] != '\0'; ++i) h = ((h << 5) + h) ^ (uint64_t)(unsigned char)s[i];
+    return h;
+}
+static int computeLocalRank(int myRank, int nRanks) {
+    char host[1024] = {0};
+    gethostname(host, sizeof(host) - 1);
+    for (int i = 0; host[i]; ++i) if (host[i] == '.') { host[i] = '\0'; break; }
+    uint64_t* hashes = new uint64_t[nRanks];
+    hashes[myRank] = hostHash(host);
+    MPI_Allgather(MPI_IN_PLACE, 0, MPI_DATATYPE_NULL,
+                  hashes, sizeof(uint64_t), MPI_BYTE, MPI_COMM_WORLD);
+    int localRank = 0;
+    for (int r = 0; r < myRank; ++r) if (hashes[r] == hashes[myRank]) ++localRank;
+    delete[] hashes;
+    return localRank;
+}
 
 int main(int argc, char** argv) {
     MPI_Init(&argc, &argv);
@@ -125,10 +153,14 @@ int main(int argc, char** argv) {
     // Real device binding, per rank, exactly like every earlier
     // ncclCommInitRank() precondition since Chapter 11 ("Each rank is
     // associated to a CUDA device, which has to be set before calling
-    // ncclCommInitRank" -- nccl.h's own comment). Honestly
-    // cudaErrorNoDevice: this environment has no device at all,
-    // regardless of which rank asks.
-    cudaError_t eSet = cudaSetDevice(myRank);
+    // ncclCommInitRank" -- nccl.h's own comment). The device index is
+    // the NODE-LOCAL rank, never the global MPI rank: this is a
+    // multi-node bootstrap, and device numbering restarts at 0 on
+    // every node. (On this single-host run localRank == myRank, so the
+    // difference can't show up here.) Honestly cudaErrorNoDevice: this
+    // environment has no device at all, regardless of which rank asks.
+    int localRank = computeLocalRank(myRank, nRanks);
+    cudaError_t eSet = cudaSetDevice(localRank);
 
     // Every rank now calls ncclCommInitRank() with the SAME id
     // (received via MPI, never regenerated) and its OWN rank/nRanks
@@ -136,11 +168,11 @@ int main(int argc, char** argv) {
     // to Chapter 19's own ncclCommInitRankConfig() calls, just fed by
     // real MPI-discovered values instead of this book's own literal
     // constants.
-    ncclComm_t comm;
+    ncclComm_t comm = nullptr; // a failed init never writes this handle
     ncclResult_t eInit = ncclCommInitRank(&comm, nRanks, id, myRank);
 
-    printf("rank %d of %d: cudaSetDevice(%d)=%s ncclCommInitRank=%s (code %d)\n",
-           myRank, nRanks, myRank, cudaGetErrorString(eSet),
+    printf("rank %d of %d: cudaSetDevice(localRank=%d)=%s ncclCommInitRank=%s (code %d)\n",
+           myRank, nRanks, localRank, cudaGetErrorString(eSet),
            ncclGetErrorString(eInit), (int)eInit);
 
     if (myRank == 0) {
@@ -165,15 +197,17 @@ Compiled with `mpicxx -Wall -Wextra 60_hybrid_mpi_nccl_bootstrap.cpp -o 60_hybri
 
 ```text
 rank 0: generated the ONE ncclUniqueId every rank will share, and is about to MPI_Bcast it to all 4 ranks.
-rank 1 of 4: cudaSetDevice(1)=no CUDA-capable device is detected ncclCommInitRank=unhandled cuda error (run with NCCL_DEBUG=INFO for details) (code 1)
-rank 2 of 4: cudaSetDevice(2)=no CUDA-capable device is detected ncclCommInitRank=unhandled cuda error (run with NCCL_DEBUG=INFO for details) (code 1)
-rank 3 of 4: cudaSetDevice(3)=no CUDA-capable device is detected ncclCommInitRank=unhandled cuda error (run with NCCL_DEBUG=INFO for details) (code 1)
-rank 0 of 4: cudaSetDevice(0)=no CUDA-capable device is detected ncclCommInitRank=unhandled cuda error (run with NCCL_DEBUG=INFO for details) (code 1)
+rank 1 of 4: cudaSetDevice(localRank=1)=no CUDA-capable device is detected ncclCommInitRank=unhandled cuda error (run with NCCL_DEBUG=INFO for details) (code 1)
+rank 2 of 4: cudaSetDevice(localRank=2)=no CUDA-capable device is detected ncclCommInitRank=unhandled cuda error (run with NCCL_DEBUG=INFO for details) (code 1)
+rank 3 of 4: cudaSetDevice(localRank=3)=no CUDA-capable device is detected ncclCommInitRank=unhandled cuda error (run with NCCL_DEBUG=INFO for details) (code 1)
+rank 0 of 4: cudaSetDevice(localRank=0)=no CUDA-capable device is detected ncclCommInitRank=unhandled cuda error (run with NCCL_DEBUG=INFO for details) (code 1)
 
 Every rank sees the SAME honest failure code Chapter 11's single-process ncclCommInitAll() saw on its own well-formed requests (ncclUnhandledCudaError=1) -- this environment's real absence of any GPU doesn't care whether the caller was one process managing N devices or N real MPI processes each managing one. What changed is genuinely real: 4 separate operating-system processes, discovered through MPI, agreed on one shared id through MPI, and each independently called the exact same NCCL entry point every earlier chapter used.
 ```
 
 A second real run printed the closing paragraph immediately after rank 0's own per-rank line, before ranks 1-3 had printed at all; a third run printed ranks 1, 2, 3 in that exact order after rank 0. All three runs' VALUES were identical -- only which process's `printf()` reached the terminal first changed, run to run, exactly as Chapter 20's own Section 20.1 already demonstrated for a plain MPI ring.
+
+One detail in file 60 matters only on a real multi-node cluster, and this single-host environment can't exercise it: the device index passed to `cudaSetDevice()` is a *node-local* rank, computed by `computeLocalRank()` (hash each rank's hostname, `MPI_Allgather()` the hashes, count lower-numbered ranks on the same host -- the same pattern NCCL's own MPI example uses). Passing the global MPI rank instead would break as soon as there are two nodes: with 2 nodes x 8 GPUs, global rank 9 would call `cudaSetDevice(9)` on a node that only has devices 0-7. Here every rank shares one host, so `localRank` equals the global rank and the output can't show the difference.
 
 !!! warning "[COMMON TRAP] Every rank generating its own uniqueId, instead of one rank generating it and broadcasting it"
     The code above deliberately guards `ncclGetUniqueId(&id)` with `if (myRank == 0)`. Delete that guard -- let every rank call `ncclGetUniqueId()` independently -- and every rank now holds a *different* 128-byte id, because `ncclUniqueId` is generated from process-local random state, not derived from anything shared. `ncclCommInitRank()` on a real cluster then has nothing to rendezvous on: each rank is waiting for peers who agree on an id that rank never received, and the call hangs -- not a fast, honest error like every device-less failure this book has shown since Chapter 3, but the same silent, indefinite hang Chapter 19 named as NCCL's real, worse failure mode. NCCL's own installed header is explicit about the fix, in the exact comment quoted above: the id must be "called once" and then "distributed to all ranks... before calling ncclCommInitRank" -- generated by exactly one rank, delivered to the rest by some other real mechanism. This book uses `MPI_Bcast()` because Chapter 20 already built real MPI; a job with no MPI at all still needs some equivalent distribution step (a shared filesystem, a rendezvous server, a job scheduler's own environment variables) -- there is no version of this bootstrap that skips broadcasting the id.
@@ -198,7 +232,7 @@ directly, over PCIe BAR addresses, no host memory touched on either side:
 
 ### Background
 
-CUDA exposes GPUDirect RDMA support as three real device attributes, confirmed here directly against this exact environment's own installed `driver_types.h` rather than assumed from documentation: `cudaDevAttrGPUDirectRDMASupported` ("Device supports GPUDirect RDMA APIs, like nvidia_p2p_get_pages"), `cudaDevAttrGPUDirectRDMAFlushWritesOptions` (a bitmask of which flush mechanisms the device supports), and `cudaDevAttrGPUDirectRDMAWritesOrdering` (whether the device natively guarantees a NIC's writes are visible to that device's own running kernels). The same two facts also live as fields on `cudaDeviceProp`, queryable through Chapter 18's own `cudaGetDeviceProperties()` function -- two independent real ways to ask, exactly like Chapter 20's own `MPIX_CUDA_AWARE_SUPPORT` macro vs. `MPIX_Query_cuda_support()` function pairing. When a platform does *not* natively guarantee write ordering, `cudaDeviceFlushGPUDirectRDMAWrites()` is the real, documented way to close that gap -- it blocks until pending GPUDirect RDMA writes are visible to the requested scope, and returns `cudaErrorNotSupported` when the device can't do this or when the ordering already covers that scope (a real no-op).
+CUDA exposes GPUDirect RDMA support as three real device attributes, confirmed here directly against this exact environment's own installed `driver_types.h` rather than assumed from documentation: `cudaDevAttrGPUDirectRDMASupported` ("Device supports GPUDirect RDMA APIs, like nvidia_p2p_get_pages"), `cudaDevAttrGPUDirectRDMAFlushWritesOptions` (a bitmask of which flush mechanisms the device supports), and `cudaDevAttrGPUDirectRDMAWritesOrdering` (whether the device natively guarantees a NIC's writes are visible to that device's own running kernels). The same three facts also live as fields on `cudaDeviceProp` (`gpuDirectRDMASupported`, `gpuDirectRDMAFlushWritesOptions`, `gpuDirectRDMAWritesOrdering`), queryable through Chapter 18's own `cudaGetDeviceProperties()` function -- two independent real ways to ask, exactly like Chapter 20's own `MPIX_CUDA_AWARE_SUPPORT` macro vs. `MPIX_Query_cuda_support()` function pairing. When a platform does *not* natively guarantee write ordering, `cudaDeviceFlushGPUDirectRDMAWrites()` is the real, documented way to close that gap -- it blocks until pending GPUDirect RDMA writes are visible to the requested scope. The installed header documents `cudaSuccess` and `cudaErrorNotSupported` as its return values, and separately notes that when the requested scope is already covered by `cudaDevAttrGPUDirectRDMAWritesOrdering`, "the call will be a no-op and can be safely omitted" -- it does not say that no-op case returns an error.
 
 ```cpp
 // Chapter 21: GPUDirect RDMA: Bypassing the Host Entirely
@@ -266,8 +300,9 @@ int main() {
     printf("cudaDeviceGetAttribute(cudaDevAttrGPUDirectRDMAWritesOrdering): "
            "%s\n", cudaGetErrorString(eOrdering));
 
-    // cudaGetDeviceProperties() carries the SAME two facts as struct
-    // fields (Chapter 18's own query function, new fields) -- included
+    // cudaGetDeviceProperties() carries the SAME three facts as struct
+    // fields (gpuDirectRDMASupported, gpuDirectRDMAFlushWritesOptions,
+    // gpuDirectRDMAWritesOrdering, per this installed driver_types.h) (Chapter 18's own query function, new fields) -- included
     // to show both real, independent ways CUDA exposes this, exactly
     // like Chapter 20's own MPIX_CUDA_AWARE_SUPPORT (macro) vs
     // MPIX_Query_cuda_support() (function) pairing.
@@ -275,6 +310,8 @@ int main() {
     cudaError_t eProps = cudaGetDeviceProperties(&prop, 0);
     printf("\ncudaGetDeviceProperties(): %s\n", cudaGetErrorString(eProps));
     if (eProps == cudaSuccess) {
+        printf("  prop.gpuDirectRDMASupported          = %d\n",
+               prop.gpuDirectRDMASupported);
         printf("  prop.gpuDirectRDMAFlushWritesOptions = %u\n",
                prop.gpuDirectRDMAFlushWritesOptions);
         printf("  prop.gpuDirectRDMAWritesOrdering     = %d\n",
@@ -288,10 +325,12 @@ int main() {
 
     // The actual bypass-the-host action: block until pending GPUDirect
     // RDMA writes to this device are visible to the requested scope.
-    // Real, documented return values: cudaSuccess, or cudaErrorNotSupported
-    // if "the call will be a no-op" -- e.g. because the device's own
-    // ordering guarantee (queried above) already covers this scope, or
-    // because the device has no GPUDirect RDMA support at all.
+    // The installed header documents two return values, cudaSuccess and
+    // cudaErrorNotSupported (support is advertised by attribute #2
+    // above). Separately, it says that if the requested scope is already
+    // covered by the device's own ordering guarantee (attribute #3),
+    // "the call will be a no-op and can be safely omitted" -- it does
+    // NOT say that no-op case returns cudaErrorNotSupported.
     cudaError_t eFlush = cudaDeviceFlushGPUDirectRDMAWrites(
         cudaFlushGPUDirectRDMAWritesTargetCurrentDevice,
         cudaFlushGPUDirectRDMAWritesToOwner);
@@ -333,14 +372,17 @@ This call needs an ACTIVE device context to mean anything at all -- there is no 
 Section 21.2 established that GPUDirect RDMA support is a real, queryable yes/no. What that yes/no is actually *worth* -- and what can silently take most of that value away -- are two separate real questions this section answers with cited numbers rather than a hardware measurement this environment cannot take. For small messages, skipping Chapter 20's own two `cudaMemcpy` calls and the intermediate host buffer removes real, fixed per-message latency -- every hop Section 21.2's diagram removed was a real hop with a real minimum cost, not a free abstraction. For large messages, the story is about sustained bandwidth, and bandwidth is where the COMMON TRAP above turns real: NVIDIA's own benchmarking of GPUDirect RDMA on real server platforms shows both a large, real speedup when the topology is right and a severe, real collapse when it isn't -- the same PCIe-topology sensitivity Chapter 2 first introduced for GPU-to-GPU links, now applying to the GPU-to-NIC link that this chapter's hybrid communicator ultimately depends on.
 
 ```text
-Same PCIe switch (best case):          Crossing inter-socket QPI (worst case, SAME real post):
+Good PCIe path (single rail):           Crossing inter-socket QPI (single rail, Ivy Bridge):
 
   GPU --- PCIe switch --- NIC            GPU --- CPU0 === QPI === CPU1 --- NIC
-  11.6 GB/s (measured,                   250 MB/s write bandwidth (measured,
-   Host-to-GPU, dual-rail)                IB adapter pushing to a cross-socket GPU)
+  ~6.1 GB/s (measured)                   250 MB/s write bandwidth (measured,
+                                          IB adapter pushing to a cross-socket GPU)
 
   Both paths are "GPUDirect RDMA capable" by Section 21.2's own query.
-  The 46x gap between them comes ENTIRELY from PCIe topology, not capability.
+  Single rail vs single rail: roughly a 24x gap, driven by the PCIe/QPI path.
+  (The post's 11.6 GB/s headline is DUAL-rail -- two NICs -- so 11.6/0.25
+  = 46x would mix NIC counts, and the two figures are not one controlled
+  experiment on one platform either.)
 ```
 
 ### Background
@@ -364,71 +406,78 @@ Every number below is cited to NVIDIA's own "Benchmarking GPUDirect RDMA on Mode
 
 int main() {
     // ---- Part A: small-message latency, cited fixed numbers ----
-    // "GPUDirect RDMA provides a latency consistently below 2us" --
-    // measured 1.7us (GPU-to-Host) and 1.9us (Host-to-GPU direction).
-    // The staged path's own cited breakdown: cudaMemcpy/cudaMemcpyAsync
+    // "GPUDirect RDMA provides a latency consistently below 2us." The
+    // post's two figures are NOT two ends of one range: 1.7us is its
+    // Host-to-GPU figure, and 1.9us is the GPU-to-GPU figure. The
+    // staged path's own cited breakdown: cudaMemcpy/cudaMemcpyAsync
     // "can easily take 8us and 9us respectively," plus InfiniBand's own
     // "1.3us" host-to-host latency -- the post's own rounded total for
     // the full GPU-to-GPU staged round trip is "approximately 17us."
-    const double RDMA_LATENCY_LOW_US = 1.7;
-    const double RDMA_LATENCY_HIGH_US = 1.9;
-    const double STAGED_LATENCY_US = 17.0;
+    // A like-for-like comparison therefore pairs the GPU-to-GPU staged
+    // total with the GPU-to-GPU RDMA figure -- not an average across
+    // directions.
+    const double RDMA_HOST_TO_GPU_US = 1.7; // not used in the ratio
+    const double RDMA_GPU_TO_GPU_US = 1.9;
+    const double STAGED_GPU_TO_GPU_US = 17.0;
 
-    double rdmaAvg = (RDMA_LATENCY_LOW_US + RDMA_LATENCY_HIGH_US) / 2.0;
-    double speedup = STAGED_LATENCY_US / rdmaAvg;
+    double speedup = STAGED_GPU_TO_GPU_US / RDMA_GPU_TO_GPU_US;
     printf("Part A -- small-message fixed latency (cited, not measured here):\n");
-    printf("  GPUDirect RDMA: %.1f-%.1fus (avg %.2fus)\n",
-           RDMA_LATENCY_LOW_US, RDMA_LATENCY_HIGH_US, rdmaAvg);
-    printf("  Staged (D2H + IB host-to-host + H2D): ~%.1fus\n", STAGED_LATENCY_US);
-    printf("  Ratio: %.2fx -- matches the source's own cited "
-           "\"approximately 9x faster\" claim (computed here from its own "
-           "two numbers, not independently re-measured).\n\n", speedup);
+    printf("  GPUDirect RDMA, GPU-to-GPU:  %.1fus  (Host-to-GPU: %.1fus, "
+           "a different path, not averaged in)\n",
+           RDMA_GPU_TO_GPU_US, RDMA_HOST_TO_GPU_US);
+    printf("  Staged GPU-to-GPU (D2H + IB host-to-host + H2D): ~%.1fus\n",
+           STAGED_GPU_TO_GPU_US);
+    printf("  Ratio: %.1fx -- this book's own arithmetic on the post's two "
+           "GPU-to-GPU numbers; the post itself states no single "
+           "speedup factor.\n\n", speedup);
 
     // ---- Part B: large-message bandwidth, topology-dependent ----
-    // Best case, both devices under the SAME PCIe switch (the
-    // GPUDirect RDMA design guide's own top-tier topology): 11.6 GB/s
-    // Host-to-GPU with a dual-rail setup. Worst real case in the SAME
-    // post: crossing the inter-socket QPI link collapses write
-    // bandwidth to "250 MB/s when the IB adapter pushes data to a GPU
-    // on a different socket." Same two endpoints NCCL's own
+    // The post's headline 11.6 GB/s Host-to-GPU figure is a DUAL-rail
+    // (two NIC) result; its 250 MB/s figure -- "when the IB adapter
+    // pushes data to a GPU on a different socket," crossing QPI -- is a
+    // SINGLE-rail result on the Ivy Bridge Xeon platform. Dividing one
+    // by the other (46x) mixes NIC counts AND platforms. Matching at
+    // least the rail count, the post's single-rail GPUDirect RDMA figure
+    // is about 6.1 GB/s. Same two endpoints NCCL's own
     // NCCL_NET_GDR_LEVEL knob names directly -- PIX (same PCIe switch)
     // down through SYS (cross-NUMA-node, over the SMP interconnect) --
     // reusing Chapter 2's own topology-matters framing, now for a
     // GPU-NIC pair instead of a GPU-GPU pair.
-    const double BEST_CASE_GBPS = 11.6;   // same PCIe switch (PIX-class)
-    const double WORST_CASE_GBPS = 0.25;  // 250 MB/s, crossing QPI (SYS-class)
-    double degradation = BEST_CASE_GBPS / WORST_CASE_GBPS;
-    printf("Part B -- large-message bandwidth, same real post, different "
-           "PCIe topology:\n");
-    printf("  Same PCIe switch (NCCL_NET_GDR_LEVEL=PIX-class): %.1f GB/s\n",
-           BEST_CASE_GBPS);
-    printf("  Crossing inter-socket QPI (NCCL_NET_GDR_LEVEL=SYS-class): "
-           "%.2f GB/s\n", WORST_CASE_GBPS);
-    printf("  Degradation: %.1fx -- \"GPUDirect RDMA capable\" (Section "
-           "21.2's own boolean attribute) is NECESSARY but not "
-           "SUFFICIENT: the same capable GPU, paired with the same "
-           "capable NIC, is %.0fx slower if the PCIe topology between "
-           "them is wrong, with no code change at all.\n\n", degradation, degradation);
+    const double DUAL_RAIL_GBPS = 11.6;   // dual-rail, NOT comparable to the QPI case
+    const double SINGLE_RAIL_GBPS = 6.1;  // single-rail GPUDirect RDMA, good PCIe path
+    const double QPI_SINGLE_RAIL_GBPS = 0.25; // 250 MB/s, crossing QPI, Ivy Bridge (SYS-class)
+    double degradation = SINGLE_RAIL_GBPS / QPI_SINGLE_RAIL_GBPS;
+    printf("Part B -- large-message bandwidth, same real post, single-rail "
+           "vs single-rail:\n");
+    printf("  Single rail, GPU and NIC on a good PCIe path: "
+           "~%.1f GB/s\n", SINGLE_RAIL_GBPS);
+    printf("  Single rail, crossing inter-socket QPI on Ivy Bridge "
+           "(SYS-class): %.2f GB/s\n", QPI_SINGLE_RAIL_GBPS);
+    printf("  Degradation: ~%.0fx (the post's %.1f GB/s headline is "
+           "dual-rail, so %.1f / %.2f would double-count the second NIC). "
+           "Even this ~%.0fx is not one controlled experiment -- the two "
+           "figures need not come from the same server platform -- but "
+           "the order of magnitude is the point: \"GPUDirect RDMA "
+           "capable\" (Section 21.2's own boolean attribute) is NECESSARY "
+           "but not SUFFICIENT; a bad PCIe path between a capable GPU and "
+           "a capable NIC can cost more than an order of magnitude of "
+           "bandwidth with no code change at all.\n\n",
+           degradation, DUAL_RAIL_GBPS, DUAL_RAIL_GBPS, QPI_SINGLE_RAIL_GBPS,
+           degradation);
 
     // ---- Part C: the real crossover, cited as a finding, not re-derived ----
     printf("Part C -- the source's own real crossover finding:\n");
     printf("  The same post states: \"GPUDirect RDMA is faster than the "
            "staging approach for message sizes up to 400-500KB (on Ivy "
            "Bridge Xeon)\" -- a real, cited finding this book reports "
-           "rather than re-derives: NVIDIA's post names the crossover "
-           "but does not publish the underlying model that produces it, "
-           "and Parts A and B above already show why a simple two-term "
-           "(fixed latency + bandwidth) model built from this post's own "
-           "OTHER numbers should not be expected to reproduce it exactly "
-           "-- Part A's numbers alone would put GPUDirect RDMA ahead at "
-           "every size, since it has both the lower fixed latency AND "
-           "(Part B, best case) the higher bandwidth. The real crossover "
-           "almost certainly depends on GPUDirect RDMA's own bandwidth "
-           "ceiling being LOWER than the staged path's at large sizes on "
-           "specifically the Ivy Bridge platform tested -- a real, "
-           "platform-specific effect this book has no cited numbers for, "
-           "so it is reported as a limit of what is known here, not "
-           "quietly modeled around.\n");
+           "rather than re-derives. A simple two-term (fixed latency + "
+           "bandwidth) model built from Part A's latency and Part B's "
+           "good-topology bandwidth would put GPUDirect RDMA ahead at "
+           "every size, so it cannot reproduce the crossover; the post "
+           "ties the crossover to the platform it measured (Ivy Bridge "
+           "Xeon, whose cross-socket QPI path is also Part B's 250 MB/s "
+           "case), and this book does not rebuild that platform-specific "
+           "bandwidth model here.\n");
 
     return 0;
 }
@@ -438,25 +487,25 @@ Compiled with `g++ -Wall -Wextra -O2 62_staged_vs_rdma_cost_model.cpp -o 62_stag
 
 ```text
 Part A -- small-message fixed latency (cited, not measured here):
-  GPUDirect RDMA: 1.7-1.9us (avg 1.80us)
-  Staged (D2H + IB host-to-host + H2D): ~17.0us
-  Ratio: 9.44x -- matches the source's own cited "approximately 9x faster" claim (computed here from its own two numbers, not independently re-measured).
+  GPUDirect RDMA, GPU-to-GPU:  1.9us  (Host-to-GPU: 1.7us, a different path, not averaged in)
+  Staged GPU-to-GPU (D2H + IB host-to-host + H2D): ~17.0us
+  Ratio: 8.9x -- this book's own arithmetic on the post's two GPU-to-GPU numbers; the post itself states no single speedup factor.
 
-Part B -- large-message bandwidth, same real post, different PCIe topology:
-  Same PCIe switch (NCCL_NET_GDR_LEVEL=PIX-class): 11.6 GB/s
-  Crossing inter-socket QPI (NCCL_NET_GDR_LEVEL=SYS-class): 0.25 GB/s
-  Degradation: 46.4x -- "GPUDirect RDMA capable" (Section 21.2's own boolean attribute) is NECESSARY but not SUFFICIENT: the same capable GPU, paired with the same capable NIC, is 46x slower if the PCIe topology between them is wrong, with no code change at all.
+Part B -- large-message bandwidth, same real post, single-rail vs single-rail:
+  Single rail, GPU and NIC on a good PCIe path: ~6.1 GB/s
+  Single rail, crossing inter-socket QPI on Ivy Bridge (SYS-class): 0.25 GB/s
+  Degradation: ~24x (the post's 11.6 GB/s headline is dual-rail, so 11.6 / 0.25 would double-count the second NIC). Even this ~24x is not one controlled experiment -- the two figures need not come from the same server platform -- but the order of magnitude is the point: "GPUDirect RDMA capable" (Section 21.2's own boolean attribute) is NECESSARY but not SUFFICIENT; a bad PCIe path between a capable GPU and a capable NIC can cost more than an order of magnitude of bandwidth with no code change at all.
 
 Part C -- the source's own real crossover finding:
-  The same post states: "GPUDirect RDMA is faster than the staging approach for message sizes up to 400-500KB (on Ivy Bridge Xeon)" -- a real, cited finding this book reports rather than re-derives: NVIDIA's post names the crossover but does not publish the underlying model that produces it, and Parts A and B above already show why a simple two-term (fixed latency + bandwidth) model built from this post's own OTHER numbers should not be expected to reproduce it exactly -- Part A's numbers alone would put GPUDirect RDMA ahead at every size, since it has both the lower fixed latency AND (Part B, best case) the higher bandwidth. The real crossover almost certainly depends on GPUDirect RDMA's own bandwidth ceiling being LOWER than the staged path's at large sizes on specifically the Ivy Bridge platform tested -- a real, platform-specific effect this book has no cited numbers for, so it is reported as a limit of what is known here, not quietly modeled around.
+  The same post states: "GPUDirect RDMA is faster than the staging approach for message sizes up to 400-500KB (on Ivy Bridge Xeon)" -- a real, cited finding this book reports rather than re-derives. A simple two-term (fixed latency + bandwidth) model built from Part A's latency and Part B's good-topology bandwidth would put GPUDirect RDMA ahead at every size, so it cannot reproduce the crossover; the post ties the crossover to the platform it measured (Ivy Bridge Xeon, whose cross-socket QPI path is also Part B's 250 MB/s case), and this book does not rebuild that platform-specific bandwidth model here.
 ```
 
 !!! warning "[COMMON TRAP] Assuming GPUDirect RDMA is always the faster choice once it's available"
-    Section 21.2's query and this section's Part A both make GPUDirect RDMA look like a strict win -- lower fixed latency, higher best-case bandwidth, no reason not to use it. Part C's own honestly-reported crossover is the real counter-example: NVIDIA's own benchmark found the staging approach becomes *competitive* past roughly 400-500KB on the platform it tested, and Part B shows a second, independent way GPUDirect RDMA can lose badly -- not from message size at all, but from PCIe topology alone, a 46x swing between two identically-"capable" systems. This is exactly why real MPI implementations (MVAPICH2-GDR is a well-known example) expose a message-size threshold knob that switches between a direct GPUDirect RDMA path and a staged path, rather than always preferring one. Querying `cudaDevAttrGPUDirectRDMASupported` and stopping there answers "can I," never "should I, for this message, on this topology, right now."
+    Section 21.2's query and this section's Part A both make GPUDirect RDMA look like a strict win -- lower fixed latency, higher best-case bandwidth, no reason not to use it. Part C's own honestly-reported crossover is the real counter-example: NVIDIA's own benchmark found the staging approach becomes *competitive* past roughly 400-500KB on the platform it tested, and Part B shows a second, independent way GPUDirect RDMA can lose badly -- not from message size at all, but from the PCIe/QPI path, roughly a 24x single-rail-to-single-rail swing between two identically-"capable" configurations. This is exactly why real MPI implementations (MVAPICH2-GDR is a well-known example) expose a message-size threshold knob that switches between a direct GPUDirect RDMA path and a staged path, rather than always preferring one. Querying `cudaDevAttrGPUDirectRDMASupported` and stopping there answers "can I," never "should I, for this message, on this topology, right now."
 
 ## Chapter Summary
 
-This chapter opened Part 5's second real building block. Section 21.1 built the hybrid bootstrap every real multi-node NCCL job actually uses: MPI (Chapter 20's own real multi-process model) generates and distributes NCCL's `ncclUniqueId`, and NCCL (every collective since Chapter 11) takes over from there -- verified against NCCL's own installed-header comment and NCCL's own official documentation, with the real, distributed-id-required trap named directly. Section 21.2 queried, honestly and for real, whether a GPU supports GPUDirect RDMA (`cudaDevAttrGPUDirectRDMASupported`) and how its write-ordering guarantee works (`cudaDevAttrGPUDirectRDMAWritesOrdering`, `cudaDeviceFlushGPUDirectRDMAWrites()`) -- three real device attributes confirmed against this exact environment's own installed CUDA headers, all honestly `cudaErrorNoDevice` since no device exists here. Section 21.3 quantified what bypassing the host in Section 20.2's own staged fallback is worth using NVIDIA's own cited benchmark numbers: roughly 9x lower latency for small messages, but a real, topology-driven 46x bandwidth swing that has nothing to do with message size, and an honestly-reported real crossover this book's own simple model correctly predicts it cannot reproduce.
+This chapter opened Part 5's second real building block. Section 21.1 built the hybrid bootstrap every real multi-node NCCL job actually uses: MPI (Chapter 20's own real multi-process model) generates and distributes NCCL's `ncclUniqueId`, and NCCL (every collective since Chapter 11) takes over from there -- verified against NCCL's own installed-header comment and NCCL's own official documentation, with the real, distributed-id-required trap named directly. Section 21.2 queried, honestly and for real, whether a GPU supports GPUDirect RDMA (`cudaDevAttrGPUDirectRDMASupported`) and how its write-ordering guarantee works (`cudaDevAttrGPUDirectRDMAWritesOrdering`, `cudaDeviceFlushGPUDirectRDMAWrites()`) -- three real device attributes confirmed against this exact environment's own installed CUDA headers, all honestly `cudaErrorNoDevice` since no device exists here. Section 21.3 quantified what bypassing the host in Section 20.2's own staged fallback is worth using NVIDIA's own cited benchmark numbers: roughly 8.9x lower GPU-to-GPU latency for small messages (17us staged vs 1.9us direct, this book's own arithmetic -- the post states no single factor), but a real, topology-driven bandwidth swing of roughly 24x when single-rail is compared with single-rail (not the 46x a dual-rail headline would suggest), and an honestly-reported real crossover this book's own simple model correctly predicts it cannot reproduce.
 
 ## Self-Check Questions
 
@@ -464,8 +513,8 @@ This chapter opened Part 5's second real building block. Section 21.1 built the 
 2. In file 60, what would happen on a real cluster (not this environment) if the `if (myRank == 0)` guard around `ncclGetUniqueId(&id)` were removed?
 3. `cudaDevAttrGPUDirectRDMASupported` and NCCL's `NCCL_NET_GDR_LEVEL` both relate to GPUDirect RDMA. What real, different question does each one answer?
 4. What is `cudaDeviceFlushGPUDirectRDMAWrites()` for, and under what real device condition would calling it be a genuine no-op rather than a bug?
-5. Section 21.3's Part A computed a 9.44x speedup from two fixed latency numbers. Which two numbers, and why does the source's own post round this to "approximately 9x"?
-6. Explain, using Part B's own two numbers, why a GPU and NIC that are both individually "GPUDirect RDMA capable" can still deliver 250 MB/s instead of 11.6 GB/s.
+5. Section 21.3's Part A computes an 8.9x ratio from two fixed latency numbers. Which two numbers, and why would averaging the post's 1.7us and 1.9us figures be the wrong comparison?
+6. Explain, using Part B's own two single-rail numbers, why a GPU and NIC that are both individually "GPUDirect RDMA capable" can still deliver 250 MB/s instead of about 6.1 GB/s -- and why dividing the post's 11.6 GB/s headline by 250 MB/s would overstate the gap.
 7. Why does this chapter's own Part C explicitly decline to build a closed-form model reproducing NVIDIA's cited 400-500KB crossover, when Parts A and B already build models for the small-message and topology cases?
 8. File 60 links three real libraries in one binary (Open MPI, NCCL, CUDA runtime) via `mpicxx`. Which two chapters each first established one piece of that same combination, and what did file 60 change about how they're fed into `ncclCommInitRank()`?
 9. Contrast the COMMON TRAP in Section 21.1 (a hang) with the COMMON TRAP in Section 21.2/21.3 (silently wrong performance expectations, not a hang or an error). Why can the same "GPUDirect RDMA capable" answer coexist with both a correct program and a badly underperforming one?
@@ -482,13 +531,13 @@ Chapter 21 answered whether a NIC can reach GPU memory directly, and what that's
 
 **3.** `cudaDevAttrGPUDirectRDMASupported` answers whether a specific GPU's driver can expose its memory to a third-party PCI Express device at all -- a per-GPU hardware/driver capability, independent of any particular NIC. `NCCL_NET_GDR_LEVEL` answers a different, topology-specific question: for a *particular* GPU-NIC pair, how close together are they on the PCIe fabric (same switch, through switches, same NUMA node, or across the inter-socket interconnect), which determines whether NCCL will actually use GPUDirect RDMA between that specific pair and how well it will perform if it does.
 
-**4.** It blocks the calling code until pending GPUDirect RDMA writes to the target device are visible to the requested scope (the device's owning context, or all devices). It is a genuine no-op, returning `cudaErrorNotSupported`, when the device's own `cudaDevAttrGPUDirectRDMAWritesOrdering` attribute already reports that its scope covers the requested one -- i.e., the platform already natively guarantees the ordering this call exists to enforce, so there is nothing left for the call to do.
+**4.** It blocks the calling code until pending GPUDirect RDMA writes to the target device are visible to the requested scope (the device's owning context, or all devices). Per the installed header, it is a no-op that "can be safely omitted" when the device's own `cudaDevAttrGPUDirectRDMAWritesOrdering` attribute already reports that its scope covers the requested one -- i.e., the platform already natively guarantees the ordering this call exists to enforce. The header lists `cudaSuccess` and `cudaErrorNotSupported` as return values but does not tie the no-op case to `cudaErrorNotSupported`; support for the call itself is advertised separately by `cudaDevAttrGPUDirectRDMAFlushWritesOptions`.
 
-**5.** The two numbers are the average of the cited RDMA latency range (1.7us and 1.9us, averaging to 1.8us) and the cited staged-path total (~17.0us), giving 17.0/1.8 = 9.44x. The source's own post rounds this down to "approximately 9x" likely because its own 1.7us and 1.9us are themselves measured, rounded figures (not exact constants), and because "approximately 9x" is a looser, more defensible claim than quoting a precise ratio from numbers that are already stated as approximate ("can easily take 8us and 9us," "approximately 17us").
+**5.** The staged GPU-to-GPU total (~17us: two `cudaMemcpy` calls of roughly 8us and 9us plus 1.3us of InfiniBand host-to-host latency, which the post rounds to "approximately 17us") and GPUDirect RDMA's GPU-to-GPU latency (1.9us), giving 17/1.9 = 8.9x. The post's other figure, 1.7us, is its Host-to-GPU latency -- a different path -- so averaging 1.7 and 1.9 (as an earlier version of this chapter did, to get 9.44x) mixes a host-involved direction into a GPU-to-GPU comparison. Note too that the post itself states no "9x" figure; the ratio is this book's own arithmetic on the post's numbers.
 
-**6.** Both numbers come from the SAME real post but describe different PCIe topologies, not different capability levels. 11.6 GB/s is measured when the GPU and NIC share the same PCIe switch (GPUDirect RDMA's own best-case path, requiring no long hop). 250 MB/s is measured when the IB adapter must push data to a GPU on a different CPU socket, crossing the inter-socket QPI link -- a real, physical bottleneck that exists regardless of whether both devices individually report `cudaDevAttrGPUDirectRDMASupported = 1`. Capability is a yes/no property of each device; the 46x gap is a property of the path between them.
+**6.** Both single-rail numbers come from the same post but describe different PCIe paths, not different capability levels. About 6.1 GB/s is the single-rail GPUDirect RDMA bandwidth on a good PCIe path; 250 MB/s is measured on the Ivy Bridge Xeon platform when the IB adapter must push data to a GPU on a different CPU socket, crossing the inter-socket QPI link -- a physical bottleneck that exists regardless of whether both devices individually report `cudaDevAttrGPUDirectRDMASupported = 1`. That is roughly a 24x gap. The post's 11.6 GB/s headline is a dual-rail (two-NIC) result, so 11.6/0.25 = 46x would credit topology with a factor of two that really comes from the second NIC -- and even 24x compares figures that need not come from the same server platform, so it is an order-of-magnitude illustration, not a controlled measurement.
 
-**7.** Because Parts A and B's own models are built entirely from OTHER numbers in the same cited post (fixed latencies, best/worst-case bandwidths) that this book has independently verified are real and can combine additively or as simple ratios. The 400-500KB crossover is a THIRD, separate finding the post states as a conclusion ("by using a simple performance model it can be shown that...") without publishing that model's own inputs or formula. Building a new model and claiming it reproduces an unpublished one would be fabricating agreement with a source this book cannot actually check -- so Part C reports the finding as a citation and explains, using Parts A and B's own numbers, why a naive model of this book's own would NOT be expected to land at the same crossover, rather than silently presenting a model tuned to match it.
+**7.** Because Parts A and B's own models are built entirely from OTHER numbers in the same cited post (fixed latencies, best/worst-case bandwidths) that this book has independently verified are real and can combine additively or as simple ratios. The 400-500KB crossover is a THIRD, separate finding the post states as a conclusion ("by using a simple performance model it can be shown that..."), tied to the Ivy Bridge Xeon platform it measured. This chapter does not reconstruct that platform-specific model, and building a different model and claiming it reproduces the post's would be fabricating agreement -- so Part C reports the finding as a citation and explains, using Parts A and B's own numbers, why a naive model of this book's own would NOT be expected to land at the same crossover, rather than silently presenting a model tuned to match it.
 
 **8.** Chapter 20 first established a real Open MPI installation and the `mpicxx`-links-`libcudart` combination (file 58). Chapter 11 first established a real NCCL installation and communicator construction (`ncclCommInitAll()`). File 60 changes how NCCL's inputs are fed: instead of one process supplying a literal rank count and calling `ncclCommInitAll()` once for every device it can see, file 60 has each of N real MPI-launched processes independently call `ncclCommInitRank()` with a rank and size it queried from `MPI_Comm_rank()`/`MPI_Comm_size()`, and a shared id it received via `MPI_Bcast()` rather than generating itself.
 
@@ -503,4 +552,4 @@ Chapter 21 answered whether a NIC can reach GPU memory directly, and what that's
 - This exact environment's own installed NCCL header, `/usr/include/nccl.h` — the real, verified comment above `ncclGetUniqueId()`: "ncclGetUniqueId should be called once and the Id should be distributed to all ranks in the communicator before calling ncclCommInitRank," and the comment above `ncclCommInitRank()` on per-device binding and implicit synchronization.
 - [Examples — NCCL user guide](https://docs.nvidia.com/deeplearning/nccl/user-guide/docs/examples.html) — the real multi-process/MPI example this chapter's file 60 follows directly: `MPI_Comm_rank`/`MPI_Comm_size`, rank 0 alone calling `ncclGetUniqueId()`, `MPI_Bcast()` of the id, and `ncclCommInitRank()`, explicitly described as working "in the context of MPI, using one device per MPI rank."
 - [Environment Variables — NCCL user guide (archived, 2.18.x)](https://docs.nvidia.com/deeplearning/nccl/archives/nccl_2183/user-guide/docs/env.html) — `NCCL_NET_GDR_LEVEL`'s real documented PCIe-distance levels (`PIX`, `PXB`, `PHB`, `SYS`) and their topology meanings, reused in Section 21.3's own cost model.
-- [Benchmarking GPUDirect RDMA on Modern Server Platforms — NVIDIA Technical Blog](https://developer.nvidia.com/blog/benchmarking-gpudirect-rdma-on-modern-server-platforms/) — every cited number in Section 21.3: the sub-2us GPUDirect RDMA latency figures (1.7us/1.9us), the staged-path latency breakdown (~8us/9us `cudaMemcpy`, 1.3us IB host-to-host, ~17us total), the same-PCIe-switch best-case bandwidth (11.6 GB/s), the cross-socket QPI worst-case bandwidth (250 MB/s), and the real cited 400-500KB crossover finding on Ivy Bridge Xeon.
+- [Benchmarking GPUDirect RDMA on Modern Server Platforms — NVIDIA Technical Blog](https://developer.nvidia.com/blog/benchmarking-gpudirect-rdma-on-modern-server-platforms/) — every cited number in Section 21.3: the sub-2us GPUDirect RDMA latency figures (1.7us Host-to-GPU, 1.9us GPU-to-GPU), the staged-path latency breakdown (~8us/9us `cudaMemcpy`, 1.3us IB host-to-host, ~17us total), the single-rail (~6.1 GB/s) and dual-rail (11.6 GB/s) GPUDirect RDMA bandwidths, the single-rail cross-socket QPI bandwidth on Ivy Bridge (250 MB/s), and the real cited 400-500KB crossover finding on Ivy Bridge Xeon.
