@@ -37,8 +37,9 @@ int main() {
 
     printf("Chapter 11's own real recipe, restated as a standalone "
            "reference (this is Chapter 10's own all-to-all, built the "
-           "SAME way Chapter 11 found real NCCL itself builds it -- no "
-           "dedicated ncclAllToAll() call exists):\n\n");
+           "SAME way Chapter 11 found NCCL's own documentation builds it -- "
+           "the installed NCCL 2.18.3 has no dedicated all-to-all call; "
+           "ncclAlltoAll() only arrived in NCCL 2.28):\n\n");
     printf("  ncclGroupStart();\n");
     printf("  for (int peer = 0; peer < nranks; peer++) {\n");
     printf("      ncclSend(sendbuf + peer*chunkSize, chunkSize, type, peer, comm, stream);\n");

@@ -5,8 +5,8 @@
 // nvshmem_int_p() -- a device-initiated, one-sided WRITE into a remote
 // PE's memory. NVSHMEM's own real API is much larger: nvshmem_int_get()
 // (the READ-side counterpart to Ch22's own put), nvshmem_int_atomic_add()
-// (an atomic, race-free remote update -- the NVSHMEM analog of Chapter
-// 9's own atomic-add fallback for a shared accumulator), nvshmem_
+// (an atomic, race-free remote update -- the cross-PE counterpart of a
+// plain CUDA atomicAdd() across threads on one device), nvshmem_
 // barrier_all() (NVSHMEM's own collective synchronization, the same real
 // job Chapter 17's throwaway ncclAllReduce did for NCCL), and NVSHMEM's
 // TEAM abstraction (NVSHMEM_TEAM_WORLD, nvshmem_team_my_pe() -- a named
@@ -15,6 +15,11 @@
 // and link, genuinely attempts nvshmem_init(), and replays the logic of
 // a get+atomic-add+barrier sequence on the host.
 //
+// Setup:   NVSHMEM_DIR=$(python3 -c "import nvidia.nvshmem; print(list(nvidia.nvshmem.__path__)[0])")
+//          NVSHMEM_INC=$NVSHMEM_DIR/include
+//          NVSHMEM_LIB=$NVSHMEM_DIR/lib
+//          ln -sf libnvshmem_host.so.3 $NVSHMEM_LIB/libnvshmem_host.so  (the pip wheel
+//          ships only the versioned .so.3 -- see Appendix A, Recipe 5)
 // Compile: nvcc -rdc=true -gencode=arch=compute_70,code=sm_70 -I$NVSHMEM_INC -L$NVSHMEM_LIB 128_nvshmem_api_reference.cu -o 128_nvshmem_api_reference -lnvshmem_host -lnvshmem_device -lcuda
 // Run:     LD_LIBRARY_PATH=$NVSHMEM_LIB ./128_nvshmem_api_reference
 #include <cstdio>
@@ -50,12 +55,13 @@ int main() {
     int nPes = nvshmem_n_pes();
     printf("nvshmem_init() completed; nvshmem_my_pe()=%d, "
            "nvshmem_n_pes()=%d\n", myPe, nPes);
-    if (nPes <= 0) {
-        printf("(nPes<=0 means no bootstrap plugin found a real multi-PE "
-               "world to join -- Chapter 22's own real single-PE fallback, "
-               "not an error, since this file was run directly rather "
-               "than through mpirun with NVSHMEMX_INIT_WITH_MPI_COMM)\n");
-    }
+    printf("(run directly, with no bootstrap plugin requested, NVSHMEM "
+           "reports a world of exactly one PE -- the same n_pes=1 result "
+           "as Chapter 22's File 63. The CUDA_ERROR_NO_DEVICE line NVSHMEM "
+           "prints on stderr during init is its own real device-setup "
+           "failure on this zero-GPU machine: the PE count is answered, "
+           "but no symmetric heap or device state exists, so no real "
+           "get/atomic/barrier can run here.)\n");
 
     printf("\n=== host-side replay: 4 PEs, each fetches its right "
            "neighbor's value (nvshmem_int_get's own real job), then "

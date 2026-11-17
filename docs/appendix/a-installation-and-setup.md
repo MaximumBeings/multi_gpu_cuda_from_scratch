@@ -139,7 +139,7 @@ Note the `__GNUC__ = 12` line: this machine's own `g++ --version` reports `13.3.
 
 ### Intuition
 
-A working `nvcc` and `g++` are necessary but not sufficient for this book's own subject matter. Three more real libraries sit underneath specific chapters -- NCCL for GPU-to-GPU collectives (Chapter 8 onward), Open MPI for host-side process launch and coordination (Chapter 19 onward), and NVSHMEM for GPU-initiated one-sided communication (Chapter 22 onward) -- and each publishes its own real version macros in its own real installed header, exactly like `nvcc` and `g++` do.
+A working `nvcc` and `g++` are necessary but not sufficient for this book's own subject matter. Three more real libraries sit underneath specific chapters -- NCCL for GPU-to-GPU collectives (Chapter 11 onward), Open MPI for host-side process launch and coordination (Chapter 20 onward), and NVSHMEM for GPU-initiated one-sided communication (Chapter 22 onward) -- and each publishes its own real version macros in its own real installed header, exactly like `nvcc` and `g++` do.
 
 ### The Concept, In Detail
 
@@ -147,7 +147,7 @@ A working `nvcc` and `g++` are necessary but not sufficient for this book's own 
 +-----------------------------------------------------------------+
 |         Application code (this book's own Chapters 1-40)        |
 +---------------------+-----------------------+-------------------+
-| NCCL 2.18.3         | Open MPI 4.1.6        | NVSHMEM 3.7.2     |
+| NCCL 2.18.3         | Open MPI 4.1.6        | NVSHMEM 3.8.0     |
 | (collectives:       | (process launch:      | (one-sided:       |
 |  AllReduce,         |  Init, Send/Recv,     |  device put/get)  |
 |  Broadcast, etc)    |  Allreduce)           |                   |
@@ -158,7 +158,7 @@ A working `nvcc` and `g++` are necessary but not sufficient for this book's own 
 
 Each layer's own version can be read directly from its own installed header, the same "read the real header, never trust memory" discipline this book has followed since Chapter 1: NCCL's `nccl.h` defines `NCCL_MAJOR`, `NCCL_MINOR`, and `NCCL_PATCH` as plain preprocessor integers; Open MPI's `mpi.h` defines `OMPI_MAJOR_VERSION`, `OMPI_MINOR_VERSION`, and `OMPI_RELEASE_VERSION` the same way; and NVSHMEM's `non_abi/nvshmem_version.h` defines `NVSHMEM_VENDOR_MAJOR_VERSION`, `_MINOR_VERSION`, and `_PATCH_VERSION`. All three are readable at compile time with no library initialization and no GPU required -- a reader can confirm every version number in this section on a machine with no physical GPU at all, exactly as this book's own build environment did.
 
-[COMMON TRAP] NVSHMEM's own pip package (`nvidia-nvshmem-cu12`) installs as a Python namespace package -- it has no `__init__.py` and therefore no `__file__` attribute at all. Running `python3 -c "import nvidia.nvshmem; print(nvidia.nvshmem.__file__)"` raises `TypeError: expected str, bytes or os.PathLike object, not NoneType`, not a clean answer. The reliable way to locate the real install path is `list(nvidia.nvshmem.__path__)[0]` instead -- Appendix A.4's own Makefile uses exactly this line to locate NVSHMEM's headers and libraries automatically.
+[COMMON TRAP] NVSHMEM's own pip package (`nvidia-nvshmem-cu12`) installs as a Python namespace package -- it has no `__init__.py`, so its `__file__` attribute exists but is `None` (the behavior for namespace packages since Python 3.7). Running `python3 -c "import nvidia.nvshmem; print(nvidia.nvshmem.__file__)"` therefore does not fail -- it quietly prints `None`, which is not a path. The error only appears one step later, when that `None` is handed to something that expects a path: `os.path.dirname(nvidia.nvshmem.__file__)` raises `TypeError: expected str, bytes or os.PathLike object, not NoneType`. The reliable way to locate the real install path is `list(nvidia.nvshmem.__path__)[0]` instead -- Appendix A.4's own Makefile and File 121's compile command below use exactly this line to locate NVSHMEM's headers and libraries automatically.
 
 ### Code and Verification
 
@@ -168,17 +168,25 @@ Each layer's own version can be read directly from its own installed header, the
 //
 // nvcc and g++ (File 120) are the base C++/CUDA toolchain, but this
 // book's own multi-GPU chapters also depend on three additional real
-// libraries: NCCL (collective communication, first used in Chapter 8),
+// libraries: NCCL (collective communication, first used in Chapter 11),
 // Open MPI (host-side process launch and messaging, first used in
-// Chapter 19), and NVSHMEM (GPU-initiated one-sided communication, first
+// Chapter 20), and NVSHMEM (GPU-initiated one-sided communication, first
 // used in Chapter 22). Each publishes its own real version macros in its
 // own installed header, exactly like nvcc and g++ do -- this file reads
 // all three directly, the same "read it from the real installed header,
 // never from memory" discipline this book has used since Chapter 1.
+//
+// NVSHMEM's version header (non_abi/nvshmem_version.h) lives under the
+// pip package's own include/ directory, which is not on the default
+// include path -- pass it with -I (see the compile command below). If it
+// is missing, __has_include lets this file still compile and say so.
 #include <cstdio>
 #include <nccl.h>
 #define OMPI_SKIP_MPICXX 1
 #include <mpi.h>
+#if __has_include(<non_abi/nvshmem_version.h>)
+#include <non_abi/nvshmem_version.h>
+#endif
 
 int main(int argc, char** argv) {
     printf("=== NCCL (collective communication) ===\n");
@@ -206,25 +214,23 @@ int main(int argc, char** argv) {
     // version macros above are pure preprocessor text and need no
     // runtime call at all -- this program deliberately does NOT call
     // MPI_Init, to keep this specific check runnable with a plain `./`
-    // invocation rather than requiring `mpirun`. Chapter 19 onward always
+    // invocation rather than requiring `mpirun`. Chapter 20 onward always
     // launches MPI programs through mpirun/mpiexec; this file is a
     // deliberate exception, for the version-check use case only.
     (void)argc; (void)argv;
 
     printf("\n=== NVSHMEM (GPU-initiated one-sided communication) ===\n");
-    printf("NVSHMEM ships its own version macros in a header not on the "
-           "default include path (non_abi/nvshmem_version.h) -- rather "
-           "than requiring every reader to know that path, this "
-           "appendix's own Makefile (A.4) established the reliable "
-           "check: NVSHMEM's pip package is a namespace package with no "
-           "__file__ of its own, so `python3 -c \"import nvidia.nvshmem; "
-           "print(list(nvidia.nvshmem.__path__)[0])\"` is what actually "
-           "locates the install (plain __file__ raises TypeError here), "
-           "and the header at that path's own "
-           "include/non_abi/nvshmem_version.h defines "
-           "NVSHMEM_VENDOR_MAJOR_VERSION / _MINOR_VERSION / "
-           "_PATCH_VERSION directly. In this environment those macros "
-           "read 3, 7, and 2.\n");
+#if defined(NVSHMEM_VENDOR_MAJOR_VERSION) && defined(NVSHMEM_VENDOR_MINOR_VERSION) && defined(NVSHMEM_VENDOR_PATCH_VERSION)
+    printf("NVSHMEM_VENDOR_MAJOR_VERSION = %d, NVSHMEM_VENDOR_MINOR_VERSION = %d, "
+           "NVSHMEM_VENDOR_PATCH_VERSION = %d\n",
+           NVSHMEM_VENDOR_MAJOR_VERSION, NVSHMEM_VENDOR_MINOR_VERSION,
+           NVSHMEM_VENDOR_PATCH_VERSION);
+#else
+    printf("NVSHMEM version macros not defined -- non_abi/nvshmem_version.h "
+           "was not found. Add -I<NVSHMEM_DIR>/include, where NVSHMEM_DIR "
+           "is printed by: python3 -c \"import nvidia.nvshmem; "
+           "print(list(nvidia.nvshmem.__path__)[0])\"\n");
+#endif
 
     printf("\nself-check: this program compiled and ran, which by itself "
            "confirms nccl.h and mpi.h were both found on this system's "
@@ -234,7 +240,12 @@ int main(int argc, char** argv) {
 }
 ```
 
-**Compile and run:** `g++ -std=c++17 -Wall -Wextra -O2 -I/usr/lib/x86_64-linux-gnu/openmpi/include 121_multi_gpu_stack_version_check.cpp -o 121_multi_gpu_stack_version_check && ./121_multi_gpu_stack_version_check`
+**Compile and run:**
+
+```bash
+NVSHMEM_DIR=$(python3 -c "import nvidia.nvshmem; print(list(nvidia.nvshmem.__path__)[0])")
+g++ -std=c++17 -Wall -Wextra -O2 -I/usr/lib/x86_64-linux-gnu/openmpi/include -I$NVSHMEM_DIR/include 121_multi_gpu_stack_version_check.cpp -o 121_multi_gpu_stack_version_check && ./121_multi_gpu_stack_version_check
+```
 
 **Sample input:** none
 
@@ -248,7 +259,7 @@ NCCL_MAJOR = 2, NCCL_MINOR = 18, NCCL_PATCH = 3 (NCCL_VERSION_CODE = 21803)
 OMPI_MAJOR_VERSION = 4, OMPI_MINOR_VERSION = 1, OMPI_RELEASE_VERSION = 6
 
 === NVSHMEM (GPU-initiated one-sided communication) ===
-NVSHMEM ships its own version macros in a header not on the default include path (non_abi/nvshmem_version.h) -- rather than requiring every reader to know that path, this appendix's own Makefile (A.4) established the reliable check: NVSHMEM's pip package is a namespace package with no __file__ of its own, so `python3 -c "import nvidia.nvshmem; print(list(nvidia.nvshmem.__path__)[0])"` is what actually locates the install (plain __file__ raises TypeError here), and the header at that path's own include/non_abi/nvshmem_version.h defines NVSHMEM_VENDOR_MAJOR_VERSION / _MINOR_VERSION / _PATCH_VERSION directly. In this environment those macros read 3, 7, and 2.
+NVSHMEM_VENDOR_MAJOR_VERSION = 3, NVSHMEM_VENDOR_MINOR_VERSION = 8, NVSHMEM_VENDOR_PATCH_VERSION = 0
 
 self-check: this program compiled and ran, which by itself confirms nccl.h and mpi.h were both found on this system's own include path -- a well-formed documented result either way, matching this book's own Appendix pattern.
 ```
@@ -320,8 +331,9 @@ int main() {
     } else {
         printf("NOT FOUND: driverVersion=%d (a value of 0 means the "
                "toolkit is installed but no NVIDIA driver is loaded on "
-               "this machine -- exactly this environment's own real "
-               "case, since it has no physical GPU at all)\n",
+               "this machine. Note this is NOT this book's own build "
+               "environment's case: there, a driver stub library answers "
+               "13.0 even with no physical GPU -- see case 2 below)\n",
                driverVersion);
     }
 
@@ -349,11 +361,11 @@ int main() {
                "environment's own real, honest situation (a GPU-less "
                "cloud sandbox with only a driver stub library present, "
                "no physical device behind it). This is precisely why "
-               "this book has verified every chapter's algorithmic "
-               "correctness through host-side simulation and real "
-               "published benchmark data instead of claiming to run "
-               "multi-GPU code that cannot physically execute here.\n",
-               deviceCount);
+               "this book "
+               "has verified every chapter's algorithmic correctness "
+               "through host-side simulation and real published "
+               "benchmark data instead of claiming to run multi-GPU code "
+               "that cannot physically execute here.\n", deviceCount);
     }
 
     printf("\n=== How to read this on YOUR machine ===\n");
@@ -426,9 +438,9 @@ Recipe 4: mpicxx + libcudart           -> mpi_only
 Recipe 5: nvcc + NVSHMEM + MPI (ccbin) -> cuda_nvshmem_mpi
 ```
 
-Each recipe reuses an exact real flag combination a numbered chapter already established and locked: Recipe 3 is the plain `nvcc ... -lnccl` shape Chapter 8 introduced; Recipe 4 is Chapter 20's own File 58 shape (`mpicxx -Wall -Wextra file.cpp -o out -lcudart`, a real `mpicxx` wrapper driving `g++` while linking a real installed `libcudart` directly); Recipe 5 is Chapter 22's own File 64 shape, where `mpicxx` is handed to `nvcc` as its *own* host compiler via `-ccbin`, not the other way around, so that a single binary can be launched by `mpirun` while still containing real NVSHMEM device code. None of these five flag combinations is new syntax invented for this appendix -- gathering them into one Makefile is the only new thing here.
+Each recipe reuses an exact real flag combination a numbered chapter already established and locked: Recipe 3 is the plain `nvcc ... -lnccl` shape Chapter 11 introduced; Recipe 4 is Chapter 20's own File 58 shape (`mpicxx -Wall -Wextra file.cpp -o out -lcudart`, a real `mpicxx` wrapper driving `g++` while linking a real installed `libcudart` directly); Recipe 5 is Chapter 22's own File 64 shape, where `mpicxx` is handed to `nvcc` as its *own* host compiler via `-ccbin`, not the other way around, so that a single binary can be launched by `mpirun` while still containing real NVSHMEM device code. Recipe 5 also needs one extra step that is easy to miss: the NVSHMEM pip wheel ships only the versioned `libnvshmem_host.so.3`, with no unversioned `libnvshmem_host.so` symlink, so a bare `-lnvshmem_host` fails with `ld: cannot find -lnvshmem_host`. Chapters 22 and 32 fix this with `ln -sf libnvshmem_host.so.3 $NVSHMEM_DIR/lib/libnvshmem_host.so` inside the package directory; the Makefile below instead creates the symlink in a local `nvshmem_shim/` directory and searches it first (a LIBDIR override), which works even when the Python package directory is not writable. None of these five flag combinations is new syntax invented for this appendix -- gathering them into one Makefile is the only new thing here.
 
-[COMMON TRAP] Recipe 5's `-gencode=arch=compute_70,code=sm_70` targets a Volta-generation GPU, matching Chapter 22's own real compile command exactly -- it is not a typo for `sm_80`. NVSHMEM's own minimum supported compute capability at the version installed in this book's environment (3.7.2) is lower than most of this book's other CUDA code targets, and matching Chapter 22's own already-verified flag exactly, rather than substituting a newer architecture flag, is what keeps this recipe consistent with that chapter's own locked, working build.
+[COMMON TRAP] Recipe 5's `-gencode=arch=compute_70,code=sm_70` targets a Volta-generation GPU, matching Chapter 22's own real compile command exactly -- it is not a typo for `sm_80`. NVSHMEM's own minimum supported compute capability at the version installed in this environment (3.8.0; this book's chapters were first verified against 3.7.2) is lower than most of this book's other CUDA code targets, and matching Chapter 22's own already-verified flag exactly, rather than substituting a newer architecture flag, is what keeps this recipe consistent with that chapter's own locked, working build.
 
 ### Code and Verification
 
@@ -437,8 +449,8 @@ Each recipe reuses an exact real flag combination a numbered chapter already est
 # A minimal Makefile covering this book's own five real distinct compile
 # recipes, extending the DSA book's own two-recipe Appendix A.3 Makefile
 # (plain g++, plain nvcc) with the three additional link lines this
-# book's own multi-GPU chapters actually need: nvcc+NCCL (Chapter 8
-# onward), mpicc/mpicxx (Chapter 19 onward), and nvcc+NVSHMEM+MPI
+# book's own multi-GPU chapters actually need: nvcc+NCCL (Chapter 11
+# onward), mpicc/mpicxx (Chapter 20 onward), and nvcc+NVSHMEM+MPI
 # (Chapter 22's own real recipe). Each recipe below is the exact real
 # flag set this book's own chapters have used and verified since they
 # were first introduced -- nothing here is new syntax, only gathered in
@@ -461,6 +473,15 @@ NVSHMEM_DIR := $(shell python3 -c "import nvidia.nvshmem; print(list(nvidia.nvsh
 NVSHMEM_INC := $(NVSHMEM_DIR)/include
 NVSHMEM_LIB := $(NVSHMEM_DIR)/lib
 
+# The NVSHMEM pip wheel ships only the versioned libnvshmem_host.so.3 and
+# no unversioned libnvshmem_host.so, so `-lnvshmem_host` alone cannot be
+# found by the linker. Rather than writing into the Python package's own
+# directory (the `ln -sf` Chapters 22 and 32 use), this Makefile makes a
+# local LIBDIR override: a small directory holding the unversioned
+# symlink, searched first. At run time the loader still wants the
+# versioned .so.3, so run with LD_LIBRARY_PATH=$(NVSHMEM_LIB).
+NVSHMEM_SHIM := nvshmem_shim
+
 # Recipe 1: plain host C++, no CUDA at all (this appendix's own File 121
 # is host-only aside from the nccl.h/mpi.h headers it merely reads).
 host_only: hello_host.cpp
@@ -471,7 +492,7 @@ host_only: hello_host.cpp
 cuda_only: hello_kernel.cu
 	$(NVCC) $(NVCC_ARCH) $< -o $@
 
-# Recipe 3: nvcc + NCCL (Chapter 8 onward: ncclAllReduce and friends).
+# Recipe 3: nvcc + NCCL (Chapter 11 onward: ncclAllReduce and friends).
 cuda_nccl: hello_nccl.cu
 	$(NVCC) $(NVCC_ARCH) -I$(NCCL_INC) -L$(NCCL_LIB) $< -o $@ -lnccl
 
@@ -488,16 +509,22 @@ mpi_only: hello_mpi.cpp
 # File 64 established: `nvcc -rdc=true -ccbin mpicxx -gencode=arch=
 # compute_70,code=sm_70 -I $NVSHMEM_HOME/include file.cu -o out
 # -L $LIBDIR -lnvshmem_host -lnvshmem_device -lcuda -lmpi` (mpicxx as
-# nvcc's OWN host compiler, not the other way around).
-cuda_nvshmem_mpi: hello_nvshmem.cu
+# nvcc's OWN host compiler, not the other way around), plus the
+# unversioned-symlink LIBDIR override described above.
+$(NVSHMEM_SHIM)/libnvshmem_host.so:
+	mkdir -p $(NVSHMEM_SHIM)
+	ln -sf $(NVSHMEM_LIB)/libnvshmem_host.so.3 $@
+
+cuda_nvshmem_mpi: hello_nvshmem.cu $(NVSHMEM_SHIM)/libnvshmem_host.so
 	$(NVCC) -rdc=true -ccbin $(MPICXX) -gencode=arch=compute_70,code=sm_70 \
-		-I$(NVSHMEM_INC) -L$(NVSHMEM_LIB) \
+		-I$(NVSHMEM_INC) -L$(NVSHMEM_SHIM) -L$(NVSHMEM_LIB) \
 		$< -o $@ -lnvshmem_host -lnvshmem_device -lcuda -lmpi
 
 all: host_only cuda_only cuda_nccl mpi_only cuda_nvshmem_mpi
 
 clean:
 	rm -f host_only cuda_only cuda_nccl mpi_only cuda_nvshmem_mpi
+	rm -rf $(NVSHMEM_SHIM)
 
 .PHONY: all clean
 ```
@@ -588,7 +615,7 @@ int main(int argc, char** argv) {
 }
 ```
 
-**Compile and run:** `make all`, then run each binary directly (`./host_only`, `./cuda_only`, `./cuda_nccl`), and the two MPI-launched ones through `mpirun`: `mpirun --allow-run-as-root --oversubscribe -np 2 ./mpi_only`, and `mpirun --allow-run-as-root --oversubscribe -np 1 ./cuda_nvshmem_mpi` (with `LD_LIBRARY_PATH` including NVSHMEM's own installed `lib/` directory).
+**Compile and run:** `make all`, then run each binary directly (`./host_only`, `./cuda_only`, `./cuda_nccl`), and the two MPI-launched ones through `mpirun`: `mpirun --allow-run-as-root --oversubscribe -np 2 ./mpi_only`, and `mpirun --allow-run-as-root --oversubscribe -np 1 ./cuda_nvshmem_mpi` (with `LD_LIBRARY_PATH` set to NVSHMEM's own installed `lib/` directory, because the loader needs the versioned `libnvshmem_host.so.3` that lives there).
 
 **Sample input:** none
 
@@ -600,8 +627,10 @@ g++ -std=c++17 -Wall -Wextra -O2 hello_host.cpp -o host_only
 nvcc -arch=sm_80 hello_kernel.cu -o cuda_only
 nvcc -arch=sm_80 -I/usr/include -L/usr/lib/x86_64-linux-gnu hello_nccl.cu -o cuda_nccl -lnccl
 mpicxx -Wall -Wextra -DOMPI_SKIP_MPICXX hello_mpi.cpp -o mpi_only -lcudart
+mkdir -p nvshmem_shim
+ln -sf /usr/local/lib/python3.13/site-packages/nvidia/nvshmem/lib/libnvshmem_host.so.3 nvshmem_shim/libnvshmem_host.so
 nvcc -rdc=true -ccbin mpicxx -gencode=arch=compute_70,code=sm_70 \
-	-I/usr/local/lib/python3.11/dist-packages/nvidia/nvshmem/include -L/usr/local/lib/python3.11/dist-packages/nvidia/nvshmem/lib \
+	-I/usr/local/lib/python3.13/site-packages/nvidia/nvshmem/include -Lnvshmem_shim -L/usr/local/lib/python3.13/site-packages/nvidia/nvshmem/lib \
 	hello_nvshmem.cu -o cuda_nvshmem_mpi -lnvshmem_host -lnvshmem_device -lcuda -lmpi
 
 $ ./host_only
@@ -617,11 +646,11 @@ $ mpirun --allow-run-as-root --oversubscribe -np 2 ./mpi_only
 hello_mpi: rank 0, linked against real libcudart (CUDA runtime 12.0)
 hello_mpi: rank 1, linked against real libcudart (CUDA runtime 12.0)
 
-$ mpirun --allow-run-as-root --oversubscribe -np 1 ./cuda_nvshmem_mpi
-hello_nvshmem: rank 0, compiled and linked against real libnvshmem_host/libnvshmem_device (NVSHMEM 3.7.2), real MPI bootstrap headers present.
+$ LD_LIBRARY_PATH=/usr/local/lib/python3.13/site-packages/nvidia/nvshmem/lib mpirun --allow-run-as-root --oversubscribe -np 1 ./cuda_nvshmem_mpi
+hello_nvshmem: rank 0, compiled and linked against real libnvshmem_host/libnvshmem_device (NVSHMEM 3.8.0), real MPI bootstrap headers present.
 ```
 
-All five recipes compiled AND ran successfully in this book's own build environment, with zero physical GPUs present -- because none of the five stub programs above calls `nvshmem_init()`, launches a kernel, or performs a collective, exactly like `hello_kernel.cu`'s own empty, unlaunched `__global__` function. This is a deliberate, honest choice: it proves the entire toolchain and every library link line is correct and ready, without claiming a device-touching operation succeeded when this specific machine has no device to touch. On a real multi-GPU machine, the same five recipes need no changes at all -- only the stub `main()` bodies would grow into this book's own actual chapters.
+All five recipes compiled AND ran successfully in this book's own build environment (the output above is a real `make all` run against NVSHMEM 3.8.0 under Python 3.13; your `site-packages` path will differ), with zero physical GPUs present -- because none of the five stub programs above calls `nvshmem_init()`, launches a kernel, or performs a collective, exactly like `hello_kernel.cu`'s own empty, unlaunched `__global__` function. This is a deliberate, honest choice: it proves the entire toolchain and every library link line is correct and ready, without claiming a device-touching operation succeeded when this specific machine has no device to touch. On a real multi-GPU machine, the same five recipes need no changes at all -- only the stub `main()` bodies would grow into this book's own actual chapters.
 
 If a reader's own machine reaches Q4's "NO, only 1 device found" branch (Section A.3) rather than "NO, 0 devices found," every recipe above already works on real hardware; the only gap left is a second GPU. Renting a short-lived multi-GPU instance by the hour from any major cloud GPU provider is the practical way to close that gap for the length of a single chapter's own exercises, the same way the DSA book's own Appendix A.4 describes renting a single-GPU instance from Lambda Cloud -- the exact rental steps do not change based on GPU count, only the instance type selected.
 

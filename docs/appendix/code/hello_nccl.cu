@@ -1,4 +1,4 @@
-// Appendix A.4: Recipe 3 stub -- nvcc + NCCL headers/link line.
+// hello_nccl.cu -- Recipe 3 stub: nvcc + NCCL headers/link line.
 #include <cstdio>
 #include <nccl.h>
 int main() {
