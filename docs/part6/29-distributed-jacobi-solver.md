@@ -1,6 +1,8 @@
+# Chapter 29: Distributed Jacobi Solver
+
 **What you will understand after reading this chapter:** why solving a linear system with the Jacobi iterative method, distributed across many devices, needs almost exactly the same halo exchange this book built in Chapter 16 for a plain stencil update -- and exactly one genuinely new ingredient on top of it: a global residual-norm reduction to decide when the solver is done. You will see that new ingredient built, verified, and cost-modeled, including a real floating-point subtlety it introduces that the halo exchange itself does not have.
 
-**What you need to know first:** Chapter 16's row-strip domain decomposition and fixed top/bottom halo exchange; Chapter 8's caution about floating-point reduction order; Chapter 9's ring collective round-count model; Chapter 11's ring-vs-tree contrast; Chapter 25's own real one-bit floating-point mismatch inside a collective.
+**What you need to know first:** Chapter 16's row-strip domain decomposition and fixed top/bottom halo exchange; Chapter 8's caution about floating-point reduction order; Chapter 9's ring collective round-count model; Chapter 11's ring-vs-tree contrast.
 
 ---
 
@@ -36,7 +38,7 @@ Picture a distributed 2D grid again, split into horizontal strips, one strip per
 
 ### Background
 
-NVIDIA's own real MPI Jacobi solver (`multi-gpu-programming-models/mpi/jacobi.cpp`) computes the same fixed neighbor pair Chapter 16 used:
+NVIDIA's own real MPI Jacobi solver (`multi-gpu-programming-models/mpi/jacobi.cpp`) uses the same row-strip, top/bottom-only halo exchange shape Chapter 16 used -- with one real difference in how it picks neighbors:
 
 ```
 const int top = rank > 0 ? rank - 1 : (size - 1);
@@ -49,16 +51,21 @@ MPI_CALL(MPI_Sendrecv(a_new + (iy_end - 1) * nx, nx, MPI_REAL_TYPE, bottom, 0,
                       MPI_STATUS_IGNORE));
 ```
 
-This file's own host-side simulation builds the same shape: P ranks, each owning a contiguous row-strip of a discretized 2D Poisson grid (interior size NY x NX, constant forcing term, zero Dirichlet boundary), exchanging only top/bottom halo rows every iteration, for a fixed 40 iterations. It then checks the assembled distributed grid against a single-process reference **exactly**, cell by cell -- because, exactly as in Chapter 16, each cell's own update touches the same four old neighbor values in the same fixed order regardless of how the grid happens to be partitioned. It goes one step further than Chapter 16 did: it also computes the *global residual norm* two different ways -- once as a single flat pass over the whole grid (the reference), and once as P separate per-rank partial sums that are only combined at the very end (modeling `MPI_Allreduce(..., MPI_SUM, ...)`, the real call in NVIDIA's own `jacobi.cpp`) -- to check whether that reduction is *also* exact, the way the grid update itself is.
+Read the first two lines carefully: rank 0's `top` is `size - 1`, and the last rank's `bottom` is `(size - 1 + 1) % size = 0`. NVIDIA's neighbor computation wraps around, so the decomposition is *periodic* in y -- every rank, including the edge ranks, exchanges in both directions. Chapter 16's exchange, and this chapter's simulation below, are *non-periodic*: rank 0 has no top neighbor and the last rank has no bottom neighbor, so those edge ranks skip that side of the exchange and keep the fixed (Dirichlet) boundary row instead. The communication shape (one row up, one row down, every iteration) is the same; the boundary treatment is not, and porting either code to the other's problem means changing exactly those two lines.
+
+This file's own host-side simulation builds the same row-strip shape, non-periodically: P ranks, each owning a contiguous row-strip of a discretized 2D Poisson grid (interior size NY x NX, constant forcing term, zero Dirichlet boundary), exchanging only top/bottom halo rows every iteration, for a fixed 40 iterations. It then checks the assembled distributed grid against a single-process reference **exactly**, cell by cell -- because, exactly as in Chapter 16, each cell's own update touches the same four old neighbor values in the same fixed order regardless of how the grid happens to be partitioned. It goes one step further than Chapter 16 did: it also computes the *global residual norm* two different ways -- once as a single flat pass over the whole grid (the reference), and once as P separate per-rank partial sums that are only combined at the very end (modeling `MPI_Allreduce(..., MPI_SUM, ...)`, the real call in NVIDIA's own `jacobi.cpp`) -- to check whether that reduction is *also* exact, the way the grid update itself is.
 
 ```cpp
 // Chapter 29: Distributed Jacobi Solver
 // 84_distributed_jacobi_correctness_simulation.cpp
 //
 // Chapter 16's own row-strip domain decomposition and fixed top/bottom-only
-// halo exchange (matching NVIDIA's own real multi-GPU Jacobi example,
-// multi-gpu-programming-models/mpi/jacobi.cpp: "const int top = rank > 0 ?
-// rank - 1 : (size - 1); const int bottom = (rank + 1) % size;") apply
+// halo exchange (the same row-strip shape as NVIDIA's own multi-GPU Jacobi
+// example, multi-gpu-programming-models/mpi/jacobi.cpp -- although that
+// example's neighbors WRAP AROUND, "const int top = rank > 0 ? rank - 1 :
+// (size - 1); const int bottom = (rank + 1) % size;", i.e. periodic in y,
+// while this file, like Chapter 16, is non-periodic: edge ranks skip the
+// exchange on their outer side and keep the Dirichlet boundary) apply
 // almost unchanged to the classic Jacobi ITERATIVE METHOD for solving a
 // linear system (Saad, "Iterative Methods for Sparse Linear Systems", 2nd
 // ed., SIAM 2003, Ch.4 "Basic Iterative Methods") on a discretized 2D
@@ -74,8 +81,8 @@ This file's own host-side simulation builds the same shape: P ranks, each owning
 // as P separate per-rank partial sums later combined (modeling
 // MPI_Allreduce(..., MPI_SUM, ...), the real call in NVIDIA's own
 // jacobi.cpp) -- to check whether that reduction is ALSO bit-exact, or
-// whether it runs into the same floating-point non-associativity this
-// book's own Chapter 8 and Chapter 25 already found for other collectives.
+// whether it runs into the floating-point non-associativity Chapter 8
+// cautioned about.
 #include <cstdio>
 #include <vector>
 #include <cmath>
@@ -260,7 +267,7 @@ P      grid EXACT match?    residual norm (per-rank sums) norm match?
 12     YES                  1.3874786747088719           NO        
 ```
 
-The grid itself matches bit-for-bit at every P, exactly as Chapter 16 predicted: the update step's communication pattern and per-cell arithmetic are unchanged by partitioning. But the residual norm does **not** match at P > 1 -- it differs in the last printed digit (`...088721` vs `...088719`). This is not a bug in this file; it is Chapter 8's own non-associativity caution and Chapter 25's own real one-bit mismatch, showing up again here for a completely different reason: summing P separate partial sums and then adding those partial sums together is a different sequence of rounding steps than summing the same values in one flat pass, even though the *set* of values and their *order* along the grid are identical. Section 29.2 explains why this is the real, structural difference between the halo exchange (exact regardless of P) and the residual Allreduce (not exact, in general, once P > 1).
+The grid itself matches bit-for-bit at every P, exactly as Chapter 16 predicted: the update step's communication pattern and per-cell arithmetic are unchanged by partitioning. But the residual norm does **not** match at P > 1 -- it differs in the last printed digit (`...088721` vs `...088719`). This is not a bug in this file; it is Chapter 8's own non-associativity caution showing up for real, and it stands on its own as a genuine example (Chapter 25's correctly-implemented ring all-reduce, by contrast, was bit-identical across replicas by construction -- there, the one-bit drift appeared only in a deliberately wrong contrast): summing P separate partial sums and then adding those partial sums together is a different sequence of rounding steps than summing the same values in one flat pass, even though the *set* of values and their *order* along the grid are identical. Section 29.2 explains why this is the real, structural difference between the halo exchange (exact regardless of P) and the residual Allreduce (not exact, in general, once P > 1).
 
 !!! warning "[COMMON TRAP] Assuming a distributed reduction is exact just because the underlying update was"
     Chapter 16's halo exchange and this chapter's update step are exact at every P because each cell's own arithmetic touches a *fixed, small set of operands in a fixed order*, and partitioning never changes that order. A global sum-reduction is different: partitioning changes *how the terms are grouped* before they're added, and floating-point addition is not associative -- `(a+b)+(c+d)` and `((a+b)+c)+d` can differ in their last bit even though both equal the same real number mathematically. Never assume a residual norm, loss value, or other reduced scalar will reproduce bit-for-bit across different rank counts; if exact reproducibility across P is a requirement (e.g., for a regression test), the reduction order itself must be fixed, not just the operand set.
@@ -438,7 +445,7 @@ This chapter picked the Jacobi method because its update step is the cleanest po
 
 ### Background
 
-James Demmel's own real UC Berkeley CS267 lecture notes give the classic convergence-rate result for Jacobi applied to an n x n grid discretization of the Poisson equation: the number of iterations needed just to halve the error once is "m ~ ((n+1)/pi)^2" -- growing with the *square* of the grid dimension. The same notes give a real serial/parallel complexity table (N = n^2 unknowns) contrasting Jacobi's O(N^2) serial cost against Conjugate Gradient's and SOR's O(N^1.5), and Multigrid's O(N); and state that Gauss-Seidel "converge[s] twice as fast (rho_GaussSeidel(n) = rho_Jacobi(n)^2)" than Jacobi, at the cost of a data dependency within each sweep that breaks the clean once-per-iteration halo exchange this chapter relied on.
+James Demmel's own real UC Berkeley CS267 lecture notes give the classic convergence-rate result for Jacobi applied to an n x n grid discretization of the Poisson equation: Jacobi's spectral radius on that problem is cos(pi/(n+1)), approximately 1 - pi^2/(2(n+1)^2), so each iteration multiplies the error by roughly that factor, and the notes give m = 2(n+1)^2/pi^2 iterations to reduce the error by a factor of e. Halving the error once therefore takes ln 2 times that, m_half ~ 2 ln2 ((n+1)/pi)^2, about 1.39 ((n+1)/pi)^2 -- growing with the *square* of the grid dimension. (A bare ((n+1)/pi)^2 iterations, a form sometimes quoted, reduces the error only by a factor of e^(-1/2), about 0.61 -- not by half -- so using it for "halving" undercounts by about 28%.) The same notes give a real serial/parallel complexity table (N = n^2 unknowns) contrasting Jacobi's O(N^2) serial cost against Conjugate Gradient's and SOR's O(N^1.5), and Multigrid's O(N); and state that Gauss-Seidel "converge[s] twice as fast (rho_GaussSeidel(n) = rho_Jacobi(n)^2)" than Jacobi, at the cost of a data dependency within each sweep that breaks the clean once-per-iteration halo exchange this chapter relied on.
 
 ```cpp
 // Chapter 29: Distributed Jacobi Solver
@@ -450,13 +457,16 @@ James Demmel's own real UC Berkeley CS267 lecture notes give the classic converg
 // COMMUNICATION PATTERN (this chapter's own real subject) carries over
 // directly to the smarter methods that replace it. James Demmel's own real
 // UC Berkeley CS267 lecture notes give the classic result for an n x n
-// grid discretized Poisson problem: Jacobi needs "m ~ ((n+1)/pi)^2"
-// iterations just to HALVE the error once, and state a real serial
+// grid discretized Poisson problem: Jacobi's spectral radius is
+// cos(pi/(n+1)) ~ 1 - pi^2/(2(n+1)^2), so reducing the error by a factor
+// of e takes m = 2(n+1)^2/pi^2 iterations, and HALVING it once takes
+// 2*ln(2)*((n+1)/pi)^2 (a bare ((n+1)/pi)^2 only reduces it by e^(-1/2),
+// not by half). The same notes state a real serial
 // complexity table (N = n^2 unknowns) contrasting Jacobi's O(N^2) serial
 // cost against Conjugate Gradient's O(N^1.5), SOR's O(N^1.5), and
 // Multigrid's O(N) -- and separately that Gauss-Seidel "converge[s] twice
 // as fast (rho_GaussSeidel(n) = rho_Jacobi(n)^2)" than Jacobi. This
-// section computes Demmel's own real formula at several real grid sizes,
+// section computes that halving count at several real grid sizes,
 // and closes with NVIDIA's own real AmgX paper (Naumov et al., SIAM J.
 // Sci. Comput. 37(5), 2015) -- a real production GPU multigrid library
 // that reuses this exact chapter's own halo-exchange-plus-Allreduce
@@ -465,9 +475,9 @@ James Demmel's own real UC Berkeley CS267 lecture notes give the classic converg
 #include <cmath>
 
 int main() {
-    printf("--- Demmel's own real formula: Jacobi iterations to HALVE the error, "
-           "n x n grid ---\n");
-    printf("m ~ ((n+1)/pi)^2   (CS267 Lecture 24, Demmel)\n\n");
+    printf("--- Jacobi iterations to HALVE the error, n x n grid ---\n");
+    printf("rho_Jacobi = cos(pi/(n+1)) ~ 1 - pi^2/(2(n+1)^2)  (Demmel, CS267)\n");
+    printf("m_half ~ 2*ln(2)*((n+1)/pi)^2\n\n");
     printf("%-10s %-24s %-28s\n", "n (grid)", "m: iters to halve error",
            "iters for error <= 1e-6 (~20 halvings)");
     const int ns[] = {10, 100, 1000, 10000};
@@ -475,7 +485,7 @@ int main() {
     // log2(1/1e-6) = log2(1e6) ~= 19.93 halvings needed to shrink error by 1e-6
     double halvingsNeeded = std::log2(1.0e6);
     for (int n : ns) {
-        double m = ((double)(n + 1) / PI) * ((double)(n + 1) / PI);
+        double m = 2.0 * std::log(2.0) * ((double)(n + 1) / PI) * ((double)(n + 1) / PI);
         double totalIters = m * halvingsNeeded;
         printf("%-10d %-24.1f %-28.1f\n", n, m, totalIters);
     }
@@ -485,7 +495,8 @@ int main() {
            "error. This is exactly why this chapter's own solver is a "
            "DIDACTIC vehicle for the communication pattern, not a claim that "
            "Jacobi itself is production-grade.\n\n",
-           ((double)(10001) / PI) * ((double)(10001) / PI) * halvingsNeeded);
+           2.0 * std::log(2.0) * ((double)(10001) / PI) * ((double)(10001) / PI) *
+               halvingsNeeded);
 
     printf("--- Demmel's own real serial/PRAM complexity table (N = n^2 unknowns) ---\n");
     printf("%-14s %-14s %-18s\n", "Method", "Serial", "PRAM (parallel depth)");
@@ -529,16 +540,17 @@ g++ -O2 86_jacobi_convergence_rate_model.cpp -o 86_jacobi_convergence_rate_model
 ```
 
 ```text
---- Demmel's own real formula: Jacobi iterations to HALVE the error, n x n grid ---
-m ~ ((n+1)/pi)^2   (CS267 Lecture 24, Demmel)
+--- Jacobi iterations to HALVE the error, n x n grid ---
+rho_Jacobi = cos(pi/(n+1)) ~ 1 - pi^2/(2(n+1)^2)  (Demmel, CS267)
+m_half ~ 2*ln(2)*((n+1)/pi)^2
 
 n (grid)   m: iters to halve error  iters for error <= 1e-6 (~20 halvings)
-10         12.3                     244.4                       
-100        1033.6                   20600.8                     
-1000       101523.9                 2023531.1                   
-10000      10134144.9               201989403.8                 
+10         17.0                     338.8                       
+100        1432.8                   28558.8                     
+1000       140742.0                 2805209.8                   
+10000      14048907.9               280016771.4                 
 
-For n = 10,000 (a 10,000 x 10,000 grid, N = 10^8 unknowns -- a realistic production PDE mesh size), Jacobi alone would need on the order of 201989404 iterations just to reach a modest 1e-6 relative error. This is exactly why this chapter's own solver is a DIDACTIC vehicle for the communication pattern, not a claim that Jacobi itself is production-grade.
+For n = 10,000 (a 10,000 x 10,000 grid, N = 10^8 unknowns -- a realistic production PDE mesh size), Jacobi alone would need on the order of 280016771 iterations just to reach a modest 1e-6 relative error. This is exactly why this chapter's own solver is a DIDACTIC vehicle for the communication pattern, not a claim that Jacobi itself is production-grade.
 
 --- Demmel's own real serial/PRAM complexity table (N = n^2 unknowns) ---
 Method         Serial         PRAM (parallel depth)
@@ -557,7 +569,7 @@ Naumov, Arsaev, Castonguay, Cohen, Demouth, Eaton, Layton, Markovskiy, Reguly, S
 Jacobi's own real slowness (Demmel):        What production solvers actually do:
 
   n=10,000 grid                                same halo exchange
-  needs ~2*10^8 iterations                     +
+  needs ~2.8*10^8 iterations                   +
   to reach 1e-6 error                           same Allreduce residual check
   --------------------------->                  +
   O(N^2) serial cost                            a FASTER-CONVERGING method
@@ -570,7 +582,7 @@ Jacobi's own real slowness (Demmel):        What production solvers actually do:
 
 ## Chapter Summary
 
-Distributed Jacobi combines two ingredients this book already built separately: Chapter 16's fixed-neighbor halo exchange for the local update step, verified in Section 29.1 to still be bit-exact across every partition tested, and a global residual-norm Allreduce -- the first genuinely new requirement an *iterative solver* adds on top of a fixed-step stencil sweep. Section 29.1 showed that the update step's exactness does not automatically extend to the reduction: summing the residual as P separate partial sums, then combining them, produced a real one-bit mismatch against a single flat pass, for the same non-associativity reason Chapter 8 and Chapter 25 already documented. Section 29.2 quantified the reduction's real cost using Chapter 9's round-count model and Chapter 11's ring-vs-tree contrast, and showed -- using NVIDIA's own real `-nccheck` tunable and PETSc's own real statement about large-P reduction cost -- that checking convergence every K iterations divides the reduction's total overhead by K. Section 29.3 closed with Demmel's own real convergence-rate formula, showing Jacobi's O(N^2) serial complexity makes it impractical at production grid sizes, and pointed to NVIDIA's own real AmgX library as a production successor that reuses this exact communication pattern around a faster-converging method.
+Distributed Jacobi combines two ingredients this book already built separately: Chapter 16's fixed-neighbor halo exchange for the local update step, verified in Section 29.1 to still be bit-exact across every partition tested, and a global residual-norm Allreduce -- the first genuinely new requirement an *iterative solver* adds on top of a fixed-step stencil sweep. Section 29.1 showed that the update step's exactness does not automatically extend to the reduction: summing the residual as P separate partial sums, then combining them, produced a real one-bit mismatch against a single flat pass, for the non-associativity reason Chapter 8 cautioned about -- a genuine, verified instance of that caution in this book. Section 29.2 quantified the reduction's real cost using Chapter 9's round-count model and Chapter 11's ring-vs-tree contrast, and showed -- using NVIDIA's own real `-nccheck` tunable and PETSc's own real statement about large-P reduction cost -- that checking convergence every K iterations divides the reduction's total overhead by K. Section 29.3 closed with the Jacobi convergence rate from Demmel's notes (about 2 ln2 ((n+1)/pi)^2 iterations per halving of the error), showing Jacobi's O(N^2) serial complexity makes it impractical at production grid sizes, and pointed to NVIDIA's own real AmgX library as a production successor that reuses this exact communication pattern around a faster-converging method.
 
 ## Self-Check Questions
 
@@ -602,7 +614,7 @@ Chapter 30, "Multi-GPU Ray Tracing and Rendering," leaves the iterative-solver w
 
 **Sources cited in this chapter:**
 
-- Yousef Saad, *Iterative Methods for Sparse Linear Systems*, 2nd ed., SIAM, 2003, Chapter 1 (Theorem 1.10) and Chapter 4 ("Basic Iterative Methods").
+- Yousef Saad, *Iterative Methods for Sparse Linear Systems*, 2nd ed., SIAM, 2003, Chapter 4 ("Basic Iterative Methods").
 - NVIDIA, `multi-gpu-programming-models` (GitHub repository), `mpi/jacobi.cpp` and top-level `README.md`.
 - PETSc Users Manual, "Pipelined Krylov Methods" section, https://petsc.org/release/manual/ksp/.
 - James Demmel, UC Berkeley CS267, "Notes for Lectures 15 and 16" / Lecture 24 course notes, https://people.eecs.berkeley.edu/~demmel/cs267/lecture24/lecture24.html.

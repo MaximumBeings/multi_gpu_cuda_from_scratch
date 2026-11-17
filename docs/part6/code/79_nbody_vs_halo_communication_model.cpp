@@ -9,8 +9,8 @@
 // received (P-1)/P of the total K bytes being gathered. Chapter 16's
 // own halo-exchange volume, by contrast, depended only on a fixed
 // BOUNDARY size between adjacent shards -- never on the total domain
-// size -- which is exactly why adding more shards made Chapter 16's
-// own per-shard communication SHRINK. This section's own worked
+// size, and never on P -- which is exactly why adding more shards left
+// Chapter 16's own per-shard communication FLAT. This section's own worked
 // calculation, applied to a real body count from a real cited source
 // (Burtscher & Pingali's own "5,000,000 bodies" CUDA Barnes-Hut
 // benchmark), shows the opposite: N-body's own per-GPU all-gather
@@ -62,9 +62,10 @@ int main() {
            "every step. Chapter 16's own halo-exchange volume stayed "
            "FLAT at a fixed boundary size regardless of P, because a "
            "stencil update only ever reads immediately adjacent cells. "
-           "Adding more GPUs make Chapter 16's own per-GPU communication "
-           "SHRINK relative to the growing problem; it does nothing "
-           "comparable for this chapter's own all-pairs N-body case.\n",
+           "Adding more GPUs leaves Chapter 16's own per-GPU "
+           "communication flat; for this chapter's own all-pairs N-body "
+           "case it makes each GPU's receive volume GROW toward the full "
+           "dataset.\n",
            totalMiB);
 
     return 0;

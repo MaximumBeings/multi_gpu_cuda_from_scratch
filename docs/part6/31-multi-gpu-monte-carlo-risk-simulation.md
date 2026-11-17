@@ -1,6 +1,8 @@
+# Chapter 31: Multi-GPU Monte Carlo Risk Simulation
+
 **What you will understand after reading this chapter:** why Monte Carlo risk simulation looks, at first glance, like Chapter 30's embarrassingly parallel rendering case, but is genuinely different in one specific way: it always ends in a real reduction. You will see that reduction built two different ways -- an exact, low-volume combination for a mean and a variance, and a fundamentally different, higher-volume requirement for a percentile-based risk statistic like Value-at-Risk -- and a real, sharp finding about how even the *shape* of a reduction, not just how the work was split, can change a floating-point result.
 
-**What you need to know first:** Chapter 30's independent-unit rendering case (as the point of comparison); Chapter 8's floating-point non-associativity caution; Chapter 9 and Chapter 11's naive-ring-vs-tree reduction shapes; Chapter 10/27's all-gather pattern.
+**What you need to know first:** Chapter 30's independent-unit rendering case (as the point of comparison); Chapter 8's floating-point non-associativity caution; Chapter 11's ring-vs-tree reduction shapes; Chapter 10/27's gather/all-gather patterns.
 
 ---
 
@@ -51,8 +53,9 @@ This section's own simulation builds that shape with a small, fixed set of paths
 // builds that shape: a fixed set of paths, split across P ranks (each
 // rank touching ONLY its own paths, using a counter-based deterministic
 // per-path value -- modeling NVIDIA's own real cuRAND Philox generator,
-// whose documentation states "each thread of computation should be
-// assigned a unique id number" so that independent streams need NO
+// whose device-API documentation states "each thread of computation
+// should be assigned a unique sequence number" so that independent
+// streams need NO
 // coordination between them), with each rank's own partial (count, mean,
 // M2) combined into a global statistic using Chan, Golub & LeVeque's own
 // real pairwise combination formula ("Updating Formulae and a Pairwise
@@ -155,11 +158,13 @@ int main() {
            "-- Chan et al.'s own pairwise mean formula happens to reproduce "
            "this dataset's reference mean bit-for-bit. The combined M2 does "
            "NOT match at P > 1: a real, tiny (last-few-digits) floating-point "
-           "difference, the same non-associativity finding Chapter 8, "
-           "Chapter 25, and Chapter 29 already documented -- Chan et al.'s "
-           "own real algorithm is famous for being NUMERICALLY STABLE, not "
-           "for being BIT-IDENTICAL to a differently-grouped two-pass "
-           "reference; those are two different guarantees.\n");
+           "difference. Note which side is off: computed exactly in rational "
+           "arithmetic, this dataset's true M2 rounds to 3837.9583333333335 -- "
+           "what the combined result gives at every P > 1 except P = 12 (1 ulp "
+           "low). It is the single-process two-pass REFERENCE that is 3 ulp "
+           "high. Pairwise combination is a genuinely different formula from "
+           "the two-pass one, not a regrouping of the same additions, so a "
+           "bit-for-bit match was never promised in either direction.\n");
 
     return 0;
 }
@@ -185,10 +190,10 @@ P      count      combined mean  combined M2              mean match   M2 match
 12     24         10.541667      3837.958333333333        YES          NO          
 24     24         10.541667      3837.9583333333335       YES          NO          
 
-Every combined count matches exactly (integer payoff sums are exactly associative, unlike the floating-point mean and M2). The combined MEAN matches the reference exactly at every P tested here -- Chan et al.'s own pairwise mean formula happens to reproduce this dataset's reference mean bit-for-bit. The combined M2 does NOT match at P > 1: a real, tiny (last-few-digits) floating-point difference, the same non-associativity finding Chapter 8, Chapter 25, and Chapter 29 already documented -- Chan et al.'s own real algorithm is famous for being NUMERICALLY STABLE, not for being BIT-IDENTICAL to a differently-grouped two-pass reference; those are two different guarantees.
+Every combined count matches exactly (integer payoff sums are exactly associative, unlike the floating-point mean and M2). The combined MEAN matches the reference exactly at every P tested here -- Chan et al.'s own pairwise mean formula happens to reproduce this dataset's reference mean bit-for-bit. The combined M2 does NOT match at P > 1: a real, tiny (last-few-digits) floating-point difference. Note which side is off: computed exactly in rational arithmetic, this dataset's true M2 rounds to 3837.9583333333335 -- what the combined result gives at every P > 1 except P = 12 (1 ulp low). It is the single-process two-pass REFERENCE that is 3 ulp high. Pairwise combination is a genuinely different formula from the two-pass one, not a regrouping of the same additions, so a bit-for-bit match was never promised in either direction.
 ```
 
-The `count` values match exactly at every P, for a reason worth pausing on: summing plain integers is exactly associative (barring overflow), so no matter how the 24 paths are split and re-combined, the total path count -- and, if you check it, the total integer payoff sum too -- comes back identical. It is only once division (to form a mean) and squared differences (to form M2) enter the picture that grouping starts to matter, echoing every earlier chapter's own floating-point caution, but this time triggered by *how many groups the data was split into*, not yet by *how those groups were combined*. Section 31.2 asks that second question directly.
+The `count` values match exactly at every P, for a reason worth pausing on: summing plain integers is exactly associative (barring overflow), so no matter how the 24 paths are split and re-combined, the total path count -- and, if you check it, the total integer payoff sum too -- comes back identical. It is only once division (to form a mean) and squared differences (to form M2) enter the picture that the computation path starts to matter. And notice which result is actually off: an exact rational-arithmetic computation of this dataset's M2 rounds to `3837.9583333333335`, which is what the distributed combination produces at every P > 1 except P = 12 (one ulp low). The single-process "reference" -- `3837.9583333333348` -- is the one 3 ulp away from the true value. The distributed result is not *drifting away* from the truth; it is landing on different rounding than a different formula, and here mostly landing closer. The difference is triggered by *how many groups the data was split into*, not yet by *how those groups were combined*. Section 31.2 asks that second question directly.
 
 ```text
 Integer sums (count, raw payoff totals):     Floating-point mean and M2:
@@ -199,7 +204,7 @@ Integer sums (count, raw payoff totals):     Floating-point mean and M2:
 ```
 
 !!! warning "[COMMON TRAP] Assuming Chan et al.'s formula guarantees bit-exact reproducibility"
-    Chan, Golub & LeVeque's own real 1979 result is celebrated because it avoids a genuinely serious problem: naively computing variance from a raw sum of squares can lose almost all numerical precision when the mean is large relative to the spread of the data. Their pairwise formula fixes that numerical-stability problem. It does **not** promise that combining the same data in a different grouping produces the identical floating-point bit pattern -- Section 31.1's own result shows the M2 still shifts in its last few digits once P > 1. Numerically stable and bit-reproducible are two different guarantees; Chan et al. give you the first, not the second.
+    Chan, Golub & LeVeque's own real 1979 result is celebrated because it avoids a genuinely serious problem: naively computing variance from a raw sum of squares can lose almost all numerical precision when the mean is large relative to the spread of the data. Their pairwise formula fixes that numerical-stability problem. It also is not the same arithmetic as a single-process two-pass computation: it combines per-group (count, mean, M2) triples with a correction term, rather than summing the same squared deviations in a different order. So it does **not** promise to reproduce a two-pass result bit-for-bit -- and the mismatch in Section 31.1 is not evidence the distributed side is the inaccurate one. Measured against the exact rational-arithmetic M2, the P > 1 combined values are mostly correctly rounded, while the single-process two-pass "reference" is 3 ulp off. The trap is treating a single-process run as ground truth for the last few bits: when bits matter, compare both against an exact (or higher-precision) value, not against each other. Numerically stable and bit-reproducible are two different guarantees; Chan et al. give you the first, not the second.
 
 ## 31.2 Real Independence, and a Sharper Non-Associativity Finding
 
@@ -209,7 +214,7 @@ Section 31.1 showed each rank generating its own paths with no coordination need
 
 ### Background
 
-NVIDIA's own real cuRAND documentation confirms this design choice directly: "CURAND_RNG_PSEUDO_PHILOX4_32_10 is a member of Philox family, which is one of the three non-cryptographic Counter Based Random Number Generators," and its real guidance states plainly that "each thread of computation should be assigned a unique id number" -- nothing more is needed for independence. This section's model also asks a sharper question than Section 31.1 did: holding the same eight-way partition and the same eight per-rank partial statistics fixed, does the *shape* of the final reduction -- a sequential fold (Chapter 9's naive-ring shape) versus a tree fold (Chapter 9 and Chapter 11's tree shape) -- change the result, even when both use the identical real Chan et al. formula at every combination step?
+NVIDIA's own real cuRAND documentation confirms this design choice directly: "CURAND_RNG_PSEUDO_PHILOX4_32_10 is a member of Philox family, which is one of the three non-cryptographic Counter Based Random Number Generators," and its device-API guidance (given in the section on the XORWOW and MRG32k3a generators, and resting on the same subsequence/offset mechanism Philox exposes) states plainly that "each thread of computation should be assigned a unique sequence number" -- nothing more is needed for independence. This section's model also asks a sharper question than Section 31.1 did: holding the same eight-way partition and the same eight per-rank partial statistics fixed, does the *shape* of the final reduction -- a sequential fold (a chain: rank 0, then 1, then 2, ...) versus a tree fold (Chapter 11's tree shape) -- change the result, even when both use the identical real Chan et al. formula at every combination step?
 
 ```cpp
 // Chapter 31: Multi-GPU Monte Carlo Risk Simulation
@@ -222,16 +227,18 @@ NVIDIA's own real cuRAND documentation confirms this design choice directly: "CU
 // GPU needing to coordinate with any other GPU, and (2) does the SHAPE
 // of the final reduction (not just how many groups the data is split
 // into) affect the result. For (1), NVIDIA's own real cuRAND
-// documentation describes the Philox counter-based family and states
-// that "each thread of computation should be assigned a unique id
-// number" -- a real, citable design that needs zero coordination,
+// documentation describes the Philox counter-based family, and its
+// device-API guidance (stated in its XORWOW/MRG32k3a section, using the
+// same subsequence mechanism Philox exposes) is that "each thread of
+// computation should be assigned a unique sequence number" -- a real,
+// citable design that needs zero coordination,
 // unlike a naive STATEFUL sequential generator, where GPU r would need
 // to know exactly how many random numbers every earlier GPU already
 // consumed before it could safely continue the same stream (or skip
 // ahead wastefully). For (2), this section empirically compares
 // combining the SAME set of per-rank partial statistics two different
-// ways -- a naive sequential fold (this book's own Chapter 9 naive-ring
-// shape) versus a tree fold (Chapter 9/11's own tree shape) -- using
+// ways -- a naive sequential fold (a chain: fold rank 0, then 1, ...
+// shape) versus a tree fold (Chapter 11's own tree shape) -- using
 // Chan et al.'s own real pairwise formula at every combination step
 // either way, to isolate whether REDUCTION TOPOLOGY alone (holding the
 // partition fixed) can change the floating-point result.
@@ -277,8 +284,9 @@ int main() {
     printf("--- Real production RNG independence: cuRAND's own real Philox family ---\n");
     printf("NVIDIA's own real cuRAND documentation: \"CURAND_RNG_PSEUDO_PHILOX4_32_10 "
            "is a member of Philox family, which is one of the three non-cryptographic "
-           "Counter Based Random Number Generators.\" Real guidance: \"each thread of "
-           "computation should be assigned a unique id number\" -- that id alone (no "
+           "Counter Based Random Number Generators.\" Device-API guidance (from its "
+           "XORWOW/MRG32k3a section, same subsequence mechanism): \"each thread of "
+           "computation should be assigned a unique sequence number\" -- that number alone (no "
            "message from any other thread or GPU) is enough to generate a provably "
            "independent, non-overlapping stream: \"Subsequence and offset together "
            "define offset in a sequence with period 2^128.\"\n\n");
@@ -291,8 +299,8 @@ int main() {
            "cuRAND's own real counter-based design.\n\n");
 
     printf("--- Does the REDUCTION TOPOLOGY (not just the partition) matter? ---\n");
-    printf("This book's own Chapter 9 and Chapter 11 already contrasted a naive "
-           "SEQUENTIAL ring shape against a TREE shape for round-COUNT reasons. This "
+    printf("This book's own Chapter 11 already contrasted a SEQUENTIAL, "
+           "hop-by-hop ring shape against a TREE shape for round-COUNT reasons. This "
            "section checks a different question: holding the SAME P=8 partition and "
            "the SAME per-rank partial statistics fixed, does combining them "
            "SEQUENTIALLY (fold rank 0, then 1, then 2, ...) versus combining them as "
@@ -321,9 +329,9 @@ int main() {
     }
     Stats tree = level[0];
 
-    printf("Sequential fold (%d rounds, Chapter 9's naive-ring shape): "
+    printf("Sequential fold (%d rounds, chain shape, rank 0,1,2,...): "
            "mean=%.17g  M2=%.17g\n", P - 1, seq.mean, seq.M2);
-    printf("Tree fold       (%d rounds, Chapter 9/11's tree shape):    "
+    printf("Tree fold       (%d rounds, Chapter 11's tree shape):     "
            "mean=%.17g  M2=%.17g\n", roundNum, tree.mean, tree.M2);
     printf("Mean match: %s   M2 match: %s\n\n",
            seq.mean == tree.mean ? "YES" : "NO",
@@ -332,7 +340,7 @@ int main() {
     printf("The mean matches; the M2 does NOT. Both reductions combine the exact "
            "SAME 8 partial statistics, using the exact SAME real Chan et al. "
            "formula at every step -- the ONLY difference is the ORDER AND GROUPING "
-           "in which those 8 partial results are combined. Chapter 9's own real "
+           "in which those 8 partial results are combined. The tree's real "
            "round-count advantage (fewer rounds: %d vs %d here) is not the only "
            "reason production systems care which reduction shape they use -- the "
            "reduction shape can also change the LAST FEW BITS of a floating-point "
@@ -352,21 +360,21 @@ g++ -O2 -ffp-contract=off 91_rng_independence_and_reduction_topology_model.cpp -
 
 ```text
 --- Real production RNG independence: cuRAND's own real Philox family ---
-NVIDIA's own real cuRAND documentation: "CURAND_RNG_PSEUDO_PHILOX4_32_10 is a member of Philox family, which is one of the three non-cryptographic Counter Based Random Number Generators." Real guidance: "each thread of computation should be assigned a unique id number" -- that id alone (no message from any other thread or GPU) is enough to generate a provably independent, non-overlapping stream: "Subsequence and offset together define offset in a sequence with period 2^128."
+NVIDIA's own real cuRAND documentation: "CURAND_RNG_PSEUDO_PHILOX4_32_10 is a member of Philox family, which is one of the three non-cryptographic Counter Based Random Number Generators." Device-API guidance (from its XORWOW/MRG32k3a section, same subsequence mechanism): "each thread of computation should be assigned a unique sequence number" -- that number alone (no message from any other thread or GPU) is enough to generate a provably independent, non-overlapping stream: "Subsequence and offset together define offset in a sequence with period 2^128."
 
 A naive STATEFUL sequential generator cannot do this without coordination: GPU r would need to know the EXACT COUNT of random numbers every earlier GPU (0..r-1) already consumed, just to pick up the stream at the right point without overlap -- a real, avoidable communication requirement this chapter's own Section 31.1 simulation never had to pay, precisely because its own counterBasedHash() function needs only a path INDEX, matching cuRAND's own real counter-based design.
 
 --- Does the REDUCTION TOPOLOGY (not just the partition) matter? ---
-This book's own Chapter 9 and Chapter 11 already contrasted a naive SEQUENTIAL ring shape against a TREE shape for round-COUNT reasons. This section checks a different question: holding the SAME P=8 partition and the SAME per-rank partial statistics fixed, does combining them SEQUENTIALLY (fold rank 0, then 1, then 2, ...) versus combining them as a TREE (pair up, combine, repeat) change the final M2, even though both use Chan et al.'s own real pairwise formula at every single step?
+This book's own Chapter 11 already contrasted a SEQUENTIAL, hop-by-hop ring shape against a TREE shape for round-COUNT reasons. This section checks a different question: holding the SAME P=8 partition and the SAME per-rank partial statistics fixed, does combining them SEQUENTIALLY (fold rank 0, then 1, then 2, ...) versus combining them as a TREE (pair up, combine, repeat) change the final M2, even though both use Chan et al.'s own real pairwise formula at every single step?
 
-Sequential fold (7 rounds, Chapter 9's naive-ring shape): mean=10.541666666666666  M2=3837.9583333333335
-Tree fold       (3 rounds, Chapter 9/11's tree shape):    mean=10.541666666666666  M2=3837.958333333333
+Sequential fold (7 rounds, chain shape, rank 0,1,2,...): mean=10.541666666666666  M2=3837.9583333333335
+Tree fold       (3 rounds, Chapter 11's tree shape):     mean=10.541666666666666  M2=3837.958333333333
 Mean match: YES   M2 match: NO
 
-The mean matches; the M2 does NOT. Both reductions combine the exact SAME 8 partial statistics, using the exact SAME real Chan et al. formula at every step -- the ONLY difference is the ORDER AND GROUPING in which those 8 partial results are combined. Chapter 9's own real round-count advantage (fewer rounds: 3 vs 7 here) is not the only reason production systems care which reduction shape they use -- the reduction shape can also change the LAST FEW BITS of a floating-point risk statistic, independently of how the data was partitioned in the first place.
+The mean matches; the M2 does NOT. Both reductions combine the exact SAME 8 partial statistics, using the exact SAME real Chan et al. formula at every step -- the ONLY difference is the ORDER AND GROUPING in which those 8 partial results are combined. The tree's real round-count advantage (fewer rounds: 3 vs 7 here) is not the only reason production systems care which reduction shape they use -- the reduction shape can also change the LAST FEW BITS of a floating-point risk statistic, independently of how the data was partitioned in the first place.
 ```
 
-This is worth being precise about: Section 31.1 varied *how many groups* the 24 paths were split into (P) and found M2 shifting once P > 1. This section holds P = 8 fixed and varies only *the shape of the combination tree used to fold those same 8 groups together* -- and still finds a different M2. Non-associativity, once introduced, does not have a single fixed "safe" workaround; it resurfaces at every level of a reduction's design, from the partition down to the exact order operations are folded in.
+This is worth being precise about: Section 31.1 varied *how many groups* the 24 paths were split into (P) and found M2 shifting once P > 1. This section holds P = 8 fixed and varies only *the shape of the combination tree used to fold those same 8 groups together* -- and still finds a different M2. (Against the exact value, the sequential fold's `...3335` is correctly rounded and the tree fold's `...333` is one ulp low; neither shape is "the right one" in general -- which one lands closer depends on the data.) Non-associativity, once introduced, does not have a single fixed "safe" workaround; it resurfaces at every level of a reduction's design, from the partition down to the exact order operations are folded in.
 
 ```text
 Same 8 partial results:
@@ -378,7 +386,7 @@ Same 8 partial results:
 ```
 
 !!! warning "[COMMON TRAP] Treating a reduction's round count and its numerical result as independent concerns"
-    Chapter 9 and Chapter 11 introduced the tree shape purely to reduce round count -- a performance argument. This section shows the same choice of reduction shape also changes the exact bit pattern of a floating-point result, a *correctness-adjacent* consequence that has nothing to do with speed. Switching a production system's reduction algorithm for performance reasons (say, from a naive fold to a tree, or between two different NCCL algorithm choices) can silently shift a reported risk statistic's last few digits -- worth knowing before treating a small day-to-day fluctuation in a computed VaR or P&L figure as a data problem rather than an artifact of which reduction shape happened to run.
+    Chapter 11 introduced the tree shape purely to reduce round count -- a performance argument. This section shows the same choice of reduction shape also changes the exact bit pattern of a floating-point result, a *correctness-adjacent* consequence that has nothing to do with speed. Switching a production system's reduction algorithm for performance reasons (say, from a naive fold to a tree, or between two different NCCL algorithm choices) can silently shift a reported risk statistic's last few digits -- worth knowing before treating a small day-to-day fluctuation in a computed VaR or P&L figure as a data problem rather than an artifact of which reduction shape happened to run.
 
 ## 31.3 The Real Limit: A Percentile Needs More Than a Summary
 
@@ -409,9 +417,10 @@ The Basel Committee on Banking Supervision's own real 1996 market-risk amendment
 // variance, an exact percentile of a distributed dataset genuinely
 // CANNOT be computed from a few summary numbers per rank -- it requires
 // knowing the relative rank/order of every single simulated loss, which
-// means gathering the actual data, reusing this book's own real
-// Chapter 10/27 all-gather pattern, not Chan et al.'s O(1)-per-rank
-// message.
+// means gathering the actual data to wherever the percentile is
+// computed (a gather to one root; an all-gather, Chapter 10/27's
+// pattern, only if every rank needs the answer), not Chan et al.'s
+// O(1)-per-rank message.
 #include <cstdio>
 #include <vector>
 #include <algorithm>
@@ -460,13 +469,13 @@ int main() {
 
     int Ps[] = {1, 2, 4, 5, 10, 20};
     printf("%-8s %-28s %-28s %-16s\n", "P", "Chan et al.: values/rank",
-           "exact VaR: values/rank (all-gather)", "VaR_99 EXACT match?");
+           "exact VaR: values/rank (gather)", "VaR_99 EXACT match?");
     for (int P : Ps) {
         long long pathsPerRank = N_PATHS / P;
         // Distributed: each rank computes its own local losses; an exact
-        // global percentile needs ALL of them gathered somewhere, exactly
-        // Chapter 10/27's own real all-gather shape -- NX values per rank,
-        // not O(1).
+        // global percentile needs ALL of them gathered at one root (a
+        // gather; an all-gather only if every rank needs the result) --
+        // N/P values per rank, not O(1).
         std::vector<long long> gathered;
         for (int r = 0; r < P; r++) {
             for (long long i = r * pathsPerRank; i < (r + 1) * pathsPerRank; i++)
@@ -486,7 +495,7 @@ int main() {
            "this exact tradeoff at genuinely large scale use approximate "
            "streaming-percentile techniques (e.g., t-digest-style sketches) "
            "specifically to avoid gathering every raw value -- an extension "
-           "this chapter's own exact all-gather model does not build, but "
+           "this chapter's own exact gather model does not build, but "
            "names honestly as the real next step production systems take.\n");
 
     return 0;
@@ -508,7 +517,7 @@ Reference VaR_99 (99th percentile of the loss distribution): 40
 --- What Section 31.1's Chan-et-al. combination could NOT tell us ---
 Chan et al.'s own real pairwise formula combines (count, mean, M2) into a global mean and variance using exactly 3 numbers per rank, regardless of how many paths that rank ran. A MEAN and a VARIANCE describe the SHAPE of a distribution in summary; a PERCENTILE requires knowing exactly how many individual outcomes fall below a given threshold -- information that 3 summary numbers per rank simply do not contain.
 
-P        Chan et al.: values/rank     exact VaR: values/rank (all-gather) VaR_99 EXACT match?
+P        Chan et al.: values/rank     exact VaR: values/rank (gather) VaR_99 EXACT match?
 1        3 (count, mean, M2)          100                          YES             
 2        3 (count, mean, M2)          50                           YES             
 4        3 (count, mean, M2)          25                           YES             
@@ -516,7 +525,7 @@ P        Chan et al.: values/rank     exact VaR: values/rank (all-gather) VaR_99
 10       3 (count, mean, M2)          10                           YES             
 20       3 (count, mean, M2)          5                            YES             
 
-Every rank's own message size for the MEAN/VARIANCE path stays at 3 values, always -- but an EXACT VaR needs each rank to contribute its full local share of the dataset (N/P values per rank) to a gather step, because only the full sorted set determines which value sits at the 99th percentile. Real production systems facing this exact tradeoff at genuinely large scale use approximate streaming-percentile techniques (e.g., t-digest-style sketches) specifically to avoid gathering every raw value -- an extension this chapter's own exact all-gather model does not build, but names honestly as the real next step production systems take.
+Every rank's own message size for the MEAN/VARIANCE path stays at 3 values, always -- but an EXACT VaR needs each rank to contribute its full local share of the dataset (N/P values per rank) to a gather step, because only the full sorted set determines which value sits at the 99th percentile. Real production systems facing this exact tradeoff at genuinely large scale use approximate streaming-percentile techniques (e.g., t-digest-style sketches) specifically to avoid gathering every raw value -- an extension this chapter's own exact gather model does not build, but names honestly as the real next step production systems take.
 ```
 
 The VaR values themselves match exactly at every P, because sorting integers and picking an index is exact -- there is no floating-point concern in this section at all. The real point is the *message-size column*: Chan et al.'s combination needs only 3 numbers per rank regardless of how much data that rank has, while the exact VaR computation needs every single one of that rank's N/P raw values. That is the same qualitative jump this book has seen before -- Chapter 24's SUMMA needed only broadcasts of matrix blocks, not the whole matrix, while Chapter 27's N-body simulation genuinely needed every body's full data every step. A mean and a variance are the SUMMA case; an exact percentile is the N-body case.
@@ -535,7 +544,7 @@ Chan et al. (mean, variance):              Exact percentile (VaR):
 
 ## Chapter Summary
 
-Monte Carlo risk simulation sits between Chapter 30's zero-reduction rendering case and every earlier Part 6 chapter's per-step communication requirement: its individual simulation paths are as independent as Chapter 30's pixels, but its whole purpose is a final reduction Chapter 30 never needed. Section 31.1 showed that reduction done correctly for a mean and variance, using Chan, Golub & LeVeque's own real pairwise formula, needing only 3 numbers per rank -- and found a real, tiny floating-point mismatch in the combined variance once more than one rank was involved, the same non-associativity finding Chapters 8, 25, and 29 already documented. Section 31.2 sharpened that finding: holding the same partition fixed and varying only the shape of the final reduction (sequential fold versus tree fold) produced a different variance too, showing that reduction topology, not just partitioning, affects a floating-point result -- and grounded the chapter's independence claim in NVIDIA's own real cuRAND Philox counter-based generator design. Section 31.3 closed with the real limit: Basel's own real 99th-percentile Value-at-Risk standard cannot be reconstructed from Chan et al.'s small summary at all, requiring every rank's full share of raw data in an all-gather instead, reusing Chapter 10 and Chapter 27's own real pattern rather than Section 31.1's cheap one.
+Monte Carlo risk simulation sits between Chapter 30's zero-reduction rendering case and every earlier Part 6 chapter's per-step communication requirement: its individual simulation paths are as independent as Chapter 30's pixels, but its whole purpose is a final reduction Chapter 30 never needed. Section 31.1 showed that reduction done correctly for a mean and variance, using Chan, Golub & LeVeque's own real pairwise formula, needing only 3 numbers per rank -- and found a real, tiny floating-point mismatch in the combined variance once more than one rank was involved, for the reasons Chapter 8 cautioned about and Chapter 29 also observed -- with the twist that the single-process reference, not the distributed result, was the one further from the exact value. Section 31.2 sharpened that finding: holding the same partition fixed and varying only the shape of the final reduction (sequential fold versus tree fold) produced a different variance too, showing that reduction topology, not just partitioning, affects a floating-point result -- and grounded the chapter's independence claim in NVIDIA's own real cuRAND Philox counter-based generator design. Section 31.3 closed with the real limit: Basel's own real 99th-percentile Value-at-Risk standard cannot be reconstructed from Chan et al.'s small summary at all, requiring every rank's full share of raw data in a gather instead (an all-gather, Chapter 10 and Chapter 27's pattern, only if every rank needs the answer) rather than Section 31.1's cheap summary.
 
 ## Self-Check Questions
 
@@ -554,8 +563,8 @@ Chapter 31 closes Part 6's eight-chapter case-study arc. Part 7, "Cutting-Edge I
 
 ## Worked Solutions
 
-1. Integer addition is exactly associative as long as no overflow occurs, so summing the same 24 integer payoffs in any grouping always produces the identical total, and therefore the identical count. Computing M2 requires first dividing by a count to get a mean (a floating-point operation) and then summing squared floating-point differences; floating-point addition is not associative, so different groupings of that summation can and did produce a result differing in its last few digits.
-2. cuRAND's Philox family is counter-based: a stream is addressed directly by a subsequence/offset value derived from a thread's own unique id, so any thread can jump straight to its own portion of the sequence without needing any information about another thread's progress. A naive stateful sequential generator instead advances one draw at a time from shared internal state, so a second GPU wanting a non-overlapping range of the same sequence would need to know exactly how many draws an earlier GPU had already consumed.
+1. Integer addition is exactly associative as long as no overflow occurs, so summing the same 24 integer payoffs in any grouping always produces the identical total, and therefore the identical count. Computing M2 requires first dividing by a count to get a mean (a floating-point operation) and then summing squared floating-point differences; floating-point addition is not associative, and the distributed path uses a different formula (Chan et al.'s pairwise combination) from the reference's single two-pass loop, so the two can and did round differently in the last few digits. (Checked against the exact rational value, it is the two-pass reference that is 3 ulp off; the distributed results are mostly correctly rounded.)
+2. cuRAND's Philox family is counter-based: a stream is addressed directly by a subsequence/offset value derived from a thread's own unique sequence number, so any thread can jump straight to its own portion of the sequence without needing any information about another thread's progress. A naive stateful sequential generator instead advances one draw at a time from shared internal state, so a second GPU wanting a non-overlapping range of the same sequence would need to know exactly how many draws an earlier GPU had already consumed.
 3. The experiment held the P=8 partition (the same eight groups of paths) and the per-rank partial (count, mean, M2) statistics exactly fixed, and used the identical real Chan et al. pairwise formula at every single combination step in both cases. The one thing that differed was the order and grouping in which those eight partial results were folded together -- sequentially (fold one at a time) versus as a tree (pair up and combine, repeatedly).
 4. Because the tree shape and the sequential shape were shown to produce different final M2 values from the identical inputs and the identical combination formula, switching between them for a performance reason (fewer communication rounds) has a side effect that has nothing to do with speed: it can shift which floating-point bit pattern comes out of the reduction, which shows up as a small change in a reported statistic's last few digits.
 5. A mean and a variance are themselves summary statistics built from a count, a sum, and a sum of squared deviations -- quantities that can be combined algebraically from smaller groups' own summaries without needing to revisit the original data. A percentile is defined by the relative ORDER of every individual value in the combined dataset (how many values fall below a threshold), and no fixed-size summary of a group can capture that ordering information about values it doesn't fully contain.

@@ -39,7 +39,8 @@ int main() {
     }
     printf("\nAs N grows, the ratio N/log2(N) grows WITHOUT BOUND -- "
            "all-pairs' own O(N^2) cost doesn't just stay worse than "
-           "Barnes-Hut's O(N log N), it gets combinatorially WORSE, "
+           "Barnes-Hut's O(N log N), it gets steadily WORSE (by a factor "
+           "N/log2(N), which grows almost linearly in N), "
            "relative to Barnes-Hut, the larger the simulation gets. This "
            "compounds Section 27.2's own finding that all-pairs' "
            "per-GPU COMMUNICATION also does not improve by adding more "

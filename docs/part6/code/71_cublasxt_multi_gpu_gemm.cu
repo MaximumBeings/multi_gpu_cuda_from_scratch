@@ -19,9 +19,11 @@
 // genuine multi-NODE dense GEMM at the scale Chapter 20's own MPI
 // world implies, NVIDIA's current real answer is cuBLASMp -- "a
 // high-performance, multi-process, GPU-accelerated library for
-// distributed basic dense linear algebra" -- since cuBLASMg (an older,
-// differently-named effort at the same problem) never left the CUDA
-// Math Library Early Access Program.
+// distributed basic dense linear algebra" -- while cuBLASMg (an older,
+// differently-named effort at the same problem) was, as of NVIDIA's 2022
+// "Accelerating GPU Applications with NVIDIA Math Libraries" blog post,
+// still available only through the CUDA Math Library Early Access
+// Program.
 //
 // THE GUARD. This file checks cudaGetDeviceCount() BEFORE ever calling
 // cublasXtDeviceSelect() with real device ordinals, and skips selecting

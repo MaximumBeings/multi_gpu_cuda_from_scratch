@@ -8,18 +8,19 @@
 // multi-step SGD training loop, training a real (if tiny) model --
 // linear regression, y = w*x + b -- with the training data SHARDED
 // across N replicas (Chapter 12's own computeShard() pattern) and each
-// step's gradient combined across replicas via a real ring all-reduce
-// (Chapter 9's own algorithm, reused unchanged: pass a running sum
-// around the ring N-1 times, so every replica ends the step holding the
-// exact same combined gradient). The comparison this section actually
-// cares about: does K steps of this genuinely distributed loop end at
-// the SAME learned (w, b) as a single-process reference trained with
-// full-batch gradient descent on the SAME data, every step? Chapter 8's
-// own non-associativity caution applies here for real, not just as a
-// caveat -- summing the SAME numbers in a DIFFERENT grouping (per-shard
-// partial sums combined across replicas, vs. one flat pass over every
-// sample) is a real floating-point question this section actually
-// tests, rather than assumes.
+// step's gradient combined across replicas via Chapter 9's own two-phase
+// ring all-reduce: a SCATTER-REDUCE phase (N-1 steps) that leaves each
+// chunk fully summed on exactly one owner replica, then an ALL-GATHER
+// phase (N-1 steps) that COPIES each owner's finished chunk to everyone.
+// Two questions are tested, not assumed:
+//   1. Do all N replicas end every step with bit-identical gradients
+//      (and therefore bit-identical weights after K steps)?
+//   2. Does the distributed result match a single-process full-batch
+//      reference bit for bit, even though the distributed version sums
+//      per-shard partial sums (a different grouping than one flat pass)?
+// For contrast, it also runs a deliberately WRONG "all-reduce" in which
+// every replica adds all N values itself, starting from its own value --
+// the shape of algorithm that genuinely CAN disagree across replicas.
 #include <cstdio>
 #include <cstdlib>
 #include <vector>
@@ -35,37 +36,117 @@ void computeShard(int totalSamples, int worldSize, int rank, int &start, int &co
     count = base; // totalSamples is chosen to divide evenly below
 }
 
-// Chapter 9's own real ring all-reduce algorithm, applied to a tiny
-// fixed-size gradient vector (gradW, gradB) instead of a large array.
-// Every replica's own local value CIRCULATES around the ring exactly
-// once: at each of N-1 steps, replica r receives whatever its neighbor
-// is currently forwarding, adds it to its own running accumulator, and
-// then forwards that SAME received value onward next step (not its own
-// original value again) -- this is what guarantees every one of the N
-// local values passes every OTHER replica exactly once, so after N-1
-// steps every replica's accumulator holds the exact same full sum.
-void ringAllReduceSum(std::vector<float> &accW, std::vector<float> &accB,
-                       const std::vector<float> &localGradW,
-                       const std::vector<float> &localGradB, int N) {
-    std::vector<float> messageW = localGradW, messageB = localGradB;
-    for (int r = 0; r < N; r++) { accW[r] = localGradW[r]; accB[r] = localGradB[r]; }
+// Chapter 9's own ring all-reduce (scatter-reduce, then all-gather), on
+// N per-replica buffers of length L, where L is a multiple of N and the
+// buffer is split into N equal chunks of C = L/N elements.
+//
+// Scatter-reduce, step s = 0..N-2: replica r sends chunk (r - s) mod N
+// to replica (r+1) mod N, which ADDS it into its own copy of that chunk.
+// After N-1 steps, replica r holds the fully-reduced chunk (r+1) mod N.
+//
+// All-gather, step s = 0..N-2: replica r sends chunk (r + 1 - s) mod N
+// to replica (r+1) mod N, which OVERWRITES its copy (no arithmetic).
+//
+// Every chunk's final value is therefore computed by exactly ONE chain
+// of additions, on ONE replica, and then copied verbatim to the others:
+// all replicas end bit-identical by construction, regardless of the
+// floating-point summation order used inside that one chain.
+// Returns the number of elements each replica sent (same for all).
+long long ringAllReduceSum(std::vector<std::vector<float>> &buf, int N) {
+    const int L = (int)buf[0].size();
+    const int C = L / N;
+    long long sentPerReplica = 0;
 
-    for (int step = 0; step < N - 1; step++) {
-        std::vector<float> receivedW(N), receivedB(N);
+    // Phase 1: scatter-reduce.
+    for (int s = 0; s < N - 1; s++) {
+        // Snapshot every outgoing message first: all N sends in one step
+        // happen "simultaneously", exactly as on real hardware.
+        std::vector<std::vector<float>> msg(N, std::vector<float>(C));
         for (int r = 0; r < N; r++) {
-            int src = (r - 1 + N) % N;
-            receivedW[r] = messageW[src];
-            receivedB[r] = messageB[src];
+            int c = ((r - s) % N + N) % N;
+            for (int k = 0; k < C; k++) msg[r][k] = buf[r][c * C + k];
         }
         for (int r = 0; r < N; r++) {
-            accW[r] += receivedW[r];
-            accB[r] += receivedB[r];
+            int dst = (r + 1) % N;
+            int c = ((r - s) % N + N) % N;
+            for (int k = 0; k < C; k++) buf[dst][c * C + k] += msg[r][k];
         }
-        // Forward what was just RECEIVED, not the original local value --
-        // this is the step that makes each value circulate the whole ring.
-        messageW = receivedW;
-        messageB = receivedB;
+        sentPerReplica += C;
     }
+
+    // Phase 2: all-gather (pure copies of already-final chunks).
+    for (int s = 0; s < N - 1; s++) {
+        std::vector<std::vector<float>> msg(N, std::vector<float>(C));
+        for (int r = 0; r < N; r++) {
+            int c = ((r + 1 - s) % N + N) % N;
+            for (int k = 0; k < C; k++) msg[r][k] = buf[r][c * C + k];
+        }
+        for (int r = 0; r < N; r++) {
+            int dst = (r + 1) % N;
+            int c = ((r + 1 - s) % N + N) % N;
+            for (int k = 0; k < C; k++) buf[dst][c * C + k] = msg[r][k];
+        }
+        sentPerReplica += C;
+    }
+    return sentPerReplica;
+}
+
+// A deliberately WRONG "all-reduce", kept only as a contrast: every
+// replica receives every other replica's FULL local value and adds all N
+// of them itself, starting from its OWN value. Each replica therefore
+// performs its own chain of additions in its own order -- and fp32
+// addition is not associative, so the replicas can disagree.
+void everyReplicaSumsItself(std::vector<std::vector<float>> &buf, int N) {
+    const int L = (int)buf[0].size();
+    std::vector<std::vector<float>> orig = buf;
+    for (int r = 0; r < N; r++)
+        for (int k = 0; k < L; k++) {
+            float acc = orig[r][k];
+            for (int j = 1; j < N; j++) acc += orig[(r - j + N) % N][k];
+            buf[r][k] = acc;
+        }
+}
+
+// Runs K steps of sharded SGD with the given all-reduce; returns final
+// per-replica (w, b).
+template <typename AllReduce>
+void trainDistributed(const std::vector<Sample> &data, int N, int K, float lr,
+                      std::vector<float> &w, std::vector<float> &b,
+                      AllReduce allReduce) {
+    const int M = (int)data.size();
+    w.assign(N, 0.0f);
+    b.assign(N, 0.0f);
+    for (int step = 0; step < K; step++) {
+        // Gradient buffer = [gradW, gradB], zero-padded to N chunks of
+        // one element each so the ring can split it N ways.
+        std::vector<std::vector<float>> grad(N, std::vector<float>(N, 0.0f));
+        for (int r = 0; r < N; r++) {
+            int start, count;
+            computeShard(M, N, r, start, count);
+            float gW = 0.0f, gB = 0.0f;
+            for (int i = start; i < start + count; i++) {
+                float pred = w[r] * data[i].x + b[r];
+                float err = pred - data[i].y;
+                gW += err * data[i].x;
+                gB += err;
+            }
+            grad[r][0] = gW;
+            grad[r][1] = gB;
+        }
+        allReduce(grad, N);
+        for (int r = 0; r < N; r++) {
+            float gW = (2.0f / M) * grad[r][0];
+            float gB = (2.0f / M) * grad[r][1];
+            w[r] -= lr * gW;
+            b[r] -= lr * gB;
+        }
+    }
+}
+
+bool allSame(const std::vector<float> &w, const std::vector<float> &b) {
+    for (size_t r = 1; r < w.size(); r++)
+        if (w[r] != w[0] || b[r] != b[0]) return false;
+    return true;
 }
 
 int main() {
@@ -100,35 +181,13 @@ int main() {
         bRef -= lr * gB;
     }
 
-    // --- Distributed: N replicas, each with its own shard, each step
-    // computes a LOCAL partial sum, combines via a real ring all-reduce,
-    // then every replica applies the SAME update independently
-    // (Chapter 12's own "every replica stays identical" invariant). ---
-    std::vector<float> wDist(N, 0.0f), bDist(N, 0.0f);
-    for (int step = 0; step < K; step++) {
-        std::vector<float> localGW(N), localGB(N);
-        for (int r = 0; r < N; r++) {
-            int start, count;
-            computeShard(M, N, r, start, count);
-            float gW = 0.0f, gB = 0.0f;
-            for (int i = start; i < start + count; i++) {
-                float pred = wDist[r] * data[i].x + bDist[r];
-                float err = pred - data[i].y;
-                gW += err * data[i].x;
-                gB += err;
-            }
-            localGW[r] = gW;
-            localGB[r] = gB;
-        }
-        std::vector<float> globalGW(N), globalGB(N);
-        ringAllReduceSum(globalGW, globalGB, localGW, localGB, N);
-        for (int r = 0; r < N; r++) {
-            float gW = (2.0f / M) * globalGW[r];
-            float gB = (2.0f / M) * globalGB[r];
-            wDist[r] -= lr * gW;
-            bDist[r] -= lr * gB;
-        }
-    }
+    // --- Distributed, Chapter 9's real ring all-reduce. ---
+    std::vector<float> wDist, bDist;
+    long long sent = 0;
+    trainDistributed(data, N, K, lr, wDist, bDist,
+                     [&](std::vector<std::vector<float>> &g, int n) {
+                         sent = ringAllReduceSum(g, n);
+                     });
 
     printf("After %d steps (M=%d samples, N=%d replicas, lr=%.3f):\n", K, M, N, lr);
     printf("  Reference (full-batch, single process): w=%.9f b=%.9f\n", wRef, bRef);
@@ -136,12 +195,8 @@ int main() {
         printf("  Replica %d (sharded + ring all-reduce):  w=%.9f b=%.9f\n",
                r, wDist[r], bDist[r]);
 
-    bool allReplicasIdentical = true;
-    for (int r = 1; r < N; r++)
-        if (wDist[r] != wDist[0] || bDist[r] != bDist[0]) allReplicasIdentical = false;
     printf("\nEvery replica identical to each other: %s\n",
-           allReplicasIdentical ? "YES" : "NO");
-
+           allSame(wDist, bDist) ? "YES" : "NO");
     bool exactMatchToReference = (wDist[0] == wRef && bDist[0] == bRef);
     printf("Distributed result EXACTLY matches full-batch reference: %s\n",
            exactMatchToReference ? "YES" : "NO");
@@ -149,6 +204,21 @@ int main() {
         printf("  w difference: %.3e   b difference: %.3e\n",
                (double)std::fabs(wDist[0] - wRef), (double)std::fabs(bDist[0] - bRef));
     }
+    printf("Elements sent per replica per all-reduce: %lld "
+           "(= 2(N-1)/N * L with L=%d, Ch9's formula)\n", sent, N);
+
+    // --- Contrast: the WRONG all-reduce where each replica sums all N
+    // values itself, in its own rotated order. ---
+    std::vector<float> wBad, bBad;
+    trainDistributed(data, N, K, lr, wBad, bBad,
+                     [](std::vector<std::vector<float>> &g, int n) {
+                         everyReplicaSumsItself(g, n);
+                     });
+    printf("\nContrast -- every replica sums all %d values itself, own order:\n", N);
+    for (int r = 0; r < N; r++)
+        printf("  Replica %d:  w=%.9f b=%.9f\n", r, wBad[r], bBad[r]);
+    printf("Every replica identical to each other: %s\n",
+           allSame(wBad, bBad) ? "YES" : "NO");
 
     return 0;
 }
