@@ -19,12 +19,15 @@ int main() {
     cudaGetDeviceCount(&deviceCount);
     printf("cudaGetDeviceCount(): %d device(s).\n", deviceCount);
 
-    ncclComm_t comm = nullptr; // never successfully created, as in Chapter 11
+    // No communicator can be created on this machine (Chapter 11), so
+    // the handle is literally NULL; NCCL rejects it up front
+    // (NCCL_DEBUG=WARN: "AllReduce : comm argument is NULL").
+    ncclComm_t comm = nullptr;
     cudaStream_t stream = nullptr;
     float* localGradients = nullptr;
     const size_t WEIGHT_COUNT = 4;
 
-    // ncclSum, used in Chapters 8-11, would leave every replica with
+    // ncclSum, used in Chapter 11, would leave every replica with
     // the SUM of every other replica's gradient -- exactly N times
     // too large an update. ncclAvg divides by the number of ranks in
     // the communicator as part of the same reduction, so the result
@@ -42,13 +45,14 @@ int main() {
     printf("ncclAllReduce(localGradients, ..., ncclSum, ...): %s (code %d)\n",
            ncclGetErrorString(eAllReduceSum), (int)eAllReduceSum);
 
-    printf("\nBoth calls report the same honest failure this book's\n"
-           "never-successfully-created communicator has reported since\n"
-           "Chapter 11 -- the real difference between ncclAvg and ncclSum\n"
-           "only shows up in what value ends up in the buffer, which needs\n"
-           "a real device to observe. Section 12.3's simulation checks that\n"
-           "difference the way this book always has when hardware can't:\n"
-           "against an independent reference, computed on the host.\n");
+    printf("\nBoth calls report the same honest failure every collective\n"
+           "handed a NULL comm has reported since Chapter 11 (NCCL_DEBUG=WARN:\n"
+           "\"comm argument is NULL\"). The real difference between ncclAvg\n"
+           "and ncclSum only shows up in what value ends up in the buffer,\n"
+           "which needs a real device to observe. Section 12.3's simulation\n"
+           "checks that difference the way this book always has when\n"
+           "hardware can't: against an independent reference, computed on\n"
+           "the host.\n");
 
     return 0;
 }

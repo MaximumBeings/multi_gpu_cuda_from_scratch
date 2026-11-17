@@ -63,7 +63,10 @@ int main() {
     // book's own Chapter 8 broadcast enforces it, rather than assuming
     // it. Attempted here with the real ncclBroadcast() this book
     // linked against in Chapter 11.
-    ncclComm_t comm = nullptr; // never successfully created, as in Chapter 11
+    // No communicator can be created on this machine (Chapter 11), so
+    // the handle is literally NULL; NCCL rejects it up front
+    // (NCCL_DEBUG=WARN: "Broadcast : comm argument is NULL").
+    ncclComm_t comm = nullptr;
     cudaStream_t stream = nullptr;
     float* weights = nullptr;
     const size_t WEIGHT_COUNT = 4;

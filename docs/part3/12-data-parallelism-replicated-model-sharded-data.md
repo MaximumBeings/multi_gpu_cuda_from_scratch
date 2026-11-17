@@ -10,7 +10,7 @@
 
 - Chapter 8's broadcast (used here to give every replica the same initial weights) and Chapter 9/11's all-reduce (used here every training step).
 - Chapter 11's real, linked `ncclComm_t`/`ncclAllReduce()` and the two honest failure modes it can report.
-- No new CUDA concepts beyond `ncclAvg`, a reduction op this chapter introduces alongside the `ncclSum` this book has used since Chapter 8.
+- No new CUDA concepts beyond `ncclAvg`, a reduction op this chapter introduces alongside the `ncclSum` this book has used since Chapter 11 (Chapters 8-10 built their reductions by hand and never called NCCL).
 
 ---
 
@@ -20,11 +20,12 @@ Part 2 spent four chapters building the machinery to move and combine data acros
 Data parallelism, N=4 devices, ONE global batch of 16 samples:
 
   SAME weights, broadcast to every device:      DIFFERENT data, sharded across devices:
+  (four identical copies)
 
     dev0: w = [ . . . . ]                         dev0: samples [0, 4)
-    dev1: w = [ . . . . ]   <- identical           dev1: samples [4, 8)
-    dev2: w = [ . . . . ]      copies              dev2: samples [8, 12)
-    dev3: w = [ . . . . ]                          dev3: samples [12, 16)
+    dev1: w = [ . . . . ]                         dev1: samples [4, 8)
+    dev2: w = [ . . . . ]                         dev2: samples [8, 12)
+    dev3: w = [ . . . . ]                         dev3: samples [12, 16)
 
 Every step: each device computes its OWN gradient from its OWN
 shard, then all four gradients are AVERAGED (ncclAllReduce, ncclAvg)
@@ -42,11 +43,11 @@ Setting up one training step's replicas:
 
   cudaGetDeviceCount()  ------------------>  "how many replicas?"
         |
-        v
+        +--> then:
   computeShard(globalBatch, worldSize, rank)  -->  "which samples are MINE?"
         (pure host arithmetic -- no device needed)
         |
-        v
+        +--> then:
   ncclBroadcast(root=0, weights)  --------->  "make sure everyone starts
         (a real collective -- needs a device)      from the SAME weights"
 ```
@@ -121,7 +122,10 @@ int main() {
     // book's own Chapter 8 broadcast enforces it, rather than assuming
     // it. Attempted here with the real ncclBroadcast() this book
     // linked against in Chapter 11.
-    ncclComm_t comm = nullptr; // never successfully created, as in Chapter 11
+    // No communicator can be created on this machine (Chapter 11), so
+    // the handle is literally NULL; NCCL rejects it up front
+    // (NCCL_DEBUG=WARN: "Broadcast : comm argument is NULL").
+    ncclComm_t comm = nullptr;
     cudaStream_t stream = nullptr;
     float* weights = nullptr;
     const size_t WEIGHT_COUNT = 4;
@@ -161,7 +165,7 @@ genuinely attempt. Section 12.2 covers the other real collective
 data parallelism needs every step after that: averaging gradients.
 ```
 
-The shard formula is the first calculation in this section of the book that hasn't needed a single device to genuinely succeed -- it ran, honestly, twice: once against this book's own real `deviceCount` (reporting, honestly, that there's nothing to shard across), and once against a hypothetical world size, producing four genuinely correct, non-overlapping ranges. `ncclBroadcast()` is a different kind of call entirely -- it needs a real communicator attached to real devices, so it reports exactly the honest `ncclInvalidArgument` this book's Chapter 11 already established for a communicator that was never successfully created.
+The shard formula is the first calculation in this section of the book that hasn't needed a single device to genuinely succeed -- it ran, honestly, twice: once against this book's own real `deviceCount` (reporting, honestly, that there's nothing to shard across), and once against a hypothetical world size, producing four genuinely correct, non-overlapping ranges. `ncclBroadcast()` is a different kind of call entirely -- it needs a real communicator attached to real devices, and no communicator can be created on this machine, so the `comm` handle it is given is literally `nullptr`. It reports exactly the honest `ncclInvalidArgument` Chapter 11 established for a `NULL` comm -- running with `NCCL_DEBUG=WARN` shows NCCL's own reason, `Broadcast : comm argument is NULL`.
 
 !!! warning "[COMMON TRAP] Assuming a replica's weights start identical just because the training script initializes them the same way"
     Every replica running the *same initialization code* -- the same random seed, the same formula -- can still end up with genuinely different starting weights, because random number generators, floating-point rounding, and even library versions can differ subtly across processes and devices. PyTorch's own DDP paper is explicit that correctness rests on replicas provably starting from "the exact same model state," not merely similar initialization logic -- which is exactly why real frameworks broadcast the actual weight values from one root, the way this section's code attempts, rather than trusting every replica to compute the same values independently.
@@ -209,12 +213,15 @@ int main() {
     cudaGetDeviceCount(&deviceCount);
     printf("cudaGetDeviceCount(): %d device(s).\n", deviceCount);
 
-    ncclComm_t comm = nullptr; // never successfully created, as in Chapter 11
+    // No communicator can be created on this machine (Chapter 11), so
+    // the handle is literally NULL; NCCL rejects it up front
+    // (NCCL_DEBUG=WARN: "AllReduce : comm argument is NULL").
+    ncclComm_t comm = nullptr;
     cudaStream_t stream = nullptr;
     float* localGradients = nullptr;
     const size_t WEIGHT_COUNT = 4;
 
-    // ncclSum, used in Chapters 8-11, would leave every replica with
+    // ncclSum, used in Chapter 11, would leave every replica with
     // the SUM of every other replica's gradient -- exactly N times
     // too large an update. ncclAvg divides by the number of ranks in
     // the communicator as part of the same reduction, so the result
@@ -232,13 +239,14 @@ int main() {
     printf("ncclAllReduce(localGradients, ..., ncclSum, ...): %s (code %d)\n",
            ncclGetErrorString(eAllReduceSum), (int)eAllReduceSum);
 
-    printf("\nBoth calls report the same honest failure this book's\n"
-           "never-successfully-created communicator has reported since\n"
-           "Chapter 11 -- the real difference between ncclAvg and ncclSum\n"
-           "only shows up in what value ends up in the buffer, which needs\n"
-           "a real device to observe. Section 12.3's simulation checks that\n"
-           "difference the way this book always has when hardware can't:\n"
-           "against an independent reference, computed on the host.\n");
+    printf("\nBoth calls report the same honest failure every collective\n"
+           "handed a NULL comm has reported since Chapter 11 (NCCL_DEBUG=WARN:\n"
+           "\"comm argument is NULL\"). The real difference between ncclAvg\n"
+           "and ncclSum only shows up in what value ends up in the buffer,\n"
+           "which needs a real device to observe. Section 12.3's simulation\n"
+           "checks that difference the way this book always has when\n"
+           "hardware can't: against an independent reference, computed on\n"
+           "the host.\n");
 
     return 0;
 }
@@ -251,16 +259,17 @@ cudaGetDeviceCount(): 0 device(s).
 ncclAllReduce(localGradients, ..., ncclAvg, ...): invalid argument (run with NCCL_DEBUG=WARN for details) (code 4)
 ncclAllReduce(localGradients, ..., ncclSum, ...): invalid argument (run with NCCL_DEBUG=WARN for details) (code 4)
 
-Both calls report the same honest failure this book's
-never-successfully-created communicator has reported since
-Chapter 11 -- the real difference between ncclAvg and ncclSum
-only shows up in what value ends up in the buffer, which needs
-a real device to observe. Section 12.3's simulation checks that
-difference the way this book always has when hardware can't:
-against an independent reference, computed on the host.
+Both calls report the same honest failure every collective
+handed a NULL comm has reported since Chapter 11 (NCCL_DEBUG=WARN:
+"comm argument is NULL"). The real difference between ncclAvg
+and ncclSum only shows up in what value ends up in the buffer,
+which needs a real device to observe. Section 12.3's simulation
+checks that difference the way this book always has when
+hardware can't: against an independent reference, computed on
+the host.
 ```
 
-Both calls genuinely fail identically here, for the same reason every real collective call has failed since Chapter 11 -- the communicator was never successfully created, so NCCL's own argument validation catches both before either reduction operation would ever run. That's honest, but it's also exactly why this section can't be where the `ncclAvg`-vs-`ncclSum` distinction actually gets checked -- Section 12.3 is.
+Both calls genuinely fail identically here, for the same reason every real collective call has failed since Chapter 11 -- the `comm` handle is `NULL`, so NCCL's own argument check rejects both (`NCCL_DEBUG=WARN` prints `AllReduce : comm argument is NULL` twice) before either reduction operation would ever run. That's honest, but it's also exactly why this section can't be where the `ncclAvg`-vs-`ncclSum` distinction actually gets checked -- Section 12.3 is.
 
 !!! warning "[COMMON TRAP] Assuming you can just divide by N yourself after an ncclSum, instead of using ncclAvg"
     Manually dividing a summed gradient by `N` after an `ncclSum`-based all-reduce produces the mathematically identical number to `ncclAvg` -- so it's tempting to treat the two as interchangeable, just one extra line of code either way. They aren't equivalent as a matter of what actually executes: `ncclAvg` performs the division inside the same reduction NCCL already has to do, on whatever internal precision NCCL's own implementation uses for the reduction itself, while a separate manual division is a distinct floating-point operation performed afterward, by your own code, on the already-reduced result. For plain sums of well-scaled floating-point gradients the difference is usually invisible; the two are not, however, defined to be bit-identical, and reaching for `ncclAvg` when it exists avoids ever needing to reason about whether that difference matters for a given training run.
@@ -358,6 +367,12 @@ int main() {
         printf(" | reference=%.4f\n", reference);
     }
 
+    // Replica-vs-replica equality is guaranteed: every replica applies
+    // the one avgGrad computed above. Replica-vs-reference equality is
+    // only ALGEBRAICALLY guaranteed: in floating point, averaging
+    // (w - t_i) is not always bit-identical to w - mean(t). It holds
+    // bit-for-bit for THESE targets; e.g. targets {0.1, 0.7, 1.3, 2.9}
+    // first differ in the last bit at step 19 (see Section 12.3).
     bool allSyncedEqual = true;
     bool allMatchReference = true;
     for (int i = 0; i < N; ++i) {
@@ -425,23 +440,23 @@ step 5: replica0=4.9141 replica1=3.2761 replica2=8.1902 replica3=6.5522
 After 5 step(s) with no synchronization: replicas have diverged from each other: PASS (divergence correctly demonstrated)
 ```
 
-With synchronization, all four replicas stay bit-identical through all five steps, and match a reference model trained directly on the mean of all four targets -- the mathematical stand-in for "the true global batch" -- exactly, at every single step, not just at the end. This is checkable by hand: since every replica's weight is identical entering a step, each replica's local gradient is `w - target_i`, their average is `w - mean(target_i)`, and applying that average update to `w` is *exactly* the recurrence the single-model reference runs directly -- the two are the same computation, performed two different ways, and this section's PASS confirms they produce the same number every time. Without synchronization, the four replicas are already different after step 1 (`1.2`, `0.8`, `2.0`, `1.6` instead of one shared `1.4`), and the gap only widens with every further step -- by step 5, replica 2's weight (`8.19`) is more than double replica 1's (`3.28`). Nothing in the loop that produced this divergence looks wrong on its own; the only thing that reveals it is exactly the kind of independent, cross-replica check this section ran.
+With synchronization, all four replicas stay bit-identical through all five steps, and match a reference model trained directly on the mean of all four targets -- the mathematical stand-in for "the true global batch" -- at every single step, not just at the end. Two different guarantees are hiding in those two PASS lines, and they are not equally strong. Replica-vs-replica equality is guaranteed unconditionally: every replica applies the *one* `avgGrad` value computed once, so their weights cannot differ. Replica-vs-reference equality is guaranteed only *algebraically*: since every replica's weight is identical entering a step, each local gradient is `w - target_i`, and their average equals `w - mean(target_i)` -- the recurrence the reference runs directly. In floating point, though, "sum the `N` differences, then divide" and "subtract the precomputed mean" round differently, so the two are not bit-identical in general. This section's targets (12, 8, 20, 16) happen to keep them bit-identical (checked for 200 steps), but a scratch copy of this exact program with targets `{0.1, 0.7, 1.3, 2.9}` first diverges in the last bit at step 19 (`1.0811435352908758` vs. `1.081143535290876`), and its reference check reports FAIL at 20 steps. That is Chapter 8's floating-point non-associativity lesson showing up again: the exact `!=` reference check is valid *for these chosen values*, and a reference check on arbitrary floating-point data would need a tolerance. Without synchronization, the four replicas are already different after step 1 (`1.2`, `0.8`, `2.0`, `1.6` instead of one shared `1.4`), and the gap only widens with every further step -- by step 5, replica 2's weight (`8.19`) is more than double replica 1's (`3.28`). Nothing in the loop that produced this divergence looks wrong on its own; the only thing that reveals it is exactly the kind of independent, cross-replica check this section ran.
 
 !!! warning "[COMMON TRAP] Assuming a bug that skips synchronization will be obvious quickly"
     Section 12.3's WITHOUT-synchronization output doesn't crash, doesn't print an error, and doesn't look obviously broken at any single step -- every replica's own weight update is completely ordinary gradient descent, correctly computed from its own data. The only way to notice anything is wrong is to compare replicas against *each other*, which a training script that never does this check has no reason to do until, potentially, results at evaluation time look inexplicably inconsistent between runs. A missing or misconfigured all-reduce call is exactly this kind of bug: syntactically fine, locally correct at every step, and silently catastrophic in aggregate -- which is precisely why this book spent four chapters (8 through 11) building and then linking against the real collective that exists to prevent it.
 
 ## Chapter Summary
 
-Data parallelism replicates a full model across every device and splits only the training data, and this chapter showed that "replica" is a claim that has to be actively maintained, not a label that stays true on its own. Section 12.1 split this setup into the two things it actually requires: sharding data, which is pure arithmetic that needs no device at all, and broadcasting the initial weights, a real collective (`ncclBroadcast()`) that enforces every replica starting genuinely identical, the same guarantee Horovod's own `hvd.BroadcastGlobalVariablesHook` and PyTorch DDP's own stated correctness property both describe directly. Section 12.2 introduced `ncclAvg`, a second real reduction op alongside the `ncclSum` this book has used since Chapter 8, needed because gradient synchronization requires the *mean* of every replica's local gradient, not their sum. Section 12.3 -- the chapter's actual verification, since neither real collective call could run on this machine -- checked both halves of the claim with a small, checkable simulation: with synchronization, every replica stays bit-identical and matches an independently-computed single-model reference at every step; without it, replicas silently diverge starting at step 1, with no error, no crash, and no local sign anything is wrong. Chapter 13 turns to model parallelism -- what to do when replicating the *entire* model on every device isn't an option in the first place, because no single device can hold it.
+Data parallelism replicates a full model across every device and splits only the training data, and this chapter showed that "replica" is a claim that has to be actively maintained, not a label that stays true on its own. Section 12.1 split this setup into the two things it actually requires: sharding data, which is pure arithmetic that needs no device at all, and broadcasting the initial weights, a real collective (`ncclBroadcast()`) that enforces every replica starting genuinely identical, the same guarantee Horovod's own `hvd.BroadcastGlobalVariablesHook` and PyTorch DDP's own stated correctness property both describe directly. Section 12.2 introduced `ncclAvg`, a second real reduction op alongside the `ncclSum` this book has used since Chapter 11, needed because gradient synchronization requires the *mean* of every replica's local gradient, not their sum. Section 12.3 -- the chapter's actual verification, since neither real collective call could run on this machine -- checked both halves of the claim with a small, checkable simulation: with synchronization, every replica stays bit-identical to every other and (for this section's targets, bit-for-bit; in general, up to floating-point rounding) matches an independently-computed single-model reference at every step; without it, replicas silently diverge starting at step 1, with no error, no crash, and no local sign anything is wrong. Chapter 13 turns to model parallelism -- what to do when replicating the *entire* model on every device isn't an option in the first place, because no single device can hold it.
 
 ## Self-Check Questions
 
 1. Explain, using Section 12.1's setup, why sharding the data needs no device at all while broadcasting the weights does.
 2. Section 12.2 introduces `ncclAvg`. What real reduction op has this book used for every all-reduce before this chapter, and what result would using it here, uncorrected, produce?
-3. Using Section 12.3's simulation, explain in your own words why the WITH-synchronization replicas' local gradients are identical to each other at the start of every step, even though each replica supposedly computes its own gradient from its own, different data shard.
+3. Using Section 12.3's simulation, explain in your own words why the WITH-synchronization replicas' *weights* are identical to each other at the start of every step, even though each replica's *local gradient* is computed from its own, different data shard and is genuinely different from the others'.
 4. Quote the specific claim this chapter cites from PyTorch's own DistributedDataParallel paper describing what property makes replicas correct.
 5. Using Section 12.3's numbers, compute by hand what replica 2's weight would be after step 1 WITHOUT synchronization, and explain why it differs from every other replica's step-1 weight.
-6. Why does Section 12.3's WITH-synchronization result match the independent single-model `reference` exactly, rather than merely approximately? What mathematical property of averaging makes this an exact equality rather than a coincidence?
+6. Section 12.3's WITH-synchronization result matches the independent single-model `reference` bit-for-bit. What mathematical property of averaging makes the two *algebraically* equal, and why is bit-for-bit equality in floating point a property of the specific targets chosen rather than a general guarantee?
 7. Section 12.3's Common Trap says a missing all-reduce call is "syntactically fine, locally correct at every step." Explain what checking WOULD have caught the bug in Section 12.3's WITHOUT-synchronization run, and why a normal single-replica training script would never happen to run that check.
 8. Using this chapter's own cited quote about Horovod's `hvd.BroadcastGlobalVariablesHook(0)`, explain what specific failure that call is designed to prevent, and how it relates to Section 12.1's own `ncclBroadcast()` call.
 
@@ -453,15 +468,15 @@ Chapter 13 turns to model parallelism: what happens when the model itself doesn'
 
 **1.** Sharding the data is pure host-side index arithmetic -- dividing a known total (`globalBatchSize`) by a known count (`worldSize`) and computing offsets. Nothing about that calculation touches a device, a memory address, or any hardware state, so it can be computed correctly regardless of how many real devices exist. Broadcasting the weights, by contrast, has to move real values into real device memory on every replica -- an actual data transfer across devices, which is exactly the kind of operation this book has needed a real device for since Chapter 4.
 
-**2.** This book has used `ncclSum` for every all-reduce before this chapter (Chapters 8, 9, and 11). Using `ncclSum`, uncorrected, on N replicas' local gradients would leave every replica holding the SUM of all N gradients -- N times larger than the correct average gradient -- which would make every weight update N times too large.
+**2.** This book has used `ncclSum` for every NCCL all-reduce before this chapter (Chapter 11 -- Chapters 8 and 9 summed by hand, without NCCL). Using `ncclSum`, uncorrected, on N replicas' local gradients would leave every replica holding the SUM of all N gradients -- N times larger than the correct average gradient -- which would make every weight update N times too large.
 
-**3.** At the start of every step in the WITH-synchronization loop, every replica's weight is identical, because the previous step ended by applying the exact same averaged update to every replica (or, at step 1, every replica started from the exact same broadcast initial weight). Each replica does compute its own gradient from its own different target (`localGrad[i] = synced[i] - targets[i]`), and since the weight `synced[i]` is the same number for every `i` at that point, only the different `targets[i]` values make each replica's own gradient genuinely different from the others -- it's the subsequent averaging step, not identical inputs, that produces the shared result every replica then applies.
+**3.** The local gradients are *not* identical -- only the weights are. At the start of every step in the WITH-synchronization loop, every replica's weight is identical, because the previous step ended by applying the exact same averaged update to every replica (or, at step 1, every replica started from the exact same broadcast initial weight). Each replica does compute its own gradient from its own different target (`localGrad[i] = synced[i] - targets[i]`), and since the weight `synced[i]` is the same number for every `i` at that point, only the different `targets[i]` values make each replica's own gradient genuinely different from the others -- it's the subsequent averaging step, not identical inputs, that produces the shared result every replica then applies.
 
 **4.** "DDP guarantees the correctness by making sure that all model replicas start from the exact same model state, and see the same parameter gradients after every backward pass" -- this is the specific claim this chapter cites from PyTorch's own DistributedDataParallel paper.
 
 **5.** Without synchronization, replica 2's local gradient at step 1 is `localGrad[2] = synced[2] - targets[2] = 0 - 20 = -20`. Its step-1 weight is `unsynced[2] = 0 - LR * (-20) = 0 - 0.1 * (-20) = 2.0`, matching the locked output's `replica2=2.0000`. It differs from every other replica's step-1 weight because each replica used its OWN `targets[i]` value with no averaging step to reconcile them -- replica 2's larger target (`20`, the largest of the four) produces a larger gradient magnitude and therefore a larger step-1 update than replicas with smaller targets.
 
-**6.** Averaging is a linear operation: the average of `(w - target_i)` across all `i` equals `w - mean(target_i)` exactly, by simple algebraic rearrangement, not by approximation. Since every WITH-synchronization replica enters each step holding the identical `w` (established by Q3), the averaged gradient every replica receives is mathematically identical to the gradient a single reference model would compute directly against `meanTarget`, and applying that identical update to both `w` and `reference` keeps them exactly equal at every single step -- there is no numerical coincidence involved, just the same computation performed two different ways.
+**6.** Averaging is a linear operation: the average of `(w - target_i)` across all `i` equals `w - mean(target_i)` by simple algebraic rearrangement. Since every WITH-synchronization replica enters each step holding the identical `w` (established by Q3), the averaged gradient every replica receives is *mathematically* identical to the gradient a single reference model would compute directly against `meanTarget`. In floating point, however, the two sides are computed with different roundings -- summing four differences then dividing, versus subtracting a precomputed mean -- and floating-point arithmetic is not associative (Chapter 8). So the bit-for-bit match is partly a property of this section's chosen targets (12, 8, 20, 16), which happen to round identically on both paths for at least 200 steps; the same program with targets `{0.1, 0.7, 1.3, 2.9}` first differs in the last bit at step 19. The algebra guarantees agreement up to rounding; only replica-vs-replica equality, where every replica applies the one computed `avgGrad`, is guaranteed bit-for-bit.
 
 **7.** The check that would have caught the bug is exactly Section 12.3's own cross-replica comparison -- comparing every replica's weight against every other replica's weight (or against an independent reference) after a training step. A normal single-replica training script has no reason to run this check because it only ever has one copy of the model to begin with; the check only becomes meaningful, and only becomes necessary, once a training setup deliberately introduces multiple replicas that are supposed to stay identical -- exactly the situation data parallelism creates and exactly the situation a missing all-reduce call quietly breaks.
 
