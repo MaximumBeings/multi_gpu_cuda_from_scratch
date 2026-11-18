@@ -50,12 +50,14 @@
         
         
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
-        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CJetBrains+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"JetBrains Mono"}</style>
       
     
     
       <link rel="stylesheet" href="../../stylesheets/illustrations.css">
+    
+      <link rel="stylesheet" href="../../stylesheets/code.css">
     
     <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
     
@@ -2762,7 +2764,7 @@
 <h3 id="intuition">Intuition<a class="headerlink" href="#intuition" title="Permanent link">&para;</a></h3>
 <p>Two compilers have to agree before a single line of this book's own multi-GPU code can build: <code>nvcc</code>, which understands <code>.cu</code> files and the <code>__global__</code>/<code>__device__</code> keywords they contain, and a host C++ compiler -- <code>g++</code> on every Linux machine this book targets -- which <code>nvcc</code> itself invokes internally to compile the ordinary host-side C++ portions of the same file. A reader's first real setup question is not "which CUDA version," it is simpler and more easily gotten wrong than that: does this machine have a genuine <code>nvcc</code> binary at all, or only something that merely sounds like one?</p>
 <h3 id="the-concept-in-detail">The Concept, In Detail<a class="headerlink" href="#the-concept-in-detail" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>+-----------------------------+     +-----------------------------+
+<div class="language-text highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>+-----------------------------+     +-----------------------------+
 <a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>| apt-get install             |     | pip install                 |
 <a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>| nvidia-cuda-toolkit         |     | nvidia-cuda-nvcc-cu12       |
 <a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>+-----------------------------+     +-----------------------------+
@@ -2778,22 +2780,35 @@
 <p>There is a second, subtler real finding this book's own environment surfaced while confirming the first one. Running <code>g++ --version</code> directly at a shell reports <code>13.3.0</code> -- but File 120 below, compiled <em>by nvcc itself</em>, reads back <code>__GNUC__ = 12</code>. This is not a bug in either compiler: <code>nvcc</code>'s own installed <code>host_config.h</code> header contains a real, explicit <code>#error</code> for any <code>__GNUC__</code> greater than 12 (<code>"unsupported GNU version! gcc versions later than 12 are not supported!"</code>), because CUDA 12.0 was never validated against GCC 13. The apt-packaged <code>nvidia-cuda-toolkit</code> works around this by shipping its own <code>gcc</code> shim script at <code>/usr/lib/nvidia-cuda-toolkit/bin/gcc</code>, which <code>nvcc</code>'s own <code>nvcc.profile</code> configuration file silently prepends onto <code>PATH</code> ahead of the system <code>/usr/bin/gcc</code>. That shim script itself simply execs the real, separately-installed <code>gcc-12</code> binary. The result: a reader typing <code>g++ --version</code> and a <code>.cu</code> file compiled by <code>nvcc</code> on the very same machine can genuinely, correctly report two different GCC version numbers, and both are telling the truth about two different things.</p>
 <p>[COMMON TRAP] Seeing <code>g++ --version</code> report one GCC version and a program compiled by <code>nvcc</code> report a different <code>__GNUC__</code> value is not a sign of a broken install. It means the apt-packaged toolchain is correctly protecting itself from a host-compiler version <code>nvcc</code> was never validated against, by quietly substituting a compatible <code>gcc</code> for its own internal calls only -- the system's own default <code>g++</code> is untouched and still used for every ordinary (non-<code>nvcc</code>) build on the same machine.</p>
 <h3 id="code-and-verification">Code and Verification<a class="headerlink" href="#code-and-verification" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="c1">// 120_toolchain_version_check.cu</span>
+<div class="language-cpp highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="c1">// 120_toolchain_version_check.cu</span>
 <a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="c1">// Compiler identity; version macros do not establish the package installation method.</span>
 <a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;cstdio&gt;</span>
-<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="kt">int</span><span class="w"> </span><span class="nf">main</span><span class="p">(){</span>
-<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">"C++ language level: %ld</span><span class="se">\n</span><span class="s">"</span><span class="p">,(</span><span class="kt">long</span><span class="p">)</span><span class="n">__cplusplus</span><span class="p">);</span>
-<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a><span class="cp">#ifdef __GNUC__</span>
-<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">"GNU-compatible host compiler macros: %d.%d.%d</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span><span class="n">__GNUC__</span><span class="p">,</span><span class="n">__GNUC_MINOR__</span><span class="p">,</span><span class="n">__GNUC_PATCHLEVEL__</span><span class="p">);</span>
-<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a><span class="cp">#endif</span>
-<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a><span class="cp">#ifdef __CUDACC_VER_MAJOR__</span>
-<a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">"CUDA compiler: %d.%d.%d</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span><span class="n">__CUDACC_VER_MAJOR__</span><span class="p">,</span><span class="n">__CUDACC_VER_MINOR__</span><span class="p">,</span><span class="n">__CUDACC_VER_BUILD__</span><span class="p">);</span>
-<a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a><span class="w">    </span><span class="kt">bool</span><span class="w"> </span><span class="n">ok</span><span class="o">=</span><span class="n">__cplusplus</span><span class="o">&gt;=</span><span class="mf">201703L</span><span class="p">;</span>
-<a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">"Compiler identity: %s (installation source is not inferred)</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span><span class="n">ok</span><span class="o">?</span><span class="s">"PASS"</span><span class="o">:</span><span class="s">"FAIL"</span><span class="p">);</span><span class="k">return</span><span class="w"> </span><span class="n">ok</span><span class="o">?</span><span class="mi">0</span><span class="o">:</span><span class="mi">1</span><span class="p">;</span>
-<a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a><span class="cp">#else</span>
-<a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a><span class="w">    </span><span class="n">fprintf</span><span class="p">(</span><span class="n">stderr</span><span class="p">,</span><span class="s">"Compile this .cu translation unit with nvcc and -std=c++17.</span><span class="se">\n</span><span class="s">"</span><span class="p">);</span><span class="k">return</span><span class="w"> </span><span class="mi">1</span><span class="p">;</span>
-<a id="__codelineno-1-15" name="__codelineno-1-15" href="#__codelineno-1-15"></a><span class="cp">#endif</span>
-<a id="__codelineno-1-16" name="__codelineno-1-16" href="#__codelineno-1-16"></a><span class="p">}</span>
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="kt">int</span><span class="w"> </span><span class="nf">main</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">"C++ language level: %ld</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span><span class="w"> </span><span class="p">(</span><span class="kt">long</span><span class="p">)</span><span class="n">__cplusplus</span><span class="p">);</span>
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="cp">#ifdef __GNUC__</span>
+<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">"GNU-compatible host compiler macros: %d.%d.%d</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span>
+<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a><span class="w">           </span><span class="n">__GNUC__</span><span class="p">,</span>
+<a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a><span class="w">           </span><span class="n">__GNUC_MINOR__</span><span class="p">,</span>
+<a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a><span class="w">           </span><span class="n">__GNUC_PATCHLEVEL__</span><span class="p">);</span>
+<a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a><span class="cp">#endif</span>
+<a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a><span class="cp">#ifdef __CUDACC_VER_MAJOR__</span>
+<a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">"CUDA compiler: %d.%d.%d</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span>
+<a id="__codelineno-1-15" name="__codelineno-1-15" href="#__codelineno-1-15"></a><span class="w">           </span><span class="n">__CUDACC_VER_MAJOR__</span><span class="p">,</span>
+<a id="__codelineno-1-16" name="__codelineno-1-16" href="#__codelineno-1-16"></a><span class="w">           </span><span class="n">__CUDACC_VER_MINOR__</span><span class="p">,</span>
+<a id="__codelineno-1-17" name="__codelineno-1-17" href="#__codelineno-1-17"></a><span class="w">           </span><span class="n">__CUDACC_VER_BUILD__</span><span class="p">);</span>
+<a id="__codelineno-1-18" name="__codelineno-1-18" href="#__codelineno-1-18"></a><span class="w">    </span><span class="kt">bool</span><span class="w"> </span><span class="n">ok</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">__cplusplus</span><span class="w"> </span><span class="o">&gt;=</span><span class="w"> </span><span class="mf">201703L</span><span class="p">;</span>
+<a id="__codelineno-1-19" name="__codelineno-1-19" href="#__codelineno-1-19"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span>
+<a id="__codelineno-1-20" name="__codelineno-1-20" href="#__codelineno-1-20"></a><span class="w">        </span><span class="s">"Compiler identity: %s (installation source is not inferred)</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span>
+<a id="__codelineno-1-21" name="__codelineno-1-21" href="#__codelineno-1-21"></a><span class="w">        </span><span class="n">ok</span><span class="w"> </span><span class="o">?</span><span class="w"> </span><span class="s">"PASS"</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="s">"FAIL"</span><span class="p">);</span>
+<a id="__codelineno-1-22" name="__codelineno-1-22" href="#__codelineno-1-22"></a><span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="n">ok</span><span class="w"> </span><span class="o">?</span><span class="w"> </span><span class="mi">0</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="mi">1</span><span class="p">;</span>
+<a id="__codelineno-1-23" name="__codelineno-1-23" href="#__codelineno-1-23"></a><span class="cp">#else</span>
+<a id="__codelineno-1-24" name="__codelineno-1-24" href="#__codelineno-1-24"></a><span class="w">    </span><span class="n">fprintf</span><span class="p">(</span>
+<a id="__codelineno-1-25" name="__codelineno-1-25" href="#__codelineno-1-25"></a><span class="w">        </span><span class="n">stderr</span><span class="p">,</span>
+<a id="__codelineno-1-26" name="__codelineno-1-26" href="#__codelineno-1-26"></a><span class="w">        </span><span class="s">"Compile this .cu translation unit with nvcc and -std=c++17.</span><span class="se">\n</span><span class="s">"</span><span class="p">);</span>
+<a id="__codelineno-1-27" name="__codelineno-1-27" href="#__codelineno-1-27"></a><span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="mi">1</span><span class="p">;</span>
+<a id="__codelineno-1-28" name="__codelineno-1-28" href="#__codelineno-1-28"></a><span class="cp">#endif</span>
+<a id="__codelineno-1-29" name="__codelineno-1-29" href="#__codelineno-1-29"></a><span class="p">}</span>
 </code></pre></div>
 <!-- execution:start:a100:120_toolchain_version_check.cu -->
 <blockquote>
@@ -2803,11 +2818,11 @@
 
 <p><a href="../../validation/2026-11-17-a100/120_toolchain_version_check/120_toolchain_version_check.cu">Exact tested source</a> · <a href="../../validation/2026-11-17-a100/120_toolchain_version_check/compile.log">Compiler log</a> · <a href="../../validation/2026-11-17-a100/120_toolchain_version_check/run.log">Execution log</a>. Compile exit: <code>0</code>; run exit: <code>0</code>.</p>
 <p>Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>nvcc<span class="w"> </span>-std<span class="o">=</span>c++17<span class="w"> </span>-O2<span class="w"> </span>-arch<span class="o">=</span>sm_80<span class="w"> </span>120_toolchain_version_check.cu<span class="w"> </span>-o<span class="w"> </span>./example
+<div class="language-bash highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>nvcc<span class="w"> </span>-std<span class="o">=</span>c++17<span class="w"> </span>-O2<span class="w"> </span>-arch<span class="o">=</span>sm_80<span class="w"> </span>120_toolchain_version_check.cu<span class="w"> </span>-o<span class="w"> </span>./example
 <a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>./example
 </code></pre></div>
 <p><strong>Sample output</strong></p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>C++ language level: 201703
+<div class="language-text highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>C++ language level: 201703
 <a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>GNU-compatible host compiler macros: 13.3.0
 <a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>CUDA compiler: 12.8.93
 <a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>Compiler identity: PASS (installation source is not inferred)
@@ -2822,12 +2837,12 @@
 
 <p><a href="../../validation/2026-11-17-h100/120_toolchain_version_check/120_toolchain_version_check.cu">Exact tested source</a> · <a href="../../validation/2026-11-17-h100/120_toolchain_version_check/compile.log">Compiler log</a> · <a href="../../validation/2026-11-17-h100/120_toolchain_version_check/run.log">Execution log</a>. Compile exit: <code>0</code>; run exit: <code>0</code>.</p>
 <p>Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>nvcc<span class="w"> </span>-std<span class="o">=</span>c++17<span class="w"> </span>-O2<span class="w"> </span>-arch<span class="o">=</span>sm_90<span class="w"> </span>120_toolchain_version_check.cu<span class="w"> </span>-o<span class="w"> </span>./example
+<div class="language-bash highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>nvcc<span class="w"> </span>-std<span class="o">=</span>c++17<span class="w"> </span>-O2<span class="w"> </span>-arch<span class="o">=</span>sm_90<span class="w"> </span>120_toolchain_version_check.cu<span class="w"> </span>-o<span class="w"> </span>./example
 <a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>./example
 </code></pre></div>
 <details>
 <summary>Captured current-source output</summary>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>C++ language level: 201703
+<div class="language-text highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>C++ language level: 201703
 <a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>GNU-compatible host compiler macros: 13.3.0
 <a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>CUDA compiler: 12.8.93
 <a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>Compiler identity: PASS (installation source is not inferred)
@@ -2846,7 +2861,7 @@
 <h3 id="intuition_1">Intuition<a class="headerlink" href="#intuition_1" title="Permanent link">&para;</a></h3>
 <p>A working <code>nvcc</code> and <code>g++</code> are necessary but not sufficient for this book's own subject matter. Three more real libraries sit underneath specific chapters -- NCCL for GPU-to-GPU collectives (Chapter 11 onward), Open MPI for host-side process launch and coordination (Chapter 20 onward), and NVSHMEM for GPU-initiated one-sided communication (Chapter 22 onward) -- and each publishes its own real version macros in its own real installed header, exactly like <code>nvcc</code> and <code>g++</code> do.</p>
 <h3 id="the-concept-in-detail_1">The Concept, In Detail<a class="headerlink" href="#the-concept-in-detail_1" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>+-----------------------------------------------------------------+
+<div class="language-text highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>+-----------------------------------------------------------------+
 <a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>|         Application code (this book's own Chapters 1-40)        |
 <a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>+---------------------+-----------------------+-------------------+
 <a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>| NCCL 2.18.3         | Open MPI 4.1.6        | NVSHMEM 3.8.0     |
@@ -2860,7 +2875,7 @@
 <p>Read dependency versions from the installed headers and runtime queries. NCCL defines <code>NCCL_MAJOR</code>, <code>NCCL_MINOR</code> and <code>NCCL_PATCH</code>; Open MPI defines its <code>OMPI_*_VERSION</code> macros; NVSHMEM provides vendor version macros in its version header. The captured output below shows the versions available to each tested build.</p>
 <p>[COMMON TRAP] NVSHMEM's own pip package (<code>nvidia-nvshmem-cu12</code>) installs as a Python namespace package -- it has no <code>__init__.py</code>, so its <code>__file__</code> attribute exists but is <code>None</code> (the behavior for namespace packages since Python 3.7). Running <code>python3 -c "import nvidia.nvshmem; print(nvidia.nvshmem.__file__)"</code> therefore does not fail -- it quietly prints <code>None</code>, which is not a path. The error only appears one step later, when that <code>None</code> is handed to something that expects a path: <code>os.path.dirname(nvidia.nvshmem.__file__)</code> raises <code>TypeError: expected str, bytes or os.PathLike object, not NoneType</code>. The reliable way to locate the real install path is <code>list(nvidia.nvshmem.__path__)[0]</code> instead -- Appendix A.4's own Makefile and File 121's compile command below use exactly this line to locate NVSHMEM's headers and libraries automatically.</p>
 <h3 id="code-and-verification_1">Code and Verification<a class="headerlink" href="#code-and-verification_1" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="c1">// Appendix A: Installation and Setup</span>
+<div class="language-cpp highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="c1">// Appendix A: Installation and Setup</span>
 <a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="c1">// 121_multi_gpu_stack_version_check.cpp</span>
 <a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a><span class="c1">//</span>
 <a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a><span class="c1">// nvcc and g++ (File 120) are the base C++/CUDA toolchain, but this</span>
@@ -2890,51 +2905,67 @@
 <a id="__codelineno-7-28" name="__codelineno-7-28" href="#__codelineno-7-28"></a><span class="cp">#if defined(NCCL_MAJOR) &amp;&amp; defined(NCCL_MINOR) &amp;&amp; defined(NCCL_PATCH)</span>
 <a id="__codelineno-7-29" name="__codelineno-7-29" href="#__codelineno-7-29"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">"NCCL_MAJOR = %d, NCCL_MINOR = %d, NCCL_PATCH = %d "</span>
 <a id="__codelineno-7-30" name="__codelineno-7-30" href="#__codelineno-7-30"></a><span class="w">           </span><span class="s">"(NCCL_VERSION_CODE = %d)</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span>
-<a id="__codelineno-7-31" name="__codelineno-7-31" href="#__codelineno-7-31"></a><span class="w">           </span><span class="n">NCCL_MAJOR</span><span class="p">,</span><span class="w"> </span><span class="n">NCCL_MINOR</span><span class="p">,</span><span class="w"> </span><span class="n">NCCL_PATCH</span><span class="p">,</span><span class="w"> </span><span class="n">NCCL_VERSION_CODE</span><span class="p">);</span>
-<a id="__codelineno-7-32" name="__codelineno-7-32" href="#__codelineno-7-32"></a><span class="cp">#else</span>
-<a id="__codelineno-7-33" name="__codelineno-7-33" href="#__codelineno-7-33"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">"NCCL version macros not defined -- nccl.h was not found by "</span>
-<a id="__codelineno-7-34" name="__codelineno-7-34" href="#__codelineno-7-34"></a><span class="w">           </span><span class="s">"the compiler.</span><span class="se">\n</span><span class="s">"</span><span class="p">);</span>
-<a id="__codelineno-7-35" name="__codelineno-7-35" href="#__codelineno-7-35"></a><span class="cp">#endif</span>
-<a id="__codelineno-7-36" name="__codelineno-7-36" href="#__codelineno-7-36"></a>
-<a id="__codelineno-7-37" name="__codelineno-7-37" href="#__codelineno-7-37"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">"</span><span class="se">\n</span><span class="s">=== Open MPI (host-side process launch and messaging) ===</span><span class="se">\n</span><span class="s">"</span><span class="p">);</span>
-<a id="__codelineno-7-38" name="__codelineno-7-38" href="#__codelineno-7-38"></a><span class="cp">#if defined(OMPI_MAJOR_VERSION) &amp;&amp; defined(OMPI_MINOR_VERSION) &amp;&amp; defined(OMPI_RELEASE_VERSION)</span>
-<a id="__codelineno-7-39" name="__codelineno-7-39" href="#__codelineno-7-39"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">"OMPI_MAJOR_VERSION = %d, OMPI_MINOR_VERSION = %d, "</span>
-<a id="__codelineno-7-40" name="__codelineno-7-40" href="#__codelineno-7-40"></a><span class="w">           </span><span class="s">"OMPI_RELEASE_VERSION = %d</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span>
-<a id="__codelineno-7-41" name="__codelineno-7-41" href="#__codelineno-7-41"></a><span class="w">           </span><span class="n">OMPI_MAJOR_VERSION</span><span class="p">,</span><span class="w"> </span><span class="n">OMPI_MINOR_VERSION</span><span class="p">,</span><span class="w"> </span><span class="n">OMPI_RELEASE_VERSION</span><span class="p">);</span>
-<a id="__codelineno-7-42" name="__codelineno-7-42" href="#__codelineno-7-42"></a><span class="cp">#else</span>
-<a id="__codelineno-7-43" name="__codelineno-7-43" href="#__codelineno-7-43"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">"OMPI version macros not defined -- mpi.h was not found, or "</span>
-<a id="__codelineno-7-44" name="__codelineno-7-44" href="#__codelineno-7-44"></a><span class="w">           </span><span class="s">"this is a different MPI implementation (e.g. MPICH) with its "</span>
-<a id="__codelineno-7-45" name="__codelineno-7-45" href="#__codelineno-7-45"></a><span class="w">           </span><span class="s">"own different macro names.</span><span class="se">\n</span><span class="s">"</span><span class="p">);</span>
-<a id="__codelineno-7-46" name="__codelineno-7-46" href="#__codelineno-7-46"></a><span class="cp">#endif</span>
-<a id="__codelineno-7-47" name="__codelineno-7-47" href="#__codelineno-7-47"></a>
-<a id="__codelineno-7-48" name="__codelineno-7-48" href="#__codelineno-7-48"></a><span class="w">    </span><span class="c1">// MPI itself must be initialized to call most of its API, but the</span>
-<a id="__codelineno-7-49" name="__codelineno-7-49" href="#__codelineno-7-49"></a><span class="w">    </span><span class="c1">// version macros above are pure preprocessor text and need no</span>
-<a id="__codelineno-7-50" name="__codelineno-7-50" href="#__codelineno-7-50"></a><span class="w">    </span><span class="c1">// runtime call at all -- this program deliberately does NOT call</span>
-<a id="__codelineno-7-51" name="__codelineno-7-51" href="#__codelineno-7-51"></a><span class="w">    </span><span class="c1">// MPI_Init, to keep this specific check runnable with a plain `./`</span>
-<a id="__codelineno-7-52" name="__codelineno-7-52" href="#__codelineno-7-52"></a><span class="w">    </span><span class="c1">// invocation rather than requiring `mpirun`. Chapter 20 onward always</span>
-<a id="__codelineno-7-53" name="__codelineno-7-53" href="#__codelineno-7-53"></a><span class="w">    </span><span class="c1">// launches MPI programs through mpirun/mpiexec; this file is a</span>
-<a id="__codelineno-7-54" name="__codelineno-7-54" href="#__codelineno-7-54"></a><span class="w">    </span><span class="c1">// deliberate exception, for the version-check use case only.</span>
-<a id="__codelineno-7-55" name="__codelineno-7-55" href="#__codelineno-7-55"></a><span class="w">    </span><span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="n">argc</span><span class="p">;</span><span class="w"> </span><span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="n">argv</span><span class="p">;</span>
-<a id="__codelineno-7-56" name="__codelineno-7-56" href="#__codelineno-7-56"></a>
-<a id="__codelineno-7-57" name="__codelineno-7-57" href="#__codelineno-7-57"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">"</span><span class="se">\n</span><span class="s">=== NVSHMEM (GPU-initiated one-sided communication) ===</span><span class="se">\n</span><span class="s">"</span><span class="p">);</span>
-<a id="__codelineno-7-58" name="__codelineno-7-58" href="#__codelineno-7-58"></a><span class="cp">#if defined(NVSHMEM_VENDOR_MAJOR_VERSION) &amp;&amp; defined(NVSHMEM_VENDOR_MINOR_VERSION) &amp;&amp; defined(NVSHMEM_VENDOR_PATCH_VERSION)</span>
-<a id="__codelineno-7-59" name="__codelineno-7-59" href="#__codelineno-7-59"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">"NVSHMEM_VENDOR_MAJOR_VERSION = %d, NVSHMEM_VENDOR_MINOR_VERSION = %d, "</span>
-<a id="__codelineno-7-60" name="__codelineno-7-60" href="#__codelineno-7-60"></a><span class="w">           </span><span class="s">"NVSHMEM_VENDOR_PATCH_VERSION = %d</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span>
-<a id="__codelineno-7-61" name="__codelineno-7-61" href="#__codelineno-7-61"></a><span class="w">           </span><span class="n">NVSHMEM_VENDOR_MAJOR_VERSION</span><span class="p">,</span><span class="w"> </span><span class="n">NVSHMEM_VENDOR_MINOR_VERSION</span><span class="p">,</span>
-<a id="__codelineno-7-62" name="__codelineno-7-62" href="#__codelineno-7-62"></a><span class="w">           </span><span class="n">NVSHMEM_VENDOR_PATCH_VERSION</span><span class="p">);</span>
-<a id="__codelineno-7-63" name="__codelineno-7-63" href="#__codelineno-7-63"></a><span class="cp">#else</span>
-<a id="__codelineno-7-64" name="__codelineno-7-64" href="#__codelineno-7-64"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">"NVSHMEM version macros not defined -- non_abi/nvshmem_version.h "</span>
-<a id="__codelineno-7-65" name="__codelineno-7-65" href="#__codelineno-7-65"></a><span class="w">           </span><span class="s">"was not found. Add -I&lt;NVSHMEM_DIR&gt;/include, where NVSHMEM_DIR "</span>
-<a id="__codelineno-7-66" name="__codelineno-7-66" href="#__codelineno-7-66"></a><span class="w">           </span><span class="s">"is printed by: python3 -c </span><span class="se">\"</span><span class="s">import nvidia.nvshmem; "</span>
-<a id="__codelineno-7-67" name="__codelineno-7-67" href="#__codelineno-7-67"></a><span class="w">           </span><span class="s">"print(list(nvidia.nvshmem.__path__)[0])</span><span class="se">\"\n</span><span class="s">"</span><span class="p">);</span>
-<a id="__codelineno-7-68" name="__codelineno-7-68" href="#__codelineno-7-68"></a><span class="cp">#endif</span>
-<a id="__codelineno-7-69" name="__codelineno-7-69" href="#__codelineno-7-69"></a>
-<a id="__codelineno-7-70" name="__codelineno-7-70" href="#__codelineno-7-70"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">"</span><span class="se">\n</span><span class="s">self-check: this program compiled and ran, which by itself "</span>
-<a id="__codelineno-7-71" name="__codelineno-7-71" href="#__codelineno-7-71"></a><span class="w">           </span><span class="s">"confirms nccl.h and mpi.h were both found on this system's "</span>
-<a id="__codelineno-7-72" name="__codelineno-7-72" href="#__codelineno-7-72"></a><span class="w">           </span><span class="s">"own include path -- a well-formed documented result either "</span>
-<a id="__codelineno-7-73" name="__codelineno-7-73" href="#__codelineno-7-73"></a><span class="w">           </span><span class="s">"way, matching this book's own Appendix pattern.</span><span class="se">\n</span><span class="s">"</span><span class="p">);</span>
-<a id="__codelineno-7-74" name="__codelineno-7-74" href="#__codelineno-7-74"></a><span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
-<a id="__codelineno-7-75" name="__codelineno-7-75" href="#__codelineno-7-75"></a><span class="p">}</span>
+<a id="__codelineno-7-31" name="__codelineno-7-31" href="#__codelineno-7-31"></a><span class="w">           </span><span class="n">NCCL_MAJOR</span><span class="p">,</span>
+<a id="__codelineno-7-32" name="__codelineno-7-32" href="#__codelineno-7-32"></a><span class="w">           </span><span class="n">NCCL_MINOR</span><span class="p">,</span>
+<a id="__codelineno-7-33" name="__codelineno-7-33" href="#__codelineno-7-33"></a><span class="w">           </span><span class="n">NCCL_PATCH</span><span class="p">,</span>
+<a id="__codelineno-7-34" name="__codelineno-7-34" href="#__codelineno-7-34"></a><span class="w">           </span><span class="n">NCCL_VERSION_CODE</span><span class="p">);</span>
+<a id="__codelineno-7-35" name="__codelineno-7-35" href="#__codelineno-7-35"></a><span class="cp">#else</span>
+<a id="__codelineno-7-36" name="__codelineno-7-36" href="#__codelineno-7-36"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">"NCCL version macros not defined -- nccl.h was not found by "</span>
+<a id="__codelineno-7-37" name="__codelineno-7-37" href="#__codelineno-7-37"></a><span class="w">           </span><span class="s">"the compiler.</span><span class="se">\n</span><span class="s">"</span><span class="p">);</span>
+<a id="__codelineno-7-38" name="__codelineno-7-38" href="#__codelineno-7-38"></a><span class="cp">#endif</span>
+<a id="__codelineno-7-39" name="__codelineno-7-39" href="#__codelineno-7-39"></a>
+<a id="__codelineno-7-40" name="__codelineno-7-40" href="#__codelineno-7-40"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span>
+<a id="__codelineno-7-41" name="__codelineno-7-41" href="#__codelineno-7-41"></a><span class="w">        </span><span class="s">"</span><span class="se">\n</span><span class="s">=== Open MPI (host-side process launch and messaging) ===</span><span class="se">\n</span><span class="s">"</span><span class="p">);</span>
+<a id="__codelineno-7-42" name="__codelineno-7-42" href="#__codelineno-7-42"></a><span class="cp">#if defined(OMPI_MAJOR_VERSION) &amp;&amp; defined(OMPI_MINOR_VERSION) &amp;&amp;      \</span>
+<a id="__codelineno-7-43" name="__codelineno-7-43" href="#__codelineno-7-43"></a><span class="cp">    defined(OMPI_RELEASE_VERSION)</span>
+<a id="__codelineno-7-44" name="__codelineno-7-44" href="#__codelineno-7-44"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">"OMPI_MAJOR_VERSION = %d, OMPI_MINOR_VERSION = %d, "</span>
+<a id="__codelineno-7-45" name="__codelineno-7-45" href="#__codelineno-7-45"></a><span class="w">           </span><span class="s">"OMPI_RELEASE_VERSION = %d</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span>
+<a id="__codelineno-7-46" name="__codelineno-7-46" href="#__codelineno-7-46"></a><span class="w">           </span><span class="n">OMPI_MAJOR_VERSION</span><span class="p">,</span>
+<a id="__codelineno-7-47" name="__codelineno-7-47" href="#__codelineno-7-47"></a><span class="w">           </span><span class="n">OMPI_MINOR_VERSION</span><span class="p">,</span>
+<a id="__codelineno-7-48" name="__codelineno-7-48" href="#__codelineno-7-48"></a><span class="w">           </span><span class="n">OMPI_RELEASE_VERSION</span><span class="p">);</span>
+<a id="__codelineno-7-49" name="__codelineno-7-49" href="#__codelineno-7-49"></a><span class="cp">#else</span>
+<a id="__codelineno-7-50" name="__codelineno-7-50" href="#__codelineno-7-50"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span>
+<a id="__codelineno-7-51" name="__codelineno-7-51" href="#__codelineno-7-51"></a><span class="w">        </span><span class="s">"OMPI version macros not defined -- mpi.h was not found, or "</span>
+<a id="__codelineno-7-52" name="__codelineno-7-52" href="#__codelineno-7-52"></a><span class="w">        </span><span class="s">"this is a different MPI implementation (e.g. MPICH) with its "</span>
+<a id="__codelineno-7-53" name="__codelineno-7-53" href="#__codelineno-7-53"></a><span class="w">        </span><span class="s">"own different macro names.</span><span class="se">\n</span><span class="s">"</span><span class="p">);</span>
+<a id="__codelineno-7-54" name="__codelineno-7-54" href="#__codelineno-7-54"></a><span class="cp">#endif</span>
+<a id="__codelineno-7-55" name="__codelineno-7-55" href="#__codelineno-7-55"></a>
+<a id="__codelineno-7-56" name="__codelineno-7-56" href="#__codelineno-7-56"></a><span class="w">    </span><span class="c1">// MPI itself must be initialized to call most of its API, but the</span>
+<a id="__codelineno-7-57" name="__codelineno-7-57" href="#__codelineno-7-57"></a><span class="w">    </span><span class="c1">// version macros above are pure preprocessor text and need no</span>
+<a id="__codelineno-7-58" name="__codelineno-7-58" href="#__codelineno-7-58"></a><span class="w">    </span><span class="c1">// runtime call at all -- this program deliberately does NOT call</span>
+<a id="__codelineno-7-59" name="__codelineno-7-59" href="#__codelineno-7-59"></a><span class="w">    </span><span class="c1">// MPI_Init, to keep this specific check runnable with a plain `./`</span>
+<a id="__codelineno-7-60" name="__codelineno-7-60" href="#__codelineno-7-60"></a><span class="w">    </span><span class="c1">// invocation rather than requiring `mpirun`. Chapter 20 onward always</span>
+<a id="__codelineno-7-61" name="__codelineno-7-61" href="#__codelineno-7-61"></a><span class="w">    </span><span class="c1">// launches MPI programs through mpirun/mpiexec; this file is a</span>
+<a id="__codelineno-7-62" name="__codelineno-7-62" href="#__codelineno-7-62"></a><span class="w">    </span><span class="c1">// deliberate exception, for the version-check use case only.</span>
+<a id="__codelineno-7-63" name="__codelineno-7-63" href="#__codelineno-7-63"></a><span class="w">    </span><span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="n">argc</span><span class="p">;</span>
+<a id="__codelineno-7-64" name="__codelineno-7-64" href="#__codelineno-7-64"></a><span class="w">    </span><span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="n">argv</span><span class="p">;</span>
+<a id="__codelineno-7-65" name="__codelineno-7-65" href="#__codelineno-7-65"></a>
+<a id="__codelineno-7-66" name="__codelineno-7-66" href="#__codelineno-7-66"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span>
+<a id="__codelineno-7-67" name="__codelineno-7-67" href="#__codelineno-7-67"></a><span class="w">        </span><span class="s">"</span><span class="se">\n</span><span class="s">=== NVSHMEM (GPU-initiated one-sided communication) ===</span><span class="se">\n</span><span class="s">"</span><span class="p">);</span>
+<a id="__codelineno-7-68" name="__codelineno-7-68" href="#__codelineno-7-68"></a><span class="cp">#if defined(NVSHMEM_VENDOR_MAJOR_VERSION) &amp;&amp;                           \</span>
+<a id="__codelineno-7-69" name="__codelineno-7-69" href="#__codelineno-7-69"></a><span class="cp">    defined(NVSHMEM_VENDOR_MINOR_VERSION) &amp;&amp;                           \</span>
+<a id="__codelineno-7-70" name="__codelineno-7-70" href="#__codelineno-7-70"></a><span class="cp">    defined(NVSHMEM_VENDOR_PATCH_VERSION)</span>
+<a id="__codelineno-7-71" name="__codelineno-7-71" href="#__codelineno-7-71"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span>
+<a id="__codelineno-7-72" name="__codelineno-7-72" href="#__codelineno-7-72"></a><span class="w">        </span><span class="s">"NVSHMEM_VENDOR_MAJOR_VERSION = %d, NVSHMEM_VENDOR_MINOR_VERSION = %d, "</span>
+<a id="__codelineno-7-73" name="__codelineno-7-73" href="#__codelineno-7-73"></a><span class="w">        </span><span class="s">"NVSHMEM_VENDOR_PATCH_VERSION = %d</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span>
+<a id="__codelineno-7-74" name="__codelineno-7-74" href="#__codelineno-7-74"></a><span class="w">        </span><span class="n">NVSHMEM_VENDOR_MAJOR_VERSION</span><span class="p">,</span>
+<a id="__codelineno-7-75" name="__codelineno-7-75" href="#__codelineno-7-75"></a><span class="w">        </span><span class="n">NVSHMEM_VENDOR_MINOR_VERSION</span><span class="p">,</span>
+<a id="__codelineno-7-76" name="__codelineno-7-76" href="#__codelineno-7-76"></a><span class="w">        </span><span class="n">NVSHMEM_VENDOR_PATCH_VERSION</span><span class="p">);</span>
+<a id="__codelineno-7-77" name="__codelineno-7-77" href="#__codelineno-7-77"></a><span class="cp">#else</span>
+<a id="__codelineno-7-78" name="__codelineno-7-78" href="#__codelineno-7-78"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span>
+<a id="__codelineno-7-79" name="__codelineno-7-79" href="#__codelineno-7-79"></a><span class="w">        </span><span class="s">"NVSHMEM version macros not defined -- non_abi/nvshmem_version.h "</span>
+<a id="__codelineno-7-80" name="__codelineno-7-80" href="#__codelineno-7-80"></a><span class="w">        </span><span class="s">"was not found. Add -I&lt;NVSHMEM_DIR&gt;/include, where NVSHMEM_DIR "</span>
+<a id="__codelineno-7-81" name="__codelineno-7-81" href="#__codelineno-7-81"></a><span class="w">        </span><span class="s">"is printed by: python3 -c </span><span class="se">\"</span><span class="s">import nvidia.nvshmem; "</span>
+<a id="__codelineno-7-82" name="__codelineno-7-82" href="#__codelineno-7-82"></a><span class="w">        </span><span class="s">"print(list(nvidia.nvshmem.__path__)[0])</span><span class="se">\"\n</span><span class="s">"</span><span class="p">);</span>
+<a id="__codelineno-7-83" name="__codelineno-7-83" href="#__codelineno-7-83"></a><span class="cp">#endif</span>
+<a id="__codelineno-7-84" name="__codelineno-7-84" href="#__codelineno-7-84"></a>
+<a id="__codelineno-7-85" name="__codelineno-7-85" href="#__codelineno-7-85"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span>
+<a id="__codelineno-7-86" name="__codelineno-7-86" href="#__codelineno-7-86"></a><span class="w">        </span><span class="s">"</span><span class="se">\n</span><span class="s">self-check: this program compiled and ran, which by itself "</span>
+<a id="__codelineno-7-87" name="__codelineno-7-87" href="#__codelineno-7-87"></a><span class="w">        </span><span class="s">"confirms nccl.h and mpi.h were both found on this system's "</span>
+<a id="__codelineno-7-88" name="__codelineno-7-88" href="#__codelineno-7-88"></a><span class="w">        </span><span class="s">"own include path -- a well-formed documented result either "</span>
+<a id="__codelineno-7-89" name="__codelineno-7-89" href="#__codelineno-7-89"></a><span class="w">        </span><span class="s">"way, matching this book's own Appendix pattern.</span><span class="se">\n</span><span class="s">"</span><span class="p">);</span>
+<a id="__codelineno-7-90" name="__codelineno-7-90" href="#__codelineno-7-90"></a><span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
+<a id="__codelineno-7-91" name="__codelineno-7-91" href="#__codelineno-7-91"></a><span class="p">}</span>
 </code></pre></div>
 <!-- execution:start:a100:121_multi_gpu_stack_version_check.cpp -->
 <blockquote>
@@ -2944,11 +2975,11 @@
 
 <p><a href="../../validation/2026-11-17-a100/121_multi_gpu_stack_version_check/121_multi_gpu_stack_version_check.cpp">Exact tested source</a> · <a href="../../validation/2026-11-17-a100/121_multi_gpu_stack_version_check/compile.log">Compiler log</a> · <a href="../../validation/2026-11-17-a100/121_multi_gpu_stack_version_check/run.log">Execution log</a>. Compile exit: <code>0</code>; run exit: <code>0</code>.</p>
 <p>Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>mpicxx<span class="w"> </span>-std<span class="o">=</span>c++17<span class="w"> </span>-O2<span class="w"> </span>121_multi_gpu_stack_version_check.cpp<span class="w"> </span>-o<span class="w"> </span>./example<span class="w"> </span>-lnccl
+<div class="language-bash highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>mpicxx<span class="w"> </span>-std<span class="o">=</span>c++17<span class="w"> </span>-O2<span class="w"> </span>121_multi_gpu_stack_version_check.cpp<span class="w"> </span>-o<span class="w"> </span>./example<span class="w"> </span>-lnccl
 <a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>/usr/mpi/gcc/openmpi-4.1.7rc1/bin/mpirun<span class="w"> </span>--oversubscribe<span class="w"> </span>-np<span class="w"> </span><span class="m">8</span><span class="w"> </span>./example
 </code></pre></div>
 <p><strong>Sample output</strong></p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>=== NCCL (collective communication) ===
+<div class="language-text highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>=== NCCL (collective communication) ===
 <a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>NCCL_MAJOR = 2, NCCL_MINOR = 26, NCCL_PATCH = 2 (NCCL_VERSION_CODE = 22602)
 <a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>
 <a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a>=== Open MPI (host-side process launch and messaging) ===
@@ -3039,12 +3070,12 @@
 
 <p><a href="../../validation/2026-11-17-h100/121_multi_gpu_stack_version_check/121_multi_gpu_stack_version_check.cpp">Exact tested source</a> · <a href="../../validation/2026-11-17-h100/121_multi_gpu_stack_version_check/compile.log">Compiler log</a> · <a href="../../validation/2026-11-17-h100/121_multi_gpu_stack_version_check/run.log">Execution log</a>. Compile exit: <code>0</code>; run exit: <code>0</code>.</p>
 <p>Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>mpicxx<span class="w"> </span>-std<span class="o">=</span>c++17<span class="w"> </span>-O2<span class="w"> </span>121_multi_gpu_stack_version_check.cpp<span class="w"> </span>-o<span class="w"> </span>./example<span class="w"> </span>-lnccl
+<div class="language-bash highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>mpicxx<span class="w"> </span>-std<span class="o">=</span>c++17<span class="w"> </span>-O2<span class="w"> </span>121_multi_gpu_stack_version_check.cpp<span class="w"> </span>-o<span class="w"> </span>./example<span class="w"> </span>-lnccl
 <a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>/home/ubuntu/book2-bin/mpirun<span class="w"> </span>--oversubscribe<span class="w"> </span>-np<span class="w"> </span><span class="m">2</span><span class="w"> </span>./example
 </code></pre></div>
 <details>
 <summary>Captured current-source output</summary>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>--------------------------------------------------------------------------
+<div class="language-text highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>--------------------------------------------------------------------------
 <a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>Sorry!  You were supposed to get help about:
 <a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a>    unavailable
 <a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a>But I couldn't open the help file:
@@ -3075,7 +3106,7 @@
 <!-- execution:end:h100:121_multi_gpu_stack_version_check.cpp -->
 
 <p><strong>Compile and run:</strong></p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a><span class="nv">NVSHMEM_DIR</span><span class="o">=</span><span class="k">$(</span>python3<span class="w"> </span>-c<span class="w"> </span><span class="s2">"import nvidia.nvshmem; print(list(nvidia.nvshmem.__path__)[0])"</span><span class="k">)</span>
+<div class="language-bash highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a><span class="nv">NVSHMEM_DIR</span><span class="o">=</span><span class="k">$(</span>python3<span class="w"> </span>-c<span class="w"> </span><span class="s2">"import nvidia.nvshmem; print(list(nvidia.nvshmem.__path__)[0])"</span><span class="k">)</span>
 <a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a>g++<span class="w"> </span>-std<span class="o">=</span>c++17<span class="w"> </span>-Wall<span class="w"> </span>-Wextra<span class="w"> </span>-O2<span class="w"> </span>-I/usr/lib/x86_64-linux-gnu/openmpi/include<span class="w"> </span>-I<span class="nv">$NVSHMEM_DIR</span>/include<span class="w"> </span>121_multi_gpu_stack_version_check.cpp<span class="w"> </span>-o<span class="w"> </span>121_multi_gpu_stack_version_check<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>./121_multi_gpu_stack_version_check
 </code></pre></div>
 <p><strong>Sample input:</strong> none</p>
@@ -3083,13 +3114,13 @@
 <h3 id="intuition_2">Intuition<a class="headerlink" href="#intuition_2" title="Permanent link">&para;</a></h3>
 <p>Even with a fully correct toolchain and every library installed, one real question remains that no header macro can answer: what hardware does this specific machine actually have attached right now? The CUDA Runtime API answers that at run time, not compile time, through three calls the DSA book's own Appendix A already established (<code>cudaRuntimeGetVersion</code>, <code>cudaDriverGetVersion</code>, <code>cudaGetDeviceCount</code>) plus a fourth this book adds, because this book's own subject is what happens once a <em>second</em> GPU enters the picture.</p>
 <h3 id="the-concept-in-detail_2">The Concept, In Detail<a class="headerlink" href="#the-concept-in-detail_2" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a>Q1: runtime available? -&gt; Q2: driver installed? -&gt; Q3: &gt;=1 GPU? -&gt; Q4: &gt;=2 GPUs?
+<div class="language-text highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a>Q1: runtime available? -&gt; Q2: driver installed? -&gt; Q3: &gt;=1 GPU? -&gt; Q4: &gt;=2 GPUs?
 <a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a>    cudaRuntimeGetVersion    cudaDriverGetVersion    cudaGetDeviceCount   this book's own check
 </code></pre></div>
 <p>Check the toolkit, driver, visible device count and required device topology before building the workload. The compiler target and dependencies must match the chosen host. File 120 checks the compiler; <code>cudaRuntimeGetVersion()</code> in File 122 checks the accessible runtime library, which is a separate requirement.</p>
 <p>[COMMON TRAP] A driver-version query alone does not establish device availability. Check <code>cudaGetDeviceCount()</code> and its return status, then inspect the topology.</p>
 <h3 id="code-and-verification_2">Code and Verification<a class="headerlink" href="#code-and-verification_2" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a><span class="c1">// Appendix A: Installation and Setup</span>
+<div class="language-cpp highlight"><pre><span></span><code><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a><span class="c1">// Appendix A: Installation and Setup</span>
 <a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a><span class="c1">// 122_multi_device_runtime_api_check.cu</span>
 <a id="__codelineno-14-3" name="__codelineno-14-3" href="#__codelineno-14-3"></a><span class="c1">//</span>
 <a id="__codelineno-14-4" name="__codelineno-14-4" href="#__codelineno-14-4"></a><span class="c1">// Query the accessible CUDA runtime, compatible driver and visible devices.</span>
@@ -3114,89 +3145,113 @@
 <a id="__codelineno-14-23" name="__codelineno-14-23" href="#__codelineno-14-23"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;cuda_runtime.h&gt;</span>
 <a id="__codelineno-14-24" name="__codelineno-14-24" href="#__codelineno-14-24"></a>
 <a id="__codelineno-14-25" name="__codelineno-14-25" href="#__codelineno-14-25"></a><span class="kt">int</span><span class="w"> </span><span class="nf">main</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
-<a id="__codelineno-14-26" name="__codelineno-14-26" href="#__codelineno-14-26"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">"=== Q1: Is the CUDA runtime available? (cudaRuntimeGetVersion) ===</span><span class="se">\n</span><span class="s">"</span><span class="p">);</span>
-<a id="__codelineno-14-27" name="__codelineno-14-27" href="#__codelineno-14-27"></a><span class="w">    </span><span class="kt">int</span><span class="w"> </span><span class="n">runtimeVersion</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
-<a id="__codelineno-14-28" name="__codelineno-14-28" href="#__codelineno-14-28"></a><span class="w">    </span><span class="n">cudaError_t</span><span class="w"> </span><span class="n">rtErr</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">cudaRuntimeGetVersion</span><span class="p">(</span><span class="o">&amp;</span><span class="n">runtimeVersion</span><span class="p">);</span>
-<a id="__codelineno-14-29" name="__codelineno-14-29" href="#__codelineno-14-29"></a><span class="w">    </span><span class="kt">bool</span><span class="w"> </span><span class="n">toolkitFound</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="n">rtErr</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="n">cudaSuccess</span><span class="p">);</span>
-<a id="__codelineno-14-30" name="__codelineno-14-30" href="#__codelineno-14-30"></a><span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">toolkitFound</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
-<a id="__codelineno-14-31" name="__codelineno-14-31" href="#__codelineno-14-31"></a><span class="w">        </span><span class="n">printf</span><span class="p">(</span><span class="s">"FOUND: CUDA Runtime version %d.%d</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span>
-<a id="__codelineno-14-32" name="__codelineno-14-32" href="#__codelineno-14-32"></a><span class="w">               </span><span class="n">runtimeVersion</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="mi">1000</span><span class="p">,</span><span class="w"> </span><span class="p">(</span><span class="n">runtimeVersion</span><span class="w"> </span><span class="o">%</span><span class="w"> </span><span class="mi">1000</span><span class="p">)</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="mi">10</span><span class="p">);</span>
-<a id="__codelineno-14-33" name="__codelineno-14-33" href="#__codelineno-14-33"></a><span class="w">    </span><span class="p">}</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="p">{</span>
-<a id="__codelineno-14-34" name="__codelineno-14-34" href="#__codelineno-14-34"></a><span class="w">        </span><span class="n">printf</span><span class="p">(</span><span class="s">"NOT FOUND: cudaRuntimeGetVersion returned error %d (%s)</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span>
-<a id="__codelineno-14-35" name="__codelineno-14-35" href="#__codelineno-14-35"></a><span class="w">               </span><span class="p">(</span><span class="kt">int</span><span class="p">)</span><span class="n">rtErr</span><span class="p">,</span><span class="w"> </span><span class="n">cudaGetErrorString</span><span class="p">(</span><span class="n">rtErr</span><span class="p">));</span>
-<a id="__codelineno-14-36" name="__codelineno-14-36" href="#__codelineno-14-36"></a><span class="w">    </span><span class="p">}</span>
-<a id="__codelineno-14-37" name="__codelineno-14-37" href="#__codelineno-14-37"></a>
-<a id="__codelineno-14-38" name="__codelineno-14-38" href="#__codelineno-14-38"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">"</span><span class="se">\n</span><span class="s">=== Q2: Is a compatible driver installed? (cudaDriverGetVersion) ===</span><span class="se">\n</span><span class="s">"</span><span class="p">);</span>
-<a id="__codelineno-14-39" name="__codelineno-14-39" href="#__codelineno-14-39"></a><span class="w">    </span><span class="kt">int</span><span class="w"> </span><span class="n">driverVersion</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
-<a id="__codelineno-14-40" name="__codelineno-14-40" href="#__codelineno-14-40"></a><span class="w">    </span><span class="n">cudaError_t</span><span class="w"> </span><span class="n">drvErr</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">cudaDriverGetVersion</span><span class="p">(</span><span class="o">&amp;</span><span class="n">driverVersion</span><span class="p">);</span>
-<a id="__codelineno-14-41" name="__codelineno-14-41" href="#__codelineno-14-41"></a><span class="w">    </span><span class="kt">bool</span><span class="w"> </span><span class="n">driverFound</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="n">drvErr</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="n">cudaSuccess</span><span class="p">)</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="p">(</span><span class="n">driverVersion</span><span class="w"> </span><span class="o">&gt;</span><span class="w"> </span><span class="mi">0</span><span class="p">);</span>
-<a id="__codelineno-14-42" name="__codelineno-14-42" href="#__codelineno-14-42"></a><span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">driverFound</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
-<a id="__codelineno-14-43" name="__codelineno-14-43" href="#__codelineno-14-43"></a><span class="w">        </span><span class="n">printf</span><span class="p">(</span><span class="s">"FOUND: CUDA Driver version %d.%d</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span>
-<a id="__codelineno-14-44" name="__codelineno-14-44" href="#__codelineno-14-44"></a><span class="w">               </span><span class="n">driverVersion</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="mi">1000</span><span class="p">,</span><span class="w"> </span><span class="p">(</span><span class="n">driverVersion</span><span class="w"> </span><span class="o">%</span><span class="w"> </span><span class="mi">1000</span><span class="p">)</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="mi">10</span><span class="p">);</span>
-<a id="__codelineno-14-45" name="__codelineno-14-45" href="#__codelineno-14-45"></a><span class="w">    </span><span class="p">}</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="p">{</span>
-<a id="__codelineno-14-46" name="__codelineno-14-46" href="#__codelineno-14-46"></a><span class="w">        </span><span class="n">printf</span><span class="p">(</span><span class="s">"NOT FOUND: driverVersion=%d. Check the installed driver and visible devices.</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span><span class="w"> </span><span class="n">driverVersion</span><span class="p">);</span>
-<a id="__codelineno-14-47" name="__codelineno-14-47" href="#__codelineno-14-47"></a><span class="c1">//</span>
-<a id="__codelineno-14-48" name="__codelineno-14-48" href="#__codelineno-14-48"></a><span class="c1">//</span>
-<a id="__codelineno-14-49" name="__codelineno-14-49" href="#__codelineno-14-49"></a><span class="c1">//</span>
-<a id="__codelineno-14-50" name="__codelineno-14-50" href="#__codelineno-14-50"></a><span class="c1">//</span>
-<a id="__codelineno-14-51" name="__codelineno-14-51" href="#__codelineno-14-51"></a><span class="c1">//</span>
-<a id="__codelineno-14-52" name="__codelineno-14-52" href="#__codelineno-14-52"></a><span class="w">    </span><span class="p">}</span>
-<a id="__codelineno-14-53" name="__codelineno-14-53" href="#__codelineno-14-53"></a>
-<a id="__codelineno-14-54" name="__codelineno-14-54" href="#__codelineno-14-54"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">"</span><span class="se">\n</span><span class="s">=== Q3: Is at least one GPU visible? (cudaGetDeviceCount) ===</span><span class="se">\n</span><span class="s">"</span><span class="p">);</span>
-<a id="__codelineno-14-55" name="__codelineno-14-55" href="#__codelineno-14-55"></a><span class="w">    </span><span class="kt">int</span><span class="w"> </span><span class="n">deviceCount</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
-<a id="__codelineno-14-56" name="__codelineno-14-56" href="#__codelineno-14-56"></a><span class="w">    </span><span class="n">cudaError_t</span><span class="w"> </span><span class="n">countErr</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">cudaGetDeviceCount</span><span class="p">(</span><span class="o">&amp;</span><span class="n">deviceCount</span><span class="p">);</span>
-<a id="__codelineno-14-57" name="__codelineno-14-57" href="#__codelineno-14-57"></a><span class="w">    </span><span class="kt">bool</span><span class="w"> </span><span class="n">atLeastOneGpu</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="n">countErr</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="n">cudaSuccess</span><span class="p">)</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="p">(</span><span class="n">deviceCount</span><span class="w"> </span><span class="o">&gt;=</span><span class="w"> </span><span class="mi">1</span><span class="p">);</span>
-<a id="__codelineno-14-58" name="__codelineno-14-58" href="#__codelineno-14-58"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">"cudaGetDeviceCount reports %d device(s) (cudaError=%d, %s)</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span>
-<a id="__codelineno-14-59" name="__codelineno-14-59" href="#__codelineno-14-59"></a><span class="w">           </span><span class="n">deviceCount</span><span class="p">,</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="p">)</span><span class="n">countErr</span><span class="p">,</span><span class="w"> </span><span class="n">cudaGetErrorString</span><span class="p">(</span><span class="n">countErr</span><span class="p">));</span>
-<a id="__codelineno-14-60" name="__codelineno-14-60" href="#__codelineno-14-60"></a>
-<a id="__codelineno-14-61" name="__codelineno-14-61" href="#__codelineno-14-61"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">"</span><span class="se">\n</span><span class="s">=== Q4 (this book's own addition): Are there at least TWO "</span>
-<a id="__codelineno-14-62" name="__codelineno-14-62" href="#__codelineno-14-62"></a><span class="w">           </span><span class="s">"GPUs? ===</span><span class="se">\n</span><span class="s">"</span><span class="p">);</span>
-<a id="__codelineno-14-63" name="__codelineno-14-63" href="#__codelineno-14-63"></a><span class="w">    </span><span class="kt">bool</span><span class="w"> </span><span class="n">multiGpu</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="n">countErr</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="n">cudaSuccess</span><span class="p">)</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="p">(</span><span class="n">deviceCount</span><span class="w"> </span><span class="o">&gt;=</span><span class="w"> </span><span class="mi">2</span><span class="p">);</span>
-<a id="__codelineno-14-64" name="__codelineno-14-64" href="#__codelineno-14-64"></a><span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">multiGpu</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
-<a id="__codelineno-14-65" name="__codelineno-14-65" href="#__codelineno-14-65"></a><span class="w">        </span><span class="n">printf</span><span class="p">(</span><span class="s">"YES: %d devices -- this machine can run this book's own "</span>
-<a id="__codelineno-14-66" name="__codelineno-14-66" href="#__codelineno-14-66"></a><span class="w">               </span><span class="s">"cross-device chapters directly.</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span><span class="w"> </span><span class="n">deviceCount</span><span class="p">);</span>
-<a id="__codelineno-14-67" name="__codelineno-14-67" href="#__codelineno-14-67"></a><span class="w">    </span><span class="p">}</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">atLeastOneGpu</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
-<a id="__codelineno-14-68" name="__codelineno-14-68" href="#__codelineno-14-68"></a><span class="w">        </span><span class="n">printf</span><span class="p">(</span><span class="s">"NO: only %d device found -- this machine can compile and "</span>
-<a id="__codelineno-14-69" name="__codelineno-14-69" href="#__codelineno-14-69"></a><span class="w">               </span><span class="s">"run this book's own single-device kernels, but cannot "</span>
-<a id="__codelineno-14-70" name="__codelineno-14-70" href="#__codelineno-14-70"></a><span class="w">               </span><span class="s">"exercise real cross-device transfers or collectives. "</span>
-<a id="__codelineno-14-71" name="__codelineno-14-71" href="#__codelineno-14-71"></a><span class="w">               </span><span class="s">"Appendix A.4's own note on renting multi-GPU hardware by "</span>
-<a id="__codelineno-14-72" name="__codelineno-14-72" href="#__codelineno-14-72"></a><span class="w">               </span><span class="s">"the hour is the practical next step.</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span><span class="w"> </span><span class="n">deviceCount</span><span class="p">);</span>
-<a id="__codelineno-14-73" name="__codelineno-14-73" href="#__codelineno-14-73"></a><span class="w">    </span><span class="p">}</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="p">{</span>
-<a id="__codelineno-14-74" name="__codelineno-14-74" href="#__codelineno-14-74"></a><span class="w">        </span><span class="n">printf</span><span class="p">(</span><span class="s">"NO: %d devices found. Cross-device examples require their stated device count.</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span><span class="w"> </span><span class="n">deviceCount</span><span class="p">);</span>
-<a id="__codelineno-14-75" name="__codelineno-14-75" href="#__codelineno-14-75"></a><span class="c1">//</span>
-<a id="__codelineno-14-76" name="__codelineno-14-76" href="#__codelineno-14-76"></a><span class="c1">//</span>
-<a id="__codelineno-14-77" name="__codelineno-14-77" href="#__codelineno-14-77"></a><span class="c1">//</span>
-<a id="__codelineno-14-78" name="__codelineno-14-78" href="#__codelineno-14-78"></a><span class="c1">//</span>
-<a id="__codelineno-14-79" name="__codelineno-14-79" href="#__codelineno-14-79"></a><span class="c1">//</span>
-<a id="__codelineno-14-80" name="__codelineno-14-80" href="#__codelineno-14-80"></a><span class="c1">//</span>
-<a id="__codelineno-14-81" name="__codelineno-14-81" href="#__codelineno-14-81"></a><span class="c1">//</span>
-<a id="__codelineno-14-82" name="__codelineno-14-82" href="#__codelineno-14-82"></a><span class="c1">//</span>
-<a id="__codelineno-14-83" name="__codelineno-14-83" href="#__codelineno-14-83"></a><span class="w">    </span><span class="p">}</span>
-<a id="__codelineno-14-84" name="__codelineno-14-84" href="#__codelineno-14-84"></a>
-<a id="__codelineno-14-85" name="__codelineno-14-85" href="#__codelineno-14-85"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">"</span><span class="se">\n</span><span class="s">=== How to read this on YOUR machine ===</span><span class="se">\n</span><span class="s">"</span><span class="p">);</span>
-<a id="__codelineno-14-86" name="__codelineno-14-86" href="#__codelineno-14-86"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">"1. Runtime NOT FOUND, driver NOT FOUND, 0 devices: check the runtime and driver installation.</span><span class="se">\n</span><span class="s">"</span><span class="p">);</span>
-<a id="__codelineno-14-87" name="__codelineno-14-87" href="#__codelineno-14-87"></a><span class="c1">//</span>
-<a id="__codelineno-14-88" name="__codelineno-14-88" href="#__codelineno-14-88"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">"2. Runtime FOUND, driver FOUND, 0 devices: check device visibility and driver/runtime status.</span><span class="se">\n</span><span class="s">"</span><span class="p">);</span>
-<a id="__codelineno-14-89" name="__codelineno-14-89" href="#__codelineno-14-89"></a><span class="c1">//</span>
-<a id="__codelineno-14-90" name="__codelineno-14-90" href="#__codelineno-14-90"></a><span class="c1">//</span>
-<a id="__codelineno-14-91" name="__codelineno-14-91" href="#__codelineno-14-91"></a><span class="c1">//</span>
-<a id="__codelineno-14-92" name="__codelineno-14-92" href="#__codelineno-14-92"></a><span class="c1">//</span>
-<a id="__codelineno-14-93" name="__codelineno-14-93" href="#__codelineno-14-93"></a><span class="c1">//</span>
-<a id="__codelineno-14-94" name="__codelineno-14-94" href="#__codelineno-14-94"></a><span class="c1">//</span>
-<a id="__codelineno-14-95" name="__codelineno-14-95" href="#__codelineno-14-95"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">"3. Runtime FOUND, driver FOUND, 1 device: select single-device examples.</span><span class="se">\n</span><span class="s">"</span><span class="p">);</span>
-<a id="__codelineno-14-96" name="__codelineno-14-96" href="#__codelineno-14-96"></a><span class="c1">//</span>
-<a id="__codelineno-14-97" name="__codelineno-14-97" href="#__codelineno-14-97"></a><span class="c1">//</span>
-<a id="__codelineno-14-98" name="__codelineno-14-98" href="#__codelineno-14-98"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">"4. Runtime FOUND, driver FOUND, 2+ devices: select examples matching the available devices and dependencies.</span><span class="se">\n</span><span class="s">"</span><span class="p">);</span>
-<a id="__codelineno-14-99" name="__codelineno-14-99" href="#__codelineno-14-99"></a><span class="c1">//</span>
-<a id="__codelineno-14-100" name="__codelineno-14-100" href="#__codelineno-14-100"></a><span class="c1">//</span>
-<a id="__codelineno-14-101" name="__codelineno-14-101" href="#__codelineno-14-101"></a><span class="c1">//</span>
-<a id="__codelineno-14-102" name="__codelineno-14-102" href="#__codelineno-14-102"></a><span class="w">    </span><span class="kt">bool</span><span class="w"> </span><span class="n">wellFormed</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nb">true</span><span class="p">;</span><span class="w">  </span><span class="c1">// this check is well-formed no matter which</span>
-<a id="__codelineno-14-103" name="__codelineno-14-103" href="#__codelineno-14-103"></a><span class="w">                              </span><span class="c1">// branch above was taken -- it demonstrates</span>
-<a id="__codelineno-14-104" name="__codelineno-14-104" href="#__codelineno-14-104"></a><span class="w">                              </span><span class="c1">// a real, documented diagnosis either way</span>
-<a id="__codelineno-14-105" name="__codelineno-14-105" href="#__codelineno-14-105"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">"</span><span class="se">\n</span><span class="s">self-check: diagnosis %s</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span>
-<a id="__codelineno-14-106" name="__codelineno-14-106" href="#__codelineno-14-106"></a><span class="w">           </span><span class="n">wellFormed</span><span class="w"> </span><span class="o">?</span><span class="w"> </span><span class="s">"confirmed"</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="s">"MISMATCH"</span><span class="p">);</span>
-<a id="__codelineno-14-107" name="__codelineno-14-107" href="#__codelineno-14-107"></a><span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="n">wellFormed</span><span class="w"> </span><span class="o">?</span><span class="w"> </span><span class="mi">0</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="mi">1</span><span class="p">;</span>
-<a id="__codelineno-14-108" name="__codelineno-14-108" href="#__codelineno-14-108"></a><span class="p">}</span>
+<a id="__codelineno-14-26" name="__codelineno-14-26" href="#__codelineno-14-26"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span>
+<a id="__codelineno-14-27" name="__codelineno-14-27" href="#__codelineno-14-27"></a><span class="w">        </span><span class="s">"=== Q1: Is the CUDA runtime available? (cudaRuntimeGetVersion) ===</span><span class="se">\n</span><span class="s">"</span><span class="p">);</span>
+<a id="__codelineno-14-28" name="__codelineno-14-28" href="#__codelineno-14-28"></a><span class="w">    </span><span class="kt">int</span><span class="w"> </span><span class="n">runtimeVersion</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
+<a id="__codelineno-14-29" name="__codelineno-14-29" href="#__codelineno-14-29"></a><span class="w">    </span><span class="n">cudaError_t</span><span class="w"> </span><span class="n">rtErr</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">cudaRuntimeGetVersion</span><span class="p">(</span><span class="o">&amp;</span><span class="n">runtimeVersion</span><span class="p">);</span>
+<a id="__codelineno-14-30" name="__codelineno-14-30" href="#__codelineno-14-30"></a><span class="w">    </span><span class="kt">bool</span><span class="w"> </span><span class="n">toolkitFound</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="n">rtErr</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="n">cudaSuccess</span><span class="p">);</span>
+<a id="__codelineno-14-31" name="__codelineno-14-31" href="#__codelineno-14-31"></a><span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">toolkitFound</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-14-32" name="__codelineno-14-32" href="#__codelineno-14-32"></a><span class="w">        </span><span class="n">printf</span><span class="p">(</span><span class="s">"FOUND: CUDA Runtime version %d.%d</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span>
+<a id="__codelineno-14-33" name="__codelineno-14-33" href="#__codelineno-14-33"></a><span class="w">               </span><span class="n">runtimeVersion</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="mi">1000</span><span class="p">,</span>
+<a id="__codelineno-14-34" name="__codelineno-14-34" href="#__codelineno-14-34"></a><span class="w">               </span><span class="p">(</span><span class="n">runtimeVersion</span><span class="w"> </span><span class="o">%</span><span class="w"> </span><span class="mi">1000</span><span class="p">)</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="mi">10</span><span class="p">);</span>
+<a id="__codelineno-14-35" name="__codelineno-14-35" href="#__codelineno-14-35"></a><span class="w">    </span><span class="p">}</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-14-36" name="__codelineno-14-36" href="#__codelineno-14-36"></a><span class="w">        </span><span class="n">printf</span><span class="p">(</span>
+<a id="__codelineno-14-37" name="__codelineno-14-37" href="#__codelineno-14-37"></a><span class="w">            </span><span class="s">"NOT FOUND: cudaRuntimeGetVersion returned error %d (%s)</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span>
+<a id="__codelineno-14-38" name="__codelineno-14-38" href="#__codelineno-14-38"></a><span class="w">            </span><span class="p">(</span><span class="kt">int</span><span class="p">)</span><span class="n">rtErr</span><span class="p">,</span>
+<a id="__codelineno-14-39" name="__codelineno-14-39" href="#__codelineno-14-39"></a><span class="w">            </span><span class="n">cudaGetErrorString</span><span class="p">(</span><span class="n">rtErr</span><span class="p">));</span>
+<a id="__codelineno-14-40" name="__codelineno-14-40" href="#__codelineno-14-40"></a><span class="w">    </span><span class="p">}</span>
+<a id="__codelineno-14-41" name="__codelineno-14-41" href="#__codelineno-14-41"></a>
+<a id="__codelineno-14-42" name="__codelineno-14-42" href="#__codelineno-14-42"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span>
+<a id="__codelineno-14-43" name="__codelineno-14-43" href="#__codelineno-14-43"></a><span class="w">        </span><span class="s">"</span><span class="se">\n</span><span class="s">=== Q2: Is a compatible driver installed? (cudaDriverGetVersion) ===</span><span class="se">\n</span><span class="s">"</span><span class="p">);</span>
+<a id="__codelineno-14-44" name="__codelineno-14-44" href="#__codelineno-14-44"></a><span class="w">    </span><span class="kt">int</span><span class="w"> </span><span class="n">driverVersion</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
+<a id="__codelineno-14-45" name="__codelineno-14-45" href="#__codelineno-14-45"></a><span class="w">    </span><span class="n">cudaError_t</span><span class="w"> </span><span class="n">drvErr</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">cudaDriverGetVersion</span><span class="p">(</span><span class="o">&amp;</span><span class="n">driverVersion</span><span class="p">);</span>
+<a id="__codelineno-14-46" name="__codelineno-14-46" href="#__codelineno-14-46"></a><span class="w">    </span><span class="kt">bool</span><span class="w"> </span><span class="n">driverFound</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="n">drvErr</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="n">cudaSuccess</span><span class="p">)</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="p">(</span><span class="n">driverVersion</span><span class="w"> </span><span class="o">&gt;</span><span class="w"> </span><span class="mi">0</span><span class="p">);</span>
+<a id="__codelineno-14-47" name="__codelineno-14-47" href="#__codelineno-14-47"></a><span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">driverFound</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-14-48" name="__codelineno-14-48" href="#__codelineno-14-48"></a><span class="w">        </span><span class="n">printf</span><span class="p">(</span><span class="s">"FOUND: CUDA Driver version %d.%d</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span>
+<a id="__codelineno-14-49" name="__codelineno-14-49" href="#__codelineno-14-49"></a><span class="w">               </span><span class="n">driverVersion</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="mi">1000</span><span class="p">,</span>
+<a id="__codelineno-14-50" name="__codelineno-14-50" href="#__codelineno-14-50"></a><span class="w">               </span><span class="p">(</span><span class="n">driverVersion</span><span class="w"> </span><span class="o">%</span><span class="w"> </span><span class="mi">1000</span><span class="p">)</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="mi">10</span><span class="p">);</span>
+<a id="__codelineno-14-51" name="__codelineno-14-51" href="#__codelineno-14-51"></a><span class="w">    </span><span class="p">}</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-14-52" name="__codelineno-14-52" href="#__codelineno-14-52"></a><span class="w">        </span><span class="n">printf</span><span class="p">(</span>
+<a id="__codelineno-14-53" name="__codelineno-14-53" href="#__codelineno-14-53"></a><span class="w">            </span><span class="s">"NOT FOUND: driverVersion=%d. Check the installed driver and visible devices.</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span>
+<a id="__codelineno-14-54" name="__codelineno-14-54" href="#__codelineno-14-54"></a><span class="w">            </span><span class="n">driverVersion</span><span class="p">);</span>
+<a id="__codelineno-14-55" name="__codelineno-14-55" href="#__codelineno-14-55"></a><span class="w">        </span><span class="c1">//</span>
+<a id="__codelineno-14-56" name="__codelineno-14-56" href="#__codelineno-14-56"></a><span class="w">        </span><span class="c1">//</span>
+<a id="__codelineno-14-57" name="__codelineno-14-57" href="#__codelineno-14-57"></a><span class="w">        </span><span class="c1">//</span>
+<a id="__codelineno-14-58" name="__codelineno-14-58" href="#__codelineno-14-58"></a><span class="w">        </span><span class="c1">//</span>
+<a id="__codelineno-14-59" name="__codelineno-14-59" href="#__codelineno-14-59"></a><span class="w">        </span><span class="c1">//</span>
+<a id="__codelineno-14-60" name="__codelineno-14-60" href="#__codelineno-14-60"></a><span class="w">    </span><span class="p">}</span>
+<a id="__codelineno-14-61" name="__codelineno-14-61" href="#__codelineno-14-61"></a>
+<a id="__codelineno-14-62" name="__codelineno-14-62" href="#__codelineno-14-62"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span>
+<a id="__codelineno-14-63" name="__codelineno-14-63" href="#__codelineno-14-63"></a><span class="w">        </span><span class="s">"</span><span class="se">\n</span><span class="s">=== Q3: Is at least one GPU visible? (cudaGetDeviceCount) ===</span><span class="se">\n</span><span class="s">"</span><span class="p">);</span>
+<a id="__codelineno-14-64" name="__codelineno-14-64" href="#__codelineno-14-64"></a><span class="w">    </span><span class="kt">int</span><span class="w"> </span><span class="n">deviceCount</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
+<a id="__codelineno-14-65" name="__codelineno-14-65" href="#__codelineno-14-65"></a><span class="w">    </span><span class="n">cudaError_t</span><span class="w"> </span><span class="n">countErr</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">cudaGetDeviceCount</span><span class="p">(</span><span class="o">&amp;</span><span class="n">deviceCount</span><span class="p">);</span>
+<a id="__codelineno-14-66" name="__codelineno-14-66" href="#__codelineno-14-66"></a><span class="w">    </span><span class="kt">bool</span><span class="w"> </span><span class="n">atLeastOneGpu</span><span class="w"> </span><span class="o">=</span>
+<a id="__codelineno-14-67" name="__codelineno-14-67" href="#__codelineno-14-67"></a><span class="w">        </span><span class="p">(</span><span class="n">countErr</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="n">cudaSuccess</span><span class="p">)</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="p">(</span><span class="n">deviceCount</span><span class="w"> </span><span class="o">&gt;=</span><span class="w"> </span><span class="mi">1</span><span class="p">);</span>
+<a id="__codelineno-14-68" name="__codelineno-14-68" href="#__codelineno-14-68"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span>
+<a id="__codelineno-14-69" name="__codelineno-14-69" href="#__codelineno-14-69"></a><span class="w">        </span><span class="s">"cudaGetDeviceCount reports %d device(s) (cudaError=%d, %s)</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span>
+<a id="__codelineno-14-70" name="__codelineno-14-70" href="#__codelineno-14-70"></a><span class="w">        </span><span class="n">deviceCount</span><span class="p">,</span>
+<a id="__codelineno-14-71" name="__codelineno-14-71" href="#__codelineno-14-71"></a><span class="w">        </span><span class="p">(</span><span class="kt">int</span><span class="p">)</span><span class="n">countErr</span><span class="p">,</span>
+<a id="__codelineno-14-72" name="__codelineno-14-72" href="#__codelineno-14-72"></a><span class="w">        </span><span class="n">cudaGetErrorString</span><span class="p">(</span><span class="n">countErr</span><span class="p">));</span>
+<a id="__codelineno-14-73" name="__codelineno-14-73" href="#__codelineno-14-73"></a>
+<a id="__codelineno-14-74" name="__codelineno-14-74" href="#__codelineno-14-74"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span>
+<a id="__codelineno-14-75" name="__codelineno-14-75" href="#__codelineno-14-75"></a><span class="w">        </span><span class="s">"</span><span class="se">\n</span><span class="s">=== Q4 (this book's own addition): Are there at least TWO "</span>
+<a id="__codelineno-14-76" name="__codelineno-14-76" href="#__codelineno-14-76"></a><span class="w">        </span><span class="s">"GPUs? ===</span><span class="se">\n</span><span class="s">"</span><span class="p">);</span>
+<a id="__codelineno-14-77" name="__codelineno-14-77" href="#__codelineno-14-77"></a><span class="w">    </span><span class="kt">bool</span><span class="w"> </span><span class="n">multiGpu</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="n">countErr</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="n">cudaSuccess</span><span class="p">)</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="p">(</span><span class="n">deviceCount</span><span class="w"> </span><span class="o">&gt;=</span><span class="w"> </span><span class="mi">2</span><span class="p">);</span>
+<a id="__codelineno-14-78" name="__codelineno-14-78" href="#__codelineno-14-78"></a><span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">multiGpu</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-14-79" name="__codelineno-14-79" href="#__codelineno-14-79"></a><span class="w">        </span><span class="n">printf</span><span class="p">(</span>
+<a id="__codelineno-14-80" name="__codelineno-14-80" href="#__codelineno-14-80"></a><span class="w">            </span><span class="s">"YES: %d devices -- this machine can run this book's own "</span>
+<a id="__codelineno-14-81" name="__codelineno-14-81" href="#__codelineno-14-81"></a><span class="w">            </span><span class="s">"cross-device chapters directly.</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span>
+<a id="__codelineno-14-82" name="__codelineno-14-82" href="#__codelineno-14-82"></a><span class="w">            </span><span class="n">deviceCount</span><span class="p">);</span>
+<a id="__codelineno-14-83" name="__codelineno-14-83" href="#__codelineno-14-83"></a><span class="w">    </span><span class="p">}</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">atLeastOneGpu</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-14-84" name="__codelineno-14-84" href="#__codelineno-14-84"></a><span class="w">        </span><span class="n">printf</span><span class="p">(</span>
+<a id="__codelineno-14-85" name="__codelineno-14-85" href="#__codelineno-14-85"></a><span class="w">            </span><span class="s">"NO: only %d device found -- this machine can compile and "</span>
+<a id="__codelineno-14-86" name="__codelineno-14-86" href="#__codelineno-14-86"></a><span class="w">            </span><span class="s">"run this book's own single-device kernels, but cannot "</span>
+<a id="__codelineno-14-87" name="__codelineno-14-87" href="#__codelineno-14-87"></a><span class="w">            </span><span class="s">"exercise real cross-device transfers or collectives. "</span>
+<a id="__codelineno-14-88" name="__codelineno-14-88" href="#__codelineno-14-88"></a><span class="w">            </span><span class="s">"Appendix A.4's own note on renting multi-GPU hardware by "</span>
+<a id="__codelineno-14-89" name="__codelineno-14-89" href="#__codelineno-14-89"></a><span class="w">            </span><span class="s">"the hour is the practical next step.</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span>
+<a id="__codelineno-14-90" name="__codelineno-14-90" href="#__codelineno-14-90"></a><span class="w">            </span><span class="n">deviceCount</span><span class="p">);</span>
+<a id="__codelineno-14-91" name="__codelineno-14-91" href="#__codelineno-14-91"></a><span class="w">    </span><span class="p">}</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-14-92" name="__codelineno-14-92" href="#__codelineno-14-92"></a><span class="w">        </span><span class="n">printf</span><span class="p">(</span>
+<a id="__codelineno-14-93" name="__codelineno-14-93" href="#__codelineno-14-93"></a><span class="w">            </span><span class="s">"NO: %d devices found. Cross-device examples require their stated device count.</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span>
+<a id="__codelineno-14-94" name="__codelineno-14-94" href="#__codelineno-14-94"></a><span class="w">            </span><span class="n">deviceCount</span><span class="p">);</span>
+<a id="__codelineno-14-95" name="__codelineno-14-95" href="#__codelineno-14-95"></a><span class="w">        </span><span class="c1">//</span>
+<a id="__codelineno-14-96" name="__codelineno-14-96" href="#__codelineno-14-96"></a><span class="w">        </span><span class="c1">//</span>
+<a id="__codelineno-14-97" name="__codelineno-14-97" href="#__codelineno-14-97"></a><span class="w">        </span><span class="c1">//</span>
+<a id="__codelineno-14-98" name="__codelineno-14-98" href="#__codelineno-14-98"></a><span class="w">        </span><span class="c1">//</span>
+<a id="__codelineno-14-99" name="__codelineno-14-99" href="#__codelineno-14-99"></a><span class="w">        </span><span class="c1">//</span>
+<a id="__codelineno-14-100" name="__codelineno-14-100" href="#__codelineno-14-100"></a><span class="w">        </span><span class="c1">//</span>
+<a id="__codelineno-14-101" name="__codelineno-14-101" href="#__codelineno-14-101"></a><span class="w">        </span><span class="c1">//</span>
+<a id="__codelineno-14-102" name="__codelineno-14-102" href="#__codelineno-14-102"></a><span class="w">        </span><span class="c1">//</span>
+<a id="__codelineno-14-103" name="__codelineno-14-103" href="#__codelineno-14-103"></a><span class="w">    </span><span class="p">}</span>
+<a id="__codelineno-14-104" name="__codelineno-14-104" href="#__codelineno-14-104"></a>
+<a id="__codelineno-14-105" name="__codelineno-14-105" href="#__codelineno-14-105"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">"</span><span class="se">\n</span><span class="s">=== How to read this on YOUR machine ===</span><span class="se">\n</span><span class="s">"</span><span class="p">);</span>
+<a id="__codelineno-14-106" name="__codelineno-14-106" href="#__codelineno-14-106"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span>
+<a id="__codelineno-14-107" name="__codelineno-14-107" href="#__codelineno-14-107"></a><span class="w">        </span><span class="s">"1. Runtime NOT FOUND, driver NOT FOUND, 0 devices: check the runtime and driver installation.</span><span class="se">\n</span><span class="s">"</span><span class="p">);</span>
+<a id="__codelineno-14-108" name="__codelineno-14-108" href="#__codelineno-14-108"></a><span class="w">    </span><span class="c1">//</span>
+<a id="__codelineno-14-109" name="__codelineno-14-109" href="#__codelineno-14-109"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span>
+<a id="__codelineno-14-110" name="__codelineno-14-110" href="#__codelineno-14-110"></a><span class="w">        </span><span class="s">"2. Runtime FOUND, driver FOUND, 0 devices: check device visibility and driver/runtime status.</span><span class="se">\n</span><span class="s">"</span><span class="p">);</span>
+<a id="__codelineno-14-111" name="__codelineno-14-111" href="#__codelineno-14-111"></a><span class="w">    </span><span class="c1">//</span>
+<a id="__codelineno-14-112" name="__codelineno-14-112" href="#__codelineno-14-112"></a><span class="w">    </span><span class="c1">//</span>
+<a id="__codelineno-14-113" name="__codelineno-14-113" href="#__codelineno-14-113"></a><span class="w">    </span><span class="c1">//</span>
+<a id="__codelineno-14-114" name="__codelineno-14-114" href="#__codelineno-14-114"></a><span class="w">    </span><span class="c1">//</span>
+<a id="__codelineno-14-115" name="__codelineno-14-115" href="#__codelineno-14-115"></a><span class="w">    </span><span class="c1">//</span>
+<a id="__codelineno-14-116" name="__codelineno-14-116" href="#__codelineno-14-116"></a><span class="w">    </span><span class="c1">//</span>
+<a id="__codelineno-14-117" name="__codelineno-14-117" href="#__codelineno-14-117"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span>
+<a id="__codelineno-14-118" name="__codelineno-14-118" href="#__codelineno-14-118"></a><span class="w">        </span><span class="s">"3. Runtime FOUND, driver FOUND, 1 device: select single-device examples.</span><span class="se">\n</span><span class="s">"</span><span class="p">);</span>
+<a id="__codelineno-14-119" name="__codelineno-14-119" href="#__codelineno-14-119"></a><span class="w">    </span><span class="c1">//</span>
+<a id="__codelineno-14-120" name="__codelineno-14-120" href="#__codelineno-14-120"></a><span class="w">    </span><span class="c1">//</span>
+<a id="__codelineno-14-121" name="__codelineno-14-121" href="#__codelineno-14-121"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span>
+<a id="__codelineno-14-122" name="__codelineno-14-122" href="#__codelineno-14-122"></a><span class="w">        </span><span class="s">"4. Runtime FOUND, driver FOUND, 2+ devices: select examples matching the available devices and dependencies.</span><span class="se">\n</span><span class="s">"</span><span class="p">);</span>
+<a id="__codelineno-14-123" name="__codelineno-14-123" href="#__codelineno-14-123"></a><span class="w">    </span><span class="c1">//</span>
+<a id="__codelineno-14-124" name="__codelineno-14-124" href="#__codelineno-14-124"></a><span class="w">    </span><span class="c1">//</span>
+<a id="__codelineno-14-125" name="__codelineno-14-125" href="#__codelineno-14-125"></a><span class="w">    </span><span class="c1">//</span>
+<a id="__codelineno-14-126" name="__codelineno-14-126" href="#__codelineno-14-126"></a><span class="w">    </span><span class="kt">bool</span><span class="w"> </span><span class="n">wellFormed</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nb">true</span><span class="p">;</span><span class="w"> </span><span class="c1">// this check is well-formed no matter which</span>
+<a id="__codelineno-14-127" name="__codelineno-14-127" href="#__codelineno-14-127"></a><span class="w">                            </span><span class="c1">// branch above was taken -- it demonstrates</span>
+<a id="__codelineno-14-128" name="__codelineno-14-128" href="#__codelineno-14-128"></a><span class="w">                            </span><span class="c1">// a real, documented diagnosis either way</span>
+<a id="__codelineno-14-129" name="__codelineno-14-129" href="#__codelineno-14-129"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">"</span><span class="se">\n</span><span class="s">self-check: diagnosis %s</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span>
+<a id="__codelineno-14-130" name="__codelineno-14-130" href="#__codelineno-14-130"></a><span class="w">           </span><span class="n">wellFormed</span><span class="w"> </span><span class="o">?</span><span class="w"> </span><span class="s">"confirmed"</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="s">"MISMATCH"</span><span class="p">);</span>
+<a id="__codelineno-14-131" name="__codelineno-14-131" href="#__codelineno-14-131"></a><span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="n">wellFormed</span><span class="w"> </span><span class="o">?</span><span class="w"> </span><span class="mi">0</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="mi">1</span><span class="p">;</span>
+<a id="__codelineno-14-132" name="__codelineno-14-132" href="#__codelineno-14-132"></a><span class="p">}</span>
 </code></pre></div>
 <!-- execution:start:a100:122_multi_device_runtime_api_check.cu -->
 <blockquote>
@@ -3206,11 +3261,11 @@
 
 <p><a href="../../validation/2026-11-17-a100/122_multi_device_runtime_api_check/122_multi_device_runtime_api_check.cu">Exact tested source</a> · <a href="../../validation/2026-11-17-a100/122_multi_device_runtime_api_check/compile.log">Compiler log</a> · <a href="../../validation/2026-11-17-a100/122_multi_device_runtime_api_check/run.log">Execution log</a>. Compile exit: <code>0</code>; run exit: <code>0</code>.</p>
 <p>Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a>nvcc<span class="w"> </span>-std<span class="o">=</span>c++17<span class="w"> </span>-O2<span class="w"> </span>-arch<span class="o">=</span>sm_80<span class="w"> </span>122_multi_device_runtime_api_check.cu<span class="w"> </span>-o<span class="w"> </span>./example
+<div class="language-bash highlight"><pre><span></span><code><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a>nvcc<span class="w"> </span>-std<span class="o">=</span>c++17<span class="w"> </span>-O2<span class="w"> </span>-arch<span class="o">=</span>sm_80<span class="w"> </span>122_multi_device_runtime_api_check.cu<span class="w"> </span>-o<span class="w"> </span>./example
 <a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a>./example
 </code></pre></div>
 <p><strong>Actual sample output (excerpt)</strong></p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a>FOUND: CUDA Runtime version 12.8
+<div class="language-text highlight"><pre><span></span><code><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a>FOUND: CUDA Runtime version 12.8
 <a id="__codelineno-16-2" name="__codelineno-16-2" href="#__codelineno-16-2"></a>
 <a id="__codelineno-16-3" name="__codelineno-16-3" href="#__codelineno-16-3"></a>=== Q2: Is a compatible driver installed? (cudaDriverGetVersion) ===
 <a id="__codelineno-16-4" name="__codelineno-16-4" href="#__codelineno-16-4"></a>FOUND: CUDA Driver version 13.0
@@ -3233,13 +3288,13 @@
 
 <p><a href="../../validation/2026-11-17-h100/122_multi_device_runtime_api_check/122_multi_device_runtime_api_check.cu">Exact tested source</a> · <a href="../../validation/2026-11-17-h100/122_multi_device_runtime_api_check/compile.log">Compiler log</a> · <a href="../../validation/2026-11-17-h100/122_multi_device_runtime_api_check/run.log">Execution log</a>. Compile exit: <code>0</code>; run exit: <code>0</code>.</p>
 <p>Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a>nvcc<span class="w"> </span>-std<span class="o">=</span>c++17<span class="w"> </span>-O2<span class="w"> </span>-arch<span class="o">=</span>sm_90<span class="w"> </span>122_multi_device_runtime_api_check.cu<span class="w"> </span>-o<span class="w"> </span>./example
+<div class="language-bash highlight"><pre><span></span><code><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a>nvcc<span class="w"> </span>-std<span class="o">=</span>c++17<span class="w"> </span>-O2<span class="w"> </span>-arch<span class="o">=</span>sm_90<span class="w"> </span>122_multi_device_runtime_api_check.cu<span class="w"> </span>-o<span class="w"> </span>./example
 <a id="__codelineno-17-2" name="__codelineno-17-2" href="#__codelineno-17-2"></a>./example
 </code></pre></div>
 <details>
 <summary>Actual sample output (excerpt)</summary>
 <p><strong>Actual sample output (excerpt)</strong></p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-18-1" name="__codelineno-18-1" href="#__codelineno-18-1"></a>FOUND: CUDA Runtime version 12.8
+<div class="language-text highlight"><pre><span></span><code><a id="__codelineno-18-1" name="__codelineno-18-1" href="#__codelineno-18-1"></a>FOUND: CUDA Runtime version 12.8
 <a id="__codelineno-18-2" name="__codelineno-18-2" href="#__codelineno-18-2"></a>
 <a id="__codelineno-18-3" name="__codelineno-18-3" href="#__codelineno-18-3"></a>=== Q2: Is a compatible driver installed? (cudaDriverGetVersion) ===
 <a id="__codelineno-18-4" name="__codelineno-18-4" href="#__codelineno-18-4"></a>FOUND: CUDA Driver version 13.0
@@ -3261,7 +3316,7 @@
 <h3 id="intuition_3">Intuition<a class="headerlink" href="#intuition_3" title="Permanent link">&para;</a></h3>
 <p>This book's own chapters use five genuinely distinct compile-and-link recipes, not one. Collecting all five in a single Makefile, verified together, is more useful to a reader setting up a new machine than re-deriving each one from a chapter's own prose the first time it is needed.</p>
 <h3 id="the-concept-in-detail_3">The Concept, In Detail<a class="headerlink" href="#the-concept-in-detail_3" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-19-1" name="__codelineno-19-1" href="#__codelineno-19-1"></a>Recipe 1: g++                          -&gt; host_only
+<div class="language-text highlight"><pre><span></span><code><a id="__codelineno-19-1" name="__codelineno-19-1" href="#__codelineno-19-1"></a>Recipe 1: g++                          -&gt; host_only
 <a id="__codelineno-19-2" name="__codelineno-19-2" href="#__codelineno-19-2"></a>Recipe 2: nvcc                         -&gt; cuda_only
 <a id="__codelineno-19-3" name="__codelineno-19-3" href="#__codelineno-19-3"></a>Recipe 3: nvcc + NCCL                  -&gt; cuda_nccl
 <a id="__codelineno-19-4" name="__codelineno-19-4" href="#__codelineno-19-4"></a>Recipe 4: mpicxx + libcudart           -&gt; mpi_only
@@ -3270,7 +3325,7 @@
 <p>Each recipe reuses an exact real flag combination a numbered chapter already established and locked: Recipe 3 is the plain <code>nvcc ... -lnccl</code> shape Chapter 11 introduced; Recipe 4 is Chapter 20's own File 58 shape (<code>mpicxx -Wall -Wextra file.cpp -o out -lcudart</code>, a real <code>mpicxx</code> wrapper driving <code>g++</code> while linking a real installed <code>libcudart</code> directly); Recipe 5 is Chapter 22's own File 64 shape, where <code>mpicxx</code> is handed to <code>nvcc</code> as its <em>own</em> host compiler via <code>-ccbin</code>, not the other way around, so that a single binary can be launched by <code>mpirun</code> while still containing real NVSHMEM device code. Recipe 5 also needs one extra step that is easy to miss: the NVSHMEM pip wheel ships only the versioned <code>libnvshmem_host.so.3</code>, with no unversioned <code>libnvshmem_host.so</code> symlink, so a bare <code>-lnvshmem_host</code> fails with <code>ld: cannot find -lnvshmem_host</code>. Chapters 22 and 32 fix this with <code>ln -sf libnvshmem_host.so.3 $NVSHMEM_DIR/lib/libnvshmem_host.so</code> inside the package directory; the Makefile below instead creates the symlink in a local <code>nvshmem_shim/</code> directory and searches it first (a LIBDIR override), which works even when the Python package directory is not writable. None of these five flag combinations is new syntax invented for this appendix -- gathering them into one Makefile is the only new thing here.</p>
 <p>[COMMON TRAP] A library minimum compute capability is not a universal binary target. Volta-only sm_70 SASS is not a Hopper kernel binary. The Makefile defaults to sm_90 for H100; override NVCC_ARCH for the actual target (for example make NVCC_ARCH=-arch=sm_100 on a compatible B200 toolchain). For a portable fatbinary, explicitly include supported target code and PTX rather than assuming cross-generation cubin compatibility. See the <a href="https://docs.nvidia.com/cuda/hopper-compatibility-guide/index.html">Hopper compatibility guide</a>.</p>
 <h3 id="code-and-verification_3">Code and Verification<a class="headerlink" href="#code-and-verification_3" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-20-1" name="__codelineno-20-1" href="#__codelineno-20-1"></a><span class="c"># Appendix A: Installation and Setup</span>
+<div class="language-makefile highlight"><pre><span></span><code><a id="__codelineno-20-1" name="__codelineno-20-1" href="#__codelineno-20-1"></a><span class="c"># Appendix A: Installation and Setup</span>
 <a id="__codelineno-20-2" name="__codelineno-20-2" href="#__codelineno-20-2"></a><span class="c"># A minimal Makefile covering this book's own five real distinct compile</span>
 <a id="__codelineno-20-3" name="__codelineno-20-3" href="#__codelineno-20-3"></a><span class="c"># recipes, extending the DSA book's own two-recipe Appendix A.3 Makefile</span>
 <a id="__codelineno-20-4" name="__codelineno-20-4" href="#__codelineno-20-4"></a><span class="c"># (plain g++, plain nvcc) with the three additional link lines this</span>
@@ -3357,12 +3412,13 @@
 <a id="__codelineno-20-85" name="__codelineno-20-85" href="#__codelineno-20-85"></a><span class="nf">.PHONY</span><span class="o">:</span><span class="w"> </span><span class="n">all</span> <span class="n">clean</span>
 </code></pre></div>
 <p>Five small stub source files exercise all five recipes:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-21-1" name="__codelineno-21-1" href="#__codelineno-21-1"></a><span class="c1">// hello_host.cpp -- Recipe 1 stub: plain host C++, no CUDA at all.</span>
+<div class="language-cpp highlight"><pre><span></span><code><a id="__codelineno-21-1" name="__codelineno-21-1" href="#__codelineno-21-1"></a><span class="c1">// hello_host.cpp -- Recipe 1 stub: plain host C++, no CUDA at all.</span>
 <a id="__codelineno-21-2" name="__codelineno-21-2" href="#__codelineno-21-2"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;cstdio&gt;</span>
-<a id="__codelineno-21-3" name="__codelineno-21-3" href="#__codelineno-21-3"></a><span class="kt">int</span><span class="w"> </span><span class="nf">main</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
-<a id="__codelineno-21-4" name="__codelineno-21-4" href="#__codelineno-21-4"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">"hello_host: compiled with plain g++, no CUDA involved.</span><span class="se">\n</span><span class="s">"</span><span class="p">);</span>
-<a id="__codelineno-21-5" name="__codelineno-21-5" href="#__codelineno-21-5"></a><span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
-<a id="__codelineno-21-6" name="__codelineno-21-6" href="#__codelineno-21-6"></a><span class="p">}</span>
+<a id="__codelineno-21-3" name="__codelineno-21-3" href="#__codelineno-21-3"></a>
+<a id="__codelineno-21-4" name="__codelineno-21-4" href="#__codelineno-21-4"></a><span class="kt">int</span><span class="w"> </span><span class="nf">main</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-21-5" name="__codelineno-21-5" href="#__codelineno-21-5"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">"hello_host: compiled with plain g++, no CUDA involved.</span><span class="se">\n</span><span class="s">"</span><span class="p">);</span>
+<a id="__codelineno-21-6" name="__codelineno-21-6" href="#__codelineno-21-6"></a><span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
+<a id="__codelineno-21-7" name="__codelineno-21-7" href="#__codelineno-21-7"></a><span class="p">}</span>
 </code></pre></div>
 <!-- execution:start:a100:hello_host.cpp -->
 <blockquote>
@@ -3372,11 +3428,11 @@
 
 <p><a href="../../validation/2026-11-17-a100/hello_host/hello_host.cpp">Exact tested source</a> · <a href="../../validation/2026-11-17-a100/hello_host/compile.log">Compiler log</a> · <a href="../../validation/2026-11-17-a100/hello_host/run.log">Execution log</a>. Compile exit: <code>0</code>; run exit: <code>0</code>.</p>
 <p>Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-22-1" name="__codelineno-22-1" href="#__codelineno-22-1"></a>g++<span class="w"> </span>-std<span class="o">=</span>c++17<span class="w"> </span>-O2<span class="w"> </span>hello_host.cpp<span class="w"> </span>-o<span class="w"> </span>./example
+<div class="language-bash highlight"><pre><span></span><code><a id="__codelineno-22-1" name="__codelineno-22-1" href="#__codelineno-22-1"></a>g++<span class="w"> </span>-std<span class="o">=</span>c++17<span class="w"> </span>-O2<span class="w"> </span>hello_host.cpp<span class="w"> </span>-o<span class="w"> </span>./example
 <a id="__codelineno-22-2" name="__codelineno-22-2" href="#__codelineno-22-2"></a>./example
 </code></pre></div>
 <p><strong>Sample output</strong></p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-23-1" name="__codelineno-23-1" href="#__codelineno-23-1"></a>hello_host: compiled with plain g++, no CUDA involved.
+<div class="language-text highlight"><pre><span></span><code><a id="__codelineno-23-1" name="__codelineno-23-1" href="#__codelineno-23-1"></a>hello_host: compiled with plain g++, no CUDA involved.
 </code></pre></div>
 <!-- execution:end:a100:hello_host.cpp -->
 
@@ -3388,29 +3444,32 @@
 
 <p><a href="../../validation/2026-11-17-h100/hello_host/hello_host.cpp">Exact tested source</a> · <a href="../../validation/2026-11-17-h100/hello_host/compile.log">Compiler log</a> · <a href="../../validation/2026-11-17-h100/hello_host/run.log">Execution log</a>. Compile exit: <code>0</code>; run exit: <code>0</code>.</p>
 <p>Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-24-1" name="__codelineno-24-1" href="#__codelineno-24-1"></a>g++<span class="w"> </span>-std<span class="o">=</span>c++17<span class="w"> </span>-O2<span class="w"> </span>hello_host.cpp<span class="w"> </span>-o<span class="w"> </span>./example
+<div class="language-bash highlight"><pre><span></span><code><a id="__codelineno-24-1" name="__codelineno-24-1" href="#__codelineno-24-1"></a>g++<span class="w"> </span>-std<span class="o">=</span>c++17<span class="w"> </span>-O2<span class="w"> </span>hello_host.cpp<span class="w"> </span>-o<span class="w"> </span>./example
 <a id="__codelineno-24-2" name="__codelineno-24-2" href="#__codelineno-24-2"></a>./example
 </code></pre></div>
 <details>
 <summary>Captured current-source output</summary>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-25-1" name="__codelineno-25-1" href="#__codelineno-25-1"></a>hello_host: compiled with plain g++, no CUDA involved.
+<div class="language-text highlight"><pre><span></span><code><a id="__codelineno-25-1" name="__codelineno-25-1" href="#__codelineno-25-1"></a>hello_host: compiled with plain g++, no CUDA involved.
 </code></pre></div>
 </details>
 <!-- execution:end:h100:hello_host.cpp -->
 
-<div class="highlight"><pre><span></span><code><a id="__codelineno-26-1" name="__codelineno-26-1" href="#__codelineno-26-1"></a><span class="c1">// hello_kernel.cu -- Recipe 2 stub: plain nvcc, no additional libraries.</span>
+<div class="language-cpp highlight"><pre><span></span><code><a id="__codelineno-26-1" name="__codelineno-26-1" href="#__codelineno-26-1"></a><span class="c1">// hello_kernel.cu -- Recipe 2 stub: plain nvcc, no additional libraries.</span>
 <a id="__codelineno-26-2" name="__codelineno-26-2" href="#__codelineno-26-2"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;cstdio&gt;</span>
-<a id="__codelineno-26-3" name="__codelineno-26-3" href="#__codelineno-26-3"></a><span class="n">__global__</span><span class="w"> </span><span class="kt">void</span><span class="w"> </span><span class="n">helloKernel</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
-<a id="__codelineno-26-4" name="__codelineno-26-4" href="#__codelineno-26-4"></a><span class="w">    </span><span class="c1">// Build/link smoke kernel; the numerical kernel examples exercise launches.</span>
-<a id="__codelineno-26-5" name="__codelineno-26-5" href="#__codelineno-26-5"></a><span class="c1">//</span>
-<a id="__codelineno-26-6" name="__codelineno-26-6" href="#__codelineno-26-6"></a><span class="c1">//</span>
-<a id="__codelineno-26-7" name="__codelineno-26-7" href="#__codelineno-26-7"></a><span class="c1">//</span>
-<a id="__codelineno-26-8" name="__codelineno-26-8" href="#__codelineno-26-8"></a><span class="p">}</span>
-<a id="__codelineno-26-9" name="__codelineno-26-9" href="#__codelineno-26-9"></a><span class="kt">int</span><span class="w"> </span><span class="n">main</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
-<a id="__codelineno-26-10" name="__codelineno-26-10" href="#__codelineno-26-10"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">"hello_kernel: compiled with plain nvcc, one real (unlaunched) "</span>
-<a id="__codelineno-26-11" name="__codelineno-26-11" href="#__codelineno-26-11"></a><span class="w">           </span><span class="s">"__global__ kernel present.</span><span class="se">\n</span><span class="s">"</span><span class="p">);</span>
-<a id="__codelineno-26-12" name="__codelineno-26-12" href="#__codelineno-26-12"></a><span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
-<a id="__codelineno-26-13" name="__codelineno-26-13" href="#__codelineno-26-13"></a><span class="p">}</span>
+<a id="__codelineno-26-3" name="__codelineno-26-3" href="#__codelineno-26-3"></a>
+<a id="__codelineno-26-4" name="__codelineno-26-4" href="#__codelineno-26-4"></a><span class="n">__global__</span><span class="w"> </span><span class="kt">void</span><span class="w"> </span><span class="n">helloKernel</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-26-5" name="__codelineno-26-5" href="#__codelineno-26-5"></a><span class="w">    </span><span class="c1">// Build/link smoke kernel; the numerical kernel examples exercise launches.</span>
+<a id="__codelineno-26-6" name="__codelineno-26-6" href="#__codelineno-26-6"></a><span class="w">    </span><span class="c1">//</span>
+<a id="__codelineno-26-7" name="__codelineno-26-7" href="#__codelineno-26-7"></a><span class="w">    </span><span class="c1">//</span>
+<a id="__codelineno-26-8" name="__codelineno-26-8" href="#__codelineno-26-8"></a><span class="w">    </span><span class="c1">//</span>
+<a id="__codelineno-26-9" name="__codelineno-26-9" href="#__codelineno-26-9"></a><span class="p">}</span>
+<a id="__codelineno-26-10" name="__codelineno-26-10" href="#__codelineno-26-10"></a>
+<a id="__codelineno-26-11" name="__codelineno-26-11" href="#__codelineno-26-11"></a><span class="kt">int</span><span class="w"> </span><span class="n">main</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-26-12" name="__codelineno-26-12" href="#__codelineno-26-12"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span>
+<a id="__codelineno-26-13" name="__codelineno-26-13" href="#__codelineno-26-13"></a><span class="w">        </span><span class="s">"hello_kernel: compiled with plain nvcc, one real (unlaunched) "</span>
+<a id="__codelineno-26-14" name="__codelineno-26-14" href="#__codelineno-26-14"></a><span class="w">        </span><span class="s">"__global__ kernel present.</span><span class="se">\n</span><span class="s">"</span><span class="p">);</span>
+<a id="__codelineno-26-15" name="__codelineno-26-15" href="#__codelineno-26-15"></a><span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
+<a id="__codelineno-26-16" name="__codelineno-26-16" href="#__codelineno-26-16"></a><span class="p">}</span>
 </code></pre></div>
 <!-- execution:start:a100:hello_kernel.cu -->
 <blockquote>
@@ -3420,11 +3479,11 @@
 
 <p><a href="../../validation/2026-11-17-a100/hello_kernel/hello_kernel.cu">Exact tested source</a> · <a href="../../validation/2026-11-17-a100/hello_kernel/compile.log">Compiler log</a> · <a href="../../validation/2026-11-17-a100/hello_kernel/run.log">Execution log</a>. Compile exit: <code>0</code>; run exit: <code>0</code>.</p>
 <p>Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-27-1" name="__codelineno-27-1" href="#__codelineno-27-1"></a>nvcc<span class="w"> </span>-std<span class="o">=</span>c++17<span class="w"> </span>-O2<span class="w"> </span>-arch<span class="o">=</span>sm_80<span class="w"> </span>hello_kernel.cu<span class="w"> </span>-o<span class="w"> </span>./example
+<div class="language-bash highlight"><pre><span></span><code><a id="__codelineno-27-1" name="__codelineno-27-1" href="#__codelineno-27-1"></a>nvcc<span class="w"> </span>-std<span class="o">=</span>c++17<span class="w"> </span>-O2<span class="w"> </span>-arch<span class="o">=</span>sm_80<span class="w"> </span>hello_kernel.cu<span class="w"> </span>-o<span class="w"> </span>./example
 <a id="__codelineno-27-2" name="__codelineno-27-2" href="#__codelineno-27-2"></a>./example
 </code></pre></div>
 <p><strong>Sample output</strong></p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-28-1" name="__codelineno-28-1" href="#__codelineno-28-1"></a>hello_kernel: compiled with plain nvcc, one real (unlaunched) __global__ kernel present.
+<div class="language-text highlight"><pre><span></span><code><a id="__codelineno-28-1" name="__codelineno-28-1" href="#__codelineno-28-1"></a>hello_kernel: compiled with plain nvcc, one real (unlaunched) __global__ kernel present.
 </code></pre></div>
 <!-- execution:end:a100:hello_kernel.cu -->
 
@@ -3436,24 +3495,28 @@
 
 <p><a href="../../validation/2026-11-17-h100/hello_kernel/hello_kernel.cu">Exact tested source</a> · <a href="../../validation/2026-11-17-h100/hello_kernel/compile.log">Compiler log</a> · <a href="../../validation/2026-11-17-h100/hello_kernel/run.log">Execution log</a>. Compile exit: <code>0</code>; run exit: <code>0</code>.</p>
 <p>Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-29-1" name="__codelineno-29-1" href="#__codelineno-29-1"></a>nvcc<span class="w"> </span>-std<span class="o">=</span>c++17<span class="w"> </span>-O2<span class="w"> </span>-arch<span class="o">=</span>sm_90<span class="w"> </span>hello_kernel.cu<span class="w"> </span>-o<span class="w"> </span>./example
+<div class="language-bash highlight"><pre><span></span><code><a id="__codelineno-29-1" name="__codelineno-29-1" href="#__codelineno-29-1"></a>nvcc<span class="w"> </span>-std<span class="o">=</span>c++17<span class="w"> </span>-O2<span class="w"> </span>-arch<span class="o">=</span>sm_90<span class="w"> </span>hello_kernel.cu<span class="w"> </span>-o<span class="w"> </span>./example
 <a id="__codelineno-29-2" name="__codelineno-29-2" href="#__codelineno-29-2"></a>./example
 </code></pre></div>
 <details>
 <summary>Captured current-source output</summary>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-30-1" name="__codelineno-30-1" href="#__codelineno-30-1"></a>hello_kernel: compiled with plain nvcc, one real (unlaunched) __global__ kernel present.
+<div class="language-text highlight"><pre><span></span><code><a id="__codelineno-30-1" name="__codelineno-30-1" href="#__codelineno-30-1"></a>hello_kernel: compiled with plain nvcc, one real (unlaunched) __global__ kernel present.
 </code></pre></div>
 </details>
 <!-- execution:end:h100:hello_kernel.cu -->
 
-<div class="highlight"><pre><span></span><code><a id="__codelineno-31-1" name="__codelineno-31-1" href="#__codelineno-31-1"></a><span class="c1">// hello_nccl.cu -- Recipe 3 stub: nvcc + NCCL headers/link line.</span>
+<div class="language-cpp highlight"><pre><span></span><code><a id="__codelineno-31-1" name="__codelineno-31-1" href="#__codelineno-31-1"></a><span class="c1">// hello_nccl.cu -- Recipe 3 stub: nvcc + NCCL headers/link line.</span>
 <a id="__codelineno-31-2" name="__codelineno-31-2" href="#__codelineno-31-2"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;cstdio&gt;</span>
 <a id="__codelineno-31-3" name="__codelineno-31-3" href="#__codelineno-31-3"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;nccl.h&gt;</span>
-<a id="__codelineno-31-4" name="__codelineno-31-4" href="#__codelineno-31-4"></a><span class="kt">int</span><span class="w"> </span><span class="nf">main</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
-<a id="__codelineno-31-5" name="__codelineno-31-5" href="#__codelineno-31-5"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">"hello_nccl: compiled and linked against real libnccl "</span>
-<a id="__codelineno-31-6" name="__codelineno-31-6" href="#__codelineno-31-6"></a><span class="w">           </span><span class="s">"(NCCL %d.%d.%d).</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span><span class="w"> </span><span class="n">NCCL_MAJOR</span><span class="p">,</span><span class="w"> </span><span class="n">NCCL_MINOR</span><span class="p">,</span><span class="w"> </span><span class="n">NCCL_PATCH</span><span class="p">);</span>
-<a id="__codelineno-31-7" name="__codelineno-31-7" href="#__codelineno-31-7"></a><span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
-<a id="__codelineno-31-8" name="__codelineno-31-8" href="#__codelineno-31-8"></a><span class="p">}</span>
+<a id="__codelineno-31-4" name="__codelineno-31-4" href="#__codelineno-31-4"></a>
+<a id="__codelineno-31-5" name="__codelineno-31-5" href="#__codelineno-31-5"></a><span class="kt">int</span><span class="w"> </span><span class="nf">main</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-31-6" name="__codelineno-31-6" href="#__codelineno-31-6"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">"hello_nccl: compiled and linked against real libnccl "</span>
+<a id="__codelineno-31-7" name="__codelineno-31-7" href="#__codelineno-31-7"></a><span class="w">           </span><span class="s">"(NCCL %d.%d.%d).</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span>
+<a id="__codelineno-31-8" name="__codelineno-31-8" href="#__codelineno-31-8"></a><span class="w">           </span><span class="n">NCCL_MAJOR</span><span class="p">,</span>
+<a id="__codelineno-31-9" name="__codelineno-31-9" href="#__codelineno-31-9"></a><span class="w">           </span><span class="n">NCCL_MINOR</span><span class="p">,</span>
+<a id="__codelineno-31-10" name="__codelineno-31-10" href="#__codelineno-31-10"></a><span class="w">           </span><span class="n">NCCL_PATCH</span><span class="p">);</span>
+<a id="__codelineno-31-11" name="__codelineno-31-11" href="#__codelineno-31-11"></a><span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
+<a id="__codelineno-31-12" name="__codelineno-31-12" href="#__codelineno-31-12"></a><span class="p">}</span>
 </code></pre></div>
 <!-- execution:start:a100:hello_nccl.cu -->
 <blockquote>
@@ -3463,11 +3526,11 @@
 
 <p><a href="../../validation/2026-11-17-a100/hello_nccl/hello_nccl.cu">Exact tested source</a> · <a href="../../validation/2026-11-17-a100/hello_nccl/compile.log">Compiler log</a> · <a href="../../validation/2026-11-17-a100/hello_nccl/run.log">Execution log</a>. Compile exit: <code>0</code>; run exit: <code>0</code>.</p>
 <p>Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-32-1" name="__codelineno-32-1" href="#__codelineno-32-1"></a>nvcc<span class="w"> </span>-std<span class="o">=</span>c++17<span class="w"> </span>-O2<span class="w"> </span>-arch<span class="o">=</span>sm_80<span class="w"> </span>hello_nccl.cu<span class="w"> </span>-o<span class="w"> </span>./example<span class="w"> </span>-lnccl
+<div class="language-bash highlight"><pre><span></span><code><a id="__codelineno-32-1" name="__codelineno-32-1" href="#__codelineno-32-1"></a>nvcc<span class="w"> </span>-std<span class="o">=</span>c++17<span class="w"> </span>-O2<span class="w"> </span>-arch<span class="o">=</span>sm_80<span class="w"> </span>hello_nccl.cu<span class="w"> </span>-o<span class="w"> </span>./example<span class="w"> </span>-lnccl
 <a id="__codelineno-32-2" name="__codelineno-32-2" href="#__codelineno-32-2"></a>./example
 </code></pre></div>
 <p><strong>Sample output</strong></p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-33-1" name="__codelineno-33-1" href="#__codelineno-33-1"></a>hello_nccl: compiled and linked against real libnccl (NCCL 2.26.2).
+<div class="language-text highlight"><pre><span></span><code><a id="__codelineno-33-1" name="__codelineno-33-1" href="#__codelineno-33-1"></a>hello_nccl: compiled and linked against real libnccl (NCCL 2.26.2).
 </code></pre></div>
 <!-- execution:end:a100:hello_nccl.cu -->
 
@@ -3479,31 +3542,35 @@
 
 <p><a href="../../validation/2026-11-17-h100/hello_nccl/hello_nccl.cu">Exact tested source</a> · <a href="../../validation/2026-11-17-h100/hello_nccl/compile.log">Compiler log</a> · <a href="../../validation/2026-11-17-h100/hello_nccl/run.log">Execution log</a>. Compile exit: <code>0</code>; run exit: <code>0</code>.</p>
 <p>Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-34-1" name="__codelineno-34-1" href="#__codelineno-34-1"></a>nvcc<span class="w"> </span>-std<span class="o">=</span>c++17<span class="w"> </span>-O2<span class="w"> </span>-arch<span class="o">=</span>sm_90<span class="w"> </span>hello_nccl.cu<span class="w"> </span>-o<span class="w"> </span>./example<span class="w"> </span>-lnccl
+<div class="language-bash highlight"><pre><span></span><code><a id="__codelineno-34-1" name="__codelineno-34-1" href="#__codelineno-34-1"></a>nvcc<span class="w"> </span>-std<span class="o">=</span>c++17<span class="w"> </span>-O2<span class="w"> </span>-arch<span class="o">=</span>sm_90<span class="w"> </span>hello_nccl.cu<span class="w"> </span>-o<span class="w"> </span>./example<span class="w"> </span>-lnccl
 <a id="__codelineno-34-2" name="__codelineno-34-2" href="#__codelineno-34-2"></a>./example
 </code></pre></div>
 <details>
 <summary>Captured current-source output</summary>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-35-1" name="__codelineno-35-1" href="#__codelineno-35-1"></a>hello_nccl: compiled and linked against real libnccl (NCCL 2.26.2).
+<div class="language-text highlight"><pre><span></span><code><a id="__codelineno-35-1" name="__codelineno-35-1" href="#__codelineno-35-1"></a>hello_nccl: compiled and linked against real libnccl (NCCL 2.26.2).
 </code></pre></div>
 </details>
 <!-- execution:end:h100:hello_nccl.cu -->
 
-<div class="highlight"><pre><span></span><code><a id="__codelineno-36-1" name="__codelineno-36-1" href="#__codelineno-36-1"></a><span class="c1">// hello_mpi.cpp -- Recipe 4 stub: mpicxx, CUDA-aware host-side link line.</span>
+<div class="language-cpp highlight"><pre><span></span><code><a id="__codelineno-36-1" name="__codelineno-36-1" href="#__codelineno-36-1"></a><span class="c1">// hello_mpi.cpp -- Recipe 4 stub: mpicxx, CUDA-aware host-side link line.</span>
 <a id="__codelineno-36-2" name="__codelineno-36-2" href="#__codelineno-36-2"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;cstdio&gt;</span>
 <a id="__codelineno-36-3" name="__codelineno-36-3" href="#__codelineno-36-3"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;mpi.h&gt;</span>
 <a id="__codelineno-36-4" name="__codelineno-36-4" href="#__codelineno-36-4"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;cuda_runtime.h&gt;</span>
-<a id="__codelineno-36-5" name="__codelineno-36-5" href="#__codelineno-36-5"></a><span class="kt">int</span><span class="w"> </span><span class="nf">main</span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">argc</span><span class="p">,</span><span class="w"> </span><span class="kt">char</span><span class="o">**</span><span class="w"> </span><span class="n">argv</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
-<a id="__codelineno-36-6" name="__codelineno-36-6" href="#__codelineno-36-6"></a><span class="w">    </span><span class="n">MPI_Init</span><span class="p">(</span><span class="o">&amp;</span><span class="n">argc</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">argv</span><span class="p">);</span>
-<a id="__codelineno-36-7" name="__codelineno-36-7" href="#__codelineno-36-7"></a><span class="w">    </span><span class="kt">int</span><span class="w"> </span><span class="n">rank</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
-<a id="__codelineno-36-8" name="__codelineno-36-8" href="#__codelineno-36-8"></a><span class="w">    </span><span class="n">MPI_Comm_rank</span><span class="p">(</span><span class="n">MPI_COMM_WORLD</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">rank</span><span class="p">);</span>
-<a id="__codelineno-36-9" name="__codelineno-36-9" href="#__codelineno-36-9"></a><span class="w">    </span><span class="kt">int</span><span class="w"> </span><span class="n">rtVersion</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
-<a id="__codelineno-36-10" name="__codelineno-36-10" href="#__codelineno-36-10"></a><span class="w">    </span><span class="n">cudaRuntimeGetVersion</span><span class="p">(</span><span class="o">&amp;</span><span class="n">rtVersion</span><span class="p">);</span>
-<a id="__codelineno-36-11" name="__codelineno-36-11" href="#__codelineno-36-11"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">"hello_mpi: rank %d, linked against real libcudart (CUDA "</span>
-<a id="__codelineno-36-12" name="__codelineno-36-12" href="#__codelineno-36-12"></a><span class="w">           </span><span class="s">"runtime %d.%d)</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span><span class="w"> </span><span class="n">rank</span><span class="p">,</span><span class="w"> </span><span class="n">rtVersion</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="mi">1000</span><span class="p">,</span><span class="w"> </span><span class="p">(</span><span class="n">rtVersion</span><span class="w"> </span><span class="o">%</span><span class="w"> </span><span class="mi">1000</span><span class="p">)</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="mi">10</span><span class="p">);</span>
-<a id="__codelineno-36-13" name="__codelineno-36-13" href="#__codelineno-36-13"></a><span class="w">    </span><span class="n">MPI_Finalize</span><span class="p">();</span>
-<a id="__codelineno-36-14" name="__codelineno-36-14" href="#__codelineno-36-14"></a><span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
-<a id="__codelineno-36-15" name="__codelineno-36-15" href="#__codelineno-36-15"></a><span class="p">}</span>
+<a id="__codelineno-36-5" name="__codelineno-36-5" href="#__codelineno-36-5"></a>
+<a id="__codelineno-36-6" name="__codelineno-36-6" href="#__codelineno-36-6"></a><span class="kt">int</span><span class="w"> </span><span class="nf">main</span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">argc</span><span class="p">,</span><span class="w"> </span><span class="kt">char</span><span class="o">**</span><span class="w"> </span><span class="n">argv</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-36-7" name="__codelineno-36-7" href="#__codelineno-36-7"></a><span class="w">    </span><span class="n">MPI_Init</span><span class="p">(</span><span class="o">&amp;</span><span class="n">argc</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">argv</span><span class="p">);</span>
+<a id="__codelineno-36-8" name="__codelineno-36-8" href="#__codelineno-36-8"></a><span class="w">    </span><span class="kt">int</span><span class="w"> </span><span class="n">rank</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
+<a id="__codelineno-36-9" name="__codelineno-36-9" href="#__codelineno-36-9"></a><span class="w">    </span><span class="n">MPI_Comm_rank</span><span class="p">(</span><span class="n">MPI_COMM_WORLD</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">rank</span><span class="p">);</span>
+<a id="__codelineno-36-10" name="__codelineno-36-10" href="#__codelineno-36-10"></a><span class="w">    </span><span class="kt">int</span><span class="w"> </span><span class="n">rtVersion</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
+<a id="__codelineno-36-11" name="__codelineno-36-11" href="#__codelineno-36-11"></a><span class="w">    </span><span class="n">cudaRuntimeGetVersion</span><span class="p">(</span><span class="o">&amp;</span><span class="n">rtVersion</span><span class="p">);</span>
+<a id="__codelineno-36-12" name="__codelineno-36-12" href="#__codelineno-36-12"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">"hello_mpi: rank %d, linked against real libcudart (CUDA "</span>
+<a id="__codelineno-36-13" name="__codelineno-36-13" href="#__codelineno-36-13"></a><span class="w">           </span><span class="s">"runtime %d.%d)</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span>
+<a id="__codelineno-36-14" name="__codelineno-36-14" href="#__codelineno-36-14"></a><span class="w">           </span><span class="n">rank</span><span class="p">,</span>
+<a id="__codelineno-36-15" name="__codelineno-36-15" href="#__codelineno-36-15"></a><span class="w">           </span><span class="n">rtVersion</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="mi">1000</span><span class="p">,</span>
+<a id="__codelineno-36-16" name="__codelineno-36-16" href="#__codelineno-36-16"></a><span class="w">           </span><span class="p">(</span><span class="n">rtVersion</span><span class="w"> </span><span class="o">%</span><span class="w"> </span><span class="mi">1000</span><span class="p">)</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="mi">10</span><span class="p">);</span>
+<a id="__codelineno-36-17" name="__codelineno-36-17" href="#__codelineno-36-17"></a><span class="w">    </span><span class="n">MPI_Finalize</span><span class="p">();</span>
+<a id="__codelineno-36-18" name="__codelineno-36-18" href="#__codelineno-36-18"></a><span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
+<a id="__codelineno-36-19" name="__codelineno-36-19" href="#__codelineno-36-19"></a><span class="p">}</span>
 </code></pre></div>
 <!-- execution:start:a100:hello_mpi.cpp -->
 <blockquote>
@@ -3513,11 +3580,11 @@
 
 <p><a href="../../validation/2026-11-17-a100/hello_mpi/hello_mpi.cpp">Exact tested source</a> · <a href="../../validation/2026-11-17-a100/hello_mpi/compile.log">Compiler log</a> · <a href="../../validation/2026-11-17-a100/hello_mpi/run.log">Execution log</a>. Compile exit: <code>0</code>; run exit: <code>0</code>.</p>
 <p>Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-37-1" name="__codelineno-37-1" href="#__codelineno-37-1"></a>mpicxx<span class="w"> </span>-std<span class="o">=</span>c++17<span class="w"> </span>-O2<span class="w"> </span>-I/usr/include<span class="w"> </span>-L/usr/local/cuda/lib64<span class="w"> </span>-Wl,-rpath,/usr/local/cuda/lib64<span class="w"> </span>hello_mpi.cpp<span class="w"> </span>-o<span class="w"> </span>./example<span class="w"> </span>-lcudart
+<div class="language-bash highlight"><pre><span></span><code><a id="__codelineno-37-1" name="__codelineno-37-1" href="#__codelineno-37-1"></a>mpicxx<span class="w"> </span>-std<span class="o">=</span>c++17<span class="w"> </span>-O2<span class="w"> </span>-I/usr/include<span class="w"> </span>-L/usr/local/cuda/lib64<span class="w"> </span>-Wl,-rpath,/usr/local/cuda/lib64<span class="w"> </span>hello_mpi.cpp<span class="w"> </span>-o<span class="w"> </span>./example<span class="w"> </span>-lcudart
 <a id="__codelineno-37-2" name="__codelineno-37-2" href="#__codelineno-37-2"></a>/usr/mpi/gcc/openmpi-4.1.7rc1/bin/mpirun<span class="w"> </span>--oversubscribe<span class="w"> </span>-np<span class="w"> </span><span class="m">8</span><span class="w"> </span>./example
 </code></pre></div>
 <p><strong>Sample output</strong></p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-38-1" name="__codelineno-38-1" href="#__codelineno-38-1"></a>[LOG_CAT_SBGP] libnuma.so: cannot open shared object file: No such file or directory
+<div class="language-text highlight"><pre><span></span><code><a id="__codelineno-38-1" name="__codelineno-38-1" href="#__codelineno-38-1"></a>[LOG_CAT_SBGP] libnuma.so: cannot open shared object file: No such file or directory
 <a id="__codelineno-38-2" name="__codelineno-38-2" href="#__codelineno-38-2"></a>[LOG_CAT_SBGP] Failed to dlopen libnuma.so. Fallback to GROUP_BY_SOCKET manual.
 <a id="__codelineno-38-3" name="__codelineno-38-3" href="#__codelineno-38-3"></a>[LOG_CAT_SBGP] libnuma.so: cannot open shared object file: No such file or directory
 <a id="__codelineno-38-4" name="__codelineno-38-4" href="#__codelineno-38-4"></a>[LOG_CAT_SBGP] Failed to dlopen libnuma.so. Fallback to GROUP_BY_SOCKET manual.
@@ -3552,12 +3619,12 @@
 
 <p><a href="../../validation/2026-11-17-h100/hello_mpi/hello_mpi.cpp">Exact tested source</a> · <a href="../../validation/2026-11-17-h100/hello_mpi/compile.log">Compiler log</a> · <a href="../../validation/2026-11-17-h100/hello_mpi/run.log">Execution log</a>. Compile exit: <code>0</code>; run exit: <code>0</code>.</p>
 <p>Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-39-1" name="__codelineno-39-1" href="#__codelineno-39-1"></a>mpicxx<span class="w"> </span>-std<span class="o">=</span>c++17<span class="w"> </span>-O2<span class="w"> </span>-I/usr/include<span class="w"> </span>-L/usr/local/cuda/lib64<span class="w"> </span>-Wl,-rpath,/usr/local/cuda/lib64<span class="w"> </span>hello_mpi.cpp<span class="w"> </span>-o<span class="w"> </span>./example<span class="w"> </span>-lcudart
+<div class="language-bash highlight"><pre><span></span><code><a id="__codelineno-39-1" name="__codelineno-39-1" href="#__codelineno-39-1"></a>mpicxx<span class="w"> </span>-std<span class="o">=</span>c++17<span class="w"> </span>-O2<span class="w"> </span>-I/usr/include<span class="w"> </span>-L/usr/local/cuda/lib64<span class="w"> </span>-Wl,-rpath,/usr/local/cuda/lib64<span class="w"> </span>hello_mpi.cpp<span class="w"> </span>-o<span class="w"> </span>./example<span class="w"> </span>-lcudart
 <a id="__codelineno-39-2" name="__codelineno-39-2" href="#__codelineno-39-2"></a>/home/ubuntu/book2-bin/mpirun<span class="w"> </span>--oversubscribe<span class="w"> </span>-np<span class="w"> </span><span class="m">2</span><span class="w"> </span>./example
 </code></pre></div>
 <details>
 <summary>Captured current-source output</summary>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-40-1" name="__codelineno-40-1" href="#__codelineno-40-1"></a>--------------------------------------------------------------------------
+<div class="language-text highlight"><pre><span></span><code><a id="__codelineno-40-1" name="__codelineno-40-1" href="#__codelineno-40-1"></a>--------------------------------------------------------------------------
 <a id="__codelineno-40-2" name="__codelineno-40-2" href="#__codelineno-40-2"></a>Sorry!  You were supposed to get help about:
 <a id="__codelineno-40-3" name="__codelineno-40-3" href="#__codelineno-40-3"></a>    unavailable
 <a id="__codelineno-40-4" name="__codelineno-40-4" href="#__codelineno-40-4"></a>But I couldn't open the help file:
@@ -3601,7 +3668,7 @@
 </details>
 <!-- execution:end:h100:hello_mpi.cpp -->
 
-<div class="highlight"><pre><span></span><code><a id="__codelineno-41-1" name="__codelineno-41-1" href="#__codelineno-41-1"></a><span class="c1">// hello_nvshmem.cu -- Recipe 5 stub: nvcc + NVSHMEM + MPI, GPU-initiated</span>
+<div class="language-cpp highlight"><pre><span></span><code><a id="__codelineno-41-1" name="__codelineno-41-1" href="#__codelineno-41-1"></a><span class="c1">// hello_nvshmem.cu -- Recipe 5 stub: nvcc + NVSHMEM + MPI, GPU-initiated</span>
 <a id="__codelineno-41-2" name="__codelineno-41-2" href="#__codelineno-41-2"></a><span class="c1">// one-sided communication's own real link line (Chapter 22's own recipe).</span>
 <a id="__codelineno-41-3" name="__codelineno-41-3" href="#__codelineno-41-3"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;cstdio&gt;</span>
 <a id="__codelineno-41-4" name="__codelineno-41-4" href="#__codelineno-41-4"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;nvshmem.h&gt;</span>
@@ -3611,9 +3678,9 @@
 <a id="__codelineno-41-8" name="__codelineno-41-8" href="#__codelineno-41-8"></a><span class="n">__global__</span><span class="w"> </span><span class="kt">void</span><span class="w"> </span><span class="n">nvshmemStubKernel</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
 <a id="__codelineno-41-9" name="__codelineno-41-9" href="#__codelineno-41-9"></a><span class="w">    </span><span class="c1">// Build/link smoke kernel. Device-initiated communication is checked</span>
 <a id="__codelineno-41-10" name="__codelineno-41-10" href="#__codelineno-41-10"></a><span class="w">    </span><span class="c1">// in the numbered NVSHMEM examples.</span>
-<a id="__codelineno-41-11" name="__codelineno-41-11" href="#__codelineno-41-11"></a><span class="c1">//</span>
-<a id="__codelineno-41-12" name="__codelineno-41-12" href="#__codelineno-41-12"></a><span class="c1">//</span>
-<a id="__codelineno-41-13" name="__codelineno-41-13" href="#__codelineno-41-13"></a><span class="c1">//</span>
+<a id="__codelineno-41-11" name="__codelineno-41-11" href="#__codelineno-41-11"></a><span class="w">    </span><span class="c1">//</span>
+<a id="__codelineno-41-12" name="__codelineno-41-12" href="#__codelineno-41-12"></a><span class="w">    </span><span class="c1">//</span>
+<a id="__codelineno-41-13" name="__codelineno-41-13" href="#__codelineno-41-13"></a><span class="w">    </span><span class="c1">//</span>
 <a id="__codelineno-41-14" name="__codelineno-41-14" href="#__codelineno-41-14"></a><span class="p">}</span>
 <a id="__codelineno-41-15" name="__codelineno-41-15" href="#__codelineno-41-15"></a>
 <a id="__codelineno-41-16" name="__codelineno-41-16" href="#__codelineno-41-16"></a><span class="kt">int</span><span class="w"> </span><span class="n">main</span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">argc</span><span class="p">,</span><span class="w"> </span><span class="kt">char</span><span class="o">**</span><span class="w"> </span><span class="n">argv</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
@@ -3622,12 +3689,14 @@
 <a id="__codelineno-41-19" name="__codelineno-41-19" href="#__codelineno-41-19"></a><span class="w">    </span><span class="n">MPI_Comm_rank</span><span class="p">(</span><span class="n">MPI_COMM_WORLD</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">rank</span><span class="p">);</span>
 <a id="__codelineno-41-20" name="__codelineno-41-20" href="#__codelineno-41-20"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">"hello_nvshmem: rank %d, compiled and linked against real "</span>
 <a id="__codelineno-41-21" name="__codelineno-41-21" href="#__codelineno-41-21"></a><span class="w">           </span><span class="s">"libnvshmem_host/libnvshmem_device (NVSHMEM %d.%d.%d), real "</span>
-<a id="__codelineno-41-22" name="__codelineno-41-22" href="#__codelineno-41-22"></a><span class="w">           </span><span class="s">"MPI bootstrap headers present.</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span><span class="w"> </span><span class="n">rank</span><span class="p">,</span>
-<a id="__codelineno-41-23" name="__codelineno-41-23" href="#__codelineno-41-23"></a><span class="w">           </span><span class="n">NVSHMEM_VENDOR_MAJOR_VERSION</span><span class="p">,</span><span class="w"> </span><span class="n">NVSHMEM_VENDOR_MINOR_VERSION</span><span class="p">,</span>
-<a id="__codelineno-41-24" name="__codelineno-41-24" href="#__codelineno-41-24"></a><span class="w">           </span><span class="n">NVSHMEM_VENDOR_PATCH_VERSION</span><span class="p">);</span>
-<a id="__codelineno-41-25" name="__codelineno-41-25" href="#__codelineno-41-25"></a><span class="w">    </span><span class="n">MPI_Finalize</span><span class="p">();</span>
-<a id="__codelineno-41-26" name="__codelineno-41-26" href="#__codelineno-41-26"></a><span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
-<a id="__codelineno-41-27" name="__codelineno-41-27" href="#__codelineno-41-27"></a><span class="p">}</span>
+<a id="__codelineno-41-22" name="__codelineno-41-22" href="#__codelineno-41-22"></a><span class="w">           </span><span class="s">"MPI bootstrap headers present.</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span>
+<a id="__codelineno-41-23" name="__codelineno-41-23" href="#__codelineno-41-23"></a><span class="w">           </span><span class="n">rank</span><span class="p">,</span>
+<a id="__codelineno-41-24" name="__codelineno-41-24" href="#__codelineno-41-24"></a><span class="w">           </span><span class="n">NVSHMEM_VENDOR_MAJOR_VERSION</span><span class="p">,</span>
+<a id="__codelineno-41-25" name="__codelineno-41-25" href="#__codelineno-41-25"></a><span class="w">           </span><span class="n">NVSHMEM_VENDOR_MINOR_VERSION</span><span class="p">,</span>
+<a id="__codelineno-41-26" name="__codelineno-41-26" href="#__codelineno-41-26"></a><span class="w">           </span><span class="n">NVSHMEM_VENDOR_PATCH_VERSION</span><span class="p">);</span>
+<a id="__codelineno-41-27" name="__codelineno-41-27" href="#__codelineno-41-27"></a><span class="w">    </span><span class="n">MPI_Finalize</span><span class="p">();</span>
+<a id="__codelineno-41-28" name="__codelineno-41-28" href="#__codelineno-41-28"></a><span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
+<a id="__codelineno-41-29" name="__codelineno-41-29" href="#__codelineno-41-29"></a><span class="p">}</span>
 </code></pre></div>
 <!-- execution:start:a100:hello_nvshmem.cu -->
 <blockquote>
@@ -3637,11 +3706,11 @@
 
 <p><a href="../../validation/2026-11-17-a100/hello_nvshmem/hello_nvshmem.cu">Exact tested source</a> · <a href="../../validation/2026-11-17-a100/hello_nvshmem/compile.log">Compiler log</a> · <a href="../../validation/2026-11-17-a100/hello_nvshmem/run.log">Execution log</a>. Compile exit: <code>0</code>; run exit: <code>0</code>.</p>
 <p>Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-42-1" name="__codelineno-42-1" href="#__codelineno-42-1"></a>nvcc<span class="w"> </span>-std<span class="o">=</span>c++17<span class="w"> </span>-O2<span class="w"> </span>-arch<span class="o">=</span>sm_80<span class="w"> </span>-ccbin<span class="w"> </span>mpicxx<span class="w"> </span>-rdc<span class="o">=</span><span class="nb">true</span><span class="w"> </span>-I/home/ubuntu/book2-deps/lib/python3.12/site-packages/nvidia/nvshmem/include<span class="w"> </span>-L/home/ubuntu/book2-deps/lib/python3.12/site-packages/nvidia/nvshmem/lib<span class="w"> </span>-Xlinker<span class="o">=</span>-rpath<span class="o">=</span>/home/ubuntu/book2-deps/lib/python3.12/site-packages/nvidia/nvshmem/lib<span class="w"> </span>hello_nvshmem.cu<span class="w"> </span>-o<span class="w"> </span>./example<span class="w"> </span>-lnvshmem_host<span class="w"> </span>-lnvshmem_device<span class="w"> </span>-lcuda
+<div class="language-bash highlight"><pre><span></span><code><a id="__codelineno-42-1" name="__codelineno-42-1" href="#__codelineno-42-1"></a>nvcc<span class="w"> </span>-std<span class="o">=</span>c++17<span class="w"> </span>-O2<span class="w"> </span>-arch<span class="o">=</span>sm_80<span class="w"> </span>-ccbin<span class="w"> </span>mpicxx<span class="w"> </span>-rdc<span class="o">=</span><span class="nb">true</span><span class="w"> </span>-I/home/ubuntu/book2-deps/lib/python3.12/site-packages/nvidia/nvshmem/include<span class="w"> </span>-L/home/ubuntu/book2-deps/lib/python3.12/site-packages/nvidia/nvshmem/lib<span class="w"> </span>-Xlinker<span class="o">=</span>-rpath<span class="o">=</span>/home/ubuntu/book2-deps/lib/python3.12/site-packages/nvidia/nvshmem/lib<span class="w"> </span>hello_nvshmem.cu<span class="w"> </span>-o<span class="w"> </span>./example<span class="w"> </span>-lnvshmem_host<span class="w"> </span>-lnvshmem_device<span class="w"> </span>-lcuda
 <a id="__codelineno-42-2" name="__codelineno-42-2" href="#__codelineno-42-2"></a>/usr/mpi/gcc/openmpi-4.1.7rc1/bin/mpirun<span class="w"> </span>--oversubscribe<span class="w"> </span>-np<span class="w"> </span><span class="m">8</span><span class="w"> </span>./example
 </code></pre></div>
 <p><strong>Sample output</strong></p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-43-1" name="__codelineno-43-1" href="#__codelineno-43-1"></a>[LOG_CAT_SBGP] libnuma.so: cannot open shared object file: No such file or directory
+<div class="language-text highlight"><pre><span></span><code><a id="__codelineno-43-1" name="__codelineno-43-1" href="#__codelineno-43-1"></a>[LOG_CAT_SBGP] libnuma.so: cannot open shared object file: No such file or directory
 <a id="__codelineno-43-2" name="__codelineno-43-2" href="#__codelineno-43-2"></a>[LOG_CAT_SBGP] Failed to dlopen libnuma.so. Fallback to GROUP_BY_SOCKET manual.
 <a id="__codelineno-43-3" name="__codelineno-43-3" href="#__codelineno-43-3"></a>[LOG_CAT_SBGP] libnuma.so: cannot open shared object file: No such file or directory
 <a id="__codelineno-43-4" name="__codelineno-43-4" href="#__codelineno-43-4"></a>[LOG_CAT_SBGP] Failed to dlopen libnuma.so. Fallback to GROUP_BY_SOCKET manual.
@@ -3676,12 +3745,12 @@
 
 <p><a href="../../validation/2026-11-17-h100/hello_nvshmem/hello_nvshmem.cu">Exact tested source</a> · <a href="../../validation/2026-11-17-h100/hello_nvshmem/compile.log">Compiler log</a> · <a href="../../validation/2026-11-17-h100/hello_nvshmem/run.log">Execution log</a>. Compile exit: <code>0</code>; run exit: <code>0</code>.</p>
 <p>Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-44-1" name="__codelineno-44-1" href="#__codelineno-44-1"></a>nvcc<span class="w"> </span>-std<span class="o">=</span>c++17<span class="w"> </span>-O2<span class="w"> </span>-arch<span class="o">=</span>sm_90<span class="w"> </span>-ccbin<span class="w"> </span>mpicxx<span class="w"> </span>-rdc<span class="o">=</span><span class="nb">true</span><span class="w"> </span>-I/home/ubuntu/book2-deps/lib/python3.12/site-packages/nvidia/nvshmem/include<span class="w"> </span>-L/home/ubuntu/book2-deps/lib/python3.12/site-packages/nvidia/nvshmem/lib<span class="w"> </span>-Xlinker<span class="o">=</span>-rpath<span class="o">=</span>/home/ubuntu/book2-deps/lib/python3.12/site-packages/nvidia/nvshmem/lib<span class="w"> </span>hello_nvshmem.cu<span class="w"> </span>-o<span class="w"> </span>./example<span class="w"> </span>-lnvshmem_host<span class="w"> </span>-lnvshmem_device<span class="w"> </span>-lcuda
+<div class="language-bash highlight"><pre><span></span><code><a id="__codelineno-44-1" name="__codelineno-44-1" href="#__codelineno-44-1"></a>nvcc<span class="w"> </span>-std<span class="o">=</span>c++17<span class="w"> </span>-O2<span class="w"> </span>-arch<span class="o">=</span>sm_90<span class="w"> </span>-ccbin<span class="w"> </span>mpicxx<span class="w"> </span>-rdc<span class="o">=</span><span class="nb">true</span><span class="w"> </span>-I/home/ubuntu/book2-deps/lib/python3.12/site-packages/nvidia/nvshmem/include<span class="w"> </span>-L/home/ubuntu/book2-deps/lib/python3.12/site-packages/nvidia/nvshmem/lib<span class="w"> </span>-Xlinker<span class="o">=</span>-rpath<span class="o">=</span>/home/ubuntu/book2-deps/lib/python3.12/site-packages/nvidia/nvshmem/lib<span class="w"> </span>hello_nvshmem.cu<span class="w"> </span>-o<span class="w"> </span>./example<span class="w"> </span>-lnvshmem_host<span class="w"> </span>-lnvshmem_device<span class="w"> </span>-lcuda
 <a id="__codelineno-44-2" name="__codelineno-44-2" href="#__codelineno-44-2"></a>/home/ubuntu/book2-bin/mpirun<span class="w"> </span>--oversubscribe<span class="w"> </span>-np<span class="w"> </span><span class="m">2</span><span class="w"> </span>./example
 </code></pre></div>
 <details>
 <summary>Captured current-source output</summary>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-45-1" name="__codelineno-45-1" href="#__codelineno-45-1"></a>--------------------------------------------------------------------------
+<div class="language-text highlight"><pre><span></span><code><a id="__codelineno-45-1" name="__codelineno-45-1" href="#__codelineno-45-1"></a>--------------------------------------------------------------------------
 <a id="__codelineno-45-2" name="__codelineno-45-2" href="#__codelineno-45-2"></a>Sorry!  You were supposed to get help about:
 <a id="__codelineno-45-3" name="__codelineno-45-3" href="#__codelineno-45-3"></a>    unavailable
 <a id="__codelineno-45-4" name="__codelineno-45-4" href="#__codelineno-45-4"></a>But I couldn't open the help file:

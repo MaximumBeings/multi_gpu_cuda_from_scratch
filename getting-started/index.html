@@ -50,12 +50,14 @@
         
         
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
-        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CJetBrains+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"JetBrains Mono"}</style>
       
     
     
       <link rel="stylesheet" href="../stylesheets/illustrations.css">
+    
+      <link rel="stylesheet" href="../stylesheets/code.css">
     
     <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
     
@@ -2433,7 +2435,7 @@
 
 <p>A full NVIDIA CUDA Toolkit install (from developer.nvidia.com, or via your platform's package manager, e.g. <code>apt-get install nvidia-cuda-toolkit</code> on Debian/Ubuntu) gives you a genuine, working <code>nvcc</code>, <code>ptxas</code>, <code>cicc</code>, and CUDA headers; NCCL, NVSHMEM and MPI development packages are separate dependencies, with no GPU or driver required to <em>compile</em> -- only to run device code. The package name and supported compiler/architecture targets depend on the distribution and toolkit version. Use <a href="https://docs.nvidia.com/cuda/cuda-installation-guide-linux/">NVIDIA’s installation guide</a> for the actual host.</p>
 <p>Check that your selected toolkit provides <code>nvcc --version</code>; a Python package containing some CUDA components is not automatically a full C++ build environment. Install NCCL/NVSHMEM headers and libraries separately where required. Host-only MPI can run without CUDA devices; CUDA-aware MPI requires a compatible MPI build and real device buffers. Follow <a href="https://developer.nvidia.com/blog/introduction-cuda-aware-mpi/">NVIDIA’s CUDA-aware MPI guidance</a> and the chapter’s actual build options rather than assuming an ordinary MPI installation supports GPU pointers.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>nvcc<span class="w"> </span>--version<span class="w">   </span><span class="c1"># compiler, needed to build anything</span>
+<div class="language-bash highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>nvcc<span class="w"> </span>--version<span class="w">   </span><span class="c1"># compiler, needed to build anything</span>
 <a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>nvcc<span class="w"> </span>-arch<span class="o">=</span>sm_80<span class="w"> </span>hello_cuda.cu<span class="w"> </span>-o<span class="w"> </span>hello_cuda<span class="w">   </span><span class="c1"># pick the arch flag matching your GPU</span>
 <a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>mpirun<span class="w"> </span>--version<span class="w">   </span><span class="c1"># for Part 5 onward</span>
 </code></pre></div>
