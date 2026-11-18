@@ -77,6 +77,8 @@ def verify(root, public, docs=None, summary_text=None):
             errors.append(f'Expected one displayed execution block: {rel}')
             continue
         section = sections[0]
+        if label == 'a100' and ('<details' in section or '**Sample output**' not in section):
+            errors.append(f'Latest A100 sample output must be inline and visible: {rel}')
         run_started = row.get('run_started_utc') or row.get('run', {}).get('started_utc')
         if run_started and f'Executed UTC: `{run_started}`' not in section:
             errors.append(f'Displayed actual run-start timestamp differs: {rel}')
