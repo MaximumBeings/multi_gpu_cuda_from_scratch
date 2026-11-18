@@ -1,0 +1,17 @@
+$ /home/ubuntu/codex-eight-gpu-audit-20261117/multi-gpu-audit/artifacts/a100-eight-20261117/92_var_percentile_and_allgather_cost_model/example
+Reference (single-process), 100 simulated paths.
+Basel's own real quantitative standard: "'value-at-risk' be computed daily, using a 99th percentile, one-tailed confidence interval."
+Reference VaR_99 (99th percentile of the loss distribution): 40
+
+--- What Section 31.1's Chan-et-al. combination could NOT tell us ---
+Chan et al.'s own real pairwise formula combines (count, mean, M2) into a global mean and variance using exactly 3 numbers per rank, regardless of how many paths that rank ran. A MEAN and a VARIANCE describe the SHAPE of a distribution in summary; a PERCENTILE requires knowing exactly how many individual outcomes fall below a given threshold -- information that 3 summary numbers per rank simply do not contain.
+
+P        Chan et al.: values/rank     exact VaR: values/rank (gather) VaR_99 EXACT match?
+1        3 (count, mean, M2)          100                          YES             
+2        3 (count, mean, M2)          50                           YES             
+4        3 (count, mean, M2)          25                           YES             
+5        3 (count, mean, M2)          20                           YES             
+10       3 (count, mean, M2)          10                           YES             
+20       3 (count, mean, M2)          5                            YES             
+
+Every rank's own message size for the MEAN/VARIANCE path stays at 3 values, always -- but an EXACT VaR needs each rank to contribute its full local share of the dataset (N/P values per rank) to a gather step, because only the full sorted set determines which value sits at the 99th percentile. Real production systems facing this exact tradeoff at genuinely large scale use approximate streaming-percentile techniques (e.g., t-digest-style sketches) specifically to avoid gathering every raw value -- an extension this chapter's own exact gather model does not build, but names honestly as the real next step production systems take.

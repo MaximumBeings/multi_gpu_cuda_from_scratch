@@ -1,54 +1,27 @@
-// Chapter 12: Data Parallelism -- Replicated Model, Sharded Data
 // 34_gradient_allreduce.cu
-//
-// Every training step, after every replica computes its own local
-// gradients from its own data shard, those gradients have to be
-// averaged across every replica before anyone updates their weights
-// -- otherwise "replica" stops meaning what Section 12.1 set it up
-// to mean. NCCL's ncclAvg reduction op (new in this chapter) does
-// the averaging as part of the same real ncclAllReduce() call this
-// book linked against in Chapter 11 -- no separate divide-by-N step
-// required. Genuinely compiled with a real nvcc, genuinely linked
-// against a real libnccl, and genuinely run.
+// Real 2--4 GPU teaching workload with independent nonuniform reference checks.
 #include <cstdio>
-#include <nccl.h>
+#include <vector>
+#include <algorithm>
+#include <cmath>
 #include <cuda_runtime.h>
+#include <nccl.h>
+#define CUDA(call) do {cudaError_t e=(call);if(e!=cudaSuccess){fprintf(stderr,"%s: %s\n",#call,cudaGetErrorString(e));return e==cudaErrorNoDevice||e==cudaErrorInsufficientDriver?2:1;}}while(0)
+#define NCCL(call) do {ncclResult_t e=(call);if(e!=ncclSuccess){fprintf(stderr,"%s: %s\n",#call,ncclGetErrorString(e));return 1;}}while(0)
 
-int main() {
-    int deviceCount = 0;
-    cudaGetDeviceCount(&deviceCount);
-    printf("cudaGetDeviceCount(): %d device(s).\n", deviceCount);
-
-    ncclComm_t comm = nullptr; // never successfully created, as in Chapter 11
-    cudaStream_t stream = nullptr;
-    float* localGradients = nullptr;
-    const size_t WEIGHT_COUNT = 4;
-
-    // ncclSum, used in Chapters 8-11, would leave every replica with
-    // the SUM of every other replica's gradient -- exactly N times
-    // too large an update. ncclAvg divides by the number of ranks in
-    // the communicator as part of the same reduction, so the result
-    // is already the correct per-parameter average gradient.
-    ncclResult_t eAllReduceAvg = ncclAllReduce(localGradients, localGradients, WEIGHT_COUNT,
-                                                ncclFloat, ncclAvg, comm, stream);
-    printf("ncclAllReduce(localGradients, ..., ncclAvg, ...): %s (code %d)\n",
-           ncclGetErrorString(eAllReduceAvg), (int)eAllReduceAvg);
-
-    // For contrast: the same call with ncclSum, this book's only
-    // reduction op through Chapter 11 -- genuinely a different real
-    // call, not a relabeling of the one above.
-    ncclResult_t eAllReduceSum = ncclAllReduce(localGradients, localGradients, WEIGHT_COUNT,
-                                                ncclFloat, ncclSum, comm, stream);
-    printf("ncclAllReduce(localGradients, ..., ncclSum, ...): %s (code %d)\n",
-           ncclGetErrorString(eAllReduceSum), (int)eAllReduceSum);
-
-    printf("\nBoth calls report the same honest failure this book's\n"
-           "never-successfully-created communicator has reported since\n"
-           "Chapter 11 -- the real difference between ncclAvg and ncclSum\n"
-           "only shows up in what value ends up in the buffer, which needs\n"
-           "a real device to observe. Section 12.3's simulation checks that\n"
-           "difference the way this book always has when hardware can't:\n"
-           "against an independent reference, computed on the host.\n");
-
-    return 0;
+int main(){
+ int count=0;CUDA(cudaGetDeviceCount(&count));if(count<2){printf("BLOCKED: requires 2 GPUs; found %d.\n",count);return 2;}
+ const int world=std::min(count,4), n=257;
+ std::vector<ncclComm_t> comm(world,nullptr);NCCL(ncclCommInitAll(comm.data(),world,nullptr));
+ std::vector<cudaStream_t> stream(world,nullptr);std::vector<float*> input(world,nullptr),output(world,nullptr);
+ for(int rank=0;rank<world;++rank){CUDA(cudaSetDevice(rank));CUDA(cudaStreamCreate(&stream[rank]));CUDA(cudaMalloc(&input[rank],n*sizeof(float)));CUDA(cudaMalloc(&output[rank],n*sizeof(float)));std::vector<float> values(n);
+ for(int i=0;i<n;++i)values[i]=float(rank*16+i%11)/8.0f;
+ CUDA(cudaMemcpy(input[rank],values.data(),n*sizeof(float),cudaMemcpyHostToDevice));CUDA(cudaMemset(output[rank],0xff,n*sizeof(float)));}
+ NCCL(ncclGroupStart());for(int rank=0;rank<world;++rank){CUDA(cudaSetDevice(rank));NCCL(ncclAllReduce(input[rank],output[rank],n,ncclFloat,ncclAvg,comm[rank],stream[rank]));}NCCL(ncclGroupEnd());
+ for(int rank=0;rank<world;++rank){CUDA(cudaSetDevice(rank));CUDA(cudaStreamSynchronize(stream[rank]));std::vector<float> got(n);CUDA(cudaMemcpy(got.data(),output[rank],n*sizeof(float),cudaMemcpyDeviceToHost));
+ for(int i=0;i<n;++i){float expected=float(8*(world-1)+i%11)/8.0f;if(!std::isfinite(got[i])||std::fabs(got[i]-expected)>1e-5f){fprintf(stderr,"FAIL rank %d output[%d] got %.9g expected %.9g\n",rank,i,got[i],expected);return 1;}}}
+ NCCL(ncclGroupStart());for(int rank=0;rank<world;++rank){CUDA(cudaSetDevice(rank));NCCL(ncclAllReduce(input[rank],output[rank],n,ncclFloat,ncclSum,comm[rank],stream[rank]));}NCCL(ncclGroupEnd());
+ for(int rank=0;rank<world;++rank){CUDA(cudaSetDevice(rank));CUDA(cudaStreamSynchronize(stream[rank]));std::vector<float> got(n);CUDA(cudaMemcpy(got.data(),output[rank],n*sizeof(float),cudaMemcpyDeviceToHost));for(int i=0;i<n;++i){float expected=float(8*world*(world-1)+world*(i%11))/8.0f;if(!std::isfinite(got[i])||got[i]!=expected){fprintf(stderr,"FAIL sum gradient rank %d index %d\n",rank,i);return 1;}}}
+ for(int rank=0;rank<world;++rank){CUDA(cudaSetDevice(rank));CUDA(cudaStreamDestroy(stream[rank]));CUDA(cudaFree(input[rank]));CUDA(cudaFree(output[rank]));NCCL(ncclCommDestroy(comm[rank]));}
+ printf("PASS: average and sum gradient AllReduce on %d GPUs; all reference values checked.\n",world);return 0;
 }

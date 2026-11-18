@@ -1,0 +1,22 @@
+$ /home/ubuntu/codex-multigpu-audit-20261117/multi-gpu-audit/artifacts/h100-reviewed-20261117/106_netting_set_exposure_order_simulation/example
+Real cited rule (Oracle FSA docs): "Positive Netted" exposure = sum of trades WITHIN a netting set, THEN floored at zero -- not each trade floored separately and then summed.
+
+Set #      Gross exposure   Netted exposure  Reduction   
+0          32.8400          0.0000           100.0      %
+1          34.5900          20.9100          39.5       %
+2          38.4400          0.0000           100.0      %
+3          43.2600          0.0000           100.0      %
+4          14.3100          0.0000           100.0      %
+5          42.1800          0.0000           100.0      %
+6          6.6300           0.0000           100.0      %
+7          84.4400          68.4000          19.0       %
+
+(remaining 492 netting sets computed but not printed individually)
+
+Across all 500 randomly generated netting sets (5 trades each):
+Total gross exposure (floor-then-sum):  31101.2000
+Total netted exposure (sum-then-floor): 13026.1900
+Overall reduction from netting: 58.12%
+Cases where netted exposure exceeded gross exposure: 0 (the positive-part subadditivity inequality max(0,a+b) <= max(0,a)+max(0,b) predicts this must always be zero).
+
+This confirms, by direct simulation rather than assumption, the real economic claim behind a netting agreement: netting trades BEFORE applying the positive-exposure floor can only ever reduce or match counterparty exposure, never increase it. Unlike every earlier non-associativity finding in this book (Chapter 8/25/29/31/32/35 -- all about floating-point SUMMATION order across ranks or transpose phases), this chapter's own order-sensitivity is about which NONLINEAR operation (the zero-floor) is applied at which STAGE of a single path's own local computation -- a real economic distinction, not a floating-point rounding one, and the entire reason netting sets exist as a real risk-management concept.

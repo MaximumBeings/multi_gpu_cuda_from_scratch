@@ -12,6 +12,8 @@
         <meta name="author" content="Oluwaseyi Awoga">
       
       
+        <link rel="canonical" href="https://maximumbeings.github.io/multi_gpu_cuda_from_scratch/part1/05-explicit-transfers-cudamemcpypeer-staged-host-transfers/">
+      
       
         <link rel="prev" href="../04-peer-to-peer-memory-access-and-uva/">
       
@@ -23,7 +25,7 @@
       
       
       <link rel="icon" href="../../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.8.1">
     
     
       
@@ -31,10 +33,10 @@
       
     
     
-      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      <link rel="stylesheet" href="../../assets/stylesheets/main.57a0d79d.min.css">
       
         
-        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.fb2fffe2.min.css">
       
       
 
@@ -52,6 +54,8 @@
         <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
       
     
+    
+      <link rel="stylesheet" href="../../stylesheets/illustrations.css">
     
     <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
     
@@ -195,6 +199,18 @@
       
     
     
+      <div class="md-header__source">
+        <a href="https://github.com/MaximumBeings/multi_gpu_cuda_from_scratch" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    MaximumBeings/multi_gpu_cuda_from_scratch
+  </div>
+</a>
+      </div>
+    
   </nav>
   
 </header>
@@ -228,6 +244,18 @@
     </a>
     Multi-GPU Programming in CUDA C++ -- Under Development
   </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/MaximumBeings/multi_gpu_cuda_from_scratch" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    MaximumBeings/multi_gpu_cuda_from_scratch
+  </div>
+</a>
+    </div>
   
   <ul class="md-nav__list" data-md-scrollfix>
     
@@ -291,6 +319,60 @@
   
   
   
+    <li class="md-nav__item">
+      <a href="../../validation-a100/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    A100 Execution Validation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../validation-h100/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    H100 Execution Validation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
     
     
     
@@ -307,10 +389,10 @@
         
           
         
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3" >
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5" >
         
           
-          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="">
             
   
   
@@ -328,8 +410,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_3">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -452,10 +534,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" checked>
         
           
-          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="">
             
   
   
@@ -473,8 +555,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="true">
-          <label class="md-nav__title" for="__nav_4">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_6">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -833,10 +915,10 @@
         
           
         
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5" >
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_7" >
         
           
-          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="">
+          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="">
             
   
   
@@ -854,8 +936,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_5">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -1006,10 +1088,10 @@
         
           
         
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6" >
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_8" >
         
           
-          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="">
+          <label class="md-nav__link" for="__nav_8" id="__nav_8_label" tabindex="">
             
   
   
@@ -1027,8 +1109,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_6">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_8">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -1207,10 +1289,10 @@
         
           
         
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_7" >
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_9" >
         
           
-          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="">
+          <label class="md-nav__link" for="__nav_9" id="__nav_9_label" tabindex="">
             
   
   
@@ -1228,8 +1310,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_7">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_9">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -1352,10 +1434,10 @@
         
           
         
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_8" >
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_10" >
         
           
-          <label class="md-nav__link" for="__nav_8" id="__nav_8_label" tabindex="">
+          <label class="md-nav__link" for="__nav_10" id="__nav_10_label" tabindex="">
             
   
   
@@ -1373,8 +1455,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_8">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_10_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_10">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -1525,10 +1607,10 @@
         
           
         
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_9" >
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_11" >
         
           
-          <label class="md-nav__link" for="__nav_9" id="__nav_9_label" tabindex="">
+          <label class="md-nav__link" for="__nav_11" id="__nav_11_label" tabindex="">
             
   
   
@@ -1546,8 +1628,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_9_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_9">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_11_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_11">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -1810,10 +1892,10 @@
         
           
         
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_10" >
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_12" >
         
           
-          <label class="md-nav__link" for="__nav_10" id="__nav_10_label" tabindex="">
+          <label class="md-nav__link" for="__nav_12" id="__nav_12_label" tabindex="">
             
   
   
@@ -1831,8 +1913,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_10_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_10">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_12_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_12">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -2123,10 +2205,10 @@
         
           
         
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_11" >
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_13" >
         
           
-          <label class="md-nav__link" for="__nav_11" id="__nav_11_label" tabindex="">
+          <label class="md-nav__link" for="__nav_13" id="__nav_13_label" tabindex="">
             
   
   
@@ -2144,8 +2226,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_11_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_11">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_13_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_13">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -2561,12 +2643,24 @@
                   
 
 
+  
+  
+
 
 <h1 id="chapter-5-explicit-transfers-cudamemcpypeer-staged-host-transfers-and-when-each-wins">Chapter 5: Explicit Transfers -- cudaMemcpyPeer, Staged Host Transfers, and When Each Wins<a class="headerlink" href="#chapter-5-explicit-transfers-cudamemcpypeer-staged-host-transfers-and-when-each-wins" title="Permanent link">&para;</a></h1>
+<!-- execution:provenance -->
+<div class="admonition info">
+<p class="admonition-title">Execution provenance</p>
+<p>Current execution blocks identify the tested source hash, hardware dataset, commands and captured output. References elsewhere on this page to a device-less environment describe the original authoring context. Historical output is superseded by the current record. Displayed output omits the runner command header and trims trailing line whitespace; raw logs remain exact. A host simulation or API validation has its stated scope; neither alone establishes a numerical multi-GPU workload or measured performance.</p>
+</div>
+<!-- mgpu:opener:start -->
+<p><a href="../../images/chapter-openers/05.svg"><img alt="Chapter 5: Explicit Transfers -- cudaMemcpyPeer, Staged Host Transfers, and When Each Wins" src="../../images/chapter-openers/05.svg" /></a></p>
+<!-- mgpu:opener:end -->
+
 <p><strong>What you will understand by the end of this chapter:</strong></p>
 <ul>
-<li>Why cross-device copies have their own dedicated Runtime API call, <code>cudaMemcpyPeer()</code>, rather than relying on the ordinary <code>cudaMemcpy()</code> with <code>cudaMemcpyDefault</code> to infer the route automatically.</li>
-<li>What <code>cudaMemcpyPeer()</code> actually falls back to, silently, whenever peer access between two devices has not been enabled -- and why that fallback is worth writing out explicitly, by hand, at least once.</li>
+<li>The two ways to copy between devices: the dedicated Runtime API call <code>cudaMemcpyPeer()</code>, which names both devices explicitly, and the ordinary <code>cudaMemcpy()</code> with <code>cudaMemcpyDeviceToDevice</code> or <code>cudaMemcpyDefault</code>, which works for peer copies too under Unified Virtual Addressing.</li>
+<li>What the documentation says a peer copy falls back to, silently, whenever peer access between two devices has not been enabled -- staging through the host -- and why writing that fallback out explicitly, by hand, at least once is worth doing.</li>
 <li>How to reason quantitatively about which route wins, using only this book's own already-cited hardware bandwidth figures rather than any new fabricated timing.</li>
 </ul>
 <p><strong>What you need to know first:</strong></p>
@@ -2576,122 +2670,191 @@
 <li>Ordinary C++ and the CUDA Runtime API calls from Chapters 1-4. No new CUDA concepts beyond this chapter's own two functions.</li>
 </ul>
 <hr />
-<p>Chapter 4 established <em>whether</em> two devices are allowed to touch each other's memory directly. This chapter is about the calls that actually move the bytes once that permission exists -- and, just as importantly, about what happens when it doesn't. CUDA gives cross-device copies their own dedicated function rather than folding them into the ordinary <code>cudaMemcpy()</code> interface, and that function's behavior quietly changes shape depending on Chapter 4's peer-access state: fast and direct when peer access is enabled, staged through the host and slower when it isn't, with the same function signature either way. This chapter makes both paths concrete, and then asks the question a real multi-GPU program actually has to answer: given a specific pair of devices and a specific topology, which route wins, and by how much?</p>
+<p>Chapter 4 established <em>whether</em> two devices are allowed to touch each other's memory directly. This chapter is about the calls that actually move the bytes once that permission exists -- and, just as importantly, about what happens when it doesn't. CUDA gives cross-device copies a dedicated function, <code>cudaMemcpyPeer()</code>, alongside the ordinary <code>cudaMemcpy()</code> interface (which also handles peer copies), and a peer copy's behavior quietly changes shape depending on Chapter 4's peer-access state: fast and direct when peer access is enabled, staged through the host and slower when it isn't, with the same function signature either way. This chapter makes both paths concrete, and then asks the question a real multi-GPU program actually has to answer: given a specific pair of devices and a specific topology, which route wins, and by how much?</p>
 <h2 id="51-cudamemcpypeer-the-dedicated-cross-device-copy-call">5.1 cudaMemcpyPeer: The Dedicated Cross-Device Copy Call<a class="headerlink" href="#51-cudamemcpypeer-the-dedicated-cross-device-copy-call" title="Permanent link">&para;</a></h2>
+<!-- mgpu:figure-1:start -->
+<p><a href="../../images/technical/ch05/1-transfer.svg"><img alt="Peer copy names both endpoints" src="../../images/technical/ch05/1-transfer.svg" /></a></p>
+<!-- mgpu:figure-1:end -->
+
 <h3 id="intuition">Intuition<a class="headerlink" href="#intuition" title="Permanent link">&para;</a></h3>
-<p><code>cudaMemcpy()</code> with <code>cudaMemcpyDefault</code> (Chapter 4) can infer a copy's direction because UVA makes every pointer's owner identifiable. But identifying <em>what</em> a pointer is isn't the same as deciding <em>how</em> to move it when the source and destination belong to two different devices -- that decision depends on Chapter 4's peer-access state, which is per-pair, queryable, and can change at runtime. Rather than hide that decision inside the general-purpose <code>cudaMemcpy()</code>, CUDA gives cross-device copies their own explicit call, <code>cudaMemcpyPeer()</code>, that names both devices directly. One function, two very different execution paths underneath, chosen automatically based on whether Chapter 4's setup sequence has already run for that specific ordered pair.</p>
+<p><code>cudaMemcpy()</code> with <code>cudaMemcpyDefault</code> (Chapter 4) can infer a copy's direction because UVA makes every pointer's owner identifiable, and that includes a copy whose source and destination live on two different devices. The CUDA Programming Guide says so directly: on systems with unified addressing, a peer copy can be done with the ordinary <code>cudaMemcpy()</code> using <code>cudaMemcpyDeviceToDevice</code> or <code>cudaMemcpyDefault</code>, not only with the dedicated peer functions. CUDA also provides an explicit call, <code>cudaMemcpyPeer()</code>, that names both devices directly instead of leaving the runtime to work them out from the pointers. This chapter uses <code>cudaMemcpyPeer()</code> because naming the two devices keeps the cross-device nature of the copy visible in the code, but either way the route the bytes take depends on Chapter 4's peer-access state, which is per-pair, queryable, and can change at runtime. One copy, two very different execution paths underneath, chosen automatically based on whether Chapter 4's setup sequence has already run for that specific ordered pair.</p>
 <h3 id="background">Background<a class="headerlink" href="#background" title="Permanent link">&para;</a></h3>
-<p><code>cudaMemcpyPeer(dst, dstDevice, src, srcDevice, count)</code> copies <code>count</code> bytes from <code>src</code> on <code>srcDevice</code> to <code>dst</code> on <code>dstDevice</code>. Per the CUDA Runtime API documentation, this call "is asynchronous with respect to the host, but serialized with respect [to] all pending and future asynchronous work in the current device, <code>srcDevice</code>, and <code>dstDevice</code>" -- meaning it returns to the host immediately, but the copy itself still waits its turn against other work already queued on any of the three devices involved. <code>cudaMemcpyPeerAsync()</code> adds an explicit stream argument for finer-grained ordering against other stream-issued work, the same stream-ordering model Chapter 4 introduced. Crucially, the CUDA Programming Guide's multi-GPU chapter states plainly what determines the actual route taken: "If peer-to-peer access is enabled between two devices, ... peer-to-peer memory copies between these two devices no longer need to be staged through the host and are therefore faster." The function signature and its performance are two separate questions -- the call always works the same way from the caller's side; only its internal routing depends on Chapter 4's state.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="c1">// Chapter 5: Explicit Transfers -- cudaMemcpyPeer, Staged Host Transfers,</span>
-<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="c1">// and When Each Wins</span>
-<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="c1">// 11_memcpy_peer.cu</span>
-<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="c1">//</span>
-<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="c1">// The real, dedicated cross-device copy calls: cudaMemcpyPeer() and its</span>
-<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="c1">// asynchronous, stream-ordered counterpart cudaMemcpyPeerAsync(). Both</span>
-<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="c1">// genuinely compiled with a real nvcc and genuinely run; on this</span>
-<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a><span class="c1">// driver-less machine every call fails at the same first step this</span>
-<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a><span class="c1">// book has reported since Chapter 1.</span>
-<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;cstdio&gt;</span>
-<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;cuda_runtime.h&gt;</span>
-<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>
-<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a><span class="kt">int</span><span class="w"> </span><span class="nf">main</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
-<a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a><span class="w">    </span><span class="kt">void</span><span class="o">*</span><span class="w"> </span><span class="n">devPtr0</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nb">nullptr</span><span class="p">;</span>
-<a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a><span class="w">    </span><span class="kt">void</span><span class="o">*</span><span class="w"> </span><span class="n">devPtr1</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nb">nullptr</span><span class="p">;</span>
-<a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a>
-<a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a><span class="w">    </span><span class="n">cudaError_t</span><span class="w"> </span><span class="n">eAlloc0</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">cudaMalloc</span><span class="p">(</span><span class="o">&amp;</span><span class="n">devPtr0</span><span class="p">,</span><span class="w"> </span><span class="mi">64</span><span class="p">);</span>
-<a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;cudaMalloc(device 0 buffer): %s (code %d)</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">cudaGetErrorString</span><span class="p">(</span><span class="n">eAlloc0</span><span class="p">),</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="p">)</span><span class="n">eAlloc0</span><span class="p">);</span>
-<a id="__codelineno-0-19" name="__codelineno-0-19" href="#__codelineno-0-19"></a>
-<a id="__codelineno-0-20" name="__codelineno-0-20" href="#__codelineno-0-20"></a><span class="w">    </span><span class="n">cudaError_t</span><span class="w"> </span><span class="n">eAlloc1</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">cudaMalloc</span><span class="p">(</span><span class="o">&amp;</span><span class="n">devPtr1</span><span class="p">,</span><span class="w"> </span><span class="mi">64</span><span class="p">);</span>
-<a id="__codelineno-0-21" name="__codelineno-0-21" href="#__codelineno-0-21"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;cudaMalloc(device 1 buffer): %s (code %d)</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">cudaGetErrorString</span><span class="p">(</span><span class="n">eAlloc1</span><span class="p">),</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="p">)</span><span class="n">eAlloc1</span><span class="p">);</span>
-<a id="__codelineno-0-22" name="__codelineno-0-22" href="#__codelineno-0-22"></a>
-<a id="__codelineno-0-23" name="__codelineno-0-23" href="#__codelineno-0-23"></a><span class="w">    </span><span class="n">cudaError_t</span><span class="w"> </span><span class="n">e1</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">cudaMemcpyPeer</span><span class="p">(</span><span class="n">devPtr1</span><span class="p">,</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span><span class="w"> </span><span class="n">devPtr0</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="mi">64</span><span class="p">);</span>
-<a id="__codelineno-0-24" name="__codelineno-0-24" href="#__codelineno-0-24"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;cudaMemcpyPeer(dst=dev1, src=dev0, 64 bytes): %s (code %d)</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span>
-<a id="__codelineno-0-25" name="__codelineno-0-25" href="#__codelineno-0-25"></a><span class="w">           </span><span class="n">cudaGetErrorString</span><span class="p">(</span><span class="n">e1</span><span class="p">),</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="p">)</span><span class="n">e1</span><span class="p">);</span>
-<a id="__codelineno-0-26" name="__codelineno-0-26" href="#__codelineno-0-26"></a>
-<a id="__codelineno-0-27" name="__codelineno-0-27" href="#__codelineno-0-27"></a><span class="w">    </span><span class="n">cudaStream_t</span><span class="w"> </span><span class="n">stream</span><span class="p">;</span>
-<a id="__codelineno-0-28" name="__codelineno-0-28" href="#__codelineno-0-28"></a><span class="w">    </span><span class="n">cudaError_t</span><span class="w"> </span><span class="n">eStream</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">cudaStreamCreate</span><span class="p">(</span><span class="o">&amp;</span><span class="n">stream</span><span class="p">);</span>
-<a id="__codelineno-0-29" name="__codelineno-0-29" href="#__codelineno-0-29"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;cudaStreamCreate: %s (code %d)</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">cudaGetErrorString</span><span class="p">(</span><span class="n">eStream</span><span class="p">),</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="p">)</span><span class="n">eStream</span><span class="p">);</span>
-<a id="__codelineno-0-30" name="__codelineno-0-30" href="#__codelineno-0-30"></a>
-<a id="__codelineno-0-31" name="__codelineno-0-31" href="#__codelineno-0-31"></a><span class="w">    </span><span class="n">cudaError_t</span><span class="w"> </span><span class="n">e2</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">cudaMemcpyPeerAsync</span><span class="p">(</span><span class="n">devPtr0</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="n">devPtr1</span><span class="p">,</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span><span class="w"> </span><span class="mi">64</span><span class="p">,</span><span class="w"> </span><span class="n">stream</span><span class="p">);</span>
-<a id="__codelineno-0-32" name="__codelineno-0-32" href="#__codelineno-0-32"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;cudaMemcpyPeerAsync(dst=dev0, src=dev1, 64 bytes, on stream): %s (code %d)</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span>
-<a id="__codelineno-0-33" name="__codelineno-0-33" href="#__codelineno-0-33"></a><span class="w">           </span><span class="n">cudaGetErrorString</span><span class="p">(</span><span class="n">e2</span><span class="p">),</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="p">)</span><span class="n">e2</span><span class="p">);</span>
-<a id="__codelineno-0-34" name="__codelineno-0-34" href="#__codelineno-0-34"></a>
-<a id="__codelineno-0-35" name="__codelineno-0-35" href="#__codelineno-0-35"></a><span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">eAlloc0</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="n">cudaSuccess</span><span class="p">)</span><span class="w"> </span><span class="n">cudaFree</span><span class="p">(</span><span class="n">devPtr0</span><span class="p">);</span>
-<a id="__codelineno-0-36" name="__codelineno-0-36" href="#__codelineno-0-36"></a><span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">eAlloc1</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="n">cudaSuccess</span><span class="p">)</span><span class="w"> </span><span class="n">cudaFree</span><span class="p">(</span><span class="n">devPtr1</span><span class="p">);</span>
-<a id="__codelineno-0-37" name="__codelineno-0-37" href="#__codelineno-0-37"></a><span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">eStream</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="n">cudaSuccess</span><span class="p">)</span><span class="w"> </span><span class="n">cudaStreamDestroy</span><span class="p">(</span><span class="n">stream</span><span class="p">);</span>
-<a id="__codelineno-0-38" name="__codelineno-0-38" href="#__codelineno-0-38"></a><span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
-<a id="__codelineno-0-39" name="__codelineno-0-39" href="#__codelineno-0-39"></a><span class="p">}</span>
+<p><code>cudaMemcpyPeer(dst, dstDevice, src, srcDevice, count)</code> copies <code>count</code> bytes from <code>src</code> on <code>srcDevice</code> to <code>dst</code> on <code>dstDevice</code>. Per the CUDA Runtime API documentation, this call "is asynchronous with respect to the host, but serialized with respect [to] all pending and future asynchronous work in the current device, <code>srcDevice</code>, and <code>dstDevice</code>" -- meaning it returns to the host immediately, but the copy itself still waits its turn against other work already queued on any of the three devices involved. <code>cudaMemcpyPeerAsync()</code> adds an explicit stream argument for finer-grained ordering against other stream-issued work, the same stream-ordering model Chapter 3 introduced. Crucially, the CUDA Programming Guide's multi-GPU chapter states plainly what determines the actual route taken: "If peer-to-peer access is enabled between two devices, ... peer-to-peer memory copies between these two devices no longer need to be staged through the host and are therefore faster." The function signature and its performance are two separate questions -- the call always works the same way from the caller's side; only its internal routing depends on Chapter 4's state.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="c1">// Chapter 5: checked synchronous and asynchronous peer transfers.</span>
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="c1">// 11_memcpy_peer.cu</span>
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;cstdio&gt;</span>
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;vector&gt;</span>
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;cuda_runtime.h&gt;</span>
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="cp">#define CUDA(call) do { cudaError_t status = (call); if (status != cudaSuccess) { \</span>
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="cp">    fprintf(stderr, "%s: %s\n", #call, cudaGetErrorString(status)); \</span>
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a><span class="cp">    return status == cudaErrorNoDevice || status == cudaErrorInsufficientDriver ? 2 : 1; } } while (0)</span>
+<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a><span class="kt">int</span><span class="w"> </span><span class="nf">main</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a><span class="w">    </span><span class="kt">int</span><span class="w"> </span><span class="n">count</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
+<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a><span class="w">    </span><span class="n">CUDA</span><span class="p">(</span><span class="n">cudaGetDeviceCount</span><span class="p">(</span><span class="o">&amp;</span><span class="n">count</span><span class="p">));</span>
+<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a><span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">count</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="mi">2</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">printf</span><span class="p">(</span><span class="s">"BLOCKED: requires 2 GPUs; found %d.</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span><span class="w"> </span><span class="n">count</span><span class="p">);</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="mi">2</span><span class="p">;</span><span class="w"> </span><span class="p">}</span>
+<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a><span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">n</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">4096</span><span class="p">;</span>
+<a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a><span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="kt">size_t</span><span class="w"> </span><span class="n">bytes</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">n</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="k">sizeof</span><span class="p">(</span><span class="kt">float</span><span class="p">);</span>
+<a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a><span class="w">    </span><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">float</span><span class="o">&gt;</span><span class="w"> </span><span class="n">input</span><span class="p">(</span><span class="n">n</span><span class="p">),</span><span class="w"> </span><span class="n">output</span><span class="p">(</span><span class="n">n</span><span class="p">);</span>
+<a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a><span class="w">    </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="n">n</span><span class="p">;</span><span class="w"> </span><span class="o">++</span><span class="n">i</span><span class="p">)</span><span class="w"> </span><span class="n">input</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kt">float</span><span class="p">((</span><span class="n">i</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="mi">17</span><span class="p">)</span><span class="w"> </span><span class="o">%</span><span class="w"> </span><span class="mi">4093</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="mi">2046</span><span class="p">)</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="mf">8.0f</span><span class="p">;</span>
+<a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a><span class="w">    </span><span class="kt">float</span><span class="w"> </span><span class="o">*</span><span class="n">source</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nb">nullptr</span><span class="p">,</span><span class="w"> </span><span class="o">*</span><span class="n">destination</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nb">nullptr</span><span class="p">;</span>
+<a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a><span class="w">    </span><span class="n">CUDA</span><span class="p">(</span><span class="n">cudaSetDevice</span><span class="p">(</span><span class="mi">0</span><span class="p">));</span>
+<a id="__codelineno-0-19" name="__codelineno-0-19" href="#__codelineno-0-19"></a><span class="w">    </span><span class="n">CUDA</span><span class="p">(</span><span class="n">cudaMalloc</span><span class="p">(</span><span class="o">&amp;</span><span class="n">source</span><span class="p">,</span><span class="w"> </span><span class="n">bytes</span><span class="p">));</span>
+<a id="__codelineno-0-20" name="__codelineno-0-20" href="#__codelineno-0-20"></a><span class="w">    </span><span class="n">CUDA</span><span class="p">(</span><span class="n">cudaMemcpy</span><span class="p">(</span><span class="n">source</span><span class="p">,</span><span class="w"> </span><span class="n">input</span><span class="p">.</span><span class="n">data</span><span class="p">(),</span><span class="w"> </span><span class="n">bytes</span><span class="p">,</span><span class="w"> </span><span class="n">cudaMemcpyHostToDevice</span><span class="p">));</span>
+<a id="__codelineno-0-21" name="__codelineno-0-21" href="#__codelineno-0-21"></a><span class="w">    </span><span class="n">CUDA</span><span class="p">(</span><span class="n">cudaSetDevice</span><span class="p">(</span><span class="mi">1</span><span class="p">));</span>
+<a id="__codelineno-0-22" name="__codelineno-0-22" href="#__codelineno-0-22"></a><span class="w">    </span><span class="n">CUDA</span><span class="p">(</span><span class="n">cudaMalloc</span><span class="p">(</span><span class="o">&amp;</span><span class="n">destination</span><span class="p">,</span><span class="w"> </span><span class="n">bytes</span><span class="p">));</span>
+<a id="__codelineno-0-23" name="__codelineno-0-23" href="#__codelineno-0-23"></a><span class="w">    </span><span class="n">CUDA</span><span class="p">(</span><span class="n">cudaMemset</span><span class="p">(</span><span class="n">destination</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="n">bytes</span><span class="p">));</span>
+<a id="__codelineno-0-24" name="__codelineno-0-24" href="#__codelineno-0-24"></a><span class="w">    </span><span class="n">CUDA</span><span class="p">(</span><span class="n">cudaMemcpyPeer</span><span class="p">(</span><span class="n">destination</span><span class="p">,</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span><span class="w"> </span><span class="n">source</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="n">bytes</span><span class="p">));</span>
+<a id="__codelineno-0-25" name="__codelineno-0-25" href="#__codelineno-0-25"></a><span class="w">    </span><span class="n">CUDA</span><span class="p">(</span><span class="n">cudaDeviceSynchronize</span><span class="p">());</span>
+<a id="__codelineno-0-26" name="__codelineno-0-26" href="#__codelineno-0-26"></a><span class="w">    </span><span class="n">CUDA</span><span class="p">(</span><span class="n">cudaMemcpy</span><span class="p">(</span><span class="n">output</span><span class="p">.</span><span class="n">data</span><span class="p">(),</span><span class="w"> </span><span class="n">destination</span><span class="p">,</span><span class="w"> </span><span class="n">bytes</span><span class="p">,</span><span class="w"> </span><span class="n">cudaMemcpyDeviceToHost</span><span class="p">));</span>
+<a id="__codelineno-0-27" name="__codelineno-0-27" href="#__codelineno-0-27"></a><span class="w">    </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="n">n</span><span class="p">;</span><span class="w"> </span><span class="o">++</span><span class="n">i</span><span class="p">)</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">output</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="n">input</span><span class="p">[</span><span class="n">i</span><span class="p">])</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-0-28" name="__codelineno-0-28" href="#__codelineno-0-28"></a><span class="w">        </span><span class="n">fprintf</span><span class="p">(</span><span class="n">stderr</span><span class="p">,</span><span class="w"> </span><span class="s">"FAIL: synchronous payload[%d]</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span><span class="w"> </span><span class="n">i</span><span class="p">);</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="mi">1</span><span class="p">;</span>
+<a id="__codelineno-0-29" name="__codelineno-0-29" href="#__codelineno-0-29"></a><span class="w">    </span><span class="p">}</span>
+<a id="__codelineno-0-30" name="__codelineno-0-30" href="#__codelineno-0-30"></a><span class="w">    </span><span class="c1">// Reverse direction, after poisoning the original buffer, exercises Async.</span>
+<a id="__codelineno-0-31" name="__codelineno-0-31" href="#__codelineno-0-31"></a><span class="w">    </span><span class="n">CUDA</span><span class="p">(</span><span class="n">cudaSetDevice</span><span class="p">(</span><span class="mi">0</span><span class="p">));</span>
+<a id="__codelineno-0-32" name="__codelineno-0-32" href="#__codelineno-0-32"></a><span class="w">    </span><span class="n">CUDA</span><span class="p">(</span><span class="n">cudaMemset</span><span class="p">(</span><span class="n">source</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="n">bytes</span><span class="p">));</span>
+<a id="__codelineno-0-33" name="__codelineno-0-33" href="#__codelineno-0-33"></a><span class="w">    </span><span class="n">cudaStream_t</span><span class="w"> </span><span class="n">stream</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nb">nullptr</span><span class="p">;</span>
+<a id="__codelineno-0-34" name="__codelineno-0-34" href="#__codelineno-0-34"></a><span class="w">    </span><span class="n">CUDA</span><span class="p">(</span><span class="n">cudaStreamCreate</span><span class="p">(</span><span class="o">&amp;</span><span class="n">stream</span><span class="p">));</span>
+<a id="__codelineno-0-35" name="__codelineno-0-35" href="#__codelineno-0-35"></a><span class="w">    </span><span class="n">CUDA</span><span class="p">(</span><span class="n">cudaMemcpyPeerAsync</span><span class="p">(</span><span class="n">source</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="n">destination</span><span class="p">,</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span><span class="w"> </span><span class="n">bytes</span><span class="p">,</span><span class="w"> </span><span class="n">stream</span><span class="p">));</span>
+<a id="__codelineno-0-36" name="__codelineno-0-36" href="#__codelineno-0-36"></a><span class="w">    </span><span class="n">CUDA</span><span class="p">(</span><span class="n">cudaStreamSynchronize</span><span class="p">(</span><span class="n">stream</span><span class="p">));</span>
+<a id="__codelineno-0-37" name="__codelineno-0-37" href="#__codelineno-0-37"></a><span class="w">    </span><span class="n">CUDA</span><span class="p">(</span><span class="n">cudaMemcpy</span><span class="p">(</span><span class="n">output</span><span class="p">.</span><span class="n">data</span><span class="p">(),</span><span class="w"> </span><span class="n">source</span><span class="p">,</span><span class="w"> </span><span class="n">bytes</span><span class="p">,</span><span class="w"> </span><span class="n">cudaMemcpyDeviceToHost</span><span class="p">));</span>
+<a id="__codelineno-0-38" name="__codelineno-0-38" href="#__codelineno-0-38"></a><span class="w">    </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="n">n</span><span class="p">;</span><span class="w"> </span><span class="o">++</span><span class="n">i</span><span class="p">)</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">output</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="n">input</span><span class="p">[</span><span class="n">i</span><span class="p">])</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-0-39" name="__codelineno-0-39" href="#__codelineno-0-39"></a><span class="w">        </span><span class="n">fprintf</span><span class="p">(</span><span class="n">stderr</span><span class="p">,</span><span class="w"> </span><span class="s">"FAIL: asynchronous payload[%d]</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span><span class="w"> </span><span class="n">i</span><span class="p">);</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="mi">1</span><span class="p">;</span>
+<a id="__codelineno-0-40" name="__codelineno-0-40" href="#__codelineno-0-40"></a><span class="w">    </span><span class="p">}</span>
+<a id="__codelineno-0-41" name="__codelineno-0-41" href="#__codelineno-0-41"></a><span class="w">    </span><span class="n">CUDA</span><span class="p">(</span><span class="n">cudaStreamDestroy</span><span class="p">(</span><span class="n">stream</span><span class="p">));</span>
+<a id="__codelineno-0-42" name="__codelineno-0-42" href="#__codelineno-0-42"></a><span class="w">    </span><span class="n">CUDA</span><span class="p">(</span><span class="n">cudaFree</span><span class="p">(</span><span class="n">source</span><span class="p">));</span>
+<a id="__codelineno-0-43" name="__codelineno-0-43" href="#__codelineno-0-43"></a><span class="w">    </span><span class="n">CUDA</span><span class="p">(</span><span class="n">cudaSetDevice</span><span class="p">(</span><span class="mi">1</span><span class="p">));</span>
+<a id="__codelineno-0-44" name="__codelineno-0-44" href="#__codelineno-0-44"></a><span class="w">    </span><span class="n">CUDA</span><span class="p">(</span><span class="n">cudaFree</span><span class="p">(</span><span class="n">destination</span><span class="p">));</span>
+<a id="__codelineno-0-45" name="__codelineno-0-45" href="#__codelineno-0-45"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">"PASS: 4096 nonuniform values verified in both peer-copy directions.</span><span class="se">\n</span><span class="s">"</span><span class="p">);</span>
+<a id="__codelineno-0-46" name="__codelineno-0-46" href="#__codelineno-0-46"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">"Copy success does not identify the physical transfer route or bandwidth.</span><span class="se">\n</span><span class="s">"</span><span class="p">);</span>
+<a id="__codelineno-0-47" name="__codelineno-0-47" href="#__codelineno-0-47"></a><span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
+<a id="__codelineno-0-48" name="__codelineno-0-48" href="#__codelineno-0-48"></a><span class="p">}</span>
 </code></pre></div>
-<p>Genuinely compiled with a real <code>nvcc</code> and genuinely run. Locked output, deterministic across repeated runs:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>cudaMalloc(device 0 buffer): no CUDA-capable device is detected (code 100)
-<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>cudaMalloc(device 1 buffer): no CUDA-capable device is detected (code 100)
-<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>cudaMemcpyPeer(dst=dev1, src=dev0, 64 bytes): no CUDA-capable device is detected (code 100)
-<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>cudaStreamCreate: no CUDA-capable device is detected (code 100)
-<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>cudaMemcpyPeerAsync(dst=dev0, src=dev1, 64 bytes, on stream): no CUDA-capable device is detected (code 100)
+<!-- execution:start:a100:11_memcpy_peer.cu -->
+<blockquote>
+<p><strong>Current execution — 2026-11-17-a100: Numerical/transport validation (recorded scope).</strong> UTC (program start): <code>2026-11-18T00:00:36.659156+00:00</code>. Source SHA-256: <code>f8151f3549665a26fc20ba93fea9ba286120e625b4991dc8342e8c3ee030a299</code>.</p>
+</blockquote>
+<p><a href="../../validation/2026-11-17-a100/11_memcpy_peer/11_memcpy_peer.cu">Exact tested source</a> · <a href="../../validation/2026-11-17-a100/11_memcpy_peer/compile.log">Compiler log</a> · <a href="../../validation/2026-11-17-a100/11_memcpy_peer/run.log">Execution log</a>. Compile exit: <code>0</code>; run exit: <code>0</code>.</p>
+<p>Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>nvcc<span class="w"> </span>-std<span class="o">=</span>c++17<span class="w"> </span>-O2<span class="w"> </span>-arch<span class="o">=</span>sm_80<span class="w"> </span>11_memcpy_peer.cu<span class="w"> </span>-o<span class="w"> </span>./example
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>./example
 </code></pre></div>
-<p>Every call fails with the same <code>cudaErrorNoDevice</code> this book has reported consistently since Chapter 1 -- there is no context to allocate the buffers into, let alone copy between them. What this section can verify honestly is narrower but still real: the exact calls, arguments, and compiled binary that a real multi-GPU program would use for this operation, genuinely built by a genuine <code>nvcc</code>.</p>
+<details>
+<summary>Captured current-source output</summary>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>PASS: 4096 nonuniform values verified in both peer-copy directions.
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>Copy success does not identify the physical transfer route or bandwidth.
+</code></pre></div>
+</details>
+<!-- execution:end:a100:11_memcpy_peer.cu -->
+
+<!-- execution:start:h100:11_memcpy_peer.cu -->
+<blockquote>
+<p><strong>Current execution — 2026-11-17-h100: Numerical/transport validation (recorded scope).</strong> UTC (run-batch start; per-program time unrecorded): <code>2026-11-17T23:48:18.967387+00:00</code>. Source SHA-256: <code>f8151f3549665a26fc20ba93fea9ba286120e625b4991dc8342e8c3ee030a299</code>.</p>
+</blockquote>
+<p><a href="../../validation/2026-11-17-h100/11_memcpy_peer/11_memcpy_peer.cu">Exact tested source</a> · <a href="../../validation/2026-11-17-h100/11_memcpy_peer/compile.log">Compiler log</a> · <a href="../../validation/2026-11-17-h100/11_memcpy_peer/run.log">Execution log</a>. Compile exit: <code>0</code>; run exit: <code>0</code>.</p>
+<p>Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>nvcc<span class="w"> </span>-std<span class="o">=</span>c++17<span class="w"> </span>-O2<span class="w"> </span>-arch<span class="o">=</span>sm_90<span class="w"> </span>11_memcpy_peer.cu<span class="w"> </span>-o<span class="w"> </span>./example
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>./example
+</code></pre></div>
+<details>
+<summary>Captured current-source output</summary>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>PASS: 4096 nonuniform values verified in both peer-copy directions.
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>Copy success does not identify the physical transfer route or bandwidth.
+</code></pre></div>
+</details>
+<!-- execution:end:h100:11_memcpy_peer.cu -->
+
+<p><strong>Historical authoring transcript (earlier source).</strong> The current listing fixes device ownership and failed-handle sequencing. The current source was compiled and executed in the dated H100 suite; use the linked record for its numerical, API-probe or other-execution scope.</p>
+<p>The <a href="../../validation-h100/">2026-11-17 H100 execution record</a> covers two GPUs connected by local NV18. It distinguishes numerical checks, API probes and other executions; a successful exit alone does not establish GPU algorithm correctness.</p>
+<details>
+<summary>Historical authoring output — superseded by the current execution above</summary>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>cudaMalloc(device 0 buffer): no CUDA-capable device is detected (code 100)
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>cudaMalloc(device 1 buffer): no CUDA-capable device is detected (code 100)
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>cudaMemcpyPeer(dst=dev1, src=dev0, 64 bytes): no CUDA-capable device is detected (code 100)
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>cudaStreamCreate: no CUDA-capable device is detected (code 100)
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>cudaMemcpyPeerAsync(dst=dev0, src=dev1, 64 bytes, on stream): no CUDA-capable device is detected (code 100)
+</code></pre></div>
+</details>
+<p>The current File 11 initializes data, checks actual peer copies and validates the destination on H100. Earlier no-device diagnostics established neither allocation nor data movement.</p>
+<p>The <a href="../../validation-h100/">2026-11-17 H100 execution record</a> covers two GPUs connected by local NV18. It distinguishes numerical checks, API probes and other executions; a successful exit alone does not establish GPU algorithm correctness.</p>
 <div class="admonition warning">
 <p class="admonition-title">[COMMON TRAP] Assuming cudaMemcpyPeer() itself tells you whether the fast path was used</p>
 <p><code>cudaMemcpyPeer()</code> returns <code>cudaSuccess</code> whether it took the direct peer route or silently fell back to staging through the host -- the function's return value reports <em>correctness</em>, not <em>which mechanism ran</em>. There is no flag in its signature that reports back which path was taken. The only way to know is to have already checked <code>cudaDeviceCanAccessPeer()</code> (Chapter 4, Section 4.2) for that exact ordered pair <em>before</em> calling it -- the copy's success tells you the data arrived; it says nothing about how.</p>
 </div>
 <h2 id="52-staged-host-transfers-the-fallback-made-explicit">5.2 Staged Host Transfers: The Fallback, Made Explicit<a class="headerlink" href="#52-staged-host-transfers-the-fallback-made-explicit" title="Permanent link">&para;</a></h2>
+<!-- mgpu:figure-2:start -->
+<p><a href="../../images/technical/ch05/2-staging.svg"><img alt="Host staging has two transfer legs" src="../../images/technical/ch05/2-staging.svg" /></a></p>
+<!-- mgpu:figure-2:end -->
+
 <h3 id="intuition_1">Intuition<a class="headerlink" href="#intuition_1" title="Permanent link">&para;</a></h3>
 <p>Section 5.1 quoted the documentation's own description of what happens when peer access isn't enabled: the copy is "staged through the host." That phrase describes a real, ordinary two-step process -- copy the source device's data to a host buffer, then copy that host buffer to the destination device -- using nothing more exotic than two calls this book already introduced in Chapter 3 and 4. Writing that fallback out explicitly, by hand, rather than only invoking it implicitly inside <code>cudaMemcpyPeer()</code>, makes concrete exactly what "staged" costs: two separate transfers over the host's PCIe links, each moving the <em>entire</em> payload, rather than one transfer over whatever direct link (if any) connects the two devices.</p>
 <h3 id="background_1">Background<a class="headerlink" href="#background_1" title="Permanent link">&para;</a></h3>
-<p>The staged pattern is two ordinary <code>cudaMemcpy()</code> calls with a host buffer as the waypoint: <code>cudaMemcpy(hostBuffer, srcDevicePtr, bytes, cudaMemcpyDeviceToHost)</code> followed by <code>cudaMemcpy(dstDevicePtr, hostBuffer, bytes, cudaMemcpyHostToDevice)</code>. This is not a simplification of what <code>cudaMemcpyPeer()</code> does internally when peer access is absent -- it is, functionally, the same two-hop path, made visible instead of hidden inside one function call. Using a pinned (<code>cudaMallocHost()</code>-allocated) host buffer as the waypoint matters here for the same reason it mattered in Chapter 4's UVA discussion: a pinned allocation is a fixed, DMA-eligible physical address the driver can transfer to and from directly, rather than a page the OS might need to fault in or relocate mid-copy.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="c1">// Chapter 5: Explicit Transfers -- cudaMemcpyPeer, Staged Host Transfers,</span>
-<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="c1">// and When Each Wins</span>
-<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="c1">// 12_staged_host_transfer.cu</span>
-<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="c1">//</span>
-<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="c1">// The staged fallback made explicit: two ordinary cudaMemcpy() calls,</span>
-<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a><span class="c1">// device 0 -&gt; host, then host -&gt; device 1, using a pinned host buffer</span>
-<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a><span class="c1">// as the waypoint. This is the exact call pattern cudaMemcpyPeer()</span>
-<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a><span class="c1">// itself falls back to internally whenever peer access between the two</span>
-<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a><span class="c1">// devices has not been enabled. Genuinely compiled with a real nvcc</span>
-<a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a><span class="c1">// and genuinely run.</span>
-<a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;cstdio&gt;</span>
-<a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;cuda_runtime.h&gt;</span>
-<a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a>
-<a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a><span class="kt">int</span><span class="w"> </span><span class="nf">main</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
-<a id="__codelineno-2-15" name="__codelineno-2-15" href="#__codelineno-2-15"></a><span class="w">    </span><span class="kt">void</span><span class="o">*</span><span class="w"> </span><span class="n">devPtr0</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nb">nullptr</span><span class="p">;</span>
-<a id="__codelineno-2-16" name="__codelineno-2-16" href="#__codelineno-2-16"></a><span class="w">    </span><span class="kt">void</span><span class="o">*</span><span class="w"> </span><span class="n">devPtr1</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nb">nullptr</span><span class="p">;</span>
-<a id="__codelineno-2-17" name="__codelineno-2-17" href="#__codelineno-2-17"></a><span class="w">    </span><span class="kt">void</span><span class="o">*</span><span class="w"> </span><span class="n">hostStaging</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nb">nullptr</span><span class="p">;</span>
-<a id="__codelineno-2-18" name="__codelineno-2-18" href="#__codelineno-2-18"></a><span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="kt">size_t</span><span class="w"> </span><span class="n">BYTES</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">64</span><span class="p">;</span>
-<a id="__codelineno-2-19" name="__codelineno-2-19" href="#__codelineno-2-19"></a>
-<a id="__codelineno-2-20" name="__codelineno-2-20" href="#__codelineno-2-20"></a><span class="w">    </span><span class="n">cudaError_t</span><span class="w"> </span><span class="n">eAlloc0</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">cudaMalloc</span><span class="p">(</span><span class="o">&amp;</span><span class="n">devPtr0</span><span class="p">,</span><span class="w"> </span><span class="n">BYTES</span><span class="p">);</span>
-<a id="__codelineno-2-21" name="__codelineno-2-21" href="#__codelineno-2-21"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;cudaMalloc(device 0 buffer): %s (code %d)</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">cudaGetErrorString</span><span class="p">(</span><span class="n">eAlloc0</span><span class="p">),</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="p">)</span><span class="n">eAlloc0</span><span class="p">);</span>
-<a id="__codelineno-2-22" name="__codelineno-2-22" href="#__codelineno-2-22"></a>
-<a id="__codelineno-2-23" name="__codelineno-2-23" href="#__codelineno-2-23"></a><span class="w">    </span><span class="n">cudaError_t</span><span class="w"> </span><span class="n">eAlloc1</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">cudaMalloc</span><span class="p">(</span><span class="o">&amp;</span><span class="n">devPtr1</span><span class="p">,</span><span class="w"> </span><span class="n">BYTES</span><span class="p">);</span>
-<a id="__codelineno-2-24" name="__codelineno-2-24" href="#__codelineno-2-24"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;cudaMalloc(device 1 buffer): %s (code %d)</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">cudaGetErrorString</span><span class="p">(</span><span class="n">eAlloc1</span><span class="p">),</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="p">)</span><span class="n">eAlloc1</span><span class="p">);</span>
-<a id="__codelineno-2-25" name="__codelineno-2-25" href="#__codelineno-2-25"></a>
-<a id="__codelineno-2-26" name="__codelineno-2-26" href="#__codelineno-2-26"></a><span class="w">    </span><span class="n">cudaError_t</span><span class="w"> </span><span class="n">eHost</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">cudaMallocHost</span><span class="p">(</span><span class="o">&amp;</span><span class="n">hostStaging</span><span class="p">,</span><span class="w"> </span><span class="n">BYTES</span><span class="p">);</span>
-<a id="__codelineno-2-27" name="__codelineno-2-27" href="#__codelineno-2-27"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;cudaMallocHost(staging buffer): %s (code %d)</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">cudaGetErrorString</span><span class="p">(</span><span class="n">eHost</span><span class="p">),</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="p">)</span><span class="n">eHost</span><span class="p">);</span>
-<a id="__codelineno-2-28" name="__codelineno-2-28" href="#__codelineno-2-28"></a>
-<a id="__codelineno-2-29" name="__codelineno-2-29" href="#__codelineno-2-29"></a><span class="w">    </span><span class="c1">// Step 1: device 0 -&gt; host.</span>
-<a id="__codelineno-2-30" name="__codelineno-2-30" href="#__codelineno-2-30"></a><span class="w">    </span><span class="n">cudaError_t</span><span class="w"> </span><span class="n">e1</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">cudaMemcpy</span><span class="p">(</span><span class="n">hostStaging</span><span class="p">,</span><span class="w"> </span><span class="n">devPtr0</span><span class="p">,</span><span class="w"> </span><span class="n">BYTES</span><span class="p">,</span><span class="w"> </span><span class="n">cudaMemcpyDeviceToHost</span><span class="p">);</span>
-<a id="__codelineno-2-31" name="__codelineno-2-31" href="#__codelineno-2-31"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;Step 1, cudaMemcpy(device 0 -&gt; host staging): %s (code %d)</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span>
-<a id="__codelineno-2-32" name="__codelineno-2-32" href="#__codelineno-2-32"></a><span class="w">           </span><span class="n">cudaGetErrorString</span><span class="p">(</span><span class="n">e1</span><span class="p">),</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="p">)</span><span class="n">e1</span><span class="p">);</span>
-<a id="__codelineno-2-33" name="__codelineno-2-33" href="#__codelineno-2-33"></a>
-<a id="__codelineno-2-34" name="__codelineno-2-34" href="#__codelineno-2-34"></a><span class="w">    </span><span class="c1">// Step 2: host -&gt; device 1. Two PCIe (or equivalent) transfers where</span>
-<a id="__codelineno-2-35" name="__codelineno-2-35" href="#__codelineno-2-35"></a><span class="w">    </span><span class="c1">// a single peer-direct copy would have used one link once.</span>
-<a id="__codelineno-2-36" name="__codelineno-2-36" href="#__codelineno-2-36"></a><span class="w">    </span><span class="n">cudaError_t</span><span class="w"> </span><span class="n">e2</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">cudaMemcpy</span><span class="p">(</span><span class="n">devPtr1</span><span class="p">,</span><span class="w"> </span><span class="n">hostStaging</span><span class="p">,</span><span class="w"> </span><span class="n">BYTES</span><span class="p">,</span><span class="w"> </span><span class="n">cudaMemcpyHostToDevice</span><span class="p">);</span>
-<a id="__codelineno-2-37" name="__codelineno-2-37" href="#__codelineno-2-37"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;Step 2, cudaMemcpy(host staging -&gt; device 1): %s (code %d)</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span>
-<a id="__codelineno-2-38" name="__codelineno-2-38" href="#__codelineno-2-38"></a><span class="w">           </span><span class="n">cudaGetErrorString</span><span class="p">(</span><span class="n">e2</span><span class="p">),</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="p">)</span><span class="n">e2</span><span class="p">);</span>
-<a id="__codelineno-2-39" name="__codelineno-2-39" href="#__codelineno-2-39"></a>
-<a id="__codelineno-2-40" name="__codelineno-2-40" href="#__codelineno-2-40"></a><span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">eAlloc0</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="n">cudaSuccess</span><span class="p">)</span><span class="w"> </span><span class="n">cudaFree</span><span class="p">(</span><span class="n">devPtr0</span><span class="p">);</span>
-<a id="__codelineno-2-41" name="__codelineno-2-41" href="#__codelineno-2-41"></a><span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">eAlloc1</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="n">cudaSuccess</span><span class="p">)</span><span class="w"> </span><span class="n">cudaFree</span><span class="p">(</span><span class="n">devPtr1</span><span class="p">);</span>
-<a id="__codelineno-2-42" name="__codelineno-2-42" href="#__codelineno-2-42"></a><span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">eHost</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="n">cudaSuccess</span><span class="p">)</span><span class="w"> </span><span class="n">cudaFreeHost</span><span class="p">(</span><span class="n">hostStaging</span><span class="p">);</span>
-<a id="__codelineno-2-43" name="__codelineno-2-43" href="#__codelineno-2-43"></a><span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
-<a id="__codelineno-2-44" name="__codelineno-2-44" href="#__codelineno-2-44"></a><span class="p">}</span>
+<p>The staged pattern is two ordinary <code>cudaMemcpy()</code> calls with a host buffer as the waypoint: <code>cudaMemcpy(hostBuffer, srcDevicePtr, bytes, cudaMemcpyDeviceToHost)</code> followed by <code>cudaMemcpy(dstDevicePtr, hostBuffer, bytes, cudaMemcpyHostToDevice)</code>. This is the book's model of what the documentation calls being "staged through the host": the same two hops, device to host and host to device, made visible instead of hidden inside one function call. It is a model, not a copy of the driver's internals, which are not documented; a driver is free to pipeline the two hops in smaller chunks so they overlap, so treat the full two-transfer cost as an upper bound on what the hidden fallback costs. Using a pinned (<code>cudaMallocHost()</code>-allocated) host buffer as the waypoint matters here because a pinned allocation is a fixed, DMA-eligible physical address the driver can transfer to and from directly, rather than a page the OS might need to fault in or relocate mid-copy.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="c1">// 12_staged_host_transfer.cu</span>
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="c1">// Checked teaching implementation; serial host scheduling favors clarity, not speed.</span>
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;cstdio&gt;</span>
+<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;vector&gt;</span>
+<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;algorithm&gt;</span>
+<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;cuda_runtime.h&gt;</span>
+<a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a><span class="cp">#define CUDA(call) do { cudaError_t status = (call); if (status != cudaSuccess) { \</span>
+<a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a><span class="cp"> fprintf(stderr,"%s: %s\n",#call,cudaGetErrorString(status)); \</span>
+<a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a><span class="cp"> return status==cudaErrorNoDevice || status==cudaErrorInsufficientDriver ? 2 : 1; } } while(0)</span>
+<a id="__codelineno-6-10" name="__codelineno-6-10" href="#__codelineno-6-10"></a><span class="kt">int</span><span class="w"> </span><span class="nf">main</span><span class="p">(){</span>
+<a id="__codelineno-6-11" name="__codelineno-6-11" href="#__codelineno-6-11"></a><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">count</span><span class="o">=</span><span class="mi">0</span><span class="p">;</span><span class="n">CUDA</span><span class="p">(</span><span class="n">cudaGetDeviceCount</span><span class="p">(</span><span class="o">&amp;</span><span class="n">count</span><span class="p">));</span><span class="k">if</span><span class="p">(</span><span class="n">count</span><span class="o">&lt;</span><span class="mi">2</span><span class="p">){</span><span class="n">printf</span><span class="p">(</span><span class="s">"BLOCKED: requires 2 GPUs; found %d.</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span><span class="n">count</span><span class="p">);</span><span class="k">return</span><span class="w"> </span><span class="mi">2</span><span class="p">;}</span>
+<a id="__codelineno-6-12" name="__codelineno-6-12" href="#__codelineno-6-12"></a><span class="w"> </span><span class="k">const</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">n</span><span class="o">=</span><span class="mi">4096</span><span class="p">;</span><span class="k">const</span><span class="w"> </span><span class="kt">size_t</span><span class="w"> </span><span class="n">bytes</span><span class="o">=</span><span class="n">n</span><span class="o">*</span><span class="k">sizeof</span><span class="p">(</span><span class="kt">float</span><span class="p">);</span><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">float</span><span class="o">&gt;</span><span class="w"> </span><span class="n">input</span><span class="p">(</span><span class="n">n</span><span class="p">),</span><span class="n">output</span><span class="p">(</span><span class="n">n</span><span class="p">);</span>
+<a id="__codelineno-6-13" name="__codelineno-6-13" href="#__codelineno-6-13"></a><span class="w"> </span><span class="k">for</span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">i</span><span class="o">=</span><span class="mi">0</span><span class="p">;</span><span class="n">i</span><span class="o">&lt;</span><span class="n">n</span><span class="p">;</span><span class="o">++</span><span class="n">i</span><span class="p">)</span><span class="n">input</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">=</span><span class="kt">float</span><span class="p">((</span><span class="n">i</span><span class="o">*</span><span class="mi">17</span><span class="p">)</span><span class="o">%</span><span class="mi">4093-2046</span><span class="p">)</span><span class="o">/</span><span class="mf">8.0f</span><span class="p">;</span>
+<a id="__codelineno-6-14" name="__codelineno-6-14" href="#__codelineno-6-14"></a><span class="w"> </span><span class="kt">float</span><span class="w"> </span><span class="o">*</span><span class="n">source</span><span class="o">=</span><span class="nb">nullptr</span><span class="p">,</span><span class="o">*</span><span class="n">destination</span><span class="o">=</span><span class="nb">nullptr</span><span class="p">,</span><span class="o">*</span><span class="n">staging</span><span class="o">=</span><span class="nb">nullptr</span><span class="p">;</span>
+<a id="__codelineno-6-15" name="__codelineno-6-15" href="#__codelineno-6-15"></a><span class="w"> </span><span class="n">CUDA</span><span class="p">(</span><span class="n">cudaSetDevice</span><span class="p">(</span><span class="mi">0</span><span class="p">));</span><span class="n">CUDA</span><span class="p">(</span><span class="n">cudaMalloc</span><span class="p">(</span><span class="o">&amp;</span><span class="n">source</span><span class="p">,</span><span class="n">bytes</span><span class="p">));</span><span class="n">CUDA</span><span class="p">(</span><span class="n">cudaMemcpy</span><span class="p">(</span><span class="n">source</span><span class="p">,</span><span class="n">input</span><span class="p">.</span><span class="n">data</span><span class="p">(),</span><span class="n">bytes</span><span class="p">,</span><span class="n">cudaMemcpyHostToDevice</span><span class="p">));</span><span class="n">CUDA</span><span class="p">(</span><span class="n">cudaMallocHost</span><span class="p">(</span><span class="o">&amp;</span><span class="n">staging</span><span class="p">,</span><span class="n">bytes</span><span class="p">));</span>
+<a id="__codelineno-6-16" name="__codelineno-6-16" href="#__codelineno-6-16"></a><span class="w"> </span><span class="n">CUDA</span><span class="p">(</span><span class="n">cudaMemcpy</span><span class="p">(</span><span class="n">staging</span><span class="p">,</span><span class="n">source</span><span class="p">,</span><span class="n">bytes</span><span class="p">,</span><span class="n">cudaMemcpyDeviceToHost</span><span class="p">));</span>
+<a id="__codelineno-6-17" name="__codelineno-6-17" href="#__codelineno-6-17"></a><span class="w"> </span><span class="n">CUDA</span><span class="p">(</span><span class="n">cudaSetDevice</span><span class="p">(</span><span class="mi">1</span><span class="p">));</span><span class="n">CUDA</span><span class="p">(</span><span class="n">cudaMalloc</span><span class="p">(</span><span class="o">&amp;</span><span class="n">destination</span><span class="p">,</span><span class="n">bytes</span><span class="p">));</span><span class="n">CUDA</span><span class="p">(</span><span class="n">cudaMemset</span><span class="p">(</span><span class="n">destination</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="n">bytes</span><span class="p">));</span><span class="n">CUDA</span><span class="p">(</span><span class="n">cudaMemcpy</span><span class="p">(</span><span class="n">destination</span><span class="p">,</span><span class="n">staging</span><span class="p">,</span><span class="n">bytes</span><span class="p">,</span><span class="n">cudaMemcpyHostToDevice</span><span class="p">));</span><span class="n">CUDA</span><span class="p">(</span><span class="n">cudaMemcpy</span><span class="p">(</span><span class="n">output</span><span class="p">.</span><span class="n">data</span><span class="p">(),</span><span class="n">destination</span><span class="p">,</span><span class="n">bytes</span><span class="p">,</span><span class="n">cudaMemcpyDeviceToHost</span><span class="p">));</span>
+<a id="__codelineno-6-18" name="__codelineno-6-18" href="#__codelineno-6-18"></a><span class="w"> </span><span class="k">for</span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">i</span><span class="o">=</span><span class="mi">0</span><span class="p">;</span><span class="n">i</span><span class="o">&lt;</span><span class="n">n</span><span class="p">;</span><span class="o">++</span><span class="n">i</span><span class="p">)</span><span class="k">if</span><span class="p">(</span><span class="n">output</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">!=</span><span class="n">input</span><span class="p">[</span><span class="n">i</span><span class="p">]){</span><span class="n">fprintf</span><span class="p">(</span><span class="n">stderr</span><span class="p">,</span><span class="s">"FAIL staged transfer[%d]</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span><span class="n">i</span><span class="p">);</span><span class="k">return</span><span class="w"> </span><span class="mi">1</span><span class="p">;}</span>
+<a id="__codelineno-6-19" name="__codelineno-6-19" href="#__codelineno-6-19"></a><span class="w"> </span><span class="n">CUDA</span><span class="p">(</span><span class="n">cudaFree</span><span class="p">(</span><span class="n">destination</span><span class="p">));</span><span class="n">CUDA</span><span class="p">(</span><span class="n">cudaSetDevice</span><span class="p">(</span><span class="mi">0</span><span class="p">));</span><span class="n">CUDA</span><span class="p">(</span><span class="n">cudaFree</span><span class="p">(</span><span class="n">source</span><span class="p">));</span><span class="n">CUDA</span><span class="p">(</span><span class="n">cudaFreeHost</span><span class="p">(</span><span class="n">staging</span><span class="p">));</span>
+<a id="__codelineno-6-20" name="__codelineno-6-20" href="#__codelineno-6-20"></a><span class="w"> </span><span class="n">printf</span><span class="p">(</span><span class="s">"PASS: 4096 nonuniform values verified through explicit pinned-host staging.</span><span class="se">\n</span><span class="s">"</span><span class="p">);</span><span class="k">return</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
+<a id="__codelineno-6-21" name="__codelineno-6-21" href="#__codelineno-6-21"></a><span class="p">}</span>
 </code></pre></div>
-<p>Genuinely compiled with a real <code>nvcc</code> and genuinely run. Locked output, deterministic across repeated runs:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>cudaMalloc(device 0 buffer): no CUDA-capable device is detected (code 100)
-<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>cudaMalloc(device 1 buffer): no CUDA-capable device is detected (code 100)
-<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>cudaMallocHost(staging buffer): no CUDA-capable device is detected (code 100)
-<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>Step 1, cudaMemcpy(device 0 -&gt; host staging): no CUDA-capable device is detected (code 100)
-<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>Step 2, cudaMemcpy(host staging -&gt; device 1): no CUDA-capable device is detected (code 100)
+<!-- execution:start:a100:12_staged_host_transfer.cu -->
+<blockquote>
+<p><strong>Current execution — 2026-11-17-a100: Numerical/transport validation (recorded scope).</strong> UTC (program start): <code>2026-11-18T00:00:41.399876+00:00</code>. Source SHA-256: <code>e3d7e938f375c28fbb2bffba8013cb7347447bbca26ea1bac4f61207be4683de</code>.</p>
+</blockquote>
+<p><a href="../../validation/2026-11-17-a100/12_staged_host_transfer/12_staged_host_transfer.cu">Exact tested source</a> · <a href="../../validation/2026-11-17-a100/12_staged_host_transfer/compile.log">Compiler log</a> · <a href="../../validation/2026-11-17-a100/12_staged_host_transfer/run.log">Execution log</a>. Compile exit: <code>0</code>; run exit: <code>0</code>.</p>
+<p>Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>nvcc<span class="w"> </span>-std<span class="o">=</span>c++17<span class="w"> </span>-O2<span class="w"> </span>-arch<span class="o">=</span>sm_80<span class="w"> </span>12_staged_host_transfer.cu<span class="w"> </span>-o<span class="w"> </span>./example
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>./example
 </code></pre></div>
-<p>The same honest <code>cudaErrorNoDevice</code> at every step, for the same reason as Section 5.1. What this section fixes in place is the <em>shape</em> of the fallback: two calls, two full-payload transfers, one intermediate buffer -- the concrete cost Section 5.3 now puts a number on.</p>
+<details>
+<summary>Captured current-source output</summary>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>PASS: 4096 nonuniform values verified through explicit pinned-host staging.
+</code></pre></div>
+</details>
+<!-- execution:end:a100:12_staged_host_transfer.cu -->
+
+<!-- execution:start:h100:12_staged_host_transfer.cu -->
+<blockquote>
+<p><strong>Current execution — 2026-11-17-h100: Numerical/transport validation (recorded scope).</strong> UTC (run-batch start; per-program time unrecorded): <code>2026-11-17T23:48:18.967387+00:00</code>. Source SHA-256: <code>e3d7e938f375c28fbb2bffba8013cb7347447bbca26ea1bac4f61207be4683de</code>.</p>
+</blockquote>
+<p><a href="../../validation/2026-11-17-h100/12_staged_host_transfer/12_staged_host_transfer.cu">Exact tested source</a> · <a href="../../validation/2026-11-17-h100/12_staged_host_transfer/compile.log">Compiler log</a> · <a href="../../validation/2026-11-17-h100/12_staged_host_transfer/run.log">Execution log</a>. Compile exit: <code>0</code>; run exit: <code>0</code>.</p>
+<p>Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>nvcc<span class="w"> </span>-std<span class="o">=</span>c++17<span class="w"> </span>-O2<span class="w"> </span>-arch<span class="o">=</span>sm_90<span class="w"> </span>12_staged_host_transfer.cu<span class="w"> </span>-o<span class="w"> </span>./example
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>./example
+</code></pre></div>
+<details>
+<summary>Captured current-source output</summary>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>PASS: 4096 nonuniform values verified through explicit pinned-host staging.
+</code></pre></div>
+</details>
+<!-- execution:end:h100:12_staged_host_transfer.cu -->
+
+<p><strong>Current-source scope:</strong> A checked two-device transfer uses a pinned host staging buffer and validates all 4,096 destination values. The current source was compiled and executed in the dated H100 suite; use the linked record for its numerical, API-probe or other-execution scope. The output below is retained from the earlier authoring diagnostic and is not evidence for this replacement source.</p>
+<p>The <a href="../../validation-h100/">2026-11-17 H100 execution record</a> covers two GPUs connected by local NV18. It distinguishes numerical checks, API probes and other executions; a successful exit alone does not establish GPU algorithm correctness.</p>
+<details>
+<summary>Historical authoring output — superseded by the current execution above</summary>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>cudaMalloc(device 0 buffer): no CUDA-capable device is detected (code 100)
+<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>cudaMalloc(device 1 buffer): no CUDA-capable device is detected (code 100)
+<a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a>cudaMallocHost(staging buffer): no CUDA-capable device is detected (code 100)
+<a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a>Step 1, cudaMemcpy(device 0 -&gt; host staging): no CUDA-capable device is detected (code 100)
+<a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a>Step 2, cudaMemcpy(host staging -&gt; device 1): no CUDA-capable device is detected (code 100)
+</code></pre></div>
+</details>
+<p>File 12 initializes and checks both stages of the actual host-staged H100 transfer. The route requires two full-payload copies and an intermediate host buffer; the cost model below remains distinct from a measured bandwidth benchmark.</p>
 <div class="admonition warning">
 <p class="admonition-title">[COMMON TRAP] Believing the staged fallback moves half the data each hop</p>
 <p>Both steps in this section's code copy the <em>entire</em> <code>BYTES</code>-sized payload -- step 1 moves all of it device-to-host, and step 2 moves all of it again host-to-device. There is no sense in which the two hops split the work; the staged path pays the <em>full</em> transfer cost twice, once per hop, which is exactly why Section 5.3's cost model below counts it as <code>2 * (size / bandwidth)</code> rather than a single transfer split across two links.</p>
@@ -2701,86 +2864,148 @@
 <p>Section 5.1 and 5.2 established the two mechanisms; now the actual question a real program has to answer: for a given pair of devices, is the direct peer route worth checking for, or is staging good enough? The honest answer only needs numbers this book has already sourced and cited -- Chapter 2's real PCIe and NVLink bandwidth figures -- arranged into the two routes' costs. No new hardware measurement is needed, and none is fabricated: this is a closed-form arithmetic comparison, exactly like Chapter 2's own ring-bottleneck model.</p>
 <h3 id="background_2">Background<a class="headerlink" href="#background_2" title="Permanent link">&para;</a></h3>
 <p>The staged route always pays the PCIe rate twice, for the reason Section 5.2's Common Trap just established: <code>2 * (size / PCIE_GBPS)</code>. The peer-direct route pays whichever direct link actually connects the two devices exactly once: the NVLink figure if the pair is wired (Chapter 2's partial-mesh model), or the PCIe figure if their only direct connection is PCIe itself. Reusing this book's own already-cited numbers -- PCIe 4.0 x16 at 31.5 GB/s, and a direct wired NVLink pair at 50 GB/s (both from Chapter 2's topology chapter) -- turns "which route wins" into one division per route.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="c1">// Chapter 5: Explicit Transfers -- cudaMemcpyPeer, Staged Host Transfers,</span>
-<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="c1">// and When Each Wins</span>
-<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="c1">// 13_when_each_wins_model.cpp</span>
-<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="c1">//</span>
-<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a><span class="c1">// Plain host C++ cost model, reusing this book&#39;s own already-cited</span>
-<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a><span class="c1">// bandwidth figures (Chapter 2, docs/part0/02-multi-gpu-hardware-topology.md):</span>
-<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a><span class="c1">// PCIe 4.0 x16 per-direction bandwidth (31.5 GB/s) and a direct, wired</span>
-<a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a><span class="c1">// NVLink connection in a partial-mesh topology (50 GB/s). This is a</span>
-<a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a><span class="c1">// closed-form arithmetic model of transfer TIME, not a measurement of</span>
-<a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a><span class="c1">// real hardware -- it answers &quot;which route wins, and by how much&quot; using</span>
-<a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a><span class="c1">// numbers this book has already sourced and cited, not new fabricated</span>
-<a id="__codelineno-4-12" name="__codelineno-4-12" href="#__codelineno-4-12"></a><span class="c1">// timings.</span>
-<a id="__codelineno-4-13" name="__codelineno-4-13" href="#__codelineno-4-13"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;cstdio&gt;</span>
-<a id="__codelineno-4-14" name="__codelineno-4-14" href="#__codelineno-4-14"></a>
-<a id="__codelineno-4-15" name="__codelineno-4-15" href="#__codelineno-4-15"></a><span class="kt">int</span><span class="w"> </span><span class="nf">main</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
-<a id="__codelineno-4-16" name="__codelineno-4-16" href="#__codelineno-4-16"></a><span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="kt">double</span><span class="w"> </span><span class="n">PCIE_GBPS</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">31.5</span><span class="p">;</span><span class="w">   </span><span class="c1">// direct PCIe 4.0 x16, per direction</span>
-<a id="__codelineno-4-17" name="__codelineno-4-17" href="#__codelineno-4-17"></a><span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="kt">double</span><span class="w"> </span><span class="n">NVLINK_GBPS</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">50.0</span><span class="p">;</span><span class="w"> </span><span class="c1">// direct wired NVLink pair, partial mesh</span>
-<a id="__codelineno-4-18" name="__codelineno-4-18" href="#__codelineno-4-18"></a>
-<a id="__codelineno-4-19" name="__codelineno-4-19" href="#__codelineno-4-19"></a><span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="kt">double</span><span class="w"> </span><span class="n">transferSizeGB</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">1.0</span><span class="p">;</span>
-<a id="__codelineno-4-20" name="__codelineno-4-20" href="#__codelineno-4-20"></a>
-<a id="__codelineno-4-21" name="__codelineno-4-21" href="#__codelineno-4-21"></a><span class="w">    </span><span class="c1">// Peer-direct route: one hop, over whichever direct link exists.</span>
-<a id="__codelineno-4-22" name="__codelineno-4-22" href="#__codelineno-4-22"></a><span class="w">    </span><span class="c1">// If the pair is NVLink-wired, that&#39;s the NVLink figure; if the</span>
-<a id="__codelineno-4-23" name="__codelineno-4-23" href="#__codelineno-4-23"></a><span class="w">    </span><span class="c1">// pair&#39;s only direct link is PCIe, that&#39;s the PCIe figure.</span>
-<a id="__codelineno-4-24" name="__codelineno-4-24" href="#__codelineno-4-24"></a><span class="w">    </span><span class="kt">double</span><span class="w"> </span><span class="n">peerTimeNVLink</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">transferSizeGB</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="n">NVLINK_GBPS</span><span class="p">;</span>
-<a id="__codelineno-4-25" name="__codelineno-4-25" href="#__codelineno-4-25"></a><span class="w">    </span><span class="kt">double</span><span class="w"> </span><span class="n">peerTimePCIe</span><span class="w">   </span><span class="o">=</span><span class="w"> </span><span class="n">transferSizeGB</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="n">PCIE_GBPS</span><span class="p">;</span>
-<a id="__codelineno-4-26" name="__codelineno-4-26" href="#__codelineno-4-26"></a>
-<a id="__codelineno-4-27" name="__codelineno-4-27" href="#__codelineno-4-27"></a><span class="w">    </span><span class="c1">// Staged route: two hops through the host, device-&gt;host and</span>
-<a id="__codelineno-4-28" name="__codelineno-4-28" href="#__codelineno-4-28"></a><span class="w">    </span><span class="c1">// host-&gt;device, each paying the PCIe rate -- this is exactly what</span>
-<a id="__codelineno-4-29" name="__codelineno-4-29" href="#__codelineno-4-29"></a><span class="w">    </span><span class="c1">// Section 5.2&#39;s explicit two-step transfer measured the call</span>
-<a id="__codelineno-4-30" name="__codelineno-4-30" href="#__codelineno-4-30"></a><span class="w">    </span><span class="c1">// pattern for, and what cudaMemcpyPeer itself falls back to</span>
-<a id="__codelineno-4-31" name="__codelineno-4-31" href="#__codelineno-4-31"></a><span class="w">    </span><span class="c1">// whenever peer access has not been enabled for that pair.</span>
-<a id="__codelineno-4-32" name="__codelineno-4-32" href="#__codelineno-4-32"></a><span class="w">    </span><span class="kt">double</span><span class="w"> </span><span class="n">stagedTime</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">2.0</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="p">(</span><span class="n">transferSizeGB</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="n">PCIE_GBPS</span><span class="p">);</span>
-<a id="__codelineno-4-33" name="__codelineno-4-33" href="#__codelineno-4-33"></a>
-<a id="__codelineno-4-34" name="__codelineno-4-34" href="#__codelineno-4-34"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;Transfer size: %.1f GB</span><span class="se">\n\n</span><span class="s">&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">transferSizeGB</span><span class="p">);</span>
-<a id="__codelineno-4-35" name="__codelineno-4-35" href="#__codelineno-4-35"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;Peer-direct route, NVLink-wired pair:   %.6f s (%.1f GB/s, one hop)</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span>
-<a id="__codelineno-4-36" name="__codelineno-4-36" href="#__codelineno-4-36"></a><span class="w">           </span><span class="n">peerTimeNVLink</span><span class="p">,</span><span class="w"> </span><span class="n">NVLINK_GBPS</span><span class="p">);</span>
-<a id="__codelineno-4-37" name="__codelineno-4-37" href="#__codelineno-4-37"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;Peer-direct route, PCIe-only direct pair: %.6f s (%.1f GB/s, one hop)</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span>
-<a id="__codelineno-4-38" name="__codelineno-4-38" href="#__codelineno-4-38"></a><span class="w">           </span><span class="n">peerTimePCIe</span><span class="p">,</span><span class="w"> </span><span class="n">PCIE_GBPS</span><span class="p">);</span>
-<a id="__codelineno-4-39" name="__codelineno-4-39" href="#__codelineno-4-39"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;Staged host route (any pair):            %.6f s (%.1f GB/s, two hops)</span><span class="se">\n\n</span><span class="s">&quot;</span><span class="p">,</span>
-<a id="__codelineno-4-40" name="__codelineno-4-40" href="#__codelineno-4-40"></a><span class="w">           </span><span class="n">stagedTime</span><span class="p">,</span><span class="w"> </span><span class="n">PCIE_GBPS</span><span class="p">);</span>
-<a id="__codelineno-4-41" name="__codelineno-4-41" href="#__codelineno-4-41"></a>
-<a id="__codelineno-4-42" name="__codelineno-4-42" href="#__codelineno-4-42"></a><span class="w">    </span><span class="kt">double</span><span class="w"> </span><span class="n">speedupNVLinkVsStaged</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">stagedTime</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="n">peerTimeNVLink</span><span class="p">;</span>
-<a id="__codelineno-4-43" name="__codelineno-4-43" href="#__codelineno-4-43"></a><span class="w">    </span><span class="kt">double</span><span class="w"> </span><span class="n">speedupPCIeDirectVsStaged</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">stagedTime</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="n">peerTimePCIe</span><span class="p">;</span>
-<a id="__codelineno-4-44" name="__codelineno-4-44" href="#__codelineno-4-44"></a>
-<a id="__codelineno-4-45" name="__codelineno-4-45" href="#__codelineno-4-45"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;Peer-direct over NVLink is %.4fx faster than staging, for a wired pair.</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span>
-<a id="__codelineno-4-46" name="__codelineno-4-46" href="#__codelineno-4-46"></a><span class="w">           </span><span class="n">speedupNVLinkVsStaged</span><span class="p">);</span>
-<a id="__codelineno-4-47" name="__codelineno-4-47" href="#__codelineno-4-47"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;Peer-direct over a direct PCIe link is %.4fx faster than staging,</span><span class="se">\n</span><span class="s">&quot;</span>
-<a id="__codelineno-4-48" name="__codelineno-4-48" href="#__codelineno-4-48"></a><span class="w">           </span><span class="s">&quot;for a pair with a direct PCIe route but no NVLink wire.</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span>
-<a id="__codelineno-4-49" name="__codelineno-4-49" href="#__codelineno-4-49"></a><span class="w">           </span><span class="n">speedupPCIeDirectVsStaged</span><span class="p">);</span>
-<a id="__codelineno-4-50" name="__codelineno-4-50" href="#__codelineno-4-50"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;</span><span class="se">\n</span><span class="s">When the pair has NO direct link at all (per Chapter 2&#39;s partial-mesh</span><span class="se">\n</span><span class="s">&quot;</span>
-<a id="__codelineno-4-51" name="__codelineno-4-51" href="#__codelineno-4-51"></a><span class="w">           </span><span class="s">&quot;topology), peer access cannot be enabled between them in the first</span><span class="se">\n</span><span class="s">&quot;</span>
-<a id="__codelineno-4-52" name="__codelineno-4-52" href="#__codelineno-4-52"></a><span class="w">           </span><span class="s">&quot;place (Chapter 4, Section 4.2) -- staging is then not merely faster</span><span class="se">\n</span><span class="s">&quot;</span>
-<a id="__codelineno-4-53" name="__codelineno-4-53" href="#__codelineno-4-53"></a><span class="w">           </span><span class="s">&quot;or slower, it is the ONLY route that exists.</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
-<a id="__codelineno-4-54" name="__codelineno-4-54" href="#__codelineno-4-54"></a>
-<a id="__codelineno-4-55" name="__codelineno-4-55" href="#__codelineno-4-55"></a><span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
-<a id="__codelineno-4-56" name="__codelineno-4-56" href="#__codelineno-4-56"></a><span class="p">}</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a><span class="c1">// Chapter 5: Explicit Transfers -- cudaMemcpyPeer, Staged Host Transfers,</span>
+<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a><span class="c1">// and When Each Wins</span>
+<a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a><span class="c1">// 13_when_each_wins_model.cpp</span>
+<a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a><span class="c1">//</span>
+<a id="__codelineno-12-5" name="__codelineno-12-5" href="#__codelineno-12-5"></a><span class="c1">// Plain host C++ cost model, reusing this book's own already-cited</span>
+<a id="__codelineno-12-6" name="__codelineno-12-6" href="#__codelineno-12-6"></a><span class="c1">// bandwidth figures (Chapter 2, docs/part0/02-multi-gpu-hardware-topology.md):</span>
+<a id="__codelineno-12-7" name="__codelineno-12-7" href="#__codelineno-12-7"></a><span class="c1">// PCIe 4.0 x16 per-direction bandwidth (31.5 GB/s) and a direct, wired</span>
+<a id="__codelineno-12-8" name="__codelineno-12-8" href="#__codelineno-12-8"></a><span class="c1">// NVLink connection in a partial-mesh topology (50 GB/s). This is a</span>
+<a id="__codelineno-12-9" name="__codelineno-12-9" href="#__codelineno-12-9"></a><span class="c1">// closed-form arithmetic model of transfer TIME, not a measurement of</span>
+<a id="__codelineno-12-10" name="__codelineno-12-10" href="#__codelineno-12-10"></a><span class="c1">// real hardware -- it answers "which route wins, and by how much" using</span>
+<a id="__codelineno-12-11" name="__codelineno-12-11" href="#__codelineno-12-11"></a><span class="c1">// numbers this book has already sourced and cited, not new fabricated</span>
+<a id="__codelineno-12-12" name="__codelineno-12-12" href="#__codelineno-12-12"></a><span class="c1">// timings.</span>
+<a id="__codelineno-12-13" name="__codelineno-12-13" href="#__codelineno-12-13"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;cstdio&gt;</span>
+<a id="__codelineno-12-14" name="__codelineno-12-14" href="#__codelineno-12-14"></a>
+<a id="__codelineno-12-15" name="__codelineno-12-15" href="#__codelineno-12-15"></a><span class="kt">int</span><span class="w"> </span><span class="nf">main</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-12-16" name="__codelineno-12-16" href="#__codelineno-12-16"></a><span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="kt">double</span><span class="w"> </span><span class="n">PCIE_GBPS</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">31.5</span><span class="p">;</span><span class="w">   </span><span class="c1">// direct PCIe 4.0 x16, per direction</span>
+<a id="__codelineno-12-17" name="__codelineno-12-17" href="#__codelineno-12-17"></a><span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="kt">double</span><span class="w"> </span><span class="n">NVLINK_GBPS</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">50.0</span><span class="p">;</span><span class="w"> </span><span class="c1">// direct wired NVLink pair, partial mesh</span>
+<a id="__codelineno-12-18" name="__codelineno-12-18" href="#__codelineno-12-18"></a>
+<a id="__codelineno-12-19" name="__codelineno-12-19" href="#__codelineno-12-19"></a><span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="kt">double</span><span class="w"> </span><span class="n">transferSizeGB</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">1.0</span><span class="p">;</span>
+<a id="__codelineno-12-20" name="__codelineno-12-20" href="#__codelineno-12-20"></a>
+<a id="__codelineno-12-21" name="__codelineno-12-21" href="#__codelineno-12-21"></a><span class="w">    </span><span class="c1">// Peer-direct route: one hop, over whichever direct link exists.</span>
+<a id="__codelineno-12-22" name="__codelineno-12-22" href="#__codelineno-12-22"></a><span class="w">    </span><span class="c1">// If the pair is NVLink-wired, that's the NVLink figure; if the</span>
+<a id="__codelineno-12-23" name="__codelineno-12-23" href="#__codelineno-12-23"></a><span class="w">    </span><span class="c1">// pair's only direct link is PCIe, that's the PCIe figure.</span>
+<a id="__codelineno-12-24" name="__codelineno-12-24" href="#__codelineno-12-24"></a><span class="w">    </span><span class="kt">double</span><span class="w"> </span><span class="n">peerTimeNVLink</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">transferSizeGB</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="n">NVLINK_GBPS</span><span class="p">;</span>
+<a id="__codelineno-12-25" name="__codelineno-12-25" href="#__codelineno-12-25"></a><span class="w">    </span><span class="kt">double</span><span class="w"> </span><span class="n">peerTimePCIe</span><span class="w">   </span><span class="o">=</span><span class="w"> </span><span class="n">transferSizeGB</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="n">PCIE_GBPS</span><span class="p">;</span>
+<a id="__codelineno-12-26" name="__codelineno-12-26" href="#__codelineno-12-26"></a>
+<a id="__codelineno-12-27" name="__codelineno-12-27" href="#__codelineno-12-27"></a><span class="w">    </span><span class="c1">// Staged route: two hops through the host, device-&gt;host and</span>
+<a id="__codelineno-12-28" name="__codelineno-12-28" href="#__codelineno-12-28"></a><span class="w">    </span><span class="c1">// host-&gt;device, each paying the PCIe rate -- the call pattern</span>
+<a id="__codelineno-12-29" name="__codelineno-12-29" href="#__codelineno-12-29"></a><span class="w">    </span><span class="c1">// Section 5.2's explicit two-step transfer exercises. This is the</span>
+<a id="__codelineno-12-30" name="__codelineno-12-30" href="#__codelineno-12-30"></a><span class="w">    </span><span class="c1">// book's cost model for cudaMemcpyPeer's staged fallback, an upper</span>
+<a id="__codelineno-12-31" name="__codelineno-12-31" href="#__codelineno-12-31"></a><span class="w">    </span><span class="c1">// bound: the driver's internal staging is undocumented and may</span>
+<a id="__codelineno-12-32" name="__codelineno-12-32" href="#__codelineno-12-32"></a><span class="w">    </span><span class="c1">// pipeline the two hops, which would bring the real cost below 2x.</span>
+<a id="__codelineno-12-33" name="__codelineno-12-33" href="#__codelineno-12-33"></a><span class="w">    </span><span class="kt">double</span><span class="w"> </span><span class="n">stagedTime</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">2.0</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="p">(</span><span class="n">transferSizeGB</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="n">PCIE_GBPS</span><span class="p">);</span>
+<a id="__codelineno-12-34" name="__codelineno-12-34" href="#__codelineno-12-34"></a>
+<a id="__codelineno-12-35" name="__codelineno-12-35" href="#__codelineno-12-35"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">"Transfer size: %.1f GB</span><span class="se">\n\n</span><span class="s">"</span><span class="p">,</span><span class="w"> </span><span class="n">transferSizeGB</span><span class="p">);</span>
+<a id="__codelineno-12-36" name="__codelineno-12-36" href="#__codelineno-12-36"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">"Peer-direct route, NVLink-wired pair:   %.6f s (%.1f GB/s, one hop)</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span>
+<a id="__codelineno-12-37" name="__codelineno-12-37" href="#__codelineno-12-37"></a><span class="w">           </span><span class="n">peerTimeNVLink</span><span class="p">,</span><span class="w"> </span><span class="n">NVLINK_GBPS</span><span class="p">);</span>
+<a id="__codelineno-12-38" name="__codelineno-12-38" href="#__codelineno-12-38"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">"Peer-direct route, PCIe-only direct pair: %.6f s (%.1f GB/s, one hop)</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span>
+<a id="__codelineno-12-39" name="__codelineno-12-39" href="#__codelineno-12-39"></a><span class="w">           </span><span class="n">peerTimePCIe</span><span class="p">,</span><span class="w"> </span><span class="n">PCIE_GBPS</span><span class="p">);</span>
+<a id="__codelineno-12-40" name="__codelineno-12-40" href="#__codelineno-12-40"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">"Staged host route (any pair):            %.6f s (%.1f GB/s, two hops)</span><span class="se">\n\n</span><span class="s">"</span><span class="p">,</span>
+<a id="__codelineno-12-41" name="__codelineno-12-41" href="#__codelineno-12-41"></a><span class="w">           </span><span class="n">stagedTime</span><span class="p">,</span><span class="w"> </span><span class="n">PCIE_GBPS</span><span class="p">);</span>
+<a id="__codelineno-12-42" name="__codelineno-12-42" href="#__codelineno-12-42"></a>
+<a id="__codelineno-12-43" name="__codelineno-12-43" href="#__codelineno-12-43"></a><span class="w">    </span><span class="kt">double</span><span class="w"> </span><span class="n">speedupNVLinkVsStaged</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">stagedTime</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="n">peerTimeNVLink</span><span class="p">;</span>
+<a id="__codelineno-12-44" name="__codelineno-12-44" href="#__codelineno-12-44"></a><span class="w">    </span><span class="kt">double</span><span class="w"> </span><span class="n">speedupPCIeDirectVsStaged</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">stagedTime</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="n">peerTimePCIe</span><span class="p">;</span>
+<a id="__codelineno-12-45" name="__codelineno-12-45" href="#__codelineno-12-45"></a>
+<a id="__codelineno-12-46" name="__codelineno-12-46" href="#__codelineno-12-46"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">"Peer-direct over NVLink is %.4fx faster than staging, for a wired pair.</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span>
+<a id="__codelineno-12-47" name="__codelineno-12-47" href="#__codelineno-12-47"></a><span class="w">           </span><span class="n">speedupNVLinkVsStaged</span><span class="p">);</span>
+<a id="__codelineno-12-48" name="__codelineno-12-48" href="#__codelineno-12-48"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">"Peer-direct over a direct PCIe link is %.4fx faster than staging,</span><span class="se">\n</span><span class="s">"</span>
+<a id="__codelineno-12-49" name="__codelineno-12-49" href="#__codelineno-12-49"></a><span class="w">           </span><span class="s">"for a pair with a direct PCIe route but no NVLink wire.</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span>
+<a id="__codelineno-12-50" name="__codelineno-12-50" href="#__codelineno-12-50"></a><span class="w">           </span><span class="n">speedupPCIeDirectVsStaged</span><span class="p">);</span>
+<a id="__codelineno-12-51" name="__codelineno-12-51" href="#__codelineno-12-51"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">"</span><span class="se">\n</span><span class="s">When the pair has NO direct link at all (per Chapter 2's partial-mesh</span><span class="se">\n</span><span class="s">"</span>
+<a id="__codelineno-12-52" name="__codelineno-12-52" href="#__codelineno-12-52"></a><span class="w">           </span><span class="s">"topology), peer access cannot be enabled between them in the first</span><span class="se">\n</span><span class="s">"</span>
+<a id="__codelineno-12-53" name="__codelineno-12-53" href="#__codelineno-12-53"></a><span class="w">           </span><span class="s">"place (Chapter 4, Section 4.2) -- staging is then not merely faster</span><span class="se">\n</span><span class="s">"</span>
+<a id="__codelineno-12-54" name="__codelineno-12-54" href="#__codelineno-12-54"></a><span class="w">           </span><span class="s">"or slower, it is the ONLY route that exists.</span><span class="se">\n</span><span class="s">"</span><span class="p">);</span>
+<a id="__codelineno-12-55" name="__codelineno-12-55" href="#__codelineno-12-55"></a>
+<a id="__codelineno-12-56" name="__codelineno-12-56" href="#__codelineno-12-56"></a><span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
+<a id="__codelineno-12-57" name="__codelineno-12-57" href="#__codelineno-12-57"></a><span class="p">}</span>
 </code></pre></div>
+<!-- execution:start:a100:13_when_each_wins_model.cpp -->
+<blockquote>
+<p><strong>Current execution — 2026-11-17-a100: Host program/model (exit-only).</strong> UTC (program start): <code>2026-11-18T00:00:46.260513+00:00</code>. Source SHA-256: <code>7cc3ed42964e58119cd17db7fe9a35602c88ab0b87905dba6216d6bdb86f6c46</code>.</p>
+</blockquote>
+<p><a href="../../validation/2026-11-17-a100/13_when_each_wins_model/13_when_each_wins_model.cpp">Exact tested source</a> · <a href="../../validation/2026-11-17-a100/13_when_each_wins_model/compile.log">Compiler log</a> · <a href="../../validation/2026-11-17-a100/13_when_each_wins_model/run.log">Execution log</a>. Compile exit: <code>0</code>; run exit: <code>0</code>.</p>
+<p>Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a>g++<span class="w"> </span>-std<span class="o">=</span>c++17<span class="w"> </span>-O2<span class="w"> </span>13_when_each_wins_model.cpp<span class="w"> </span>-o<span class="w"> </span>./example
+<a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a>./example
+</code></pre></div>
+<details>
+<summary>Captured current-source output</summary>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a>Transfer size: 1.0 GB
+<a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a>
+<a id="__codelineno-14-3" name="__codelineno-14-3" href="#__codelineno-14-3"></a>Peer-direct route, NVLink-wired pair:   0.020000 s (50.0 GB/s, one hop)
+<a id="__codelineno-14-4" name="__codelineno-14-4" href="#__codelineno-14-4"></a>Peer-direct route, PCIe-only direct pair: 0.031746 s (31.5 GB/s, one hop)
+<a id="__codelineno-14-5" name="__codelineno-14-5" href="#__codelineno-14-5"></a>Staged host route (any pair):            0.063492 s (31.5 GB/s, two hops)
+<a id="__codelineno-14-6" name="__codelineno-14-6" href="#__codelineno-14-6"></a>
+<a id="__codelineno-14-7" name="__codelineno-14-7" href="#__codelineno-14-7"></a>Peer-direct over NVLink is 3.1746x faster than staging, for a wired pair.
+<a id="__codelineno-14-8" name="__codelineno-14-8" href="#__codelineno-14-8"></a>Peer-direct over a direct PCIe link is 2.0000x faster than staging,
+<a id="__codelineno-14-9" name="__codelineno-14-9" href="#__codelineno-14-9"></a>for a pair with a direct PCIe route but no NVLink wire.
+<a id="__codelineno-14-10" name="__codelineno-14-10" href="#__codelineno-14-10"></a>
+<a id="__codelineno-14-11" name="__codelineno-14-11" href="#__codelineno-14-11"></a>When the pair has NO direct link at all (per Chapter 2's partial-mesh
+<a id="__codelineno-14-12" name="__codelineno-14-12" href="#__codelineno-14-12"></a>topology), peer access cannot be enabled between them in the first
+<a id="__codelineno-14-13" name="__codelineno-14-13" href="#__codelineno-14-13"></a>place (Chapter 4, Section 4.2) -- staging is then not merely faster
+<a id="__codelineno-14-14" name="__codelineno-14-14" href="#__codelineno-14-14"></a>or slower, it is the ONLY route that exists.
+</code></pre></div>
+</details>
+<!-- execution:end:a100:13_when_each_wins_model.cpp -->
+
+<!-- execution:start:h100:13_when_each_wins_model.cpp -->
+<blockquote>
+<p><strong>Current execution — 2026-11-17-h100: Host program/model (exit-only).</strong> UTC (run-batch start; per-program time unrecorded): <code>2026-11-17T23:48:18.967387+00:00</code>. Source SHA-256: <code>7cc3ed42964e58119cd17db7fe9a35602c88ab0b87905dba6216d6bdb86f6c46</code>.</p>
+</blockquote>
+<p><a href="../../validation/2026-11-17-h100/13_when_each_wins_model/13_when_each_wins_model.cpp">Exact tested source</a> · <a href="../../validation/2026-11-17-h100/13_when_each_wins_model/compile.log">Compiler log</a> · <a href="../../validation/2026-11-17-h100/13_when_each_wins_model/run.log">Execution log</a>. Compile exit: <code>0</code>; run exit: <code>0</code>.</p>
+<p>Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a>g++<span class="w"> </span>-std<span class="o">=</span>c++17<span class="w"> </span>-O2<span class="w"> </span>13_when_each_wins_model.cpp<span class="w"> </span>-o<span class="w"> </span>./example
+<a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a>./example
+</code></pre></div>
+<details>
+<summary>Captured current-source output</summary>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a>Transfer size: 1.0 GB
+<a id="__codelineno-16-2" name="__codelineno-16-2" href="#__codelineno-16-2"></a>
+<a id="__codelineno-16-3" name="__codelineno-16-3" href="#__codelineno-16-3"></a>Peer-direct route, NVLink-wired pair:   0.020000 s (50.0 GB/s, one hop)
+<a id="__codelineno-16-4" name="__codelineno-16-4" href="#__codelineno-16-4"></a>Peer-direct route, PCIe-only direct pair: 0.031746 s (31.5 GB/s, one hop)
+<a id="__codelineno-16-5" name="__codelineno-16-5" href="#__codelineno-16-5"></a>Staged host route (any pair):            0.063492 s (31.5 GB/s, two hops)
+<a id="__codelineno-16-6" name="__codelineno-16-6" href="#__codelineno-16-6"></a>
+<a id="__codelineno-16-7" name="__codelineno-16-7" href="#__codelineno-16-7"></a>Peer-direct over NVLink is 3.1746x faster than staging, for a wired pair.
+<a id="__codelineno-16-8" name="__codelineno-16-8" href="#__codelineno-16-8"></a>Peer-direct over a direct PCIe link is 2.0000x faster than staging,
+<a id="__codelineno-16-9" name="__codelineno-16-9" href="#__codelineno-16-9"></a>for a pair with a direct PCIe route but no NVLink wire.
+<a id="__codelineno-16-10" name="__codelineno-16-10" href="#__codelineno-16-10"></a>
+<a id="__codelineno-16-11" name="__codelineno-16-11" href="#__codelineno-16-11"></a>When the pair has NO direct link at all (per Chapter 2's partial-mesh
+<a id="__codelineno-16-12" name="__codelineno-16-12" href="#__codelineno-16-12"></a>topology), peer access cannot be enabled between them in the first
+<a id="__codelineno-16-13" name="__codelineno-16-13" href="#__codelineno-16-13"></a>place (Chapter 4, Section 4.2) -- staging is then not merely faster
+<a id="__codelineno-16-14" name="__codelineno-16-14" href="#__codelineno-16-14"></a>or slower, it is the ONLY route that exists.
+</code></pre></div>
+</details>
+<!-- execution:end:h100:13_when_each_wins_model.cpp -->
+
 <p>Genuinely compiled with <code>g++</code> and genuinely run. Locked output, deterministic across repeated runs:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>Transfer size: 1.0 GB
-<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>
-<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>Peer-direct route, NVLink-wired pair:   0.020000 s (50.0 GB/s, one hop)
-<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>Peer-direct route, PCIe-only direct pair: 0.031746 s (31.5 GB/s, one hop)
-<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>Staged host route (any pair):            0.063492 s (31.5 GB/s, two hops)
-<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>
-<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a>Peer-direct over NVLink is 3.1746x faster than staging, for a wired pair.
-<a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a>Peer-direct over a direct PCIe link is 2.0000x faster than staging,
-<a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a>for a pair with a direct PCIe route but no NVLink wire.
-<a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a>
-<a id="__codelineno-5-11" name="__codelineno-5-11" href="#__codelineno-5-11"></a>When the pair has NO direct link at all (per Chapter 2&#39;s partial-mesh
-<a id="__codelineno-5-12" name="__codelineno-5-12" href="#__codelineno-5-12"></a>topology), peer access cannot be enabled between them in the first
-<a id="__codelineno-5-13" name="__codelineno-5-13" href="#__codelineno-5-13"></a>place (Chapter 4, Section 4.2) -- staging is then not merely faster
-<a id="__codelineno-5-14" name="__codelineno-5-14" href="#__codelineno-5-14"></a>or slower, it is the ONLY route that exists.
+<details>
+<summary>Historical authoring output — superseded by the current execution above</summary>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a>Transfer size: 1.0 GB
+<a id="__codelineno-17-2" name="__codelineno-17-2" href="#__codelineno-17-2"></a>
+<a id="__codelineno-17-3" name="__codelineno-17-3" href="#__codelineno-17-3"></a>Peer-direct route, NVLink-wired pair:   0.020000 s (50.0 GB/s, one hop)
+<a id="__codelineno-17-4" name="__codelineno-17-4" href="#__codelineno-17-4"></a>Peer-direct route, PCIe-only direct pair: 0.031746 s (31.5 GB/s, one hop)
+<a id="__codelineno-17-5" name="__codelineno-17-5" href="#__codelineno-17-5"></a>Staged host route (any pair):            0.063492 s (31.5 GB/s, two hops)
+<a id="__codelineno-17-6" name="__codelineno-17-6" href="#__codelineno-17-6"></a>
+<a id="__codelineno-17-7" name="__codelineno-17-7" href="#__codelineno-17-7"></a>Peer-direct over NVLink is 3.1746x faster than staging, for a wired pair.
+<a id="__codelineno-17-8" name="__codelineno-17-8" href="#__codelineno-17-8"></a>Peer-direct over a direct PCIe link is 2.0000x faster than staging,
+<a id="__codelineno-17-9" name="__codelineno-17-9" href="#__codelineno-17-9"></a>for a pair with a direct PCIe route but no NVLink wire.
+<a id="__codelineno-17-10" name="__codelineno-17-10" href="#__codelineno-17-10"></a>
+<a id="__codelineno-17-11" name="__codelineno-17-11" href="#__codelineno-17-11"></a>When the pair has NO direct link at all (per Chapter 2's partial-mesh
+<a id="__codelineno-17-12" name="__codelineno-17-12" href="#__codelineno-17-12"></a>topology), peer access cannot be enabled between them in the first
+<a id="__codelineno-17-13" name="__codelineno-17-13" href="#__codelineno-17-13"></a>place (Chapter 4, Section 4.2) -- staging is then not merely faster
+<a id="__codelineno-17-14" name="__codelineno-17-14" href="#__codelineno-17-14"></a>or slower, it is the ONLY route that exists.
 </code></pre></div>
-<p>Peer-direct wins whenever it's <em>available</em> -- by a factor of exactly 2x when the direct link is itself PCIe (staging simply pays that same rate twice), and by a larger 3.17x when the direct link is a faster NVLink wire. But "when each wins" has a sharper answer than a speed comparison alone: peer-direct is only ever a <em>choice</em> to make when Chapter 4's <code>cudaDeviceCanAccessPeer()</code> already says the pair has a direct link at all. When it doesn't, there is no decision to make -- staging isn't the slower option, it's the only one.</p>
+</details>
+<p>In this model, peer-direct wins whenever it's <em>available</em> -- by a factor of 2x when the direct link is itself PCIe (the model's staging pays that same rate twice, an upper bound since real staging may overlap the two hops), and by a larger 3.17x when the direct link is a faster NVLink wire. But "when each wins" has a sharper answer than a speed comparison alone: peer-direct is only ever a <em>choice</em> to make when Chapter 4's <code>cudaDeviceCanAccessPeer()</code> already says the pair has a direct link at all. When it doesn't, there is no decision to make -- staging isn't the slower option, it's the only one.</p>
 <div class="admonition warning">
 <p class="admonition-title">[COMMON TRAP] Treating this cost model's numbers as real, measured transfer times</p>
 <p>Every figure in this section's output is a closed-form arithmetic result from bandwidth numbers Chapter 2 already sourced and cited to real vendor documentation -- not a timing measurement taken on real hardware. Real transfer time also includes fixed per-call latency, driver overhead, and whatever else is competing for the same link, none of which this simple <code>size / bandwidth</code> model captures. This model answers "which route is structurally faster, and by roughly what multiple" honestly and exactly -- it does not, and cannot, stand in for benchmarking a real transfer on real GPUs.</p>
 </div>
 <h2 id="chapter-summary">Chapter Summary<a class="headerlink" href="#chapter-summary" title="Permanent link">&para;</a></h2>
-<p><code>cudaMemcpyPeer()</code> is CUDA's dedicated cross-device copy call, and per the CUDA Programming Guide's own words, its routing -- direct or staged through the host -- depends entirely on whether Chapter 4's peer-access permission has already been granted for that specific ordered pair, with the function's return value reporting only correctness, never which path ran (Section 5.1). The staged fallback, written out explicitly in Section 5.2 as two ordinary <code>cudaMemcpy()</code> calls through a pinned host buffer, makes concrete that staging always pays the full transfer cost twice -- once per hop -- never split across the two links. Putting real, already-cited numbers into that shape (Section 5.3) shows peer-direct winning by 2x to 3.17x whenever it's available, but also reframes the real question: peer-direct is a choice only when a direct link exists between the two specific devices at all; when it doesn't, staging is not the slower option but the only one. Chapter 6 builds directly on this by bringing streams and events into the picture -- overlapping a transfer like this chapter's with concurrent kernel execution, and synchronizing correctly across devices when that overlap is in play.</p>
+<p><code>cudaMemcpyPeer()</code> is CUDA's dedicated cross-device copy call, and per the CUDA Programming Guide's own words, its routing -- direct or staged through the host -- depends entirely on whether Chapter 4's peer-access permission has already been granted for that specific ordered pair, with the function's return value reporting only correctness, never which path ran (Section 5.1). The staged fallback, written out explicitly in Section 5.2 as two ordinary <code>cudaMemcpy()</code> calls through a pinned host buffer, makes concrete the book's cost model for staging: the full transfer cost paid twice, once per hop, an upper bound since the driver's undocumented internal staging may overlap the hops. Putting real, already-cited numbers into that shape (Section 5.3) shows peer-direct winning by up to 2x to 3.17x in that model whenever it's available, but also reframes the real question: peer-direct is a choice only when the specific pair supports peer access; when it doesn't, staging is not the slower option but the only one. Chapter 6 builds directly on this by bringing streams and events into the picture -- overlapping a transfer like this chapter's with concurrent kernel execution, and synchronizing correctly across devices when that overlap is in play.</p>
 <h2 id="self-check-questions">Self-Check Questions<a class="headerlink" href="#self-check-questions" title="Permanent link">&para;</a></h2>
 <ol>
 <li><code>cudaMemcpyPeer()</code> returns <code>cudaSuccess</code> in both of the following cases: peer access was enabled and the copy went direct, and peer access was not enabled and the copy was staged through the host. What, if anything, in the function's return value tells the caller which case occurred?</li>
@@ -2790,24 +3015,24 @@
 <li>A programmer concludes: "peer-direct access is always the better choice, so I'll always call <code>cudaDeviceEnablePeerAccess()</code> for every pair before transferring." Using this chapter's own conclusion, explain what's incomplete about that plan.</li>
 <li>Section 5.2's code performs two separate <code>cudaMemcpy()</code> calls. If a third device were introduced and the data needed to go from device 0 to device 2 by way of being staged through device 1's memory instead of the host, would that still be a "staged" transfer in the sense this chapter uses the term? Explain the distinction.</li>
 <li>Why does this chapter's cost model (Section 5.3) reuse Chapter 2's bandwidth figures rather than deriving new ones, and why is that a better choice than fabricating a plausible-sounding timing number?</li>
-<li>Using the field descriptions from the CUDA Runtime API reference (not the cost model), name one reason a real device's <em>achieved</em> bandwidth for a staged transfer could come in below the theoretical PCIe rate this chapter's model assumes.</li>
+<li>Reasoning about what a real transfer involves beyond the cost model's <code>size / bandwidth</code> arithmetic, name one reason a real device's <em>achieved</em> bandwidth for a staged transfer could come in below the theoretical PCIe rate this chapter's model assumes.</li>
 </ol>
 <h2 id="where-we-go-next">Where We Go Next<a class="headerlink" href="#where-we-go-next" title="Permanent link">&para;</a></h2>
 <p>Chapter 6 introduces streams and events as the mechanism for overlapping a transfer -- either of this chapter's two routes -- with concurrent kernel execution on the same or a different device, and for synchronizing correctly across devices once operations are running concurrently rather than one at a time.</p>
 <h2 id="worked-solutions">Worked Solutions<a class="headerlink" href="#worked-solutions" title="Permanent link">&para;</a></h2>
-<p><strong>1.</strong> Nothing. <code>cudaMemcpyPeer()</code>'s return value (a <code>cudaError_t</code>) reports whether the copy completed successfully, not which internal route it took. The only way to know in advance which path will run is to have already called <code>cudaDeviceCanAccessPeer()</code> for that exact ordered pair before making the copy call at all.</p>
+<p><strong>1.</strong> Nothing. <code>cudaMemcpyPeer()</code>'s return value (a <code>cudaError_t</code>) reports API success or failure, not the internal route or device-side completion. <code>cudaDeviceCanAccessPeer()</code> establishes eligibility, not an achieved-bandwidth measurement. Synchronize the relevant work before validating the destination, and profile when route attribution matters.</p>
 <p><strong>2.</strong> A DMA (direct memory access) transfer engine reads or writes host memory using physical addresses, programmed once at the start of the transfer. If the underlying page could be moved or swapped out mid-transfer -- which an ordinary, non-pinned allocation permits, since the OS is free to relocate it -- the DMA engine's already-programmed physical address would become invalid partway through. A pinned (page-locked) allocation is guaranteed by the OS not to move or be paged out for as long as it's pinned, so its physical address stays valid for the DMA engine's entire operation.</p>
 <p><strong>3.</strong> Staged time doubles to <code>2 * (2.0/31.5) = 0.126984</code> s, and peer-direct-over-NVLink time doubles to <code>2.0/50.0 = 0.04</code> s. The speedup ratio (<code>stagedTime / peerTimeNVLink</code>) stays exactly the same, <code>3.1746</code>, because both times scaled by the identical factor (2x the data), and that common factor cancels out of the ratio -- the <em>relative</em> advantage of peer-direct over staging depends only on the bandwidth figures, not on the transfer size.</p>
 <p><strong>4.</strong> In Chapter 2's partial-mesh topology, a specific ordered pair of devices either has a direct wired NVLink connection between them or it doesn't -- there is no partial, intermediate wiring state for one specific pair. The pair's peer-direct bandwidth is therefore always exactly one of the two discrete figures (NVLink if wired, PCIe if the only direct route is PCIe), never an average or blend of the two, because a "half-wired" link isn't a real hardware configuration.</p>
-<p><strong>5.</strong> Chapter 4's Section 4.2 established that <code>cudaDeviceEnablePeerAccess()</code> only succeeds (or is even meaningful to call) between pairs where <code>cudaDeviceCanAccessPeer()</code> already returns true -- meaning a direct physical link exists. Calling it "for every pair" doesn't create a link that doesn't exist; between pairs with no direct wiring, the enable call itself does nothing useful, and the program still has to use the staged route for those pairs regardless of intent. Peer-direct access isn't a setting to always turn on -- it's a fact about specific pairs' physical topology that either holds or doesn't.</p>
+<p><strong>5.</strong> Chapter 4's Section 4.2 established that <code>cudaDeviceEnablePeerAccess()</code> only succeeds (or is even meaningful to call) between pairs where <code>cudaDeviceCanAccessPeer()</code> already returns true -- meaning a supported peer-memory route exists. Calling it "for every pair" doesn't create a link that doesn't exist; between pairs without supported peer access, the enable call itself does nothing useful, and the program still has to use the staged route for those pairs regardless of intent. Peer access can traverse supported PCIe switches or NVSwitch; it does not require a dedicated point-to-point cable. Capability queries determine eligibility, while profiling determines the achieved route and bandwidth.</p>
 <p><strong>6.</strong> No -- this chapter's term "staged" specifically means routed <em>through host memory</em>, which is what <code>cudaMemcpy(..., cudaMemcpyDeviceToHost)</code> followed by <code>cudaMemcpy(..., cudaMemcpyHostToDevice)</code> does. A transfer from device 0 to device 2 that goes by way of device 1's memory (rather than the host's) would be a different thing entirely -- a multi-hop device-to-device relay, which Chapter 2's ring-bottleneck model already discussed in a different context (Section 2.4) and which this chapter's two functions don't perform on their own.</p>
 <p><strong>7.</strong> Chapter 2's figures were already sourced from real vendor documentation (PCIe and NVLink specification tables) and cited at the end of that chapter -- reusing them keeps this chapter's numbers traceable to the same real sources rather than introducing a second, unverified data point. Fabricating a plausible-sounding timing number instead would break this book's own stated honesty discipline: every number in this book is either a genuine, verified program output or a real, cited fact, and a made-up transfer time would be neither.</p>
-<p><strong>8.</strong> The CUDA Runtime API reference notes that a device's actual achieved bandwidth depends on real factors this simple <code>size / bandwidth</code> model doesn't include -- for example, fixed per-transfer latency overhead that matters more for small transfers, and contention from other traffic sharing the same PCIe root complex or switch at the same time (Chapter 2's own same-switch-vs-cross-socket distinction already showed shared links being a real, modeled cost). A real transfer's <em>achieved</em> rate is a ceiling this model's theoretical rate can approach but a real system rarely reaches under contention.</p>
+<p><strong>8.</strong> A real transfer's achieved bandwidth depends on factors this simple <code>size / bandwidth</code> model doesn't include (this is the book's own reasoning, not a quoted documentation claim) -- for example, fixed per-transfer latency overhead that matters more for small transfers, and contention from other traffic sharing the same PCIe root complex or switch at the same time (Chapter 2's own same-switch-vs-cross-socket distinction already showed shared links being a real, modeled cost). A real transfer's <em>achieved</em> rate is a ceiling this model's theoretical rate can approach but a real system rarely reaches under contention.</p>
 <hr />
 <p><strong>Sources cited in this chapter:</strong></p>
 <ul>
-<li><a href="https://docs.nvidia.com/cuda/cuda-programming-guide/03-advanced/multi-gpu-systems.html">CUDA Programming Guide — Multi-GPU Systems</a> -- peer-to-peer copies no longer needing to be staged through the host once peer access is enabled; the four dedicated peer-copy functions (<code>cudaMemcpyPeer</code>, <code>cudaMemcpyPeerAsync</code>, <code>cudaMemcpy3DPeer</code>, <code>cudaMemcpy3DPeerAsync</code>).</li>
-<li><a href="https://developer.download.nvidia.com/compute/DevZone/docs/html/C/doc/html/group__CUDART__MEMORY_g046702971bc5a66d9bc6000682a6d844.html">CUDA Runtime API Reference — Memory Management (<code>cudaMemcpyPeer</code>)</a> -- <code>cudaMemcpyPeer()</code> signature and its "asynchronous with respect to the host, but serialized" behavior.</li>
+<li><a href="https://docs.nvidia.com/cuda/cuda-programming-guide/03-advanced/multi-gpu-systems.html">CUDA Programming Guide — Multi-GPU Systems</a> -- peer-to-peer copies no longer needing to be staged through the host once peer access is enabled; the four dedicated peer-copy functions (<code>cudaMemcpyPeer</code>, <code>cudaMemcpyPeerAsync</code>, <code>cudaMemcpy3DPeer</code>, <code>cudaMemcpy3DPeerAsync</code>), and that peer copies can equally use plain <code>cudaMemcpy()</code> with <code>cudaMemcpyDeviceToDevice</code> or <code>cudaMemcpyDefault</code>.</li>
+<li><a href="https://docs.nvidia.com/cuda/archive/12.8.0/cuda-runtime-api/group__CUDART__MEMORY.html">CUDA Runtime API Reference — Memory Management (<code>cudaMemcpyPeer</code>)</a> -- <code>cudaMemcpyPeer()</code> signature and its "asynchronous with respect to the host, but serialized" behavior.</li>
 <li><a href="https://docs.nvidia.com/cuda/cuda-programming-guide/02-basics/asynchronous-execution.html">CUDA Programming Guide — Asynchronous Execution</a> -- pinned/page-locked host memory as the requirement for genuinely asynchronous transfers.</li>
 <li>Chapter 2 of this book ("Multi-GPU Hardware Topology: PCIe, NVLink, and NVSwitch") -- the PCIe 4.0 x16 (31.5 GB/s) and direct wired NVLink (50 GB/s) figures this chapter's cost model reuses, themselves cited to real vendor sources in that chapter.</li>
 </ul>
@@ -2910,10 +3135,10 @@
     
       
       
-      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.instant", "navigation.tracking", "navigation.sections", "navigation.expand", "navigation.top", "navigation.footer", "toc.follow", "search.suggest", "search.highlight", "content.code.copy", "content.code.annotate"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.instant", "navigation.tracking", "navigation.sections", "navigation.expand", "navigation.top", "navigation.footer", "toc.follow", "search.suggest", "search.highlight", "content.code.copy", "content.code.annotate"], "search": "../../assets/javascripts/workers/search.a7633da7.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
-      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      <script src="../../assets/javascripts/bundle.a5f9d56c.min.js"></script>
       
     
   </body>

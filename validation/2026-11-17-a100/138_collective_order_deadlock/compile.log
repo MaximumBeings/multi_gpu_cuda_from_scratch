@@ -1,0 +1,1 @@
+$ mpicc -std=c11 -O2 /home/ubuntu/codex-eight-gpu-audit-20261117/multi-gpu-audit/docs/appendix/code/138_collective_order_deadlock.c -o /home/ubuntu/codex-eight-gpu-audit-20261117/multi-gpu-audit/artifacts/a100-eight-20261117/138_collective_order_deadlock/example

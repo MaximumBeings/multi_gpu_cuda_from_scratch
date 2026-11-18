@@ -1,0 +1,1 @@
+$ nvcc -std=c++17 -O2 -arch=sm_80 /home/ubuntu/codex-eight-gpu-audit-20261117/multi-gpu-audit/docs/appendix/code/134_nccl_debug_and_nsys.cu -o /home/ubuntu/codex-eight-gpu-audit-20261117/multi-gpu-audit/artifacts/a100-eight-20261117/134_nccl_debug_and_nsys/example -lnccl

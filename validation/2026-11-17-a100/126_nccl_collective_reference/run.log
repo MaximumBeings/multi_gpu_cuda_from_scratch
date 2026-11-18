@@ -1,0 +1,8 @@
+$ /home/ubuntu/codex-eight-gpu-audit-20261117/multi-gpu-audit/artifacts/a100-eight-20261117/126_nccl_collective_reference/example
+Broadcast checked; cumulative errors=0
+Reduce checked; cumulative errors=0
+AllReduce checked; cumulative errors=0
+AllGather checked; cumulative errors=0
+ReduceScatter checked; cumulative errors=0
+Grouped Send/Recv all-to-all checked; cumulative errors=0
+VALIDATION PASS: errors=0

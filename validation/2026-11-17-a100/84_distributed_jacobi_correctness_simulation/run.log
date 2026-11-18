@@ -1,0 +1,11 @@
+$ /home/ubuntu/codex-eight-gpu-audit-20261117/multi-gpu-audit/artifacts/a100-eight-20261117/84_distributed_jacobi_correctness_simulation/example
+Reference (single-process) 12x8-grid Jacobi solve, 40 iterations.
+Global residual norm (full-grid single-pass sum): 1.3874786747088721
+
+P      grid EXACT match?    residual norm (per-rank sums) norm match?
+1      YES                  1.3874786747088721           YES       
+2      YES                  1.3874786747088719           NO        
+3      YES                  1.3874786747088719           NO        
+4      YES                  1.3874786747088719           NO        
+6      YES                  1.3874786747088719           NO        
+12     YES                  1.3874786747088719           NO        

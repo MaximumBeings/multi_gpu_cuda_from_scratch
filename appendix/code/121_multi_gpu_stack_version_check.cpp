@@ -3,17 +3,25 @@
 //
 // nvcc and g++ (File 120) are the base C++/CUDA toolchain, but this
 // book's own multi-GPU chapters also depend on three additional real
-// libraries: NCCL (collective communication, first used in Chapter 8),
+// libraries: NCCL (collective communication, first used in Chapter 11),
 // Open MPI (host-side process launch and messaging, first used in
-// Chapter 19), and NVSHMEM (GPU-initiated one-sided communication, first
+// Chapter 20), and NVSHMEM (GPU-initiated one-sided communication, first
 // used in Chapter 22). Each publishes its own real version macros in its
 // own installed header, exactly like nvcc and g++ do -- this file reads
 // all three directly, the same "read it from the real installed header,
 // never from memory" discipline this book has used since Chapter 1.
+//
+// NVSHMEM's version header (non_abi/nvshmem_version.h) lives under the
+// pip package's own include/ directory, which is not on the default
+// include path -- pass it with -I (see the compile command below). If it
+// is missing, __has_include lets this file still compile and say so.
 #include <cstdio>
 #include <nccl.h>
 #define OMPI_SKIP_MPICXX 1
 #include <mpi.h>
+#if __has_include(<non_abi/nvshmem_version.h>)
+#include <non_abi/nvshmem_version.h>
+#endif
 
 int main(int argc, char** argv) {
     printf("=== NCCL (collective communication) ===\n");
@@ -41,25 +49,23 @@ int main(int argc, char** argv) {
     // version macros above are pure preprocessor text and need no
     // runtime call at all -- this program deliberately does NOT call
     // MPI_Init, to keep this specific check runnable with a plain `./`
-    // invocation rather than requiring `mpirun`. Chapter 19 onward always
+    // invocation rather than requiring `mpirun`. Chapter 20 onward always
     // launches MPI programs through mpirun/mpiexec; this file is a
     // deliberate exception, for the version-check use case only.
     (void)argc; (void)argv;
 
     printf("\n=== NVSHMEM (GPU-initiated one-sided communication) ===\n");
-    printf("NVSHMEM ships its own version macros in a header not on the "
-           "default include path (non_abi/nvshmem_version.h) -- rather "
-           "than requiring every reader to know that path, this "
-           "appendix's own Makefile (A.4) established the reliable "
-           "check: NVSHMEM's pip package is a namespace package with no "
-           "__file__ of its own, so `python3 -c \"import nvidia.nvshmem; "
-           "print(list(nvidia.nvshmem.__path__)[0])\"` is what actually "
-           "locates the install (plain __file__ raises TypeError here), "
-           "and the header at that path's own "
-           "include/non_abi/nvshmem_version.h defines "
-           "NVSHMEM_VENDOR_MAJOR_VERSION / _MINOR_VERSION / "
-           "_PATCH_VERSION directly. In this environment those macros "
-           "read 3, 7, and 2.\n");
+#if defined(NVSHMEM_VENDOR_MAJOR_VERSION) && defined(NVSHMEM_VENDOR_MINOR_VERSION) && defined(NVSHMEM_VENDOR_PATCH_VERSION)
+    printf("NVSHMEM_VENDOR_MAJOR_VERSION = %d, NVSHMEM_VENDOR_MINOR_VERSION = %d, "
+           "NVSHMEM_VENDOR_PATCH_VERSION = %d\n",
+           NVSHMEM_VENDOR_MAJOR_VERSION, NVSHMEM_VENDOR_MINOR_VERSION,
+           NVSHMEM_VENDOR_PATCH_VERSION);
+#else
+    printf("NVSHMEM version macros not defined -- non_abi/nvshmem_version.h "
+           "was not found. Add -I<NVSHMEM_DIR>/include, where NVSHMEM_DIR "
+           "is printed by: python3 -c \"import nvidia.nvshmem; "
+           "print(list(nvidia.nvshmem.__path__)[0])\"\n");
+#endif
 
     printf("\nself-check: this program compiled and ran, which by itself "
            "confirms nccl.h and mpi.h were both found on this system's "

@@ -1,0 +1,2 @@
+$ /home/ubuntu/codex-multigpu-audit-20261117/multi-gpu-audit/artifacts/h100-reviewed-20261117/12_staged_host_transfer/example
+PASS: 4096 nonuniform values verified through explicit pinned-host staging.

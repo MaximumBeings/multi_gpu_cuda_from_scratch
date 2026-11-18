@@ -1,0 +1,1 @@
+$ nvcc -std=c++17 -O2 -arch=sm_80 /home/ubuntu/codex-eight-gpu-audit-20261117/multi-gpu-audit/docs/part4/code/49_nccl_allreduce_as_barrier.cu -o /home/ubuntu/codex-eight-gpu-audit-20261117/multi-gpu-audit/artifacts/a100-eight-20261117/49_nccl_allreduce_as_barrier/example -lnccl

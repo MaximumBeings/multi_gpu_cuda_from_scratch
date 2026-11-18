@@ -1,0 +1,22 @@
+$ /home/ubuntu/codex-eight-gpu-audit-20261117/multi-gpu-audit/artifacts/a100-eight-20261117/45_domain_decomposition_row_range/example
+cudaGetDeviceCount(): 8 device(s).
+
+Partitioning a 16 x 8 grid's rows across this book's own real deviceCount (8):
+  rank 0: rows [0, 2)
+  rank 1: rows [2, 4)
+  rank 2: rows [4, 6)
+  rank 3: rows [6, 8)
+  rank 4: rows [8, 10)
+  rank 5: rows [10, 12)
+  rank 6: rows [12, 14)
+  rank 7: rows [14, 16)
+  (8 device(s) -- nothing to print above.)
+
+The same formula, hypothetically, with world size 4:
+  rank 0: rows [0, 4)  above: domain boundary (fixed value)  below: rank below (real halo)
+  rank 1: rows [4, 8)  above: rank above (real halo)         below: rank below (real halo)
+  rank 2: rows [8, 12)  above: rank above (real halo)         below: rank below (real halo)
+  rank 3: rows [12, 16)  above: rank above (real halo)         below: domain boundary (fixed value)
+
+Five-point stencil (interior update): new(i,j) = 0.25 * (old(i-1,j) + old(i+1,j) + old(i,j-1) + old(i,j+1))
+The top row of every rank's own strip needs old(i-1,j) from the rank ABOVE it; the bottom row needs old(i+1,j) from the rank BELOW it. Neither value lives on this rank.

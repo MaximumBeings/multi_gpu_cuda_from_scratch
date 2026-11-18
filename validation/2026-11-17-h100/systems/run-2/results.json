@@ -1,0 +1,137 @@
+[
+  {
+    "source": "docs/part1/code/16_overlap_query.cu",
+    "sha256": "b233728343488246a8239d354c36f4555fbb6d63fc76286db26aec6de54da837",
+    "number": 16,
+    "dependencies": [],
+    "pthread": false,
+    "cuda": true,
+    "has_main": true,
+    "minimum_gpus": 2,
+    "processes": 1,
+    "runtime_review": null,
+    "validation_oracle": "API PROBE PASS, errors=0 (API scope only)",
+    "timestamp_utc": "2026-11-17T23:51:11.925996+00:00",
+    "compile_command": [
+      "nvcc",
+      "-std=c++17",
+      "-O2",
+      "-arch=sm_90",
+      "/home/ubuntu/codex-multigpu-audit-20261117/multi-gpu-audit/docs/part1/code/16_overlap_query.cu",
+      "-o",
+      "/home/ubuntu/codex-multigpu-audit-20261117/multi-gpu-audit/artifacts/h100-final-probes-clean-20261117/16_overlap_query/example"
+    ],
+    "compile": {
+      "exit_code": 0,
+      "timed_out": false,
+      "seconds": 0.7148573480001232,
+      "started_utc": "2026-11-17T23:51:11.926316+00:00",
+      "finished_utc": "2026-11-17T23:51:12.641176+00:00"
+    },
+    "compile_started_utc": "2026-11-17T23:51:11.926316+00:00",
+    "run_command": [
+      "/home/ubuntu/codex-multigpu-audit-20261117/multi-gpu-audit/artifacts/h100-final-probes-clean-20261117/16_overlap_query/example"
+    ],
+    "run": {
+      "exit_code": 0,
+      "timed_out": false,
+      "seconds": 0.4143175369999881,
+      "started_utc": "2026-11-17T23:51:12.641215+00:00",
+      "finished_utc": "2026-11-17T23:51:13.055535+00:00"
+    },
+    "run_started_utc": "2026-11-17T23:51:12.641215+00:00",
+    "status": "api_probe_pass",
+    "finished_utc": "2026-11-17T23:51:13.055770+00:00"
+  },
+  {
+    "source": "docs/part4/code/54_blocking_vs_nonblocking_comm.cu",
+    "sha256": "527cec6ac2cffe900da522d9e34f7d6362041294890831649623032560b81a18",
+    "number": 54,
+    "dependencies": [
+      "nccl"
+    ],
+    "pthread": false,
+    "cuda": true,
+    "has_main": true,
+    "minimum_gpus": 2,
+    "processes": 1,
+    "runtime_review": null,
+    "validation_oracle": "API PROBE PASS, errors=0 (API scope only)",
+    "timestamp_utc": "2026-11-17T23:51:13.055975+00:00",
+    "compile_command": [
+      "nvcc",
+      "-std=c++17",
+      "-O2",
+      "-arch=sm_90",
+      "/home/ubuntu/codex-multigpu-audit-20261117/multi-gpu-audit/docs/part4/code/54_blocking_vs_nonblocking_comm.cu",
+      "-o",
+      "/home/ubuntu/codex-multigpu-audit-20261117/multi-gpu-audit/artifacts/h100-final-probes-clean-20261117/54_blocking_vs_nonblocking_comm/example",
+      "-lnccl"
+    ],
+    "compile": {
+      "exit_code": 0,
+      "timed_out": false,
+      "seconds": 1.5162176919998274,
+      "started_utc": "2026-11-17T23:51:13.056274+00:00",
+      "finished_utc": "2026-11-17T23:51:14.572497+00:00"
+    },
+    "compile_started_utc": "2026-11-17T23:51:13.056274+00:00",
+    "run_command": [
+      "/home/ubuntu/codex-multigpu-audit-20261117/multi-gpu-audit/artifacts/h100-final-probes-clean-20261117/54_blocking_vs_nonblocking_comm/example"
+    ],
+    "run": {
+      "exit_code": 0,
+      "timed_out": false,
+      "seconds": 2.1672479239998665,
+      "started_utc": "2026-11-17T23:51:14.572581+00:00",
+      "finished_utc": "2026-11-17T23:51:16.739835+00:00"
+    },
+    "run_started_utc": "2026-11-17T23:51:14.572581+00:00",
+    "status": "api_probe_pass",
+    "finished_utc": "2026-11-17T23:51:16.740055+00:00"
+  },
+  {
+    "source": "docs/part5/code/61_gpudirect_rdma_query.cu",
+    "sha256": "dff691eb23e9e5a742cb49fb94d32bd74a7bc45ecf467c4fba4e8a35aa84982e",
+    "number": 61,
+    "dependencies": [],
+    "pthread": false,
+    "cuda": true,
+    "has_main": true,
+    "minimum_gpus": 2,
+    "processes": 1,
+    "runtime_review": null,
+    "validation_oracle": "API PROBE PASS, errors=0 (API scope only)",
+    "timestamp_utc": "2026-11-17T23:51:16.740320+00:00",
+    "compile_command": [
+      "nvcc",
+      "-std=c++17",
+      "-O2",
+      "-arch=sm_90",
+      "/home/ubuntu/codex-multigpu-audit-20261117/multi-gpu-audit/docs/part5/code/61_gpudirect_rdma_query.cu",
+      "-o",
+      "/home/ubuntu/codex-multigpu-audit-20261117/multi-gpu-audit/artifacts/h100-final-probes-clean-20261117/61_gpudirect_rdma_query/example"
+    ],
+    "compile": {
+      "exit_code": 0,
+      "timed_out": false,
+      "seconds": 0.715038426999854,
+      "started_utc": "2026-11-17T23:51:16.740717+00:00",
+      "finished_utc": "2026-11-17T23:51:17.455761+00:00"
+    },
+    "compile_started_utc": "2026-11-17T23:51:16.740717+00:00",
+    "run_command": [
+      "/home/ubuntu/codex-multigpu-audit-20261117/multi-gpu-audit/artifacts/h100-final-probes-clean-20261117/61_gpudirect_rdma_query/example"
+    ],
+    "run": {
+      "exit_code": 0,
+      "timed_out": false,
+      "seconds": 0.4645306849999997,
+      "started_utc": "2026-11-17T23:51:17.455842+00:00",
+      "finished_utc": "2026-11-17T23:51:17.920376+00:00"
+    },
+    "run_started_utc": "2026-11-17T23:51:17.455842+00:00",
+    "status": "api_probe_pass",
+    "finished_utc": "2026-11-17T23:51:17.920531+00:00"
+  }
+]

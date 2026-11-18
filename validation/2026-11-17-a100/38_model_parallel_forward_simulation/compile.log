@@ -1,0 +1,1 @@
+$ g++ -std=c++17 -O2 /home/ubuntu/codex-eight-gpu-audit-20261117/multi-gpu-audit/docs/part3/code/38_model_parallel_forward_simulation.cpp -o /home/ubuntu/codex-eight-gpu-audit-20261117/multi-gpu-audit/artifacts/a100-eight-20261117/38_model_parallel_forward_simulation/example

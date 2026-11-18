@@ -1,0 +1,2 @@
+$ /home/ubuntu/codex-eight-gpu-audit-20261117/multi-gpu-audit/artifacts/a100-eight-20261117/30_nccl_comm_init/example
+API PROBE PASS: 8 devices, valid initialization/destruction and invalid argument checks, errors=0

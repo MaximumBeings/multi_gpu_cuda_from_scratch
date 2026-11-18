@@ -1,0 +1,12 @@
+$ /home/ubuntu/codex-multigpu-audit-20261117/multi-gpu-audit/artifacts/h100-reviewed-20261117/29_collectives_simulation/example
+All-gather (N=4): independent reference chunks: 10 20 30 40 
+  Every device's gathered array matches the reference: PASS
+
+Reduce-scatter (N=4): independent reference sums: 100 104 108 112 
+  Device c's scattered chunk matches reference[c] for every c: PASS
+
+All-to-all (N=4): every device's 4 received chunks match the
+  chunk their sender addressed to them (a full transpose): PASS
+
+Direct all-gather/reduce-scatter: 3 message(s) per device, each to/from a DIFFERENT remote device.
+All-to-all: 3 message(s) per device too -- but unlike all-gather/reduce-scatter, none of them can be replaced by a cheaper ring relay, because every message is unique.

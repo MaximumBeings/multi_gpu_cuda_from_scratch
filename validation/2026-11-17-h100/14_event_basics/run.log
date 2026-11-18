@@ -1,0 +1,6 @@
+$ /home/ubuntu/codex-multigpu-audit-20261117/multi-gpu-audit/artifacts/h100-reviewed-20261117/14_event_basics/example
+cudaStreamCreate: no error (code 0)
+cudaEventCreate: no error (code 0)
+cudaEventRecord(event, stream): no error (code 0)
+cudaEventQuery(event) [non-blocking check]: device not ready (code 600)
+cudaEventSynchronize(event) [blocking wait]: no error (code 0)

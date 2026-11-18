@@ -1,0 +1,4 @@
+$ /home/ubuntu/codex-multigpu-audit-20261117/multi-gpu-audit/artifacts/h100-reviewed-20261117/139_stream_wait_enqueue_order/example
+Consumer before production: 0; after a too-late wait: 0; correctly ordered copy: 42
+The early copy is deliberately completed first, avoiding an intentional data race.
+VALIDATION PASS: errors=0

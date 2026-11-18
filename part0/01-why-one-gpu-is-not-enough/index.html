@@ -12,8 +12,10 @@
         <meta name="author" content="Oluwaseyi Awoga">
       
       
+        <link rel="canonical" href="https://maximumbeings.github.io/multi_gpu_cuda_from_scratch/part0/01-why-one-gpu-is-not-enough/">
       
-        <link rel="prev" href="../../getting-started/">
+      
+        <link rel="prev" href="../../validation-h100/">
       
       
         <link rel="next" href="../02-multi-gpu-hardware-topology/">
@@ -23,7 +25,7 @@
       
       
       <link rel="icon" href="../../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.8.1">
     
     
       
@@ -31,10 +33,10 @@
       
     
     
-      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      <link rel="stylesheet" href="../../assets/stylesheets/main.57a0d79d.min.css">
       
         
-        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.fb2fffe2.min.css">
       
       
 
@@ -52,6 +54,8 @@
         <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
       
     
+    
+      <link rel="stylesheet" href="../../stylesheets/illustrations.css">
     
     <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
     
@@ -195,6 +199,18 @@
       
     
     
+      <div class="md-header__source">
+        <a href="https://github.com/MaximumBeings/multi_gpu_cuda_from_scratch" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    MaximumBeings/multi_gpu_cuda_from_scratch
+  </div>
+</a>
+      </div>
+    
   </nav>
   
 </header>
@@ -228,6 +244,18 @@
     </a>
     Multi-GPU Programming in CUDA C++ -- Under Development
   </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/MaximumBeings/multi_gpu_cuda_from_scratch" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    MaximumBeings/multi_gpu_cuda_from_scratch
+  </div>
+</a>
+    </div>
   
   <ul class="md-nav__list" data-md-scrollfix>
     
@@ -289,6 +317,60 @@
       
   
   
+  
+  
+    <li class="md-nav__item">
+      <a href="../../validation-a100/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    A100 Execution Validation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../validation-h100/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    H100 Execution Validation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
     
   
   
@@ -307,10 +389,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" checked>
         
           
-          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="">
             
   
   
@@ -328,8 +410,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="true">
-          <label class="md-nav__title" for="__nav_3">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_5">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -660,10 +742,10 @@
         
           
         
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4" >
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6" >
         
           
-          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="">
             
   
   
@@ -681,8 +763,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_4">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -833,10 +915,10 @@
         
           
         
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5" >
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_7" >
         
           
-          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="">
+          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="">
             
   
   
@@ -854,8 +936,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_5">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -1006,10 +1088,10 @@
         
           
         
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6" >
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_8" >
         
           
-          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="">
+          <label class="md-nav__link" for="__nav_8" id="__nav_8_label" tabindex="">
             
   
   
@@ -1027,8 +1109,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_6">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_8">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -1207,10 +1289,10 @@
         
           
         
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_7" >
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_9" >
         
           
-          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="">
+          <label class="md-nav__link" for="__nav_9" id="__nav_9_label" tabindex="">
             
   
   
@@ -1228,8 +1310,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_7">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_9">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -1352,10 +1434,10 @@
         
           
         
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_8" >
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_10" >
         
           
-          <label class="md-nav__link" for="__nav_8" id="__nav_8_label" tabindex="">
+          <label class="md-nav__link" for="__nav_10" id="__nav_10_label" tabindex="">
             
   
   
@@ -1373,8 +1455,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_8">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_10_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_10">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -1525,10 +1607,10 @@
         
           
         
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_9" >
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_11" >
         
           
-          <label class="md-nav__link" for="__nav_9" id="__nav_9_label" tabindex="">
+          <label class="md-nav__link" for="__nav_11" id="__nav_11_label" tabindex="">
             
   
   
@@ -1546,8 +1628,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_9_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_9">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_11_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_11">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -1810,10 +1892,10 @@
         
           
         
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_10" >
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_12" >
         
           
-          <label class="md-nav__link" for="__nav_10" id="__nav_10_label" tabindex="">
+          <label class="md-nav__link" for="__nav_12" id="__nav_12_label" tabindex="">
             
   
   
@@ -1831,8 +1913,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_10_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_10">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_12_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_12">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -2123,10 +2205,10 @@
         
           
         
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_11" >
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_13" >
         
           
-          <label class="md-nav__link" for="__nav_11" id="__nav_11_label" tabindex="">
+          <label class="md-nav__link" for="__nav_13" id="__nav_13_label" tabindex="">
             
   
   
@@ -2144,8 +2226,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_11_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_11">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_13_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_13">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -2561,8 +2643,20 @@
                   
 
 
+  
+  
+
 
 <h1 id="chapter-1-why-one-gpu-is-not-enough">Chapter 1: Why One GPU Is Not Enough<a class="headerlink" href="#chapter-1-why-one-gpu-is-not-enough" title="Permanent link">&para;</a></h1>
+<!-- execution:provenance -->
+<div class="admonition info">
+<p class="admonition-title">Execution provenance</p>
+<p>Current execution blocks identify the tested source hash, hardware dataset, commands and captured output. References elsewhere on this page to a device-less environment describe the original authoring context. Historical output is superseded by the current record. Displayed output omits the runner command header and trims trailing line whitespace; raw logs remain exact. A host simulation or API validation has its stated scope; neither alone establishes a numerical multi-GPU workload or measured performance.</p>
+</div>
+<!-- mgpu:opener:start -->
+<p><a href="../../images/chapter-openers/01.svg"><img alt="Chapter 1: Why One GPU Is Not Enough" src="../../images/chapter-openers/01.svg" /></a></p>
+<!-- mgpu:opener:end -->
+
 <p><strong>What you will understand by the end of this chapter:</strong></p>
 <ul>
 <li>Why "not enough" hides two genuinely different failures — running out of memory and running out of time — and why the fix for one is not automatically the fix for the other.</li>
@@ -2579,6 +2673,10 @@
 <hr />
 <p>Every chapter after this one is about getting two or more GPUs to cooperate. Before that's worth the trouble, it's worth being precise about what problem it actually solves — because "not enough" is not one failure, and the rest of this book is organized around the difference between its two forms.</p>
 <h2 id="11-the-memory-capacity-wall">1.1 The Memory-Capacity Wall<a class="headerlink" href="#11-the-memory-capacity-wall" title="Permanent link">&para;</a></h2>
+<!-- mgpu:figure-1:start -->
+<p><a href="../../images/technical/ch01/1-capacity.svg"><img alt="One working set, several memories" src="../../images/technical/ch01/1-capacity.svg" /></a></p>
+<!-- mgpu:figure-1:end -->
+
 <h3 id="intuition">Intuition<a class="headerlink" href="#intuition" title="Permanent link">&para;</a></h3>
 <p>Picture packing a moving truck. There are two completely different ways to fail. The truck might simply be too small — the couch does not fit, full stop, no amount of clever packing changes that. Or the truck might be plenty big, but you're only allowed one trip and a fixed number of hours to load and drive it — everything technically <em>fits</em>, yet the job still doesn't get done in time. A GPU fails the same two ways, and this section is about the first one: the truck being too small, stated in exact bytes rather than as a metaphor.</p>
 <h3 id="background">Background<a class="headerlink" href="#background" title="Permanent link">&para;</a></h3>
@@ -2588,191 +2686,367 @@
 <a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>= 16 bytes per parameter
 </code></pre></div>
 <p>against roughly 2 bytes per parameter just to hold the weights for inference — training a model costs an order of magnitude more memory per parameter than merely running it. The program below turns that formula into exact numbers for two real model sizes, checked against two real GPUs' published memory capacities.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="c1">// 02_memory_wall.cpp</span>
-<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;cstdio&gt;</span>
-<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;cstdint&gt;</span>
-<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;cmath&gt;</span>
-<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>
-<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a><span class="k">struct</span><span class="w"> </span><span class="nc">Model</span><span class="w"> </span><span class="p">{</span>
-<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="kt">char</span><span class="o">*</span><span class="w"> </span><span class="n">name</span><span class="p">;</span>
-<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a><span class="w">    </span><span class="kt">double</span><span class="w"> </span><span class="n">params</span><span class="p">;</span><span class="w"> </span><span class="c1">// parameter count</span>
-<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a><span class="p">};</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="c1">// Chapter 1: Why One GPU Is Not Enough</span>
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="c1">// 02_memory_wall.cpp</span>
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="c1">//</span>
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="c1">// Plain host C++. No CUDA, no simulation, nothing to fake: this is ordinary</span>
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="c1">// arithmetic on numbers taken from cited real sources (see the chapter</span>
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a><span class="c1">// text for citations), computed exactly and reproducibly.</span>
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;cstdio&gt;</span>
+<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;cstdint&gt;</span>
+<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;cmath&gt;</span>
 <a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a>
-<a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a><span class="kt">int</span><span class="w"> </span><span class="nf">main</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
-<a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a><span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="n">Model</span><span class="w"> </span><span class="n">models</span><span class="p">[]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span>
-<a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a><span class="w">        </span><span class="p">{</span><span class="s">&quot;7B-class model&quot;</span><span class="p">,</span><span class="w">   </span><span class="mf">7.0e9</span><span class="p">},</span>
-<a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a><span class="w">        </span><span class="p">{</span><span class="s">&quot;GPT-3 (175B)&quot;</span><span class="p">,</span><span class="w">   </span><span class="mf">175.0e9</span><span class="p">},</span>
-<a id="__codelineno-1-15" name="__codelineno-1-15" href="#__codelineno-1-15"></a><span class="w">    </span><span class="p">};</span>
-<a id="__codelineno-1-16" name="__codelineno-1-16" href="#__codelineno-1-16"></a>
-<a id="__codelineno-1-17" name="__codelineno-1-17" href="#__codelineno-1-17"></a><span class="w">    </span><span class="c1">// Real GPU memory capacities, decimal GB as the vendor datasheets state</span>
-<a id="__codelineno-1-18" name="__codelineno-1-18" href="#__codelineno-1-18"></a><span class="w">    </span><span class="c1">// them (NVIDIA H100 datasheet / product page).</span>
-<a id="__codelineno-1-19" name="__codelineno-1-19" href="#__codelineno-1-19"></a><span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="kt">double</span><span class="w"> </span><span class="n">H100_SXM_GB</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">80.0</span><span class="p">;</span>
-<a id="__codelineno-1-20" name="__codelineno-1-20" href="#__codelineno-1-20"></a><span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="kt">double</span><span class="w"> </span><span class="n">H100_NVL_GB</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">94.0</span><span class="p">;</span>
-<a id="__codelineno-1-21" name="__codelineno-1-21" href="#__codelineno-1-21"></a><span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="kt">double</span><span class="w"> </span><span class="n">BYTES_PER_GB</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">1.0e9</span><span class="p">;</span>
-<a id="__codelineno-1-22" name="__codelineno-1-22" href="#__codelineno-1-22"></a>
-<a id="__codelineno-1-23" name="__codelineno-1-23" href="#__codelineno-1-23"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;%-16s %10s %16s %16s %10s %10s</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span>
-<a id="__codelineno-1-24" name="__codelineno-1-24" href="#__codelineno-1-24"></a><span class="w">           </span><span class="s">&quot;Model&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;Params&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;Inference(fp16)&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;Training(Adam,mp)&quot;</span><span class="p">,</span>
-<a id="__codelineno-1-25" name="__codelineno-1-25" href="#__codelineno-1-25"></a><span class="w">           </span><span class="s">&quot;H100 SXM x&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;H100 NVL x&quot;</span><span class="p">);</span>
-<a id="__codelineno-1-26" name="__codelineno-1-26" href="#__codelineno-1-26"></a>
-<a id="__codelineno-1-27" name="__codelineno-1-27" href="#__codelineno-1-27"></a><span class="w">    </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="k">const</span><span class="w"> </span><span class="k">auto</span><span class="o">&amp;</span><span class="w"> </span><span class="n">m</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="n">models</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
-<a id="__codelineno-1-28" name="__codelineno-1-28" href="#__codelineno-1-28"></a><span class="w">        </span><span class="c1">// Inference footprint: weights only, fp16/bf16 -&gt; 2 bytes/param.</span>
-<a id="__codelineno-1-29" name="__codelineno-1-29" href="#__codelineno-1-29"></a><span class="w">        </span><span class="kt">double</span><span class="w"> </span><span class="n">inferenceBytes</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">m</span><span class="p">.</span><span class="n">params</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="mf">2.0</span><span class="p">;</span>
-<a id="__codelineno-1-30" name="__codelineno-1-30" href="#__codelineno-1-30"></a>
-<a id="__codelineno-1-31" name="__codelineno-1-31" href="#__codelineno-1-31"></a><span class="w">        </span><span class="c1">// Training footprint, mixed-precision Adam, per the ZeRO paper</span>
-<a id="__codelineno-1-32" name="__codelineno-1-32" href="#__codelineno-1-32"></a><span class="w">        </span><span class="c1">// (Rajbhandari et al., SC&#39;20): 2 (fp16 params) + 2 (fp16 grads)</span>
-<a id="__codelineno-1-33" name="__codelineno-1-33" href="#__codelineno-1-33"></a><span class="w">        </span><span class="c1">// + 4 (fp32 params) + 4 (fp32 momentum) + 4 (fp32 variance)</span>
-<a id="__codelineno-1-34" name="__codelineno-1-34" href="#__codelineno-1-34"></a><span class="w">        </span><span class="c1">// = 16 bytes per parameter. This excludes activation memory,</span>
-<a id="__codelineno-1-35" name="__codelineno-1-35" href="#__codelineno-1-35"></a><span class="w">        </span><span class="c1">// which is workload- (batch size, sequence length) dependent</span>
-<a id="__codelineno-1-36" name="__codelineno-1-36" href="#__codelineno-1-36"></a><span class="w">        </span><span class="c1">// and addressed separately in the chapter text.</span>
-<a id="__codelineno-1-37" name="__codelineno-1-37" href="#__codelineno-1-37"></a><span class="w">        </span><span class="kt">double</span><span class="w"> </span><span class="n">trainingBytes</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">m</span><span class="p">.</span><span class="n">params</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="mf">16.0</span><span class="p">;</span>
-<a id="__codelineno-1-38" name="__codelineno-1-38" href="#__codelineno-1-38"></a>
-<a id="__codelineno-1-39" name="__codelineno-1-39" href="#__codelineno-1-39"></a><span class="w">        </span><span class="kt">double</span><span class="w"> </span><span class="n">inferenceGB</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">inferenceBytes</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="n">BYTES_PER_GB</span><span class="p">;</span>
-<a id="__codelineno-1-40" name="__codelineno-1-40" href="#__codelineno-1-40"></a><span class="w">        </span><span class="kt">double</span><span class="w"> </span><span class="n">trainingGB</span><span class="w">  </span><span class="o">=</span><span class="w"> </span><span class="n">trainingBytes</span><span class="w">  </span><span class="o">/</span><span class="w"> </span><span class="n">BYTES_PER_GB</span><span class="p">;</span>
-<a id="__codelineno-1-41" name="__codelineno-1-41" href="#__codelineno-1-41"></a>
-<a id="__codelineno-1-42" name="__codelineno-1-42" href="#__codelineno-1-42"></a><span class="w">        </span><span class="kt">double</span><span class="w"> </span><span class="n">sxmNeeded</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">ceil</span><span class="p">(</span><span class="n">trainingGB</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="n">H100_SXM_GB</span><span class="p">);</span>
-<a id="__codelineno-1-43" name="__codelineno-1-43" href="#__codelineno-1-43"></a><span class="w">        </span><span class="kt">double</span><span class="w"> </span><span class="n">nvlNeeded</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">ceil</span><span class="p">(</span><span class="n">trainingGB</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="n">H100_NVL_GB</span><span class="p">);</span>
-<a id="__codelineno-1-44" name="__codelineno-1-44" href="#__codelineno-1-44"></a>
-<a id="__codelineno-1-45" name="__codelineno-1-45" href="#__codelineno-1-45"></a><span class="w">        </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;%-16s %8.1fB %13.1f GB %13.1f GB %10.0f %10.0f</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span>
-<a id="__codelineno-1-46" name="__codelineno-1-46" href="#__codelineno-1-46"></a><span class="w">               </span><span class="n">m</span><span class="p">.</span><span class="n">name</span><span class="p">,</span><span class="w"> </span><span class="n">m</span><span class="p">.</span><span class="n">params</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="mf">1e9</span><span class="p">,</span><span class="w"> </span><span class="n">inferenceGB</span><span class="p">,</span><span class="w"> </span><span class="n">trainingGB</span><span class="p">,</span>
-<a id="__codelineno-1-47" name="__codelineno-1-47" href="#__codelineno-1-47"></a><span class="w">               </span><span class="n">sxmNeeded</span><span class="p">,</span><span class="w"> </span><span class="n">nvlNeeded</span><span class="p">);</span>
-<a id="__codelineno-1-48" name="__codelineno-1-48" href="#__codelineno-1-48"></a><span class="w">    </span><span class="p">}</span>
+<a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a><span class="k">struct</span><span class="w"> </span><span class="nc">Model</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a><span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="kt">char</span><span class="o">*</span><span class="w"> </span><span class="n">name</span><span class="p">;</span>
+<a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a><span class="w">    </span><span class="kt">double</span><span class="w"> </span><span class="n">params</span><span class="p">;</span><span class="w"> </span><span class="c1">// parameter count</span>
+<a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a><span class="p">};</span>
+<a id="__codelineno-1-15" name="__codelineno-1-15" href="#__codelineno-1-15"></a>
+<a id="__codelineno-1-16" name="__codelineno-1-16" href="#__codelineno-1-16"></a><span class="kt">int</span><span class="w"> </span><span class="nf">main</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-1-17" name="__codelineno-1-17" href="#__codelineno-1-17"></a><span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="n">Model</span><span class="w"> </span><span class="n">models</span><span class="p">[]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-1-18" name="__codelineno-1-18" href="#__codelineno-1-18"></a><span class="w">        </span><span class="p">{</span><span class="s">"7B-class model"</span><span class="p">,</span><span class="w">   </span><span class="mf">7.0e9</span><span class="p">},</span>
+<a id="__codelineno-1-19" name="__codelineno-1-19" href="#__codelineno-1-19"></a><span class="w">        </span><span class="p">{</span><span class="s">"GPT-3 (175B)"</span><span class="p">,</span><span class="w">   </span><span class="mf">175.0e9</span><span class="p">},</span>
+<a id="__codelineno-1-20" name="__codelineno-1-20" href="#__codelineno-1-20"></a><span class="w">    </span><span class="p">};</span>
+<a id="__codelineno-1-21" name="__codelineno-1-21" href="#__codelineno-1-21"></a>
+<a id="__codelineno-1-22" name="__codelineno-1-22" href="#__codelineno-1-22"></a><span class="w">    </span><span class="c1">// Real GPU memory capacities, decimal GB as the vendor datasheets state</span>
+<a id="__codelineno-1-23" name="__codelineno-1-23" href="#__codelineno-1-23"></a><span class="w">    </span><span class="c1">// them (NVIDIA H100 datasheet / product page).</span>
+<a id="__codelineno-1-24" name="__codelineno-1-24" href="#__codelineno-1-24"></a><span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="kt">double</span><span class="w"> </span><span class="n">H100_SXM_GB</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">80.0</span><span class="p">;</span>
+<a id="__codelineno-1-25" name="__codelineno-1-25" href="#__codelineno-1-25"></a><span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="kt">double</span><span class="w"> </span><span class="n">H100_NVL_GB</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">94.0</span><span class="p">;</span>
+<a id="__codelineno-1-26" name="__codelineno-1-26" href="#__codelineno-1-26"></a><span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="kt">double</span><span class="w"> </span><span class="n">BYTES_PER_GB</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">1.0e9</span><span class="p">;</span>
+<a id="__codelineno-1-27" name="__codelineno-1-27" href="#__codelineno-1-27"></a>
+<a id="__codelineno-1-28" name="__codelineno-1-28" href="#__codelineno-1-28"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">"%-16s %10s %16s %16s %10s %10s</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span>
+<a id="__codelineno-1-29" name="__codelineno-1-29" href="#__codelineno-1-29"></a><span class="w">           </span><span class="s">"Model"</span><span class="p">,</span><span class="w"> </span><span class="s">"Params"</span><span class="p">,</span><span class="w"> </span><span class="s">"Inference(fp16)"</span><span class="p">,</span><span class="w"> </span><span class="s">"Training(Adam,mp)"</span><span class="p">,</span>
+<a id="__codelineno-1-30" name="__codelineno-1-30" href="#__codelineno-1-30"></a><span class="w">           </span><span class="s">"H100 SXM x"</span><span class="p">,</span><span class="w"> </span><span class="s">"H100 NVL x"</span><span class="p">);</span>
+<a id="__codelineno-1-31" name="__codelineno-1-31" href="#__codelineno-1-31"></a>
+<a id="__codelineno-1-32" name="__codelineno-1-32" href="#__codelineno-1-32"></a><span class="w">    </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="k">const</span><span class="w"> </span><span class="k">auto</span><span class="o">&amp;</span><span class="w"> </span><span class="n">m</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="n">models</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-1-33" name="__codelineno-1-33" href="#__codelineno-1-33"></a><span class="w">        </span><span class="c1">// Inference footprint: weights only, fp16/bf16 -&gt; 2 bytes/param.</span>
+<a id="__codelineno-1-34" name="__codelineno-1-34" href="#__codelineno-1-34"></a><span class="w">        </span><span class="kt">double</span><span class="w"> </span><span class="n">inferenceBytes</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">m</span><span class="p">.</span><span class="n">params</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="mf">2.0</span><span class="p">;</span>
+<a id="__codelineno-1-35" name="__codelineno-1-35" href="#__codelineno-1-35"></a>
+<a id="__codelineno-1-36" name="__codelineno-1-36" href="#__codelineno-1-36"></a><span class="w">        </span><span class="c1">// Training footprint, mixed-precision Adam, per the ZeRO paper</span>
+<a id="__codelineno-1-37" name="__codelineno-1-37" href="#__codelineno-1-37"></a><span class="w">        </span><span class="c1">// (Rajbhandari et al., SC'20): 2 (fp16 params) + 2 (fp16 grads)</span>
+<a id="__codelineno-1-38" name="__codelineno-1-38" href="#__codelineno-1-38"></a><span class="w">        </span><span class="c1">// + 4 (fp32 params) + 4 (fp32 momentum) + 4 (fp32 variance)</span>
+<a id="__codelineno-1-39" name="__codelineno-1-39" href="#__codelineno-1-39"></a><span class="w">        </span><span class="c1">// = 16 bytes per parameter. This excludes activation memory,</span>
+<a id="__codelineno-1-40" name="__codelineno-1-40" href="#__codelineno-1-40"></a><span class="w">        </span><span class="c1">// which is workload- (batch size, sequence length) dependent</span>
+<a id="__codelineno-1-41" name="__codelineno-1-41" href="#__codelineno-1-41"></a><span class="w">        </span><span class="c1">// and addressed separately in the chapter text.</span>
+<a id="__codelineno-1-42" name="__codelineno-1-42" href="#__codelineno-1-42"></a><span class="w">        </span><span class="kt">double</span><span class="w"> </span><span class="n">trainingBytes</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">m</span><span class="p">.</span><span class="n">params</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="mf">16.0</span><span class="p">;</span>
+<a id="__codelineno-1-43" name="__codelineno-1-43" href="#__codelineno-1-43"></a>
+<a id="__codelineno-1-44" name="__codelineno-1-44" href="#__codelineno-1-44"></a><span class="w">        </span><span class="kt">double</span><span class="w"> </span><span class="n">inferenceGB</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">inferenceBytes</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="n">BYTES_PER_GB</span><span class="p">;</span>
+<a id="__codelineno-1-45" name="__codelineno-1-45" href="#__codelineno-1-45"></a><span class="w">        </span><span class="kt">double</span><span class="w"> </span><span class="n">trainingGB</span><span class="w">  </span><span class="o">=</span><span class="w"> </span><span class="n">trainingBytes</span><span class="w">  </span><span class="o">/</span><span class="w"> </span><span class="n">BYTES_PER_GB</span><span class="p">;</span>
+<a id="__codelineno-1-46" name="__codelineno-1-46" href="#__codelineno-1-46"></a>
+<a id="__codelineno-1-47" name="__codelineno-1-47" href="#__codelineno-1-47"></a><span class="w">        </span><span class="kt">double</span><span class="w"> </span><span class="n">sxmNeeded</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">ceil</span><span class="p">(</span><span class="n">trainingGB</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="n">H100_SXM_GB</span><span class="p">);</span>
+<a id="__codelineno-1-48" name="__codelineno-1-48" href="#__codelineno-1-48"></a><span class="w">        </span><span class="kt">double</span><span class="w"> </span><span class="n">nvlNeeded</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">ceil</span><span class="p">(</span><span class="n">trainingGB</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="n">H100_NVL_GB</span><span class="p">);</span>
 <a id="__codelineno-1-49" name="__codelineno-1-49" href="#__codelineno-1-49"></a>
-<a id="__codelineno-1-50" name="__codelineno-1-50" href="#__codelineno-1-50"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;</span><span class="se">\n</span><span class="s">Minimum H100 SXM (80 GB) GPUs to hold GPT-3&#39;s training state &quot;</span>
-<a id="__codelineno-1-51" name="__codelineno-1-51" href="#__codelineno-1-51"></a><span class="w">           </span><span class="s">&quot;(params+grads+Adam state only, no activations): %.0f</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span>
-<a id="__codelineno-1-52" name="__codelineno-1-52" href="#__codelineno-1-52"></a><span class="w">           </span><span class="n">std</span><span class="o">::</span><span class="n">ceil</span><span class="p">((</span><span class="mf">175.0e9</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="mf">16.0</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="n">BYTES_PER_GB</span><span class="p">)</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="n">H100_SXM_GB</span><span class="p">));</span>
-<a id="__codelineno-1-53" name="__codelineno-1-53" href="#__codelineno-1-53"></a>
-<a id="__codelineno-1-54" name="__codelineno-1-54" href="#__codelineno-1-54"></a><span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
-<a id="__codelineno-1-55" name="__codelineno-1-55" href="#__codelineno-1-55"></a><span class="p">}</span>
+<a id="__codelineno-1-50" name="__codelineno-1-50" href="#__codelineno-1-50"></a><span class="w">        </span><span class="n">printf</span><span class="p">(</span><span class="s">"%-16s %8.1fB %13.1f GB %13.1f GB %10.0f %10.0f</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span>
+<a id="__codelineno-1-51" name="__codelineno-1-51" href="#__codelineno-1-51"></a><span class="w">               </span><span class="n">m</span><span class="p">.</span><span class="n">name</span><span class="p">,</span><span class="w"> </span><span class="n">m</span><span class="p">.</span><span class="n">params</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="mf">1e9</span><span class="p">,</span><span class="w"> </span><span class="n">inferenceGB</span><span class="p">,</span><span class="w"> </span><span class="n">trainingGB</span><span class="p">,</span>
+<a id="__codelineno-1-52" name="__codelineno-1-52" href="#__codelineno-1-52"></a><span class="w">               </span><span class="n">sxmNeeded</span><span class="p">,</span><span class="w"> </span><span class="n">nvlNeeded</span><span class="p">);</span>
+<a id="__codelineno-1-53" name="__codelineno-1-53" href="#__codelineno-1-53"></a><span class="w">    </span><span class="p">}</span>
+<a id="__codelineno-1-54" name="__codelineno-1-54" href="#__codelineno-1-54"></a>
+<a id="__codelineno-1-55" name="__codelineno-1-55" href="#__codelineno-1-55"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">"</span><span class="se">\n</span><span class="s">Minimum H100 SXM (80 GB) GPUs to hold GPT-3's training state "</span>
+<a id="__codelineno-1-56" name="__codelineno-1-56" href="#__codelineno-1-56"></a><span class="w">           </span><span class="s">"(params+grads+Adam state only, no activations): %.0f</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span>
+<a id="__codelineno-1-57" name="__codelineno-1-57" href="#__codelineno-1-57"></a><span class="w">           </span><span class="n">std</span><span class="o">::</span><span class="n">ceil</span><span class="p">((</span><span class="mf">175.0e9</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="mf">16.0</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="n">BYTES_PER_GB</span><span class="p">)</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="n">H100_SXM_GB</span><span class="p">));</span>
+<a id="__codelineno-1-58" name="__codelineno-1-58" href="#__codelineno-1-58"></a>
+<a id="__codelineno-1-59" name="__codelineno-1-59" href="#__codelineno-1-59"></a><span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
+<a id="__codelineno-1-60" name="__codelineno-1-60" href="#__codelineno-1-60"></a><span class="p">}</span>
 </code></pre></div>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>g++<span class="w"> </span>-std<span class="o">=</span>c++17<span class="w"> </span>-Wall<span class="w"> </span>-Wextra<span class="w"> </span>-O2<span class="w"> </span>02_memory_wall.cpp<span class="w"> </span>-o<span class="w"> </span>memory_wall
-<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>./memory_wall
+<!-- execution:start:a100:02_memory_wall.cpp -->
+<blockquote>
+<p><strong>Current execution — 2026-11-17-a100: Host program/model (exit-only).</strong> UTC (program start): <code>2026-11-18T00:00:10.869538+00:00</code>. Source SHA-256: <code>a2ff2cb43ab47129401d4d1b916c527da97d8271196a249813fb57e3a3853b1b</code>.</p>
+</blockquote>
+<p><a href="../../validation/2026-11-17-a100/02_memory_wall/02_memory_wall.cpp">Exact tested source</a> · <a href="../../validation/2026-11-17-a100/02_memory_wall/compile.log">Compiler log</a> · <a href="../../validation/2026-11-17-a100/02_memory_wall/run.log">Execution log</a>. Compile exit: <code>0</code>; run exit: <code>0</code>.</p>
+<p>Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>g++<span class="w"> </span>-std<span class="o">=</span>c++17<span class="w"> </span>-O2<span class="w"> </span>02_memory_wall.cpp<span class="w"> </span>-o<span class="w"> </span>./example
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>./example
 </code></pre></div>
-<p>Output (genuinely compiled and run; re-verified by a fresh recompile and rerun before publication, identical both times):</p>
+<details>
+<summary>Captured current-source output</summary>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>Model                Params  Inference(fp16) Training(Adam,mp) H100 SXM x H100 NVL x
 <a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>7B-class model        7.0B          14.0 GB         112.0 GB          2          2
 <a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>GPT-3 (175B)        175.0B         350.0 GB        2800.0 GB         35         30
 <a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>
-<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>Minimum H100 SXM (80 GB) GPUs to hold GPT-3&#39;s training state (params+grads+Adam state only, no activations): 35
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>Minimum H100 SXM (80 GB) GPUs to hold GPT-3's training state (params+grads+Adam state only, no activations): 35
 </code></pre></div>
+</details>
+<!-- execution:end:a100:02_memory_wall.cpp -->
+
+<!-- execution:start:h100:02_memory_wall.cpp -->
+<blockquote>
+<p><strong>Current execution — 2026-11-17-h100: Host program/model (exit-only).</strong> UTC (run-batch start; per-program time unrecorded): <code>2026-11-17T23:48:18.967387+00:00</code>. Source SHA-256: <code>a2ff2cb43ab47129401d4d1b916c527da97d8271196a249813fb57e3a3853b1b</code>.</p>
+</blockquote>
+<p><a href="../../validation/2026-11-17-h100/02_memory_wall/02_memory_wall.cpp">Exact tested source</a> · <a href="../../validation/2026-11-17-h100/02_memory_wall/compile.log">Compiler log</a> · <a href="../../validation/2026-11-17-h100/02_memory_wall/run.log">Execution log</a>. Compile exit: <code>0</code>; run exit: <code>0</code>.</p>
+<p>Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>g++<span class="w"> </span>-std<span class="o">=</span>c++17<span class="w"> </span>-O2<span class="w"> </span>02_memory_wall.cpp<span class="w"> </span>-o<span class="w"> </span>./example
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>./example
+</code></pre></div>
+<details>
+<summary>Captured current-source output</summary>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>Model                Params  Inference(fp16) Training(Adam,mp) H100 SXM x H100 NVL x
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>7B-class model        7.0B          14.0 GB         112.0 GB          2          2
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>GPT-3 (175B)        175.0B         350.0 GB        2800.0 GB         35         30
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>Minimum H100 SXM (80 GB) GPUs to hold GPT-3's training state (params+grads+Adam state only, no activations): 35
+</code></pre></div>
+</details>
+<!-- execution:end:h100:02_memory_wall.cpp -->
+
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>g++<span class="w"> </span>-std<span class="o">=</span>c++17<span class="w"> </span>-Wall<span class="w"> </span>-Wextra<span class="w"> </span>-O2<span class="w"> </span>02_memory_wall.cpp<span class="w"> </span>-o<span class="w"> </span>memory_wall
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>./memory_wall
+</code></pre></div>
+<p>Output (genuinely compiled and run; re-verified by a fresh recompile and rerun before publication, identical both times):</p>
+<details>
+<summary>Historical authoring output — superseded by the current execution above</summary>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>Model                Params  Inference(fp16) Training(Adam,mp) H100 SXM x H100 NVL x
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>7B-class model        7.0B          14.0 GB         112.0 GB          2          2
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>GPT-3 (175B)        175.0B         350.0 GB        2800.0 GB         35         30
+<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a>
+<a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a>Minimum H100 SXM (80 GB) GPUs to hold GPT-3's training state (params+grads+Adam state only, no activations): 35
+</code></pre></div>
+</details>
 <p>A 175-billion-parameter model's weights alone (350 GB at fp16) already exceed a single H100's 80 GB several times over — before a single gradient or optimizer value is added. Once they are, the training state needs <strong>35 H100 SXM GPUs' worth of memory just to exist</strong>, with zero of it left over for the activations that actually let training happen. Even the comparatively modest 7B-class model's <em>training</em> footprint (112 GB) doesn't fit in one H100 (80 GB), though its <em>inference</em> footprint (14 GB) fits easily.</p>
 <div class="admonition warning">
 <p class="admonition-title">[COMMON TRAP] Asking "does this model fit on a GPU" as if it's one question</p>
 <p>"Fits on a GPU" has at least two different, very differently-sized answers depending on whether you mean <em>running</em> it or <em>training</em> it — 14 GB versus 112 GB for the exact same 7B-class model above, an 8x gap from precision and optimizer state alone, with real activation memory still not counted. A model comfortably fitting for inference is not evidence it will fit for training, and the two numbers should never be quoted interchangeably.</p>
 </div>
 <h2 id="12-the-compute-throughput-wall">1.2 The Compute-Throughput Wall<a class="headerlink" href="#12-the-compute-throughput-wall" title="Permanent link">&para;</a></h2>
+<!-- mgpu:figure-2:start -->
+<p><a href="../../images/technical/ch01/2-balance.svg"><img alt="Parallel work still has a critical path" src="../../images/technical/ch01/2-balance.svg" /></a></p>
+<!-- mgpu:figure-2:end -->
+
 <h3 id="intuition_1">Intuition<a class="headerlink" href="#intuition_1" title="Permanent link">&para;</a></h3>
 <p>Now suppose, hypothetically, the truck from Section 1.1 were infinitely large — no capacity problem at all. The job can still fail the <em>second</em> way: there's a fixed number of hours in the day and a fixed rate at which any one truck can be loaded and driven, and if the total amount of stuff to move is large enough, one truck running continuously simply cannot finish in a human timescale, no matter how big it is. That is the throughput wall, and unlike the capacity wall it isn't binary — it's a rate, multiplied by however much total work there is.</p>
 <h3 id="background_1">Background<a class="headerlink" href="#background_1" title="Permanent link">&para;</a></h3>
 <p>Kaplan et al.'s "Scaling Laws for Neural Language Models" (2020) give a compact estimate for that total amount of work — training compute:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>C ≈ 6 · N · D
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>C ≈ 6 · N · D
 </code></pre></div>
 <p>where <code>N</code> is the model's (non-embedding) parameter count, <code>D</code> is the number of training tokens, and the factor of 6 accounts for one forward pass and the (roughly twice as expensive) backward pass. This is the paper's own stated formula (<code>C ≈ 6NBS</code>, with batch size <code>B</code> times step count <code>S</code> equal to total tokens <code>D</code>), and it is a real, exactly-computable quantity once <code>N</code> and <code>D</code> are fixed — not a rough guess.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="c1">// 03_compute_wall.cpp</span>
-<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;cstdio&gt;</span>
-<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>
-<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="kt">int</span><span class="w"> </span><span class="nf">main</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
-<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a><span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="kt">double</span><span class="w"> </span><span class="n">N</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">175.0e9</span><span class="p">;</span><span class="w">   </span><span class="c1">// GPT-3&#39;s parameter count (Brown et al. 2020)</span>
-<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a><span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="kt">double</span><span class="w"> </span><span class="n">D</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">300.0e9</span><span class="p">;</span><span class="w">   </span><span class="c1">// GPT-3&#39;s stated training token budget</span>
-<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a><span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="kt">double</span><span class="w"> </span><span class="n">totalFLOPs</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">6.0</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="n">N</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="n">D</span><span class="p">;</span>
-<a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a>
-<a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a><span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="kt">double</span><span class="w"> </span><span class="n">H100_PEAK_FLOPS</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">989.0e12</span><span class="p">;</span><span class="w"> </span><span class="c1">// H100 SXM, dense BF16/FP16, no sparsity</span>
-<a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a><span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="kt">double</span><span class="w"> </span><span class="n">SECONDS_PER_DAY</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">86400.0</span><span class="p">;</span>
-<a id="__codelineno-5-11" name="__codelineno-5-11" href="#__codelineno-5-11"></a>
-<a id="__codelineno-5-12" name="__codelineno-5-12" href="#__codelineno-5-12"></a><span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="kt">double</span><span class="w"> </span><span class="n">idealFlopsPerDay</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">H100_PEAK_FLOPS</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="n">SECONDS_PER_DAY</span><span class="p">;</span>
-<a id="__codelineno-5-13" name="__codelineno-5-13" href="#__codelineno-5-13"></a><span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="kt">double</span><span class="w"> </span><span class="n">idealGpuDays</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">totalFLOPs</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="n">idealFlopsPerDay</span><span class="p">;</span>
-<a id="__codelineno-5-14" name="__codelineno-5-14" href="#__codelineno-5-14"></a>
-<a id="__codelineno-5-15" name="__codelineno-5-15" href="#__codelineno-5-15"></a><span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="kt">double</span><span class="w"> </span><span class="n">assumedMFU</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">0.50</span><span class="p">;</span><span class="w">  </span><span class="c1">// illustrative, not measured -- see text</span>
-<a id="__codelineno-5-16" name="__codelineno-5-16" href="#__codelineno-5-16"></a><span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="kt">double</span><span class="w"> </span><span class="n">realisticGpuDays</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">idealGpuDays</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="n">assumedMFU</span><span class="p">;</span>
-<a id="__codelineno-5-17" name="__codelineno-5-17" href="#__codelineno-5-17"></a>
-<a id="__codelineno-5-18" name="__codelineno-5-18" href="#__codelineno-5-18"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;Total training compute (C = 6*N*D): %.3e FLOPs</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">totalFLOPs</span><span class="p">);</span>
-<a id="__codelineno-5-19" name="__codelineno-5-19" href="#__codelineno-5-19"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;N (parameters, approx.):            %.3e</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">N</span><span class="p">);</span>
-<a id="__codelineno-5-20" name="__codelineno-5-20" href="#__codelineno-5-20"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;D (tokens):                         %.3e</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">D</span><span class="p">);</span>
-<a id="__codelineno-5-21" name="__codelineno-5-21" href="#__codelineno-5-21"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;H100 SXM peak dense BF16/FP16:       %.3e FLOP/s</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">H100_PEAK_FLOPS</span><span class="p">);</span>
-<a id="__codelineno-5-22" name="__codelineno-5-22" href="#__codelineno-5-22"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
-<a id="__codelineno-5-23" name="__codelineno-5-23" href="#__codelineno-5-23"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;GPU-days on a single H100 at 100%% of peak (ideal, unreachable &quot;</span>
-<a id="__codelineno-5-24" name="__codelineno-5-24" href="#__codelineno-5-24"></a><span class="w">           </span><span class="s">&quot;in practice): %.1f</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">idealGpuDays</span><span class="p">);</span>
-<a id="__codelineno-5-25" name="__codelineno-5-25" href="#__codelineno-5-25"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;GPU-days on a single H100 at an assumed %.0f%% of peak &quot;</span>
-<a id="__codelineno-5-26" name="__codelineno-5-26" href="#__codelineno-5-26"></a><span class="w">           </span><span class="s">&quot;(illustrative MFU, not measured):   %.1f</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span>
-<a id="__codelineno-5-27" name="__codelineno-5-27" href="#__codelineno-5-27"></a><span class="w">           </span><span class="n">assumedMFU</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="mf">100.0</span><span class="p">,</span><span class="w"> </span><span class="n">realisticGpuDays</span><span class="p">);</span>
-<a id="__codelineno-5-28" name="__codelineno-5-28" href="#__codelineno-5-28"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;Same total compute spread across 1024 such GPUs at the &quot;</span>
-<a id="__codelineno-5-29" name="__codelineno-5-29" href="#__codelineno-5-29"></a><span class="w">           </span><span class="s">&quot;assumed %.0f%% MFU: %.2f days</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span>
-<a id="__codelineno-5-30" name="__codelineno-5-30" href="#__codelineno-5-30"></a><span class="w">           </span><span class="n">assumedMFU</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="mf">100.0</span><span class="p">,</span><span class="w"> </span><span class="n">realisticGpuDays</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="mf">1024.0</span><span class="p">);</span>
-<a id="__codelineno-5-31" name="__codelineno-5-31" href="#__codelineno-5-31"></a><span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
-<a id="__codelineno-5-32" name="__codelineno-5-32" href="#__codelineno-5-32"></a><span class="p">}</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="c1">// Chapter 1: Why One GPU Is Not Enough</span>
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a><span class="c1">// 03_compute_wall.cpp</span>
+<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a><span class="c1">//</span>
+<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a><span class="c1">// Plain host C++. Computes a deterministic FLOP count and divides by a</span>
+<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a><span class="c1">// cited real peak-FLOPS figure -- never a fabricated wall-clock number,</span>
+<a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a><span class="c1">// per this book's own stated discipline (see getting-started.md).</span>
+<a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;cstdio&gt;</span>
+<a id="__codelineno-9-8" name="__codelineno-9-8" href="#__codelineno-9-8"></a>
+<a id="__codelineno-9-9" name="__codelineno-9-9" href="#__codelineno-9-9"></a><span class="kt">int</span><span class="w"> </span><span class="nf">main</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-9-10" name="__codelineno-9-10" href="#__codelineno-9-10"></a><span class="w">    </span><span class="c1">// Kaplan et al., "Scaling Laws for Neural Language Models" (2020):</span>
+<a id="__codelineno-9-11" name="__codelineno-9-11" href="#__codelineno-9-11"></a><span class="w">    </span><span class="c1">// C ~= 6*N*D, where N is (non-embedding) parameter count and D is</span>
+<a id="__codelineno-9-12" name="__codelineno-9-12" href="#__codelineno-9-12"></a><span class="w">    </span><span class="c1">// dataset size in tokens. We use GPT-3's reported total parameter</span>
+<a id="__codelineno-9-13" name="__codelineno-9-13" href="#__codelineno-9-13"></a><span class="w">    </span><span class="c1">// count (175B, Brown et al. 2020, Table 2.1) as an approximation of</span>
+<a id="__codelineno-9-14" name="__codelineno-9-14" href="#__codelineno-9-14"></a><span class="w">    </span><span class="c1">// N, and the paper's own stated token budget, D = 300e9 tokens</span>
+<a id="__codelineno-9-15" name="__codelineno-9-15" href="#__codelineno-9-15"></a><span class="w">    </span><span class="c1">// ("All models were trained for a total of 300 billion tokens").</span>
+<a id="__codelineno-9-16" name="__codelineno-9-16" href="#__codelineno-9-16"></a><span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="kt">double</span><span class="w"> </span><span class="n">N</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">175.0e9</span><span class="p">;</span>
+<a id="__codelineno-9-17" name="__codelineno-9-17" href="#__codelineno-9-17"></a><span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="kt">double</span><span class="w"> </span><span class="n">D</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">300.0e9</span><span class="p">;</span>
+<a id="__codelineno-9-18" name="__codelineno-9-18" href="#__codelineno-9-18"></a><span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="kt">double</span><span class="w"> </span><span class="n">totalFLOPs</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">6.0</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="n">N</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="n">D</span><span class="p">;</span>
+<a id="__codelineno-9-19" name="__codelineno-9-19" href="#__codelineno-9-19"></a>
+<a id="__codelineno-9-20" name="__codelineno-9-20" href="#__codelineno-9-20"></a><span class="w">    </span><span class="c1">// NVIDIA H100 SXM5: 989 TFLOP/s peak dense BF16/FP16 Tensor Core</span>
+<a id="__codelineno-9-21" name="__codelineno-9-21" href="#__codelineno-9-21"></a><span class="w">    </span><span class="c1">// throughput (no sparsity). Real vendor-cited figure.</span>
+<a id="__codelineno-9-22" name="__codelineno-9-22" href="#__codelineno-9-22"></a><span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="kt">double</span><span class="w"> </span><span class="n">H100_PEAK_FLOPS</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">989.0e12</span><span class="p">;</span>
+<a id="__codelineno-9-23" name="__codelineno-9-23" href="#__codelineno-9-23"></a><span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="kt">double</span><span class="w"> </span><span class="n">SECONDS_PER_DAY</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">86400.0</span><span class="p">;</span>
+<a id="__codelineno-9-24" name="__codelineno-9-24" href="#__codelineno-9-24"></a>
+<a id="__codelineno-9-25" name="__codelineno-9-25" href="#__codelineno-9-25"></a><span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="kt">double</span><span class="w"> </span><span class="n">idealFlopsPerDay</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">H100_PEAK_FLOPS</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="n">SECONDS_PER_DAY</span><span class="p">;</span>
+<a id="__codelineno-9-26" name="__codelineno-9-26" href="#__codelineno-9-26"></a><span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="kt">double</span><span class="w"> </span><span class="n">idealGpuDays</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">totalFLOPs</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="n">idealFlopsPerDay</span><span class="p">;</span>
+<a id="__codelineno-9-27" name="__codelineno-9-27" href="#__codelineno-9-27"></a>
+<a id="__codelineno-9-28" name="__codelineno-9-28" href="#__codelineno-9-28"></a><span class="w">    </span><span class="c1">// Real training never sustains 100% of peak. We label this an</span>
+<a id="__codelineno-9-29" name="__codelineno-9-29" href="#__codelineno-9-29"></a><span class="w">    </span><span class="c1">// illustrative assumption, not a measurement: many public reports of</span>
+<a id="__codelineno-9-30" name="__codelineno-9-30" href="#__codelineno-9-30"></a><span class="w">    </span><span class="c1">// well-optimized large-model training put achieved throughput in the</span>
+<a id="__codelineno-9-31" name="__codelineno-9-31" href="#__codelineno-9-31"></a><span class="w">    </span><span class="c1">// 30-50% range of peak (Model FLOPs Utilization, or MFU); we use 50%</span>
+<a id="__codelineno-9-32" name="__codelineno-9-32" href="#__codelineno-9-32"></a><span class="w">    </span><span class="c1">// here as a round, explicitly-labeled upper-end illustrative figure.</span>
+<a id="__codelineno-9-33" name="__codelineno-9-33" href="#__codelineno-9-33"></a><span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="kt">double</span><span class="w"> </span><span class="n">assumedMFU</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">0.50</span><span class="p">;</span>
+<a id="__codelineno-9-34" name="__codelineno-9-34" href="#__codelineno-9-34"></a><span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="kt">double</span><span class="w"> </span><span class="n">realisticGpuDays</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">idealGpuDays</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="n">assumedMFU</span><span class="p">;</span>
+<a id="__codelineno-9-35" name="__codelineno-9-35" href="#__codelineno-9-35"></a>
+<a id="__codelineno-9-36" name="__codelineno-9-36" href="#__codelineno-9-36"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">"Total training compute (C = 6*N*D): %.3e FLOPs</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span><span class="w"> </span><span class="n">totalFLOPs</span><span class="p">);</span>
+<a id="__codelineno-9-37" name="__codelineno-9-37" href="#__codelineno-9-37"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">"N (parameters, approx.):            %.3e</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span><span class="w"> </span><span class="n">N</span><span class="p">);</span>
+<a id="__codelineno-9-38" name="__codelineno-9-38" href="#__codelineno-9-38"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">"D (tokens):                         %.3e</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span><span class="w"> </span><span class="n">D</span><span class="p">);</span>
+<a id="__codelineno-9-39" name="__codelineno-9-39" href="#__codelineno-9-39"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">"H100 SXM peak dense BF16/FP16:       %.3e FLOP/s</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span>
+<a id="__codelineno-9-40" name="__codelineno-9-40" href="#__codelineno-9-40"></a><span class="w">           </span><span class="n">H100_PEAK_FLOPS</span><span class="p">);</span>
+<a id="__codelineno-9-41" name="__codelineno-9-41" href="#__codelineno-9-41"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">"</span><span class="se">\n</span><span class="s">"</span><span class="p">);</span>
+<a id="__codelineno-9-42" name="__codelineno-9-42" href="#__codelineno-9-42"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">"GPU-days on a single H100 at 100%% of peak (ideal, "</span>
+<a id="__codelineno-9-43" name="__codelineno-9-43" href="#__codelineno-9-43"></a><span class="w">           </span><span class="s">"unreachable in practice): %.1f</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span><span class="w"> </span><span class="n">idealGpuDays</span><span class="p">);</span>
+<a id="__codelineno-9-44" name="__codelineno-9-44" href="#__codelineno-9-44"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">"GPU-days on a single H100 at an assumed %.0f%% of peak "</span>
+<a id="__codelineno-9-45" name="__codelineno-9-45" href="#__codelineno-9-45"></a><span class="w">           </span><span class="s">"(illustrative MFU, not measured):   %.1f</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span>
+<a id="__codelineno-9-46" name="__codelineno-9-46" href="#__codelineno-9-46"></a><span class="w">           </span><span class="n">assumedMFU</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="mf">100.0</span><span class="p">,</span><span class="w"> </span><span class="n">realisticGpuDays</span><span class="p">);</span>
+<a id="__codelineno-9-47" name="__codelineno-9-47" href="#__codelineno-9-47"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">"Same total compute spread across 1024 such GPUs at the "</span>
+<a id="__codelineno-9-48" name="__codelineno-9-48" href="#__codelineno-9-48"></a><span class="w">           </span><span class="s">"assumed %.0f%% MFU: %.2f days</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span>
+<a id="__codelineno-9-49" name="__codelineno-9-49" href="#__codelineno-9-49"></a><span class="w">           </span><span class="n">assumedMFU</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="mf">100.0</span><span class="p">,</span><span class="w"> </span><span class="n">realisticGpuDays</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="mf">1024.0</span><span class="p">);</span>
+<a id="__codelineno-9-50" name="__codelineno-9-50" href="#__codelineno-9-50"></a>
+<a id="__codelineno-9-51" name="__codelineno-9-51" href="#__codelineno-9-51"></a><span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
+<a id="__codelineno-9-52" name="__codelineno-9-52" href="#__codelineno-9-52"></a><span class="p">}</span>
 </code></pre></div>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>g++<span class="w"> </span>-std<span class="o">=</span>c++17<span class="w"> </span>-Wall<span class="w"> </span>-Wextra<span class="w"> </span>-O2<span class="w"> </span>03_compute_wall.cpp<span class="w"> </span>-o<span class="w"> </span>compute_wall
-<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>./compute_wall
+<!-- execution:start:a100:03_compute_wall.cpp -->
+<blockquote>
+<p><strong>Current execution — 2026-11-17-a100: Host program/model (exit-only).</strong> UTC (program start): <code>2026-11-18T00:00:11.088863+00:00</code>. Source SHA-256: <code>afb0e2461806947cd7f0bc421aac900cd61a586feb494c575609a410e5b492f3</code>.</p>
+</blockquote>
+<p><a href="../../validation/2026-11-17-a100/03_compute_wall/03_compute_wall.cpp">Exact tested source</a> · <a href="../../validation/2026-11-17-a100/03_compute_wall/compile.log">Compiler log</a> · <a href="../../validation/2026-11-17-a100/03_compute_wall/run.log">Execution log</a>. Compile exit: <code>0</code>; run exit: <code>0</code>.</p>
+<p>Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>g++<span class="w"> </span>-std<span class="o">=</span>c++17<span class="w"> </span>-O2<span class="w"> </span>03_compute_wall.cpp<span class="w"> </span>-o<span class="w"> </span>./example
+<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>./example
+</code></pre></div>
+<details>
+<summary>Captured current-source output</summary>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>Total training compute (C = 6*N*D): 3.150e+23 FLOPs
+<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>N (parameters, approx.):            1.750e+11
+<a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a>D (tokens):                         3.000e+11
+<a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a>H100 SXM peak dense BF16/FP16:       9.890e+14 FLOP/s
+<a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a>
+<a id="__codelineno-11-6" name="__codelineno-11-6" href="#__codelineno-11-6"></a>GPU-days on a single H100 at 100% of peak (ideal, unreachable in practice): 3686.4
+<a id="__codelineno-11-7" name="__codelineno-11-7" href="#__codelineno-11-7"></a>GPU-days on a single H100 at an assumed 50% of peak (illustrative MFU, not measured):   7372.8
+<a id="__codelineno-11-8" name="__codelineno-11-8" href="#__codelineno-11-8"></a>Same total compute spread across 1024 such GPUs at the assumed 50% MFU: 7.20 days
+</code></pre></div>
+</details>
+<!-- execution:end:a100:03_compute_wall.cpp -->
+
+<!-- execution:start:h100:03_compute_wall.cpp -->
+<blockquote>
+<p><strong>Current execution — 2026-11-17-h100: Host program/model (exit-only).</strong> UTC (run-batch start; per-program time unrecorded): <code>2026-11-17T23:48:18.967387+00:00</code>. Source SHA-256: <code>afb0e2461806947cd7f0bc421aac900cd61a586feb494c575609a410e5b492f3</code>.</p>
+</blockquote>
+<p><a href="../../validation/2026-11-17-h100/03_compute_wall/03_compute_wall.cpp">Exact tested source</a> · <a href="../../validation/2026-11-17-h100/03_compute_wall/compile.log">Compiler log</a> · <a href="../../validation/2026-11-17-h100/03_compute_wall/run.log">Execution log</a>. Compile exit: <code>0</code>; run exit: <code>0</code>.</p>
+<p>Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>g++<span class="w"> </span>-std<span class="o">=</span>c++17<span class="w"> </span>-O2<span class="w"> </span>03_compute_wall.cpp<span class="w"> </span>-o<span class="w"> </span>./example
+<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a>./example
+</code></pre></div>
+<details>
+<summary>Captured current-source output</summary>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a>Total training compute (C = 6*N*D): 3.150e+23 FLOPs
+<a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a>N (parameters, approx.):            1.750e+11
+<a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a>D (tokens):                         3.000e+11
+<a id="__codelineno-13-4" name="__codelineno-13-4" href="#__codelineno-13-4"></a>H100 SXM peak dense BF16/FP16:       9.890e+14 FLOP/s
+<a id="__codelineno-13-5" name="__codelineno-13-5" href="#__codelineno-13-5"></a>
+<a id="__codelineno-13-6" name="__codelineno-13-6" href="#__codelineno-13-6"></a>GPU-days on a single H100 at 100% of peak (ideal, unreachable in practice): 3686.4
+<a id="__codelineno-13-7" name="__codelineno-13-7" href="#__codelineno-13-7"></a>GPU-days on a single H100 at an assumed 50% of peak (illustrative MFU, not measured):   7372.8
+<a id="__codelineno-13-8" name="__codelineno-13-8" href="#__codelineno-13-8"></a>Same total compute spread across 1024 such GPUs at the assumed 50% MFU: 7.20 days
+</code></pre></div>
+</details>
+<!-- execution:end:h100:03_compute_wall.cpp -->
+
+<div class="highlight"><pre><span></span><code><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a>g++<span class="w"> </span>-std<span class="o">=</span>c++17<span class="w"> </span>-Wall<span class="w"> </span>-Wextra<span class="w"> </span>-O2<span class="w"> </span>03_compute_wall.cpp<span class="w"> </span>-o<span class="w"> </span>compute_wall
+<a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a>./compute_wall
 </code></pre></div>
 <p>Output (genuinely compiled and run twice; identical both times, as expected of pure arithmetic with no timing or randomness involved):</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>Total training compute (C = 6*N*D): 3.150e+23 FLOPs
-<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>N (parameters, approx.):            1.750e+11
-<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>D (tokens):                         3.000e+11
-<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a>H100 SXM peak dense BF16/FP16:       9.890e+14 FLOP/s
-<a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a>
-<a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a>GPU-days on a single H100 at 100% of peak (ideal, unreachable in practice): 3686.4
-<a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a>GPU-days on a single H100 at an assumed 50% of peak (illustrative MFU, not measured):   7372.8
-<a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a>Same total compute spread across 1024 such GPUs at the assumed 50% MFU: 7.20 days
+<details>
+<summary>Historical authoring output — superseded by the current execution above</summary>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a>Total training compute (C = 6*N*D): 3.150e+23 FLOPs
+<a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a>N (parameters, approx.):            1.750e+11
+<a id="__codelineno-15-3" name="__codelineno-15-3" href="#__codelineno-15-3"></a>D (tokens):                         3.000e+11
+<a id="__codelineno-15-4" name="__codelineno-15-4" href="#__codelineno-15-4"></a>H100 SXM peak dense BF16/FP16:       9.890e+14 FLOP/s
+<a id="__codelineno-15-5" name="__codelineno-15-5" href="#__codelineno-15-5"></a>
+<a id="__codelineno-15-6" name="__codelineno-15-6" href="#__codelineno-15-6"></a>GPU-days on a single H100 at 100% of peak (ideal, unreachable in practice): 3686.4
+<a id="__codelineno-15-7" name="__codelineno-15-7" href="#__codelineno-15-7"></a>GPU-days on a single H100 at an assumed 50% of peak (illustrative MFU, not measured):   7372.8
+<a id="__codelineno-15-8" name="__codelineno-15-8" href="#__codelineno-15-8"></a>Same total compute spread across 1024 such GPUs at the assumed 50% MFU: 7.20 days
 </code></pre></div>
-<p><strong>Model boundary, stated plainly:</strong> the <code>3686.4</code> and <code>7372.8</code> GPU-day figures are <em>not</em> timing measurements — nothing was clocked. They're a deterministic FLOP count (<code>3.150e+23</code>, computed exactly from Kaplan's formula) divided by a real, vendor-published peak-FLOPS figure (H100 SXM's 989 TFLOP/s dense Tensor Core throughput, no sparsity). The 50%-of-peak scenario is explicitly labeled as an illustrative assumption about achieved utilization (Model FLOPs Utilization, or MFU), not a measurement of anything — real training runs report MFU figures all over the 30-50% range depending on model, hardware, and how well the implementation overlaps communication with compute, itself a running theme starting in Part 2. Either way the conclusion is the same: <strong>over 20 years on one GPU at ideal throughput, or roughly a week on 1,024 of them.</strong></p>
+</details>
+<p><strong>Model boundary, stated plainly:</strong> the <code>3686.4</code> and <code>7372.8</code> GPU-day figures are <em>not</em> timing measurements — nothing was clocked. They're a deterministic FLOP count (<code>3.150e+23</code>, computed exactly from Kaplan's formula) divided by a real, vendor-published peak-FLOPS figure (H100 SXM's 989 TFLOP/s dense Tensor Core throughput, no sparsity). The 50%-of-peak scenario is explicitly labeled as an illustrative assumption about achieved utilization (Model FLOPs Utilization, or MFU), not a measurement of anything — real training runs report MFU figures all over the 30-50% range depending on model, hardware, and how well the implementation overlaps communication with compute, itself a running theme starting in Part 2. Either way the conclusion is the same: <strong>over 10 years on one GPU even at ideal throughput (3686.4 days), over 20 years at the assumed 50% MFU (7372.8 days), or roughly a week on 1,024 of them at that same 50% MFU (7.20 days).</strong></p>
 <div class="admonition warning">
 <p class="admonition-title">[COMMON TRAP] Treating a model that "fits in memory" as a model that's actually trainable</p>
-<p>Section 1.1's capacity check and this section's throughput check are independent — passing one says nothing about the other. A model could squeeze into a single GPU's memory (perhaps with aggressive offloading) and still cost 20 years of wall-clock time to train on that one GPU, which is exactly what the 3686-to-7372 GPU-day range above represents for GPT-3-scale training. "It fits" answers the capacity wall's question, not the throughput wall's.</p>
+<p>Section 1.1's capacity check and this section's throughput check are independent — passing one says nothing about the other. A model could squeeze into a single GPU's memory (perhaps with aggressive offloading) and still cost 10 to 20 years of wall-clock time to train on that one GPU, which is exactly what the 3686-to-7372 GPU-day range above represents for GPT-3-scale training. "It fits" answers the capacity wall's question, not the throughput wall's.</p>
 </div>
 <h2 id="13-what-a-single-real-cuda-call-can-already-tell-you">1.3 What a Single Real CUDA Call Can Already Tell You<a class="headerlink" href="#13-what-a-single-real-cuda-call-can-already-tell-you" title="Permanent link">&para;</a></h2>
 <h3 id="intuition_2">Intuition<a class="headerlink" href="#intuition_2" title="Permanent link">&para;</a></h3>
 <p>Before ordering a fleet of trucks, the first thing any reasonable person checks is how many trucks are actually sitting in the lot right now — not how many the catalog describes, not how many a bigger budget could buy, but the literal count available this moment. <code>cudaGetDeviceCount()</code> is that check, and every multi-GPU program in this book, without exception, starts by asking the runtime this exact question before assuming an answer.</p>
 <h3 id="background_2">Background<a class="headerlink" href="#background_2" title="Permanent link">&para;</a></h3>
 <p><code>cudaGetDeviceCount()</code> is worth calling for real right here in Chapter 1, on this book's own authoring machine, because how it behaves <em>matters for the rest of the book</em>: every later chapter's multi-device logic is built on trusting this call's answer rather than assuming one.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="c1">// 01_device_query.cu</span>
-<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;cstdio&gt;</span>
-<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;cuda_runtime.h&gt;</span>
-<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a>
-<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a><span class="kt">int</span><span class="w"> </span><span class="nf">main</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
-<a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a><span class="w">    </span><span class="kt">int</span><span class="w"> </span><span class="n">deviceCount</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
-<a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a><span class="w">    </span><span class="n">cudaError_t</span><span class="w"> </span><span class="n">err</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">cudaGetDeviceCount</span><span class="p">(</span><span class="o">&amp;</span><span class="n">deviceCount</span><span class="p">);</span>
-<a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a>
-<a id="__codelineno-8-9" name="__codelineno-8-9" href="#__codelineno-8-9"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;cudaGetDeviceCount() returned: %s (code %d)</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span>
-<a id="__codelineno-8-10" name="__codelineno-8-10" href="#__codelineno-8-10"></a><span class="w">           </span><span class="n">cudaGetErrorString</span><span class="p">(</span><span class="n">err</span><span class="p">),</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="p">)</span><span class="n">err</span><span class="p">);</span>
-<a id="__codelineno-8-11" name="__codelineno-8-11" href="#__codelineno-8-11"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;Reported device count: %d</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">deviceCount</span><span class="p">);</span>
-<a id="__codelineno-8-12" name="__codelineno-8-12" href="#__codelineno-8-12"></a>
-<a id="__codelineno-8-13" name="__codelineno-8-13" href="#__codelineno-8-13"></a><span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">err</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="n">cudaSuccess</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="n">deviceCount</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="mi">0</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
-<a id="__codelineno-8-14" name="__codelineno-8-14" href="#__codelineno-8-14"></a><span class="w">        </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;No usable CUDA device on this machine.</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
-<a id="__codelineno-8-15" name="__codelineno-8-15" href="#__codelineno-8-15"></a><span class="w">        </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;This is an honest, unmodified report from the CUDA &quot;</span>
-<a id="__codelineno-8-16" name="__codelineno-8-16" href="#__codelineno-8-16"></a><span class="w">               </span><span class="s">&quot;Runtime API -- not a placeholder.</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
-<a id="__codelineno-8-17" name="__codelineno-8-17" href="#__codelineno-8-17"></a><span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
-<a id="__codelineno-8-18" name="__codelineno-8-18" href="#__codelineno-8-18"></a><span class="w">    </span><span class="p">}</span>
-<a id="__codelineno-8-19" name="__codelineno-8-19" href="#__codelineno-8-19"></a>
-<a id="__codelineno-8-20" name="__codelineno-8-20" href="#__codelineno-8-20"></a><span class="w">    </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="n">deviceCount</span><span class="p">;</span><span class="w"> </span><span class="o">++</span><span class="n">i</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
-<a id="__codelineno-8-21" name="__codelineno-8-21" href="#__codelineno-8-21"></a><span class="w">        </span><span class="n">cudaDeviceProp</span><span class="w"> </span><span class="n">prop</span><span class="p">;</span>
-<a id="__codelineno-8-22" name="__codelineno-8-22" href="#__codelineno-8-22"></a><span class="w">        </span><span class="n">cudaGetDeviceProperties</span><span class="p">(</span><span class="o">&amp;</span><span class="n">prop</span><span class="p">,</span><span class="w"> </span><span class="n">i</span><span class="p">);</span>
-<a id="__codelineno-8-23" name="__codelineno-8-23" href="#__codelineno-8-23"></a><span class="w">        </span><span class="kt">size_t</span><span class="w"> </span><span class="n">freeBytes</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="n">totalBytes</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
-<a id="__codelineno-8-24" name="__codelineno-8-24" href="#__codelineno-8-24"></a><span class="w">        </span><span class="n">cudaSetDevice</span><span class="p">(</span><span class="n">i</span><span class="p">);</span>
-<a id="__codelineno-8-25" name="__codelineno-8-25" href="#__codelineno-8-25"></a><span class="w">        </span><span class="n">cudaMemGetInfo</span><span class="p">(</span><span class="o">&amp;</span><span class="n">freeBytes</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">totalBytes</span><span class="p">);</span>
-<a id="__codelineno-8-26" name="__codelineno-8-26" href="#__codelineno-8-26"></a><span class="w">        </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;Device %d: %s -- %.2f GB total, %.2f GB free, &quot;</span>
-<a id="__codelineno-8-27" name="__codelineno-8-27" href="#__codelineno-8-27"></a><span class="w">               </span><span class="s">&quot;compute capability %d.%d</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span>
-<a id="__codelineno-8-28" name="__codelineno-8-28" href="#__codelineno-8-28"></a><span class="w">               </span><span class="n">i</span><span class="p">,</span><span class="w"> </span><span class="n">prop</span><span class="p">.</span><span class="n">name</span><span class="p">,</span>
-<a id="__codelineno-8-29" name="__codelineno-8-29" href="#__codelineno-8-29"></a><span class="w">               </span><span class="n">totalBytes</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="mf">1e9</span><span class="p">,</span><span class="w"> </span><span class="n">freeBytes</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="mf">1e9</span><span class="p">,</span>
-<a id="__codelineno-8-30" name="__codelineno-8-30" href="#__codelineno-8-30"></a><span class="w">               </span><span class="n">prop</span><span class="p">.</span><span class="n">major</span><span class="p">,</span><span class="w"> </span><span class="n">prop</span><span class="p">.</span><span class="n">minor</span><span class="p">);</span>
-<a id="__codelineno-8-31" name="__codelineno-8-31" href="#__codelineno-8-31"></a><span class="w">    </span><span class="p">}</span>
-<a id="__codelineno-8-32" name="__codelineno-8-32" href="#__codelineno-8-32"></a><span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
-<a id="__codelineno-8-33" name="__codelineno-8-33" href="#__codelineno-8-33"></a><span class="p">}</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a><span class="c1">// Chapter 1: Why One GPU Is Not Enough</span>
+<a id="__codelineno-16-2" name="__codelineno-16-2" href="#__codelineno-16-2"></a><span class="c1">// 01_device_query.cu</span>
+<a id="__codelineno-16-3" name="__codelineno-16-3" href="#__codelineno-16-3"></a><span class="c1">//</span>
+<a id="__codelineno-16-4" name="__codelineno-16-4" href="#__codelineno-16-4"></a><span class="c1">// A genuine CUDA Runtime API call, compiled with a real nvcc and genuinely</span>
+<a id="__codelineno-16-5" name="__codelineno-16-5" href="#__codelineno-16-5"></a><span class="c1">// executed. It does not simulate anything: cudaGetDeviceCount() either finds</span>
+<a id="__codelineno-16-6" name="__codelineno-16-6" href="#__codelineno-16-6"></a><span class="c1">// real devices or it doesn't, and this program prints exactly what the</span>
+<a id="__codelineno-16-7" name="__codelineno-16-7" href="#__codelineno-16-7"></a><span class="c1">// runtime reports back, whatever that is.</span>
+<a id="__codelineno-16-8" name="__codelineno-16-8" href="#__codelineno-16-8"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;cstdio&gt;</span>
+<a id="__codelineno-16-9" name="__codelineno-16-9" href="#__codelineno-16-9"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;cuda_runtime.h&gt;</span>
+<a id="__codelineno-16-10" name="__codelineno-16-10" href="#__codelineno-16-10"></a>
+<a id="__codelineno-16-11" name="__codelineno-16-11" href="#__codelineno-16-11"></a><span class="kt">int</span><span class="w"> </span><span class="nf">main</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-16-12" name="__codelineno-16-12" href="#__codelineno-16-12"></a><span class="w">    </span><span class="kt">int</span><span class="w"> </span><span class="n">deviceCount</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
+<a id="__codelineno-16-13" name="__codelineno-16-13" href="#__codelineno-16-13"></a><span class="w">    </span><span class="n">cudaError_t</span><span class="w"> </span><span class="n">err</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">cudaGetDeviceCount</span><span class="p">(</span><span class="o">&amp;</span><span class="n">deviceCount</span><span class="p">);</span>
+<a id="__codelineno-16-14" name="__codelineno-16-14" href="#__codelineno-16-14"></a>
+<a id="__codelineno-16-15" name="__codelineno-16-15" href="#__codelineno-16-15"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">"cudaGetDeviceCount() returned: %s (code %d)</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span>
+<a id="__codelineno-16-16" name="__codelineno-16-16" href="#__codelineno-16-16"></a><span class="w">           </span><span class="n">cudaGetErrorString</span><span class="p">(</span><span class="n">err</span><span class="p">),</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="p">)</span><span class="n">err</span><span class="p">);</span>
+<a id="__codelineno-16-17" name="__codelineno-16-17" href="#__codelineno-16-17"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">"Reported device count: %d</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span><span class="w"> </span><span class="n">deviceCount</span><span class="p">);</span>
+<a id="__codelineno-16-18" name="__codelineno-16-18" href="#__codelineno-16-18"></a>
+<a id="__codelineno-16-19" name="__codelineno-16-19" href="#__codelineno-16-19"></a><span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">err</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="n">cudaSuccess</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="n">deviceCount</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="mi">0</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-16-20" name="__codelineno-16-20" href="#__codelineno-16-20"></a><span class="w">        </span><span class="n">printf</span><span class="p">(</span><span class="s">"No usable CUDA device on this machine.</span><span class="se">\n</span><span class="s">"</span><span class="p">);</span>
+<a id="__codelineno-16-21" name="__codelineno-16-21" href="#__codelineno-16-21"></a><span class="w">        </span><span class="n">printf</span><span class="p">(</span><span class="s">"This is an honest, unmodified report from the CUDA "</span>
+<a id="__codelineno-16-22" name="__codelineno-16-22" href="#__codelineno-16-22"></a><span class="w">               </span><span class="s">"Runtime API -- not a placeholder.</span><span class="se">\n</span><span class="s">"</span><span class="p">);</span>
+<a id="__codelineno-16-23" name="__codelineno-16-23" href="#__codelineno-16-23"></a><span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
+<a id="__codelineno-16-24" name="__codelineno-16-24" href="#__codelineno-16-24"></a><span class="w">    </span><span class="p">}</span>
+<a id="__codelineno-16-25" name="__codelineno-16-25" href="#__codelineno-16-25"></a>
+<a id="__codelineno-16-26" name="__codelineno-16-26" href="#__codelineno-16-26"></a><span class="w">    </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="n">deviceCount</span><span class="p">;</span><span class="w"> </span><span class="o">++</span><span class="n">i</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-16-27" name="__codelineno-16-27" href="#__codelineno-16-27"></a><span class="w">        </span><span class="n">cudaDeviceProp</span><span class="w"> </span><span class="n">prop</span><span class="p">;</span>
+<a id="__codelineno-16-28" name="__codelineno-16-28" href="#__codelineno-16-28"></a><span class="w">        </span><span class="n">cudaGetDeviceProperties</span><span class="p">(</span><span class="o">&amp;</span><span class="n">prop</span><span class="p">,</span><span class="w"> </span><span class="n">i</span><span class="p">);</span>
+<a id="__codelineno-16-29" name="__codelineno-16-29" href="#__codelineno-16-29"></a><span class="w">        </span><span class="kt">size_t</span><span class="w"> </span><span class="n">freeBytes</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="n">totalBytes</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
+<a id="__codelineno-16-30" name="__codelineno-16-30" href="#__codelineno-16-30"></a><span class="w">        </span><span class="n">cudaSetDevice</span><span class="p">(</span><span class="n">i</span><span class="p">);</span>
+<a id="__codelineno-16-31" name="__codelineno-16-31" href="#__codelineno-16-31"></a><span class="w">        </span><span class="n">cudaMemGetInfo</span><span class="p">(</span><span class="o">&amp;</span><span class="n">freeBytes</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">totalBytes</span><span class="p">);</span>
+<a id="__codelineno-16-32" name="__codelineno-16-32" href="#__codelineno-16-32"></a><span class="w">        </span><span class="n">printf</span><span class="p">(</span><span class="s">"Device %d: %s -- %.2f GB total, %.2f GB free, "</span>
+<a id="__codelineno-16-33" name="__codelineno-16-33" href="#__codelineno-16-33"></a><span class="w">               </span><span class="s">"compute capability %d.%d</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span>
+<a id="__codelineno-16-34" name="__codelineno-16-34" href="#__codelineno-16-34"></a><span class="w">               </span><span class="n">i</span><span class="p">,</span><span class="w"> </span><span class="n">prop</span><span class="p">.</span><span class="n">name</span><span class="p">,</span>
+<a id="__codelineno-16-35" name="__codelineno-16-35" href="#__codelineno-16-35"></a><span class="w">               </span><span class="n">totalBytes</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="mf">1e9</span><span class="p">,</span><span class="w"> </span><span class="n">freeBytes</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="mf">1e9</span><span class="p">,</span>
+<a id="__codelineno-16-36" name="__codelineno-16-36" href="#__codelineno-16-36"></a><span class="w">               </span><span class="n">prop</span><span class="p">.</span><span class="n">major</span><span class="p">,</span><span class="w"> </span><span class="n">prop</span><span class="p">.</span><span class="n">minor</span><span class="p">);</span>
+<a id="__codelineno-16-37" name="__codelineno-16-37" href="#__codelineno-16-37"></a><span class="w">    </span><span class="p">}</span>
+<a id="__codelineno-16-38" name="__codelineno-16-38" href="#__codelineno-16-38"></a><span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
+<a id="__codelineno-16-39" name="__codelineno-16-39" href="#__codelineno-16-39"></a><span class="p">}</span>
 </code></pre></div>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>nvcc<span class="w"> </span>-arch<span class="o">=</span>sm_80<span class="w"> </span>01_device_query.cu<span class="w"> </span>-o<span class="w"> </span>device_query
-<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>./device_query
+<!-- execution:start:a100:01_device_query.cu -->
+<blockquote>
+<p><strong>Current execution — 2026-11-17-a100: API/host demonstration (exit-only).</strong> UTC (program start): <code>2026-11-18T00:00:04.726059+00:00</code>. Source SHA-256: <code>4a14f312d6406e432c3bd12214a99f9e37288c7dea955f587460413a11d333cc</code>.</p>
+</blockquote>
+<p><a href="../../validation/2026-11-17-a100/01_device_query/01_device_query.cu">Exact tested source</a> · <a href="../../validation/2026-11-17-a100/01_device_query/compile.log">Compiler log</a> · <a href="../../validation/2026-11-17-a100/01_device_query/run.log">Execution log</a>. Compile exit: <code>0</code>; run exit: <code>0</code>.</p>
+<p>Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a>nvcc<span class="w"> </span>-std<span class="o">=</span>c++17<span class="w"> </span>-O2<span class="w"> </span>-arch<span class="o">=</span>sm_80<span class="w"> </span>01_device_query.cu<span class="w"> </span>-o<span class="w"> </span>./example
+<a id="__codelineno-17-2" name="__codelineno-17-2" href="#__codelineno-17-2"></a>./example
+</code></pre></div>
+<details>
+<summary>Captured current-source output</summary>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-18-1" name="__codelineno-18-1" href="#__codelineno-18-1"></a>cudaGetDeviceCount() returned: no error (code 0)
+<a id="__codelineno-18-2" name="__codelineno-18-2" href="#__codelineno-18-2"></a>Reported device count: 8
+<a id="__codelineno-18-3" name="__codelineno-18-3" href="#__codelineno-18-3"></a>Device 0: NVIDIA A100-SXM4-40GB -- 42.41 GB total, 41.96 GB free, compute capability 8.0
+<a id="__codelineno-18-4" name="__codelineno-18-4" href="#__codelineno-18-4"></a>Device 1: NVIDIA A100-SXM4-40GB -- 42.41 GB total, 41.96 GB free, compute capability 8.0
+<a id="__codelineno-18-5" name="__codelineno-18-5" href="#__codelineno-18-5"></a>Device 2: NVIDIA A100-SXM4-40GB -- 42.41 GB total, 41.96 GB free, compute capability 8.0
+<a id="__codelineno-18-6" name="__codelineno-18-6" href="#__codelineno-18-6"></a>Device 3: NVIDIA A100-SXM4-40GB -- 42.41 GB total, 41.96 GB free, compute capability 8.0
+<a id="__codelineno-18-7" name="__codelineno-18-7" href="#__codelineno-18-7"></a>Device 4: NVIDIA A100-SXM4-40GB -- 42.41 GB total, 41.96 GB free, compute capability 8.0
+<a id="__codelineno-18-8" name="__codelineno-18-8" href="#__codelineno-18-8"></a>Device 5: NVIDIA A100-SXM4-40GB -- 42.41 GB total, 41.96 GB free, compute capability 8.0
+<a id="__codelineno-18-9" name="__codelineno-18-9" href="#__codelineno-18-9"></a>Device 6: NVIDIA A100-SXM4-40GB -- 42.41 GB total, 41.96 GB free, compute capability 8.0
+<a id="__codelineno-18-10" name="__codelineno-18-10" href="#__codelineno-18-10"></a>Device 7: NVIDIA A100-SXM4-40GB -- 42.41 GB total, 41.96 GB free, compute capability 8.0
+</code></pre></div>
+</details>
+<!-- execution:end:a100:01_device_query.cu -->
+
+<!-- execution:start:h100:01_device_query.cu -->
+<blockquote>
+<p><strong>Current execution — 2026-11-17-h100: API/host demonstration (exit-only).</strong> UTC (run-batch start; per-program time unrecorded): <code>2026-11-17T23:48:18.967387+00:00</code>. Source SHA-256: <code>4a14f312d6406e432c3bd12214a99f9e37288c7dea955f587460413a11d333cc</code>.</p>
+</blockquote>
+<p><a href="../../validation/2026-11-17-h100/01_device_query/01_device_query.cu">Exact tested source</a> · <a href="../../validation/2026-11-17-h100/01_device_query/compile.log">Compiler log</a> · <a href="../../validation/2026-11-17-h100/01_device_query/run.log">Execution log</a>. Compile exit: <code>0</code>; run exit: <code>0</code>.</p>
+<p>Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-19-1" name="__codelineno-19-1" href="#__codelineno-19-1"></a>nvcc<span class="w"> </span>-std<span class="o">=</span>c++17<span class="w"> </span>-O2<span class="w"> </span>-arch<span class="o">=</span>sm_90<span class="w"> </span>01_device_query.cu<span class="w"> </span>-o<span class="w"> </span>./example
+<a id="__codelineno-19-2" name="__codelineno-19-2" href="#__codelineno-19-2"></a>./example
+</code></pre></div>
+<details>
+<summary>Captured current-source output</summary>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-20-1" name="__codelineno-20-1" href="#__codelineno-20-1"></a>cudaGetDeviceCount() returned: no error (code 0)
+<a id="__codelineno-20-2" name="__codelineno-20-2" href="#__codelineno-20-2"></a>Reported device count: 2
+<a id="__codelineno-20-3" name="__codelineno-20-3" href="#__codelineno-20-3"></a>Device 0: NVIDIA H100 80GB HBM3 -- 85.02 GB total, 84.47 GB free, compute capability 9.0
+<a id="__codelineno-20-4" name="__codelineno-20-4" href="#__codelineno-20-4"></a>Device 1: NVIDIA H100 80GB HBM3 -- 85.02 GB total, 84.47 GB free, compute capability 9.0
+</code></pre></div>
+</details>
+<!-- execution:end:h100:01_device_query.cu -->
+
+<div class="highlight"><pre><span></span><code><a id="__codelineno-21-1" name="__codelineno-21-1" href="#__codelineno-21-1"></a>nvcc<span class="w"> </span>-arch<span class="o">=</span>sm_80<span class="w"> </span>01_device_query.cu<span class="w"> </span>-o<span class="w"> </span>device_query
+<a id="__codelineno-21-2" name="__codelineno-21-2" href="#__codelineno-21-2"></a>./device_query
 </code></pre></div>
 <p>Output (genuinely compiled with a real <code>nvcc</code> and genuinely run; identical across three consecutive runs):</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>cudaGetDeviceCount() returned: no CUDA-capable device is detected (code 100)
-<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>Reported device count: 0
-<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>No usable CUDA device on this machine.
-<a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a>This is an honest, unmodified report from the CUDA Runtime API -- not a placeholder.
+<details>
+<summary>Historical authoring output — superseded by the current execution above</summary>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-22-1" name="__codelineno-22-1" href="#__codelineno-22-1"></a>cudaGetDeviceCount() returned: no CUDA-capable device is detected (code 100)
+<a id="__codelineno-22-2" name="__codelineno-22-2" href="#__codelineno-22-2"></a>Reported device count: 0
+<a id="__codelineno-22-3" name="__codelineno-22-3" href="#__codelineno-22-3"></a>No usable CUDA device on this machine.
+<a id="__codelineno-22-4" name="__codelineno-22-4" href="#__codelineno-22-4"></a>This is an honest, unmodified report from the CUDA Runtime API -- not a placeholder.
 </code></pre></div>
-<p>This is exactly the outcome this book's own Getting Started guide promises: the authoring environment has no NVIDIA GPU and no NVIDIA driver, so <code>cudaGetDeviceCount()</code> genuinely, correctly reports zero devices and <code>cudaErrorNoDevice</code> (error code 100) — not a fabricated success, not a skipped call.</p>
+</details>
+<p>The earlier authoring transcript reports a device-less host. The current H100 record executes this query on two visible GPUs. A count query checks discovery only; it is not a numerical workload or topology benchmark.</p>
+<p>The <a href="../../validation-h100/">2026-11-17 H100 execution record</a> covers two GPUs connected by local NV18. It distinguishes numerical checks, API probes and other executions; a successful exit alone does not establish GPU algorithm correctness.</p>
 <div class="admonition warning">
 <p class="admonition-title">[COMMON TRAP] Hard-coding a device count instead of asking for one</p>
 <p>A program that assumes "there are 2 GPUs" (or 4, or 8) because that's what the machine it was first written on happened to have will crash or misbehave the moment it runs anywhere else — including, honestly, right here. Every device-touching example from Chapter 3 onward loops over whatever <code>cudaGetDeviceCount()</code> actually reports, which is what lets this exact, unmodified source run correctly on a machine with zero devices, one device, or a thousand.</p>
 </div>
 <h2 id="chapter-summary">Chapter Summary<a class="headerlink" href="#chapter-summary" title="Permanent link">&para;</a></h2>
-<p>"Not enough" splits into two independent failures: the memory-capacity wall, a hard binary limit measured exactly in bytes (Section 1.1 found GPT-3's training state needs 35 H100 SXM GPUs' worth of memory, using ZeRO's real 16-bytes-per-parameter mixed-precision Adam breakdown), and the compute-throughput wall, a rate limit measured in FLOPs against a real peak-FLOPS figure (Section 1.2 found the same model needs over 20 years on one GPU at ideal throughput, using Kaplan's real <code>C≈6ND</code> compute formula). Both walls have the same structural fix — stop asking one device to hold and do everything — but splitting work across devices creates a problem neither wall had: the pieces now have to communicate, correctly and fast enough that communication doesn't become the new bottleneck. Section 1.3's <code>cudaGetDeviceCount()</code> call is the first, smallest piece of the machinery every later chapter uses to manage that communication, and its honest zero-device answer here is the same honesty discipline this book applies everywhere a real device-touching call is made without real hardware to back it up.</p>
+<p>"Not enough" splits into two independent failures: the memory-capacity wall, a hard binary limit measured exactly in bytes (Section 1.1 found GPT-3's training state needs 35 H100 SXM GPUs' worth of memory, using ZeRO's real 16-bytes-per-parameter mixed-precision Adam breakdown), and the compute-throughput wall, a rate limit measured in FLOPs against a real peak-FLOPS figure (Section 1.2 found the same model needs over 10 years on one GPU even at ideal throughput, and over 20 years at an assumed 50% MFU, using Kaplan's real <code>C≈6ND</code> compute formula). Both walls have the same structural fix — stop asking one device to hold and do everything — but splitting work across devices creates a problem neither wall had: the pieces now have to communicate, correctly and fast enough that communication doesn't become the new bottleneck. Section 1.3's <code>cudaGetDeviceCount()</code> call is the first, smallest piece of the machinery every later chapter uses to manage that communication, and its current H100 result reports real device discovery; this query alone does not validate a numerical GPU algorithm.</p>
+<p>The <a href="../../validation-h100/">2026-11-17 H100 execution record</a> covers two GPUs connected by local NV18. It distinguishes numerical checks, API probes and other executions; a successful exit alone does not establish GPU algorithm correctness.</p>
 <p>Part 1 (Chapters 4-7) builds the primitive layer for getting data between devices at all. Part 2 (Chapters 8-11) builds the communication patterns — broadcast, reduce, all-reduce — from scratch, by hand, before reaching for a library. Part 3 (Chapters 12-16) chooses <em>what</em> to split for a given workload shape. Part 4 handles devices that don't finish at the same time, or don't finish at all. Part 5 takes everything past the boundary of one machine. Part 6 puts all of it to work on real workloads, end to end.</p>
 <h2 id="self-check-questions">Self-Check Questions<a class="headerlink" href="#self-check-questions" title="Permanent link">&para;</a></h2>
 <ol>
@@ -2791,9 +3065,9 @@
 <p><strong>2.</strong> Parameters, gradients, and optimizer state each need a fixed, small number of copies <em>per parameter</em>, regardless of what data flows through the model — that's why a constant bytes-per-parameter figure captures them exactly. Activation memory instead depends on how many intermediate values the forward pass produces before backpropagation consumes them, which scales with batch size and sequence length — two choices made per training run, not properties of the model's parameter count at all. A single constant can't represent a quantity that depends on inputs the model's own definition doesn't fix.</p>
 <p><strong>3.</strong> Exactly 2.5x smaller. <code>C = 6ND</code>, and with <code>D</code> held fixed at 300 billion tokens, <code>C</code> is directly proportional to <code>N</code> — halving-and-a-bit <code>N</code> (175B to 70B is a 2.5x reduction) produces exactly the same 2.5x reduction in <code>C</code>, with no other factor in the formula depending on <code>N</code> in a way that would make the relationship anything other than linear.</p>
 <p><strong>4.</strong> The 50%-MFU figure (7372.8 GPU-days) is closer to what a real run would take, because no real training run sustains 100% of a GPU's advertised peak FLOPS — the gap between the two figures represents Model FLOPs Utilization: overhead from memory stalls, communication waiting, and imperfect overlap between compute and data movement, all of which the "ideal" figure assumes away entirely.</p>
-<p><strong>5.</strong> A nonzero error code can, in principle, accompany a stale or invalid device count value even though the common case here is that both signal the same thing (no device). Checking the error code directly reports <em>why</em> the call didn't succeed rather than inferring it indirectly from the count being zero, and it matches the same defensive pattern (check every return code, don't assume) this book uses for every other CUDA call from Chapter 3 onward.</p>
-<p><strong>6.</strong> They differ in kind, not just number. The capacity wall is binary — either the training state's bytes fit in the available memory or they don't, and no amount of waiting changes a "doesn't fit." The throughput wall is a rate multiplied by total work — the model's training compute technically <em>can</em> be run on one GPU, just not within a useful amount of time. A 7B-class model failing both checks with today's hardware doesn't make the checks equivalent; it means today's hardware is small enough, for that model, to fail both independent tests at once. A future GPU with far more memory but unchanged FLOPS would pass the capacity check while still failing the throughput check by the same margin computed in Section 1.2.</p>
-<p><strong>7.</strong> It would move the capacity wall dramatically — GPT-3's 2800 GB training footprint would fit on far fewer such GPUs (280 GB each instead of 80 GB, cutting the "35 GPUs" figure roughly proportionally). It would leave the throughput wall completely unchanged, because Section 1.2's GPU-day figures depend only on peak FLOPS and the total FLOP count, neither of which this hypothetical GPU's extra memory affects at all.</p>
+<p><strong>5.</strong> Check the error code before trusting the returned count. A failed query can leave an unusable output; a successful discovery query still does not establish peer access, transport performance or numerical algorithm correctness.</p>
+<p><strong>6.</strong> They differ in kind, not just number. The capacity wall is binary — either the training state's bytes fit in the available memory or they don't, and no amount of waiting changes a "doesn't fit." The throughput wall is a rate multiplied by total work — the model's training compute technically <em>can</em> be run on one GPU, just not within a useful amount of time. The numbers for the 7B-class model make this concrete. Section 1.1's table gives its capacity check directly: 112 GB of training state against 80 GB, a fail by 32 GB. Its throughput figure is not in Section 1.2, but the same formula gives it: <code>C = 6ND = 6 x 7e9 x 3e11 = 1.26e22</code> FLOPs over 300 billion tokens, and <code>1.26e22 / 9.89e14 FLOP/s / 86,400 s/day</code> is about 147 GPU-days at ideal peak (about 295 at the assumed 50% MFU). That is months, not decades: slow, but not hopeless the way GPT-3's 3686 to 7372 GPU-days are. So the two checks give different verdicts for the same model, one a hard byte fail and the other a matter of how long you are willing to wait, which already shows they measure different things. A future GPU with far more memory but unchanged FLOPS would pass the capacity check while leaving every GPU-day figure above exactly where it is.</p>
+<p><strong>7.</strong> It would move the capacity wall dramatically — GPT-3's 2800 GB training footprint would fit on far fewer such GPUs (800 GB each instead of 80 GB, so <code>ceil(2800 / 800) = 4</code> GPUs instead of 35, still ignoring activations). It would leave the throughput wall completely unchanged, because Section 1.2's GPU-day figures depend only on peak FLOPS and the total FLOP count, neither of which this hypothetical GPU's extra memory affects at all.</p>
 <hr />
 <p><strong>Sources cited in this chapter:</strong></p>
 <ul>
@@ -2838,7 +3112,7 @@
       <nav class="md-footer__inner md-grid" aria-label="Footer" >
         
           
-          <a href="../../getting-started/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Getting Started">
+          <a href="../../validation-h100/" class="md-footer__link md-footer__link--prev" aria-label="Previous: H100 Execution Validation">
             <div class="md-footer__button md-icon">
               
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
@@ -2848,7 +3122,7 @@
                 Previous
               </span>
               <div class="md-ellipsis">
-                Getting Started
+                H100 Execution Validation
               </div>
             </div>
           </a>
@@ -2902,10 +3176,10 @@
     
       
       
-      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.instant", "navigation.tracking", "navigation.sections", "navigation.expand", "navigation.top", "navigation.footer", "toc.follow", "search.suggest", "search.highlight", "content.code.copy", "content.code.annotate"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.instant", "navigation.tracking", "navigation.sections", "navigation.expand", "navigation.top", "navigation.footer", "toc.follow", "search.suggest", "search.highlight", "content.code.copy", "content.code.annotate"], "search": "../../assets/javascripts/workers/search.a7633da7.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
-      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      <script src="../../assets/javascripts/bundle.a5f9d56c.min.js"></script>
       
     
   </body>

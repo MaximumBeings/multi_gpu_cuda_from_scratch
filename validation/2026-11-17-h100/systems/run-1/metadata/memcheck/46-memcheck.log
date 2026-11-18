@@ -1,0 +1,4 @@
+========= COMPUTE-SANITIZER
+PASS: 2 GPUs, 3 halo generations; all interior/halo/boundary values verified.
+Scope: halo transport and boundary preservation, not a stencil-kernel benchmark.
+========= ERROR SUMMARY: 0 errors

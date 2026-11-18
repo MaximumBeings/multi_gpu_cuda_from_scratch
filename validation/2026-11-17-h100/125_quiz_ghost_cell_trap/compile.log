@@ -1,0 +1,1 @@
+$ g++ -std=c++17 -O2 /home/ubuntu/codex-multigpu-audit-20261117/multi-gpu-audit/docs/appendix/code/125_quiz_ghost_cell_trap.cpp -o /home/ubuntu/codex-multigpu-audit-20261117/multi-gpu-audit/artifacts/h100-reviewed-20261117/125_quiz_ghost_cell_trap/example

@@ -12,6 +12,8 @@
         <meta name="author" content="Oluwaseyi Awoga">
       
       
+        <link rel="canonical" href="https://maximumbeings.github.io/multi_gpu_cuda_from_scratch/part2/11-nccl-what-it-actually-does-differently/">
+      
       
         <link rel="prev" href="../10-all-gather-reduce-scatter-and-all-to-all/">
       
@@ -23,7 +25,7 @@
       
       
       <link rel="icon" href="../../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.8.1">
     
     
       
@@ -31,10 +33,10 @@
       
     
     
-      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      <link rel="stylesheet" href="../../assets/stylesheets/main.57a0d79d.min.css">
       
         
-        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.fb2fffe2.min.css">
       
       
 
@@ -52,6 +54,8 @@
         <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
       
     
+    
+      <link rel="stylesheet" href="../../stylesheets/illustrations.css">
     
     <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
     
@@ -195,6 +199,18 @@
       
     
     
+      <div class="md-header__source">
+        <a href="https://github.com/MaximumBeings/multi_gpu_cuda_from_scratch" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    MaximumBeings/multi_gpu_cuda_from_scratch
+  </div>
+</a>
+      </div>
+    
   </nav>
   
 </header>
@@ -228,6 +244,18 @@
     </a>
     Multi-GPU Programming in CUDA C++ -- Under Development
   </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/MaximumBeings/multi_gpu_cuda_from_scratch" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    MaximumBeings/multi_gpu_cuda_from_scratch
+  </div>
+</a>
+    </div>
   
   <ul class="md-nav__list" data-md-scrollfix>
     
@@ -291,6 +319,60 @@
   
   
   
+    <li class="md-nav__item">
+      <a href="../../validation-a100/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    A100 Execution Validation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../validation-h100/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    H100 Execution Validation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
     
     
     
@@ -307,10 +389,10 @@
         
           
         
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3" >
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5" >
         
           
-          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="">
             
   
   
@@ -328,8 +410,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_3">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -452,10 +534,10 @@
         
           
         
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4" >
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6" >
         
           
-          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="">
             
   
   
@@ -473,8 +555,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_4">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -625,10 +707,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" checked>
         
           
-          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="">
+          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="">
             
   
   
@@ -646,8 +728,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="true">
-          <label class="md-nav__title" for="__nav_5">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_7">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -1006,10 +1088,10 @@
         
           
         
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6" >
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_8" >
         
           
-          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="">
+          <label class="md-nav__link" for="__nav_8" id="__nav_8_label" tabindex="">
             
   
   
@@ -1027,8 +1109,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_6">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_8">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -1207,10 +1289,10 @@
         
           
         
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_7" >
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_9" >
         
           
-          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="">
+          <label class="md-nav__link" for="__nav_9" id="__nav_9_label" tabindex="">
             
   
   
@@ -1228,8 +1310,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_7">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_9">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -1352,10 +1434,10 @@
         
           
         
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_8" >
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_10" >
         
           
-          <label class="md-nav__link" for="__nav_8" id="__nav_8_label" tabindex="">
+          <label class="md-nav__link" for="__nav_10" id="__nav_10_label" tabindex="">
             
   
   
@@ -1373,8 +1455,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_8">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_10_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_10">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -1525,10 +1607,10 @@
         
           
         
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_9" >
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_11" >
         
           
-          <label class="md-nav__link" for="__nav_9" id="__nav_9_label" tabindex="">
+          <label class="md-nav__link" for="__nav_11" id="__nav_11_label" tabindex="">
             
   
   
@@ -1546,8 +1628,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_9_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_9">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_11_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_11">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -1810,10 +1892,10 @@
         
           
         
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_10" >
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_12" >
         
           
-          <label class="md-nav__link" for="__nav_10" id="__nav_10_label" tabindex="">
+          <label class="md-nav__link" for="__nav_12" id="__nav_12_label" tabindex="">
             
   
   
@@ -1831,8 +1913,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_10_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_10">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_12_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_12">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -2123,10 +2205,10 @@
         
           
         
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_11" >
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_13" >
         
           
-          <label class="md-nav__link" for="__nav_11" id="__nav_11_label" tabindex="">
+          <label class="md-nav__link" for="__nav_13" id="__nav_13_label" tabindex="">
             
   
   
@@ -2144,8 +2226,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_11_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_11">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_13_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_13">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -2561,12 +2643,24 @@
                   
 
 
+  
+  
+
 
 <h1 id="chapter-11-nccl-what-it-actually-does-differently-from-what-you-just-built">Chapter 11: NCCL: What It Actually Does Differently From What You Just Built<a class="headerlink" href="#chapter-11-nccl-what-it-actually-does-differently-from-what-you-just-built" title="Permanent link">&para;</a></h1>
+<!-- execution:provenance -->
+<div class="admonition info">
+<p class="admonition-title">Execution provenance</p>
+<p>Current execution blocks identify the tested source hash, hardware dataset, commands and captured output. References elsewhere on this page to a device-less environment describe the original authoring context. Historical output is superseded by the current record. Displayed output omits the runner command header and trims trailing line whitespace; raw logs remain exact. A host simulation or API validation has its stated scope; neither alone establishes a numerical multi-GPU workload or measured performance.</p>
+</div>
+<!-- mgpu:opener:start -->
+<p><a href="../../images/chapter-openers/11.svg"><img alt="Chapter 11: NCCL: What It Actually Does Differently From What You Just Built" src="../../images/chapter-openers/11.svg" /></a></p>
+<!-- mgpu:opener:end -->
+
 <p><strong>What you will understand by the end of this chapter:</strong></p>
 <ul>
-<li>How a real <code>ncclComm_t</code> communicator relates to the <code>deviceCount</code> loops this book has used since Chapter 3, and the two genuinely different ways a real <code>ncclCommInitAll()</code> call can honestly fail.</li>
-<li>That every one of this book's six hand-built collectives (Chapters 8-10) has a real, one-call NCCL equivalent -- except all-to-all, which real NCCL builds exactly the way Chapter 10 did: from repeated point-to-point transfers, not one dedicated call.</li>
+<li>How a real <code>ncclComm_t</code> communicator relates to the <code>deviceCount</code> loops this book has used since Chapter 3, and the two genuinely different ways a real <code>ncclCommInitAll()</code> call can honestly fail -- a malformed argument, rejected up front, versus a well-formed request that fails inside CUDA.</li>
+<li>That five of this book's six hand-built collectives (Chapters 8-10) have a real, one-call NCCL equivalent in the NCCL 2.18.3 this book links against, while all-to-all there is built exactly the way Chapter 10 did: from grouped point-to-point transfers. (Newer NCCL, from 2.28, adds a dedicated <code>ncclAlltoAll()</code>.)</li>
 <li>The one genuine algorithmic gap between what this book built and what NCCL does for real: ring all-reduce's round count grows linearly with the number of devices, and at large enough scale that stops being good enough -- which is exactly why NCCL added a second algorithm.</li>
 </ul>
 <p><strong>What you need to know first:</strong></p>
@@ -2576,8 +2670,9 @@
 <li>This book's closed-form cost/round-count modeling technique (Chapter 2, Chapter 5), used again in Section 11.3.</li>
 </ul>
 <hr />
-<p>This chapter is different from every one before it in one specific way: for the first time, this book genuinely links against and genuinely calls a real, installed NCCL library -- not a hand-built substitute standing in for something unavailable. That changes what "honest failure" means here. Every call below is a real NCCL API call, checked against this book's own actual installed NCCL headers, and every locked output is what that real library genuinely reports on a machine with zero CUDA devices -- not a simulation of what it might say. Sections 11.1 and 11.2 check this book's own hand-built work against the real thing: a real communicator, and a real one-call equivalent for (almost) every collective Chapters 8-10 built by hand. Section 11.3 covers the one place this book's own ring all-reduce genuinely falls short at scale, and what NCCL does differently to fix it.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>This book&#39;s hand-built collectives (Ch8-10)         NCCL&#39;s real API (this chapter)
+<p>This chapter introduces NCCL communicator construction and expected-error probes. Files 30 and 31 are checked API probes in the current H100 run, not numerical collective algorithms. Subsequent chapters contain initialized-buffer collective checks. Earlier device-less transcripts describe historical diagnostics only.</p>
+<p>The <a href="../../validation-h100/">2026-11-17 H100 execution record</a> covers two GPUs connected by local NV18. It distinguishes numerical checks, API probes and other executions; a successful exit alone does not establish GPU algorithm correctness.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>This book's hand-built collectives (Ch8-10)         NCCL's real API (this chapter)
 <a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>
 <a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>  broadcast:      cudaMemcpyPeer loop, from root  --&gt;  ncclBroadcast()
 <a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>  reduce:         cudaMemcpy + host accumulator   --&gt;  ncclReduce()
@@ -2588,343 +2683,420 @@
 <a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>  reduce-scatter: host-mediated, by hand           --&gt;  ncclReduceScatter()
 <a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>  all-to-all:     direct cudaMemcpyPeer all-pairs  --&gt;  ncclSend()/ncclRecv(),
 <a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>                                                          all-pairs, grouped --
-<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>                                                          still no dedicated call
+<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>                                                          no dedicated call in
+<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>                                                          2.18.3 (ncclAlltoAll()
+<a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>                                                          arrived in NCCL 2.28)
 </code></pre></div>
 <h2 id="111-a-real-communicator-ncclcomminitall-and-the-world-this-book-has-called-devicecount">11.1 A Real Communicator: <code>ncclCommInitAll</code> and the World This Book Has Called <code>deviceCount</code><a class="headerlink" href="#111-a-real-communicator-ncclcomminitall-and-the-world-this-book-has-called-devicecount" title="Permanent link">&para;</a></h2>
+<!-- mgpu:figure-1:start -->
+<p><a href="../../images/technical/ch11/1-flow.svg"><img alt="A communicator establishes membership" src="../../images/technical/ch11/1-flow.svg" /></a></p>
+<!-- mgpu:figure-1:end -->
+
 <h3 id="intuition">Intuition<a class="headerlink" href="#intuition" title="Permanent link">&para;</a></h3>
 <p>Every real NCCL collective call needs a communicator -- a single object that names which devices are in the group and how they're numbered, so that a call like "broadcast this buffer" has an actual group to broadcast across. Think of it like a team roster handed out before a group project starts: nobody on the team can be assigned a task until the roster itself exists, with everyone's name and role settled. This book's <code>deviceCount</code>-driven loops have quietly done the roster's job themselves, informally, since Chapter 3; NCCL just makes that roster a real, explicit object you create once, up front.</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>Before any collective call, a real NCCL program needs a communicator:
 <a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>
 <a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>  cudaGetDeviceCount()  --&gt;  ncclCommInitAll(comms, ndev, devlist)  --&gt;  ncclComm_t[ndev]
 <a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>        |                              |
-<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>        v                              v
-<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>  &quot;how many devices           &quot;bind each of these ndev communicators
-<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>   do I actually have?&quot;         to a real CUDA device, as one group&quot;
-<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>
-<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>  This chapter&#39;s own deviceCount is 0 -- so ndev=0 is exactly what an
-<a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a>  honest program, built the way every prior chapter has been, would
-<a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a>  actually pass here.
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>        +--&gt; "how many devices         +--&gt; "bind each of these ndev communicators
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>              do I actually have?"           to a real CUDA device, as one group"
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>
+<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>  This chapter's own deviceCount is 0 -- so ndev=0 is exactly what an
+<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>  honest program, built the way every prior chapter has been, would
+<a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a>  actually pass here.
 </code></pre></div>
 <h3 id="background">Background<a class="headerlink" href="#background" title="Permanent link">&para;</a></h3>
-<p><code>ncclGetVersion()</code> is the one call in this section that needs nothing from the machine at all -- it reads a version number baked into the library at build time, so it can genuinely succeed even here. <code>ncclCommInitAll()</code> is different: it has to actually attach communicators to real CUDA devices, and this book's own honest <code>deviceCount</code> gives it two different ways to fail depending on what's asked for.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="c1">// Chapter 11: NCCL -- What It Actually Does Differently From What You</span>
-<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="c1">// Just Built</span>
-<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="c1">// 30_nccl_comm_init.cu</span>
-<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="c1">//</span>
-<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="c1">// Every chapter since Chapter 3 has looped over `deviceCount` and</span>
-<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a><span class="c1">// called CUDA Runtime API functions directly, device by device. Real</span>
-<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a><span class="c1">// NCCL adds one concept in front of all of that: a communicator, a</span>
-<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a><span class="c1">// single object representing the whole group of devices a collective</span>
-<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a><span class="c1">// call will run across. This section genuinely links against a real,</span>
-<a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a><span class="c1">// installed NCCL library and genuinely calls its real API -- no</span>
-<a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a><span class="c1">// hand-rolled substitute -- to see exactly how a communicator gets</span>
-<a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a><span class="c1">// created, and what happens when it can&#39;t be. Genuinely compiled</span>
-<a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a><span class="c1">// with a real nvcc, genuinely linked against a real libnccl, and</span>
-<a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a><span class="c1">// genuinely run.</span>
-<a id="__codelineno-2-15" name="__codelineno-2-15" href="#__codelineno-2-15"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;cstdio&gt;</span>
-<a id="__codelineno-2-16" name="__codelineno-2-16" href="#__codelineno-2-16"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;nccl.h&gt;</span>
-<a id="__codelineno-2-17" name="__codelineno-2-17" href="#__codelineno-2-17"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;cuda_runtime.h&gt;</span>
-<a id="__codelineno-2-18" name="__codelineno-2-18" href="#__codelineno-2-18"></a>
-<a id="__codelineno-2-19" name="__codelineno-2-19" href="#__codelineno-2-19"></a><span class="kt">int</span><span class="w"> </span><span class="nf">main</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
-<a id="__codelineno-2-20" name="__codelineno-2-20" href="#__codelineno-2-20"></a><span class="w">    </span><span class="kt">int</span><span class="w"> </span><span class="n">deviceCount</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
-<a id="__codelineno-2-21" name="__codelineno-2-21" href="#__codelineno-2-21"></a><span class="w">    </span><span class="n">cudaGetDeviceCount</span><span class="p">(</span><span class="o">&amp;</span><span class="n">deviceCount</span><span class="p">);</span>
-<a id="__codelineno-2-22" name="__codelineno-2-22" href="#__codelineno-2-22"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;cudaGetDeviceCount(): %d device(s).</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">deviceCount</span><span class="p">);</span>
-<a id="__codelineno-2-23" name="__codelineno-2-23" href="#__codelineno-2-23"></a>
-<a id="__codelineno-2-24" name="__codelineno-2-24" href="#__codelineno-2-24"></a><span class="w">    </span><span class="c1">// ncclGetVersion() reads the linked library&#39;s own version -- it</span>
-<a id="__codelineno-2-25" name="__codelineno-2-25" href="#__codelineno-2-25"></a><span class="w">    </span><span class="c1">// needs no device at all, so unlike almost every other call in</span>
-<a id="__codelineno-2-26" name="__codelineno-2-26" href="#__codelineno-2-26"></a><span class="w">    </span><span class="c1">// this book, it can genuinely succeed even here.</span>
-<a id="__codelineno-2-27" name="__codelineno-2-27" href="#__codelineno-2-27"></a><span class="w">    </span><span class="kt">int</span><span class="w"> </span><span class="n">ncclRuntimeVersion</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
-<a id="__codelineno-2-28" name="__codelineno-2-28" href="#__codelineno-2-28"></a><span class="w">    </span><span class="n">ncclResult_t</span><span class="w"> </span><span class="n">eVer</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">ncclGetVersion</span><span class="p">(</span><span class="o">&amp;</span><span class="n">ncclRuntimeVersion</span><span class="p">);</span>
-<a id="__codelineno-2-29" name="__codelineno-2-29" href="#__codelineno-2-29"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;ncclGetVersion(): %s (code %d), reports version %d &quot;</span>
-<a id="__codelineno-2-30" name="__codelineno-2-30" href="#__codelineno-2-30"></a><span class="w">           </span><span class="s">&quot;(major.minor.patch = %d.%d.%d)</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span>
-<a id="__codelineno-2-31" name="__codelineno-2-31" href="#__codelineno-2-31"></a><span class="w">           </span><span class="n">ncclGetErrorString</span><span class="p">(</span><span class="n">eVer</span><span class="p">),</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="p">)</span><span class="n">eVer</span><span class="p">,</span><span class="w"> </span><span class="n">ncclRuntimeVersion</span><span class="p">,</span>
-<a id="__codelineno-2-32" name="__codelineno-2-32" href="#__codelineno-2-32"></a><span class="w">           </span><span class="n">ncclRuntimeVersion</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="mi">10000</span><span class="p">,</span><span class="w"> </span><span class="p">(</span><span class="n">ncclRuntimeVersion</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="mi">100</span><span class="p">)</span><span class="w"> </span><span class="o">%</span><span class="w"> </span><span class="mi">100</span><span class="p">,</span>
-<a id="__codelineno-2-33" name="__codelineno-2-33" href="#__codelineno-2-33"></a><span class="w">           </span><span class="n">ncclRuntimeVersion</span><span class="w"> </span><span class="o">%</span><span class="w"> </span><span class="mi">100</span><span class="p">);</span>
-<a id="__codelineno-2-34" name="__codelineno-2-34" href="#__codelineno-2-34"></a>
-<a id="__codelineno-2-35" name="__codelineno-2-35" href="#__codelineno-2-35"></a><span class="w">    </span><span class="c1">// ncclCommInitAll(), used with this book&#39;s own real deviceCount:</span>
-<a id="__codelineno-2-36" name="__codelineno-2-36" href="#__codelineno-2-36"></a><span class="w">    </span><span class="c1">// asking for a clique of ZERO communicators is itself an invalid</span>
-<a id="__codelineno-2-37" name="__codelineno-2-37" href="#__codelineno-2-37"></a><span class="w">    </span><span class="c1">// request, and NCCL&#39;s own argument validation catches it before</span>
-<a id="__codelineno-2-38" name="__codelineno-2-38" href="#__codelineno-2-38"></a><span class="w">    </span><span class="c1">// touching any device at all.</span>
-<a id="__codelineno-2-39" name="__codelineno-2-39" href="#__codelineno-2-39"></a><span class="w">    </span><span class="n">ncclResult_t</span><span class="w"> </span><span class="n">eInitReal</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">ncclCommInitAll</span><span class="p">(</span><span class="nb">nullptr</span><span class="p">,</span><span class="w"> </span><span class="n">deviceCount</span><span class="p">,</span><span class="w"> </span><span class="nb">nullptr</span><span class="p">);</span>
-<a id="__codelineno-2-40" name="__codelineno-2-40" href="#__codelineno-2-40"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;</span><span class="se">\n</span><span class="s">ncclCommInitAll(ndev=%d, this book&#39;s own real deviceCount): &quot;</span>
-<a id="__codelineno-2-41" name="__codelineno-2-41" href="#__codelineno-2-41"></a><span class="w">           </span><span class="s">&quot;%s (code %d)</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">deviceCount</span><span class="p">,</span><span class="w"> </span><span class="n">ncclGetErrorString</span><span class="p">(</span><span class="n">eInitReal</span><span class="p">),</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="p">)</span><span class="n">eInitReal</span><span class="p">);</span>
-<a id="__codelineno-2-42" name="__codelineno-2-42" href="#__codelineno-2-42"></a>
-<a id="__codelineno-2-43" name="__codelineno-2-43" href="#__codelineno-2-43"></a><span class="w">    </span><span class="c1">// ncclCommInitAll(), asking for exactly ONE device: this passes</span>
-<a id="__codelineno-2-44" name="__codelineno-2-44" href="#__codelineno-2-44"></a><span class="w">    </span><span class="c1">// NCCL&#39;s own argument validation (asking for 1 device is a valid</span>
-<a id="__codelineno-2-45" name="__codelineno-2-45" href="#__codelineno-2-45"></a><span class="w">    </span><span class="c1">// request in principle), so it proceeds far enough to discover</span>
-<a id="__codelineno-2-46" name="__codelineno-2-46" href="#__codelineno-2-46"></a><span class="w">    </span><span class="c1">// there is genuinely no CUDA device to attach that communicator</span>
-<a id="__codelineno-2-47" name="__codelineno-2-47" href="#__codelineno-2-47"></a><span class="w">    </span><span class="c1">// to -- a different, more specific honest failure.</span>
-<a id="__codelineno-2-48" name="__codelineno-2-48" href="#__codelineno-2-48"></a><span class="w">    </span><span class="n">ncclComm_t</span><span class="w"> </span><span class="n">oneComm</span><span class="p">;</span>
-<a id="__codelineno-2-49" name="__codelineno-2-49" href="#__codelineno-2-49"></a><span class="w">    </span><span class="n">ncclResult_t</span><span class="w"> </span><span class="n">eInitOne</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">ncclCommInitAll</span><span class="p">(</span><span class="o">&amp;</span><span class="n">oneComm</span><span class="p">,</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span><span class="w"> </span><span class="nb">nullptr</span><span class="p">);</span>
-<a id="__codelineno-2-50" name="__codelineno-2-50" href="#__codelineno-2-50"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;ncclCommInitAll(ndev=1, hypothetically): %s (code %d)</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span>
-<a id="__codelineno-2-51" name="__codelineno-2-51" href="#__codelineno-2-51"></a><span class="w">           </span><span class="n">ncclGetErrorString</span><span class="p">(</span><span class="n">eInitOne</span><span class="p">),</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="p">)</span><span class="n">eInitOne</span><span class="p">);</span>
-<a id="__codelineno-2-52" name="__codelineno-2-52" href="#__codelineno-2-52"></a>
-<a id="__codelineno-2-53" name="__codelineno-2-53" href="#__codelineno-2-53"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;</span><span class="se">\n</span><span class="s">Two different, both genuinely honest, failures: asking for</span><span class="se">\n</span><span class="s">&quot;</span>
-<a id="__codelineno-2-54" name="__codelineno-2-54" href="#__codelineno-2-54"></a><span class="w">           </span><span class="s">&quot;zero devices is a malformed request NCCL rejects immediately;</span><span class="se">\n</span><span class="s">&quot;</span>
-<a id="__codelineno-2-55" name="__codelineno-2-55" href="#__codelineno-2-55"></a><span class="w">           </span><span class="s">&quot;asking for one device is a well-formed request that only fails</span><span class="se">\n</span><span class="s">&quot;</span>
-<a id="__codelineno-2-56" name="__codelineno-2-56" href="#__codelineno-2-56"></a><span class="w">           </span><span class="s">&quot;once NCCL actually looks for a CUDA device to use, and finds</span><span class="se">\n</span><span class="s">&quot;</span>
-<a id="__codelineno-2-57" name="__codelineno-2-57" href="#__codelineno-2-57"></a><span class="w">           </span><span class="s">&quot;none. Section 11.2 assumes a communicator this far along --</span><span class="se">\n</span><span class="s">&quot;</span>
-<a id="__codelineno-2-58" name="__codelineno-2-58" href="#__codelineno-2-58"></a><span class="w">           </span><span class="s">&quot;requested, but never successfully created -- for every real</span><span class="se">\n</span><span class="s">&quot;</span>
-<a id="__codelineno-2-59" name="__codelineno-2-59" href="#__codelineno-2-59"></a><span class="w">           </span><span class="s">&quot;collective call this book&#39;s Chapters 8-10 already built by hand.</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
-<a id="__codelineno-2-60" name="__codelineno-2-60" href="#__codelineno-2-60"></a>
-<a id="__codelineno-2-61" name="__codelineno-2-61" href="#__codelineno-2-61"></a><span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
-<a id="__codelineno-2-62" name="__codelineno-2-62" href="#__codelineno-2-62"></a><span class="p">}</span>
+<p><code>ncclGetVersion()</code> is the one call in this section that needs nothing from the machine at all -- it reads a version number baked into the library at build time, so it can genuinely succeed even here. <code>ncclCommInitAll()</code> is different: it has to actually attach communicators to real CUDA devices, and it can fail in two genuinely different ways depending on <em>which argument</em> is wrong. NCCL first runs argument checks: a <code>NULL</code> <code>comms</code> pointer or a negative <code>ndev</code> is rejected immediately as <code>ncclInvalidArgument</code> (code 4), before any device is touched. A valid request must additionally complete CUDA setup; a CUDA failure can be reported as <code>ncclUnhandledCudaError</code>. The old NCCL 2.18.3 no-device transcript is historical, not a specification for the current library or a successful initialization test. The code below makes all four cases explicit, and every explanation in this section was confirmed by running it with <code>NCCL_DEBUG=WARN</code>, which makes NCCL print its own reason for each failure on stderr.</p>
+<blockquote>
+<p><strong>Validation update:</strong> This updated source has checked API lifetimes and explicit result checks. API probes establish only the API behavior printed by the program; they do not establish numerical collective correctness or fault recovery. Earlier transcripts below belong to the earlier source. The current source was compiled and executed in the dated H100 suite; use the linked record for its numerical, API-probe or other-execution scope.</p>
+</blockquote>
+<p>The <a href="../../validation-h100/">2026-11-17 H100 execution record</a> covers two GPUs connected by local NV18. It distinguishes numerical checks, API probes and other executions; a successful exit alone does not establish GPU algorithm correctness.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="c1">// 30_nccl_comm_init.cu</span>
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="c1">// API probe: valid communicator lifetimes and rejected malformed arguments.</span>
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;cstdio&gt;</span>
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;vector&gt;</span>
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;cuda_runtime.h&gt;</span>
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;nccl.h&gt;</span>
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a><span class="kt">int</span><span class="w"> </span><span class="nf">main</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">count</span><span class="o">=</span><span class="mi">0</span><span class="p">;</span><span class="w"> </span><span class="k">if</span><span class="p">(</span><span class="n">cudaGetDeviceCount</span><span class="p">(</span><span class="o">&amp;</span><span class="n">count</span><span class="p">)</span><span class="o">!=</span><span class="n">cudaSuccess</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="n">count</span><span class="o">&lt;</span><span class="mi">1</span><span class="p">)</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="mi">2</span><span class="p">;</span>
+<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">ncclComm_t</span><span class="o">&gt;</span><span class="w"> </span><span class="n">comms</span><span class="p">(</span><span class="n">count</span><span class="p">,</span><span class="nb">nullptr</span><span class="p">);</span>
+<a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a><span class="w"> </span><span class="n">ncclResult_t</span><span class="w"> </span><span class="n">result</span><span class="o">=</span><span class="n">ncclCommInitAll</span><span class="p">(</span><span class="n">comms</span><span class="p">.</span><span class="n">data</span><span class="p">(),</span><span class="n">count</span><span class="p">,</span><span class="nb">nullptr</span><span class="p">);</span>
+<a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a><span class="w"> </span><span class="k">if</span><span class="p">(</span><span class="n">result</span><span class="o">!=</span><span class="n">ncclSuccess</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">fprintf</span><span class="p">(</span><span class="n">stderr</span><span class="p">,</span><span class="s">"init: %s</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span><span class="n">ncclGetErrorString</span><span class="p">(</span><span class="n">result</span><span class="p">));</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="mi">1</span><span class="p">;</span><span class="w"> </span><span class="p">}</span>
+<a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">errors</span><span class="o">=</span><span class="mi">0</span><span class="p">;</span>
+<a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a><span class="w"> </span><span class="k">for</span><span class="p">(</span><span class="k">auto</span><span class="w"> </span><span class="n">comm</span><span class="o">:</span><span class="n">comms</span><span class="p">)</span><span class="w"> </span><span class="k">if</span><span class="p">(</span><span class="n">ncclCommDestroy</span><span class="p">(</span><span class="n">comm</span><span class="p">)</span><span class="o">!=</span><span class="n">ncclSuccess</span><span class="p">)</span><span class="w"> </span><span class="o">++</span><span class="n">errors</span><span class="p">;</span>
+<a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a><span class="w"> </span><span class="n">ncclComm_t</span><span class="w"> </span><span class="n">single</span><span class="o">=</span><span class="nb">nullptr</span><span class="p">;</span>
+<a id="__codelineno-2-15" name="__codelineno-2-15" href="#__codelineno-2-15"></a><span class="w"> </span><span class="n">result</span><span class="o">=</span><span class="n">ncclCommInitAll</span><span class="p">(</span><span class="o">&amp;</span><span class="n">single</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="nb">nullptr</span><span class="p">);</span>
+<a id="__codelineno-2-16" name="__codelineno-2-16" href="#__codelineno-2-16"></a><span class="w"> </span><span class="k">if</span><span class="p">(</span><span class="n">result</span><span class="o">!=</span><span class="n">ncclSuccess</span><span class="p">)</span><span class="w"> </span><span class="o">++</span><span class="n">errors</span><span class="p">;</span>
+<a id="__codelineno-2-17" name="__codelineno-2-17" href="#__codelineno-2-17"></a><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="k">if</span><span class="p">(</span><span class="n">ncclCommDestroy</span><span class="p">(</span><span class="n">single</span><span class="p">)</span><span class="o">!=</span><span class="n">ncclSuccess</span><span class="p">)</span><span class="w"> </span><span class="o">++</span><span class="n">errors</span><span class="p">;</span>
+<a id="__codelineno-2-18" name="__codelineno-2-18" href="#__codelineno-2-18"></a><span class="w"> </span><span class="n">ncclComm_t</span><span class="w"> </span><span class="n">unused</span><span class="o">=</span><span class="nb">nullptr</span><span class="p">;</span>
+<a id="__codelineno-2-19" name="__codelineno-2-19" href="#__codelineno-2-19"></a><span class="w"> </span><span class="k">if</span><span class="p">(</span><span class="n">ncclCommInitAll</span><span class="p">(</span><span class="nb">nullptr</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="nb">nullptr</span><span class="p">)</span><span class="o">!=</span><span class="n">ncclInvalidArgument</span><span class="p">)</span><span class="w"> </span><span class="o">++</span><span class="n">errors</span><span class="p">;</span>
+<a id="__codelineno-2-20" name="__codelineno-2-20" href="#__codelineno-2-20"></a><span class="w"> </span><span class="k">if</span><span class="p">(</span><span class="n">ncclCommInitAll</span><span class="p">(</span><span class="o">&amp;</span><span class="n">unused</span><span class="p">,</span><span class="mi">-1</span><span class="p">,</span><span class="nb">nullptr</span><span class="p">)</span><span class="o">!=</span><span class="n">ncclInvalidArgument</span><span class="p">)</span><span class="w"> </span><span class="o">++</span><span class="n">errors</span><span class="p">;</span>
+<a id="__codelineno-2-21" name="__codelineno-2-21" href="#__codelineno-2-21"></a><span class="w"> </span><span class="n">printf</span><span class="p">(</span><span class="s">"API PROBE %s: %d devices, valid initialization/destruction and invalid argument checks, errors=%d</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span><span class="n">errors</span><span class="o">?</span><span class="s">"FAIL"</span><span class="o">:</span><span class="s">"PASS"</span><span class="p">,</span><span class="n">count</span><span class="p">,</span><span class="n">errors</span><span class="p">);</span>
+<a id="__codelineno-2-22" name="__codelineno-2-22" href="#__codelineno-2-22"></a><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="n">errors</span><span class="o">?</span><span class="mi">1</span><span class="o">:</span><span class="mi">0</span><span class="p">;</span>
+<a id="__codelineno-2-23" name="__codelineno-2-23" href="#__codelineno-2-23"></a><span class="p">}</span>
 </code></pre></div>
+<!-- execution:start:a100:30_nccl_comm_init.cu -->
+<blockquote>
+<p><strong>Current execution — 2026-11-17-a100: API validation (recorded scope).</strong> UTC (program start): <code>2026-11-18T00:01:48.006326+00:00</code>. Source SHA-256: <code>8727f9eeaaba6ddea198f70216798f22ba552ebeaf625453234128773ef4074b</code>.</p>
+</blockquote>
+<p><a href="../../validation/2026-11-17-a100/30_nccl_comm_init/30_nccl_comm_init.cu">Exact tested source</a> · <a href="../../validation/2026-11-17-a100/30_nccl_comm_init/compile.log">Compiler log</a> · <a href="../../validation/2026-11-17-a100/30_nccl_comm_init/run.log">Execution log</a>. Compile exit: <code>0</code>; run exit: <code>0</code>.</p>
+<p>Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>nvcc<span class="w"> </span>-std<span class="o">=</span>c++17<span class="w"> </span>-O2<span class="w"> </span>-arch<span class="o">=</span>sm_80<span class="w"> </span>30_nccl_comm_init.cu<span class="w"> </span>-o<span class="w"> </span>./example<span class="w"> </span>-lnccl
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>./example
+</code></pre></div>
+<details>
+<summary>Captured current-source output</summary>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>API PROBE PASS: 8 devices, valid initialization/destruction and invalid argument checks, errors=0
+</code></pre></div>
+</details>
+<!-- execution:end:a100:30_nccl_comm_init.cu -->
+
+<!-- execution:start:h100:30_nccl_comm_init.cu -->
+<blockquote>
+<p><strong>Current execution — 2026-11-17-h100: API validation (recorded scope).</strong> UTC (run-batch start; per-program time unrecorded): <code>2026-11-17T23:48:18.967387+00:00</code>. Source SHA-256: <code>8727f9eeaaba6ddea198f70216798f22ba552ebeaf625453234128773ef4074b</code>.</p>
+</blockquote>
+<p><a href="../../validation/2026-11-17-h100/30_nccl_comm_init/30_nccl_comm_init.cu">Exact tested source</a> · <a href="../../validation/2026-11-17-h100/30_nccl_comm_init/compile.log">Compiler log</a> · <a href="../../validation/2026-11-17-h100/30_nccl_comm_init/run.log">Execution log</a>. Compile exit: <code>0</code>; run exit: <code>0</code>.</p>
+<p>Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>nvcc<span class="w"> </span>-std<span class="o">=</span>c++17<span class="w"> </span>-O2<span class="w"> </span>-arch<span class="o">=</span>sm_90<span class="w"> </span>30_nccl_comm_init.cu<span class="w"> </span>-o<span class="w"> </span>./example<span class="w"> </span>-lnccl
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>./example
+</code></pre></div>
+<details>
+<summary>Captured current-source output</summary>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>API PROBE PASS: 2 devices, valid initialization/destruction and invalid argument checks, errors=0
+</code></pre></div>
+</details>
+<!-- execution:end:h100:30_nccl_comm_init.cu -->
+
 <p>Genuinely compiled with a real <code>nvcc</code>, genuinely linked against a real, installed <code>libnccl</code> (version 2.18.3), and genuinely run. Locked output, deterministic across repeated runs:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>cudaGetDeviceCount(): 0 device(s).
-<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>ncclGetVersion(): no error (code 0), reports version 21803 (major.minor.patch = 2.18.3)
-<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>
-<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>ncclCommInitAll(ndev=0, this book&#39;s own real deviceCount): invalid argument (run with NCCL_DEBUG=WARN for details) (code 4)
-<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>ncclCommInitAll(ndev=1, hypothetically): unhandled cuda error (run with NCCL_DEBUG=INFO for details) (code 1)
-<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>
-<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>Two different, both genuinely honest, failures: asking for
-<a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a>zero devices is a malformed request NCCL rejects immediately;
-<a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a>asking for one device is a well-formed request that only fails
-<a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a>once NCCL actually looks for a CUDA device to use, and finds
-<a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a>none. Section 11.2 assumes a communicator this far along --
-<a id="__codelineno-3-12" name="__codelineno-3-12" href="#__codelineno-3-12"></a>requested, but never successfully created -- for every real
-<a id="__codelineno-3-13" name="__codelineno-3-13" href="#__codelineno-3-13"></a>collective call this book&#39;s Chapters 8-10 already built by hand.
+<details>
+<summary>Historical authoring output — superseded by the current execution above</summary>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>cudaGetDeviceCount(): 0 device(s).
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>ncclGetVersion(): no error (code 0), reports version 21803 (major.minor.patch = 2.18.3)
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>
+<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a>(a) ncclCommInitAll(comms, ndev=0 [this book's real deviceCount]): unhandled cuda error (run with NCCL_DEBUG=INFO for details) (code 1)
+<a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a>(b) ncclCommInitAll(comms, ndev=1): unhandled cuda error (run with NCCL_DEBUG=INFO for details) (code 1)
+<a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a>(c) ncclCommInitAll(comms=nullptr, ndev=1): invalid argument (run with NCCL_DEBUG=WARN for details) (code 4)
+<a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a>(d) ncclCommInitAll(comms, ndev=-1): invalid argument (run with NCCL_DEBUG=WARN for details) (code 4)
+<a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a>
+<a id="__codelineno-7-9" name="__codelineno-7-9" href="#__codelineno-7-9"></a>Two genuinely different failure modes: a malformed ARGUMENT
+<a id="__codelineno-7-10" name="__codelineno-7-10" href="#__codelineno-7-10"></a>(a NULL comms pointer, or a negative device count) is rejected
+<a id="__codelineno-7-11" name="__codelineno-7-11" href="#__codelineno-7-11"></a>immediately as ncclInvalidArgument (code 4); a well-formed request
+<a id="__codelineno-7-12" name="__codelineno-7-12" href="#__codelineno-7-12"></a>-- including ndev=0 -- gets past argument checking and fails as
+<a id="__codelineno-7-13" name="__codelineno-7-13" href="#__codelineno-7-13"></a>ncclUnhandledCudaError (code 1) once NCCL's first CUDA call finds
+<a id="__codelineno-7-14" name="__codelineno-7-14" href="#__codelineno-7-14"></a>no device. No communicator was created by any of these calls;
+<a id="__codelineno-7-15" name="__codelineno-7-15" href="#__codelineno-7-15"></a>Section 11.2 shows what every collective reports when handed a
+<a id="__codelineno-7-16" name="__codelineno-7-16" href="#__codelineno-7-16"></a>comm that is still NULL.
 </code></pre></div>
-<p>This is the first chapter where a call in this book has genuinely succeeded without a device at all -- <code>ncclGetVersion()</code>'s "no error" is real, not a special case carved out for this environment. Everything after it fails exactly the way this book's own honesty discipline predicts it should: not with one generic "no device" error, but with two genuinely different, genuinely informative ones, depending on exactly what was asked for.</p>
+</details>
+<p>File 30 sizes communicator storage from the actual device count, checks valid initialization and destruction, and separately checks invalid arguments against explicit expected-error results. Use its current H100 log for this source. Earlier zero-device diagnostics cannot establish how a valid communicator or collective behaves.</p>
+<p>The <a href="../../validation-h100/">2026-11-17 H100 execution record</a> covers two GPUs connected by local NV18. It distinguishes numerical checks, API probes and other executions; a successful exit alone does not establish GPU algorithm correctness.</p>
 <div class="admonition warning">
-<p class="admonition-title">[COMMON TRAP] Assuming NCCL's error codes distinguish 'no devices' from 'not enough devices' the way this book's own code always has</p>
-<p>Every prior chapter's honest failures have used a single, uniform signal -- <code>cudaErrorNoDevice</code>, code 100 -- regardless of how the loop was structured. NCCL's own error taxonomy is richer: <code>ncclInvalidArgument</code> (code 4) means the request itself was malformed before any hardware was even considered, while <code>ncclUnhandledCudaError</code> (code 1) means the request was reasonable but a lower-level CUDA call inside NCCL's own implementation failed. Reading only the numeric code without checking which one it is can make a genuinely different kind of failure look identical to this book's familiar <code>cudaErrorNoDevice</code> pattern -- it isn't the same signal, even though both, on this machine, ultimately trace back to the same root cause.</p>
+<p class="admonition-title">[COMMON TRAP] Inferring an exact root cause from a result code alone</p>
+<p><code>ncclInvalidArgument</code> identifies an argument error; <code>ncclUnhandledCudaError</code> reports a CUDA failure within NCCL. Neither numeric code alone identifies the failed argument or CUDA operation. Read <code>NCCL_DEBUG=WARN</code> diagnostics and the checked call context. Expected-error probes are API checks, not successful collective computations.</p>
 </div>
+<p>The <a href="../../validation-h100/">2026-11-17 H100 execution record</a> covers two GPUs connected by local NV18. It distinguishes numerical checks, API probes and other executions; a successful exit alone does not establish GPU algorithm correctness.</p>
 <h2 id="112-six-collectives-six-real-calls-mostly">11.2 Six Collectives, Six Real Calls (Mostly)<a class="headerlink" href="#112-six-collectives-six-real-calls-mostly" title="Permanent link">&para;</a></h2>
+<!-- mgpu:figure-2:start -->
+<p><a href="../../images/technical/ch11/2-mapping.svg"><img alt="Match the mathematical operation to the call" src="../../images/technical/ch11/2-mapping.svg" /></a></p>
+<!-- mgpu:figure-2:end -->
+
 <h3 id="intuition_1">Intuition<a class="headerlink" href="#intuition_1" title="Permanent link">&para;</a></h3>
-<p>Chapters 8 through 10 built six collectives by hand, one loop of <code>cudaMemcpyPeer()</code> or <code>cudaMemcpy()</code> calls at a time. Real NCCL packages five of those six as a single function call each -- the entire loop this book wrote out explicitly, hidden behind one name. The sixth, all-to-all, doesn't get that treatment even in real NCCL: it's still built from the same kind of point-to-point calls this book used, just NCCL's own <code>ncclSend()</code>/<code>ncclRecv()</code> instead of <code>cudaMemcpyPeer()</code>.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>Chapter 8-10&#39;s six collectives, and their real NCCL call:
-<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>
-<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>  ncclBroadcast()      &lt;-- Ch8 8.1        ncclAllGather()      &lt;-- Ch10 10.1
-<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>  ncclReduce()         &lt;-- Ch8 8.2        ncclReduceScatter()  &lt;-- Ch10 10.2
-<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>  ncclAllReduce()      &lt;-- Ch9            ncclSend()+ncclRecv() &lt;-- Ch10 10.3
-<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>                                            (grouped together, no
-<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a>                                             dedicated call at all)
+<p>Chapters 8 through 10 built six collectives by hand, one loop of <code>cudaMemcpyPeer()</code> or <code>cudaMemcpy()</code> calls at a time. Real NCCL packages five of those six as a single function call each -- the entire loop this book wrote out explicitly, hidden behind one name. The sixth, all-to-all, doesn't get that treatment in the NCCL 2.18.3 this book links against: there it's built from the same kind of point-to-point calls this book used, just NCCL's own <code>ncclSend()</code>/<code>ncclRecv()</code> instead of <code>cudaMemcpyPeer()</code>. That is a version-specific fact, not a permanent one: NCCL 2.28.3's release notes record "Added new host collective APIs: ncclAlltoAll, ncclScatter, and ncclGather," and the current collective-operations documentation includes <code>ncclAlltoAll</code>.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>Chapter 8-10's six collectives, and their real NCCL 2.18.3 call:
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>
+<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>  Ch8 8.1   --&gt; ncclBroadcast()          Ch10 10.1 --&gt; ncclAllGather()
+<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a>  Ch8 8.2   --&gt; ncclReduce()             Ch10 10.2 --&gt; ncclReduceScatter()
+<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a>  Ch9       --&gt; ncclAllReduce()          Ch10 10.3 --&gt; ncclSend() + ncclRecv()
+<a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a>                                                       (grouped; no dedicated
+<a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a>                                                        call until NCCL 2.28's
+<a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a>                                                        ncclAlltoAll())
 </code></pre></div>
 <h3 id="background_1">Background<a class="headerlink" href="#background_1" title="Permanent link">&para;</a></h3>
-<p>Every call below uses the same never-successfully-created communicator Section 11.1 ended with -- exactly the state a genuine program would be in if its own <code>ncclCommInitAll()</code> call had failed and it kept running anyway. NCCL's own argument validation catches this before any of these calls could do anything with real device memory, so every one of them reports the same honest <code>ncclInvalidArgument</code> this section predicts.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="c1">// Chapter 11: NCCL -- What It Actually Does Differently From What You</span>
-<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="c1">// Just Built</span>
-<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="c1">// 31_nccl_collectives_mapped.cu</span>
-<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="c1">//</span>
-<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a><span class="c1">// Every collective this book built by hand in Chapters 8-10 has a</span>
-<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a><span class="c1">// literal, real NCCL API call behind it -- except one. This section</span>
-<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a><span class="c1">// genuinely calls each real function, using the communicator Section</span>
-<a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a><span class="c1">// 11.1 showed can never successfully form on this machine, and</span>
-<a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a><span class="c1">// honestly reports whatever ncclResult_t comes back. Genuinely</span>
-<a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a><span class="c1">// compiled with a real nvcc, genuinely linked against a real</span>
-<a id="__codelineno-5-11" name="__codelineno-5-11" href="#__codelineno-5-11"></a><span class="c1">// libnccl, and genuinely run.</span>
-<a id="__codelineno-5-12" name="__codelineno-5-12" href="#__codelineno-5-12"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;cstdio&gt;</span>
-<a id="__codelineno-5-13" name="__codelineno-5-13" href="#__codelineno-5-13"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;nccl.h&gt;</span>
-<a id="__codelineno-5-14" name="__codelineno-5-14" href="#__codelineno-5-14"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;cuda_runtime.h&gt;</span>
-<a id="__codelineno-5-15" name="__codelineno-5-15" href="#__codelineno-5-15"></a>
-<a id="__codelineno-5-16" name="__codelineno-5-16" href="#__codelineno-5-16"></a><span class="kt">int</span><span class="w"> </span><span class="nf">main</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
-<a id="__codelineno-5-17" name="__codelineno-5-17" href="#__codelineno-5-17"></a><span class="w">    </span><span class="kt">int</span><span class="w"> </span><span class="n">deviceCount</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
-<a id="__codelineno-5-18" name="__codelineno-5-18" href="#__codelineno-5-18"></a><span class="w">    </span><span class="n">cudaGetDeviceCount</span><span class="p">(</span><span class="o">&amp;</span><span class="n">deviceCount</span><span class="p">);</span>
-<a id="__codelineno-5-19" name="__codelineno-5-19" href="#__codelineno-5-19"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;cudaGetDeviceCount(): %d device(s).</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">deviceCount</span><span class="p">);</span>
-<a id="__codelineno-5-20" name="__codelineno-5-20" href="#__codelineno-5-20"></a>
-<a id="__codelineno-5-21" name="__codelineno-5-21" href="#__codelineno-5-21"></a><span class="w">    </span><span class="c1">// A communicator that was requested but never successfully created,</span>
-<a id="__codelineno-5-22" name="__codelineno-5-22" href="#__codelineno-5-22"></a><span class="w">    </span><span class="c1">// exactly the state Section 11.1 left off at -- passed to every</span>
-<a id="__codelineno-5-23" name="__codelineno-5-23" href="#__codelineno-5-23"></a><span class="w">    </span><span class="c1">// real call below, exactly as a genuine program would if its own</span>
-<a id="__codelineno-5-24" name="__codelineno-5-24" href="#__codelineno-5-24"></a><span class="w">    </span><span class="c1">// ncclCommInitAll() call had failed and it kept going anyway.</span>
-<a id="__codelineno-5-25" name="__codelineno-5-25" href="#__codelineno-5-25"></a><span class="w">    </span><span class="n">ncclComm_t</span><span class="w"> </span><span class="n">comm</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nb">nullptr</span><span class="p">;</span>
-<a id="__codelineno-5-26" name="__codelineno-5-26" href="#__codelineno-5-26"></a><span class="w">    </span><span class="n">cudaStream_t</span><span class="w"> </span><span class="n">stream</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nb">nullptr</span><span class="p">;</span>
-<a id="__codelineno-5-27" name="__codelineno-5-27" href="#__codelineno-5-27"></a><span class="w">    </span><span class="kt">float</span><span class="o">*</span><span class="w"> </span><span class="n">buf</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nb">nullptr</span><span class="p">;</span>
-<a id="__codelineno-5-28" name="__codelineno-5-28" href="#__codelineno-5-28"></a><span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="kt">size_t</span><span class="w"> </span><span class="n">COUNT</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">4</span><span class="p">;</span>
-<a id="__codelineno-5-29" name="__codelineno-5-29" href="#__codelineno-5-29"></a>
-<a id="__codelineno-5-30" name="__codelineno-5-30" href="#__codelineno-5-30"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;</span><span class="se">\n</span><span class="s">-- Five of this book&#39;s six hand-built collectives, as one</span><span class="se">\n</span><span class="s">&quot;</span>
-<a id="__codelineno-5-31" name="__codelineno-5-31" href="#__codelineno-5-31"></a><span class="w">           </span><span class="s">&quot;   real NCCL call each: --</span><span class="se">\n\n</span><span class="s">&quot;</span><span class="p">);</span>
-<a id="__codelineno-5-32" name="__codelineno-5-32" href="#__codelineno-5-32"></a>
-<a id="__codelineno-5-33" name="__codelineno-5-33" href="#__codelineno-5-33"></a><span class="w">    </span><span class="n">ncclResult_t</span><span class="w"> </span><span class="n">eBcast</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">ncclBroadcast</span><span class="p">(</span><span class="n">buf</span><span class="p">,</span><span class="w"> </span><span class="n">buf</span><span class="p">,</span><span class="w"> </span><span class="n">COUNT</span><span class="p">,</span><span class="w"> </span><span class="n">ncclFloat</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="n">comm</span><span class="p">,</span><span class="w"> </span><span class="n">stream</span><span class="p">);</span>
-<a id="__codelineno-5-34" name="__codelineno-5-34" href="#__codelineno-5-34"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;ncclBroadcast()      [Chapter 8, Section 8.1&#39;s broadcast]:      %s (code %d)</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span>
-<a id="__codelineno-5-35" name="__codelineno-5-35" href="#__codelineno-5-35"></a><span class="w">           </span><span class="n">ncclGetErrorString</span><span class="p">(</span><span class="n">eBcast</span><span class="p">),</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="p">)</span><span class="n">eBcast</span><span class="p">);</span>
-<a id="__codelineno-5-36" name="__codelineno-5-36" href="#__codelineno-5-36"></a>
-<a id="__codelineno-5-37" name="__codelineno-5-37" href="#__codelineno-5-37"></a><span class="w">    </span><span class="n">ncclResult_t</span><span class="w"> </span><span class="n">eReduce</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">ncclReduce</span><span class="p">(</span><span class="n">buf</span><span class="p">,</span><span class="w"> </span><span class="n">buf</span><span class="p">,</span><span class="w"> </span><span class="n">COUNT</span><span class="p">,</span><span class="w"> </span><span class="n">ncclFloat</span><span class="p">,</span><span class="w"> </span><span class="n">ncclSum</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="n">comm</span><span class="p">,</span><span class="w"> </span><span class="n">stream</span><span class="p">);</span>
-<a id="__codelineno-5-38" name="__codelineno-5-38" href="#__codelineno-5-38"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;ncclReduce()         [Chapter 8, Section 8.2&#39;s reduce]:         %s (code %d)</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span>
-<a id="__codelineno-5-39" name="__codelineno-5-39" href="#__codelineno-5-39"></a><span class="w">           </span><span class="n">ncclGetErrorString</span><span class="p">(</span><span class="n">eReduce</span><span class="p">),</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="p">)</span><span class="n">eReduce</span><span class="p">);</span>
-<a id="__codelineno-5-40" name="__codelineno-5-40" href="#__codelineno-5-40"></a>
-<a id="__codelineno-5-41" name="__codelineno-5-41" href="#__codelineno-5-41"></a><span class="w">    </span><span class="n">ncclResult_t</span><span class="w"> </span><span class="n">eAllReduce</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">ncclAllReduce</span><span class="p">(</span><span class="n">buf</span><span class="p">,</span><span class="w"> </span><span class="n">buf</span><span class="p">,</span><span class="w"> </span><span class="n">COUNT</span><span class="p">,</span><span class="w"> </span><span class="n">ncclFloat</span><span class="p">,</span><span class="w"> </span><span class="n">ncclSum</span><span class="p">,</span><span class="w"> </span><span class="n">comm</span><span class="p">,</span><span class="w"> </span><span class="n">stream</span><span class="p">);</span>
-<a id="__codelineno-5-42" name="__codelineno-5-42" href="#__codelineno-5-42"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;ncclAllReduce()      [Chapter 9&#39;s ring all-reduce]:             %s (code %d)</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span>
-<a id="__codelineno-5-43" name="__codelineno-5-43" href="#__codelineno-5-43"></a><span class="w">           </span><span class="n">ncclGetErrorString</span><span class="p">(</span><span class="n">eAllReduce</span><span class="p">),</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="p">)</span><span class="n">eAllReduce</span><span class="p">);</span>
-<a id="__codelineno-5-44" name="__codelineno-5-44" href="#__codelineno-5-44"></a>
-<a id="__codelineno-5-45" name="__codelineno-5-45" href="#__codelineno-5-45"></a><span class="w">    </span><span class="n">ncclResult_t</span><span class="w"> </span><span class="n">eAllGather</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">ncclAllGather</span><span class="p">(</span><span class="n">buf</span><span class="p">,</span><span class="w"> </span><span class="n">buf</span><span class="p">,</span><span class="w"> </span><span class="n">COUNT</span><span class="p">,</span><span class="w"> </span><span class="n">ncclFloat</span><span class="p">,</span><span class="w"> </span><span class="n">comm</span><span class="p">,</span><span class="w"> </span><span class="n">stream</span><span class="p">);</span>
-<a id="__codelineno-5-46" name="__codelineno-5-46" href="#__codelineno-5-46"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;ncclAllGather()      [Chapter 10, Section 10.1&#39;s all-gather]:   %s (code %d)</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span>
-<a id="__codelineno-5-47" name="__codelineno-5-47" href="#__codelineno-5-47"></a><span class="w">           </span><span class="n">ncclGetErrorString</span><span class="p">(</span><span class="n">eAllGather</span><span class="p">),</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="p">)</span><span class="n">eAllGather</span><span class="p">);</span>
-<a id="__codelineno-5-48" name="__codelineno-5-48" href="#__codelineno-5-48"></a>
-<a id="__codelineno-5-49" name="__codelineno-5-49" href="#__codelineno-5-49"></a><span class="w">    </span><span class="n">ncclResult_t</span><span class="w"> </span><span class="n">eReduceScatter</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">ncclReduceScatter</span><span class="p">(</span><span class="n">buf</span><span class="p">,</span><span class="w"> </span><span class="n">buf</span><span class="p">,</span><span class="w"> </span><span class="n">COUNT</span><span class="p">,</span><span class="w"> </span><span class="n">ncclFloat</span><span class="p">,</span><span class="w"> </span><span class="n">ncclSum</span><span class="p">,</span><span class="w"> </span><span class="n">comm</span><span class="p">,</span><span class="w"> </span><span class="n">stream</span><span class="p">);</span>
-<a id="__codelineno-5-50" name="__codelineno-5-50" href="#__codelineno-5-50"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;ncclReduceScatter()  [Chapter 10, Section 10.2&#39;s reduce-scatter]: %s (code %d)</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span>
-<a id="__codelineno-5-51" name="__codelineno-5-51" href="#__codelineno-5-51"></a><span class="w">           </span><span class="n">ncclGetErrorString</span><span class="p">(</span><span class="n">eReduceScatter</span><span class="p">),</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="p">)</span><span class="n">eReduceScatter</span><span class="p">);</span>
-<a id="__codelineno-5-52" name="__codelineno-5-52" href="#__codelineno-5-52"></a>
-<a id="__codelineno-5-53" name="__codelineno-5-53" href="#__codelineno-5-53"></a><span class="w">    </span><span class="c1">// All-to-all has no single dedicated call in this installed NCCL</span>
-<a id="__codelineno-5-54" name="__codelineno-5-54" href="#__codelineno-5-54"></a><span class="w">    </span><span class="c1">// version -- it is built the same way this book built it in</span>
-<a id="__codelineno-5-55" name="__codelineno-5-55" href="#__codelineno-5-55"></a><span class="w">    </span><span class="c1">// Chapter 10, Section 10.3: one point-to-point transfer per</span>
-<a id="__codelineno-5-56" name="__codelineno-5-56" href="#__codelineno-5-56"></a><span class="w">    </span><span class="c1">// ordered pair, just using ncclSend()/ncclRecv() instead of</span>
-<a id="__codelineno-5-57" name="__codelineno-5-57" href="#__codelineno-5-57"></a><span class="w">    </span><span class="c1">// cudaMemcpyPeer(), fused together with ncclGroupStart()/</span>
-<a id="__codelineno-5-58" name="__codelineno-5-58" href="#__codelineno-5-58"></a><span class="w">    </span><span class="c1">// ncclGroupEnd() into one coordinated operation.</span>
-<a id="__codelineno-5-59" name="__codelineno-5-59" href="#__codelineno-5-59"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;</span><span class="se">\n</span><span class="s">-- All-to-all [Chapter 10, Section 10.3]: no dedicated call --</span><span class="se">\n</span><span class="s">&quot;</span>
-<a id="__codelineno-5-60" name="__codelineno-5-60" href="#__codelineno-5-60"></a><span class="w">           </span><span class="s">&quot;   built from ncclSend()/ncclRecv(), exactly like this book&#39;s</span><span class="se">\n</span><span class="s">&quot;</span>
-<a id="__codelineno-5-61" name="__codelineno-5-61" href="#__codelineno-5-61"></a><span class="w">           </span><span class="s">&quot;   own direct implementation: --</span><span class="se">\n\n</span><span class="s">&quot;</span><span class="p">);</span>
-<a id="__codelineno-5-62" name="__codelineno-5-62" href="#__codelineno-5-62"></a>
-<a id="__codelineno-5-63" name="__codelineno-5-63" href="#__codelineno-5-63"></a><span class="w">    </span><span class="n">ncclResult_t</span><span class="w"> </span><span class="n">eGroupStart</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">ncclGroupStart</span><span class="p">();</span>
-<a id="__codelineno-5-64" name="__codelineno-5-64" href="#__codelineno-5-64"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;ncclGroupStart(): %s (code %d)</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">ncclGetErrorString</span><span class="p">(</span><span class="n">eGroupStart</span><span class="p">),</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="p">)</span><span class="n">eGroupStart</span><span class="p">);</span>
-<a id="__codelineno-5-65" name="__codelineno-5-65" href="#__codelineno-5-65"></a>
-<a id="__codelineno-5-66" name="__codelineno-5-66" href="#__codelineno-5-66"></a><span class="w">    </span><span class="kt">int</span><span class="w"> </span><span class="n">p2pAttempted</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
-<a id="__codelineno-5-67" name="__codelineno-5-67" href="#__codelineno-5-67"></a><span class="w">    </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">peer</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span><span class="w"> </span><span class="n">peer</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="n">deviceCount</span><span class="p">;</span><span class="w"> </span><span class="o">++</span><span class="n">peer</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
-<a id="__codelineno-5-68" name="__codelineno-5-68" href="#__codelineno-5-68"></a><span class="w">        </span><span class="n">ncclResult_t</span><span class="w"> </span><span class="n">eSend</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">ncclSend</span><span class="p">(</span><span class="n">buf</span><span class="p">,</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span><span class="w"> </span><span class="n">ncclFloat</span><span class="p">,</span><span class="w"> </span><span class="n">peer</span><span class="p">,</span><span class="w"> </span><span class="n">comm</span><span class="p">,</span><span class="w"> </span><span class="n">stream</span><span class="p">);</span>
-<a id="__codelineno-5-69" name="__codelineno-5-69" href="#__codelineno-5-69"></a><span class="w">        </span><span class="n">ncclResult_t</span><span class="w"> </span><span class="n">eRecv</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">ncclRecv</span><span class="p">(</span><span class="n">buf</span><span class="p">,</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span><span class="w"> </span><span class="n">ncclFloat</span><span class="p">,</span><span class="w"> </span><span class="n">peer</span><span class="p">,</span><span class="w"> </span><span class="n">comm</span><span class="p">,</span><span class="w"> </span><span class="n">stream</span><span class="p">);</span>
-<a id="__codelineno-5-70" name="__codelineno-5-70" href="#__codelineno-5-70"></a><span class="w">        </span><span class="o">++</span><span class="n">p2pAttempted</span><span class="p">;</span>
-<a id="__codelineno-5-71" name="__codelineno-5-71" href="#__codelineno-5-71"></a><span class="w">        </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;ncclSend()/ncclRecv(peer=%d): %s / %s</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">peer</span><span class="p">,</span>
-<a id="__codelineno-5-72" name="__codelineno-5-72" href="#__codelineno-5-72"></a><span class="w">               </span><span class="n">ncclGetErrorString</span><span class="p">(</span><span class="n">eSend</span><span class="p">),</span><span class="w"> </span><span class="n">ncclGetErrorString</span><span class="p">(</span><span class="n">eRecv</span><span class="p">));</span>
-<a id="__codelineno-5-73" name="__codelineno-5-73" href="#__codelineno-5-73"></a><span class="w">    </span><span class="p">}</span>
-<a id="__codelineno-5-74" name="__codelineno-5-74" href="#__codelineno-5-74"></a>
-<a id="__codelineno-5-75" name="__codelineno-5-75" href="#__codelineno-5-75"></a><span class="w">    </span><span class="n">ncclResult_t</span><span class="w"> </span><span class="n">eGroupEnd</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">ncclGroupEnd</span><span class="p">();</span>
-<a id="__codelineno-5-76" name="__codelineno-5-76" href="#__codelineno-5-76"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;ncclGroupEnd(): %s (code %d)</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">ncclGetErrorString</span><span class="p">(</span><span class="n">eGroupEnd</span><span class="p">),</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="p">)</span><span class="n">eGroupEnd</span><span class="p">);</span>
-<a id="__codelineno-5-77" name="__codelineno-5-77" href="#__codelineno-5-77"></a>
-<a id="__codelineno-5-78" name="__codelineno-5-78" href="#__codelineno-5-78"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;</span><span class="se">\n</span><span class="s">%d device(s) worth of ncclSend()/ncclRecv() pairs attempted</span><span class="se">\n</span><span class="s">&quot;</span>
-<a id="__codelineno-5-79" name="__codelineno-5-79" href="#__codelineno-5-79"></a><span class="w">           </span><span class="s">&quot;inside the group. Every one of the six real calls above</span><span class="se">\n</span><span class="s">&quot;</span>
-<a id="__codelineno-5-80" name="__codelineno-5-80" href="#__codelineno-5-80"></a><span class="w">           </span><span class="s">&quot;reports the same honest failure this chapter&#39;s communicator</span><span class="se">\n</span><span class="s">&quot;</span>
-<a id="__codelineno-5-81" name="__codelineno-5-81" href="#__codelineno-5-81"></a><span class="w">           </span><span class="s">&quot;already earned -- a comm that was requested but never</span><span class="se">\n</span><span class="s">&quot;</span>
-<a id="__codelineno-5-82" name="__codelineno-5-82" href="#__codelineno-5-82"></a><span class="w">           </span><span class="s">&quot;successfully created can&#39;t run any collective, real or</span><span class="se">\n</span><span class="s">&quot;</span>
-<a id="__codelineno-5-83" name="__codelineno-5-83" href="#__codelineno-5-83"></a><span class="w">           </span><span class="s">&quot;hand-built, on real hardware or in this driver-less</span><span class="se">\n</span><span class="s">&quot;</span>
-<a id="__codelineno-5-84" name="__codelineno-5-84" href="#__codelineno-5-84"></a><span class="w">           </span><span class="s">&quot;environment. Section 11.3 turns to the one real difference</span><span class="se">\n</span><span class="s">&quot;</span>
-<a id="__codelineno-5-85" name="__codelineno-5-85" href="#__codelineno-5-85"></a><span class="w">           </span><span class="s">&quot;that would matter if a comm HAD been created: how NCCL</span><span class="se">\n</span><span class="s">&quot;</span>
-<a id="__codelineno-5-86" name="__codelineno-5-86" href="#__codelineno-5-86"></a><span class="w">           </span><span class="s">&quot;chooses an algorithm for ncclAllReduce().</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span>
-<a id="__codelineno-5-87" name="__codelineno-5-87" href="#__codelineno-5-87"></a><span class="w">           </span><span class="n">p2pAttempted</span><span class="p">);</span>
-<a id="__codelineno-5-88" name="__codelineno-5-88" href="#__codelineno-5-88"></a>
-<a id="__codelineno-5-89" name="__codelineno-5-89" href="#__codelineno-5-89"></a><span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
-<a id="__codelineno-5-90" name="__codelineno-5-90" href="#__codelineno-5-90"></a><span class="p">}</span>
+<p>No communicator can be created on this machine (Section 11.1), so every call below is handed a <code>comm</code> handle that is literally <code>nullptr</code>. NCCL's own argument check rejects that <code>NULL</code> handle before any of these calls could do anything with real device memory, so every one of the five collectives reports <code>ncclInvalidArgument</code> (code 4) -- and <code>NCCL_DEBUG=WARN</code> names the cause precisely, once per call: <code>NCCL WARN Broadcast : comm argument is NULL</code>, <code>Reduce : comm argument is NULL</code>, and likewise for <code>AllReduce</code>, <code>AllGather</code>, and <code>ReduceScatter</code>. This is the same <code>NULL</code>-pointer argument check as Section 11.1's case (c), not anything to do with how many devices were requested -- which also means a real program that ignored a failed <code>ncclCommInitAll()</code> and carried on would not necessarily see this particular error, since NCCL makes no promise that a failed init leaves the handle <code>NULL</code>.</p>
+<blockquote>
+<p><strong>Validation update:</strong> This updated source has checked API lifetimes and explicit result checks. API probes establish only the API behavior printed by the program; they do not establish numerical collective correctness or fault recovery. Earlier transcripts below belong to the earlier source. The current source was compiled and executed in the dated H100 suite; use the linked record for its numerical, API-probe or other-execution scope.</p>
+</blockquote>
+<p>The <a href="../../validation-h100/">2026-11-17 H100 execution record</a> covers two GPUs connected by local NV18. It distinguishes numerical checks, API probes and other executions; a successful exit alone does not establish GPU algorithm correctness.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="c1">// 31_nccl_collectives_mapped.cu</span>
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a><span class="c1">// Expected-error API probe; no collective is claimed to execute successfully.</span>
+<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;cstdio&gt;</span>
+<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;nccl.h&gt;</span>
+<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;cuda_runtime.h&gt;</span>
+<a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a><span class="kt">int</span><span class="w"> </span><span class="nf">main</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a><span class="w"> </span><span class="n">ncclComm_t</span><span class="w"> </span><span class="n">comm</span><span class="o">=</span><span class="nb">nullptr</span><span class="p">;</span><span class="w"> </span><span class="n">cudaStream_t</span><span class="w"> </span><span class="n">stream</span><span class="o">=</span><span class="nb">nullptr</span><span class="p">;</span><span class="w"> </span><span class="kt">float</span><span class="w"> </span><span class="o">*</span><span class="n">buf</span><span class="o">=</span><span class="nb">nullptr</span><span class="p">;</span>
+<a id="__codelineno-9-8" name="__codelineno-9-8" href="#__codelineno-9-8"></a><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">errors</span><span class="o">=</span><span class="mi">0</span><span class="p">;</span>
+<a id="__codelineno-9-9" name="__codelineno-9-9" href="#__codelineno-9-9"></a><span class="w"> </span><span class="k">auto</span><span class="w"> </span><span class="n">check</span><span class="o">=</span><span class="p">[</span><span class="o">&amp;</span><span class="p">](</span><span class="k">const</span><span class="w"> </span><span class="kt">char</span><span class="w"> </span><span class="o">*</span><span class="n">name</span><span class="p">,</span><span class="n">ncclResult_t</span><span class="w"> </span><span class="n">value</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-9-10" name="__codelineno-9-10" href="#__codelineno-9-10"></a><span class="w">  </span><span class="n">printf</span><span class="p">(</span><span class="s">"%s: %s (expected invalid argument)</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span><span class="n">name</span><span class="p">,</span><span class="n">ncclGetErrorString</span><span class="p">(</span><span class="n">value</span><span class="p">));</span>
+<a id="__codelineno-9-11" name="__codelineno-9-11" href="#__codelineno-9-11"></a><span class="w">  </span><span class="k">if</span><span class="p">(</span><span class="n">value</span><span class="o">!=</span><span class="n">ncclInvalidArgument</span><span class="p">)</span><span class="w"> </span><span class="o">++</span><span class="n">errors</span><span class="p">;</span>
+<a id="__codelineno-9-12" name="__codelineno-9-12" href="#__codelineno-9-12"></a><span class="w"> </span><span class="p">};</span>
+<a id="__codelineno-9-13" name="__codelineno-9-13" href="#__codelineno-9-13"></a><span class="w"> </span><span class="n">check</span><span class="p">(</span><span class="s">"Broadcast"</span><span class="p">,</span><span class="n">ncclBroadcast</span><span class="p">(</span><span class="n">buf</span><span class="p">,</span><span class="n">buf</span><span class="p">,</span><span class="mi">4</span><span class="p">,</span><span class="n">ncclFloat</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="n">comm</span><span class="p">,</span><span class="n">stream</span><span class="p">));</span>
+<a id="__codelineno-9-14" name="__codelineno-9-14" href="#__codelineno-9-14"></a><span class="w"> </span><span class="n">check</span><span class="p">(</span><span class="s">"Reduce"</span><span class="p">,</span><span class="n">ncclReduce</span><span class="p">(</span><span class="n">buf</span><span class="p">,</span><span class="n">buf</span><span class="p">,</span><span class="mi">4</span><span class="p">,</span><span class="n">ncclFloat</span><span class="p">,</span><span class="n">ncclSum</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="n">comm</span><span class="p">,</span><span class="n">stream</span><span class="p">));</span>
+<a id="__codelineno-9-15" name="__codelineno-9-15" href="#__codelineno-9-15"></a><span class="w"> </span><span class="n">check</span><span class="p">(</span><span class="s">"AllReduce"</span><span class="p">,</span><span class="n">ncclAllReduce</span><span class="p">(</span><span class="n">buf</span><span class="p">,</span><span class="n">buf</span><span class="p">,</span><span class="mi">4</span><span class="p">,</span><span class="n">ncclFloat</span><span class="p">,</span><span class="n">ncclSum</span><span class="p">,</span><span class="n">comm</span><span class="p">,</span><span class="n">stream</span><span class="p">));</span>
+<a id="__codelineno-9-16" name="__codelineno-9-16" href="#__codelineno-9-16"></a><span class="w"> </span><span class="n">check</span><span class="p">(</span><span class="s">"AllGather"</span><span class="p">,</span><span class="n">ncclAllGather</span><span class="p">(</span><span class="n">buf</span><span class="p">,</span><span class="n">buf</span><span class="p">,</span><span class="mi">4</span><span class="p">,</span><span class="n">ncclFloat</span><span class="p">,</span><span class="n">comm</span><span class="p">,</span><span class="n">stream</span><span class="p">));</span>
+<a id="__codelineno-9-17" name="__codelineno-9-17" href="#__codelineno-9-17"></a><span class="w"> </span><span class="n">check</span><span class="p">(</span><span class="s">"ReduceScatter"</span><span class="p">,</span><span class="n">ncclReduceScatter</span><span class="p">(</span><span class="n">buf</span><span class="p">,</span><span class="n">buf</span><span class="p">,</span><span class="mi">4</span><span class="p">,</span><span class="n">ncclFloat</span><span class="p">,</span><span class="n">ncclSum</span><span class="p">,</span><span class="n">comm</span><span class="p">,</span><span class="n">stream</span><span class="p">));</span>
+<a id="__codelineno-9-18" name="__codelineno-9-18" href="#__codelineno-9-18"></a><span class="w"> </span><span class="n">check</span><span class="p">(</span><span class="s">"Send"</span><span class="p">,</span><span class="n">ncclSend</span><span class="p">(</span><span class="n">buf</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="n">ncclFloat</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="n">comm</span><span class="p">,</span><span class="n">stream</span><span class="p">));</span>
+<a id="__codelineno-9-19" name="__codelineno-9-19" href="#__codelineno-9-19"></a><span class="w"> </span><span class="n">check</span><span class="p">(</span><span class="s">"Recv"</span><span class="p">,</span><span class="n">ncclRecv</span><span class="p">(</span><span class="n">buf</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="n">ncclFloat</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="n">comm</span><span class="p">,</span><span class="n">stream</span><span class="p">));</span>
+<a id="__codelineno-9-20" name="__codelineno-9-20" href="#__codelineno-9-20"></a><span class="w"> </span><span class="n">printf</span><span class="p">(</span><span class="s">"API PROBE %s: NULL-communicator rejection only, errors=%d</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span><span class="n">errors</span><span class="o">?</span><span class="s">"FAIL"</span><span class="o">:</span><span class="s">"PASS"</span><span class="p">,</span><span class="n">errors</span><span class="p">);</span>
+<a id="__codelineno-9-21" name="__codelineno-9-21" href="#__codelineno-9-21"></a><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="n">errors</span><span class="o">?</span><span class="mi">1</span><span class="o">:</span><span class="mi">0</span><span class="p">;</span>
+<a id="__codelineno-9-22" name="__codelineno-9-22" href="#__codelineno-9-22"></a><span class="p">}</span>
 </code></pre></div>
+<!-- execution:start:a100:31_nccl_collectives_mapped.cu -->
+<blockquote>
+<p><strong>Current execution — 2026-11-17-a100: API validation (recorded scope).</strong> UTC (program start): <code>2026-11-18T00:01:57.510122+00:00</code>. Source SHA-256: <code>1d7c8fdc5703d2568fad0a308233cb39f8245aa0f25d25c709d493e216f63a2c</code>.</p>
+</blockquote>
+<p><a href="../../validation/2026-11-17-a100/31_nccl_collectives_mapped/31_nccl_collectives_mapped.cu">Exact tested source</a> · <a href="../../validation/2026-11-17-a100/31_nccl_collectives_mapped/compile.log">Compiler log</a> · <a href="../../validation/2026-11-17-a100/31_nccl_collectives_mapped/run.log">Execution log</a>. Compile exit: <code>0</code>; run exit: <code>0</code>.</p>
+<p>Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>nvcc<span class="w"> </span>-std<span class="o">=</span>c++17<span class="w"> </span>-O2<span class="w"> </span>-arch<span class="o">=</span>sm_80<span class="w"> </span>31_nccl_collectives_mapped.cu<span class="w"> </span>-o<span class="w"> </span>./example<span class="w"> </span>-lnccl
+<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>./example
+</code></pre></div>
+<details>
+<summary>Captured current-source output</summary>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>Broadcast: invalid argument (run with NCCL_DEBUG=WARN for details) (expected invalid argument)
+<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>Reduce: invalid argument (run with NCCL_DEBUG=WARN for details) (expected invalid argument)
+<a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a>AllReduce: invalid argument (run with NCCL_DEBUG=WARN for details) (expected invalid argument)
+<a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a>AllGather: invalid argument (run with NCCL_DEBUG=WARN for details) (expected invalid argument)
+<a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a>ReduceScatter: invalid argument (run with NCCL_DEBUG=WARN for details) (expected invalid argument)
+<a id="__codelineno-11-6" name="__codelineno-11-6" href="#__codelineno-11-6"></a>Send: invalid argument (run with NCCL_DEBUG=WARN for details) (expected invalid argument)
+<a id="__codelineno-11-7" name="__codelineno-11-7" href="#__codelineno-11-7"></a>Recv: invalid argument (run with NCCL_DEBUG=WARN for details) (expected invalid argument)
+<a id="__codelineno-11-8" name="__codelineno-11-8" href="#__codelineno-11-8"></a>API PROBE PASS: NULL-communicator rejection only, errors=0
+</code></pre></div>
+</details>
+<!-- execution:end:a100:31_nccl_collectives_mapped.cu -->
+
+<!-- execution:start:h100:31_nccl_collectives_mapped.cu -->
+<blockquote>
+<p><strong>Current execution — 2026-11-17-h100: API validation (recorded scope).</strong> UTC (run-batch start; per-program time unrecorded): <code>2026-11-17T23:48:18.967387+00:00</code>. Source SHA-256: <code>1d7c8fdc5703d2568fad0a308233cb39f8245aa0f25d25c709d493e216f63a2c</code>.</p>
+</blockquote>
+<p><a href="../../validation/2026-11-17-h100/31_nccl_collectives_mapped/31_nccl_collectives_mapped.cu">Exact tested source</a> · <a href="../../validation/2026-11-17-h100/31_nccl_collectives_mapped/compile.log">Compiler log</a> · <a href="../../validation/2026-11-17-h100/31_nccl_collectives_mapped/run.log">Execution log</a>. Compile exit: <code>0</code>; run exit: <code>0</code>.</p>
+<p>Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>nvcc<span class="w"> </span>-std<span class="o">=</span>c++17<span class="w"> </span>-O2<span class="w"> </span>-arch<span class="o">=</span>sm_90<span class="w"> </span>31_nccl_collectives_mapped.cu<span class="w"> </span>-o<span class="w"> </span>./example<span class="w"> </span>-lnccl
+<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a>./example
+</code></pre></div>
+<details>
+<summary>Captured current-source output</summary>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a>Broadcast: invalid argument (run with NCCL_DEBUG=WARN for details) (expected invalid argument)
+<a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a>Reduce: invalid argument (run with NCCL_DEBUG=WARN for details) (expected invalid argument)
+<a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a>AllReduce: invalid argument (run with NCCL_DEBUG=WARN for details) (expected invalid argument)
+<a id="__codelineno-13-4" name="__codelineno-13-4" href="#__codelineno-13-4"></a>AllGather: invalid argument (run with NCCL_DEBUG=WARN for details) (expected invalid argument)
+<a id="__codelineno-13-5" name="__codelineno-13-5" href="#__codelineno-13-5"></a>ReduceScatter: invalid argument (run with NCCL_DEBUG=WARN for details) (expected invalid argument)
+<a id="__codelineno-13-6" name="__codelineno-13-6" href="#__codelineno-13-6"></a>Send: invalid argument (run with NCCL_DEBUG=WARN for details) (expected invalid argument)
+<a id="__codelineno-13-7" name="__codelineno-13-7" href="#__codelineno-13-7"></a>Recv: invalid argument (run with NCCL_DEBUG=WARN for details) (expected invalid argument)
+<a id="__codelineno-13-8" name="__codelineno-13-8" href="#__codelineno-13-8"></a>API PROBE PASS: NULL-communicator rejection only, errors=0
+</code></pre></div>
+</details>
+<!-- execution:end:h100:31_nccl_collectives_mapped.cu -->
+
 <p>Genuinely compiled with a real <code>nvcc</code>, genuinely linked against a real <code>libnccl</code>, and genuinely run. Locked output, deterministic across repeated runs:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>cudaGetDeviceCount(): 0 device(s).
-<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>
-<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>-- Five of this book&#39;s six hand-built collectives, as one
-<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>   real NCCL call each: --
-<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>
-<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a>ncclBroadcast()      [Chapter 8, Section 8.1&#39;s broadcast]:      invalid argument (run with NCCL_DEBUG=WARN for details) (code 4)
-<a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a>ncclReduce()         [Chapter 8, Section 8.2&#39;s reduce]:         invalid argument (run with NCCL_DEBUG=WARN for details) (code 4)
-<a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a>ncclAllReduce()      [Chapter 9&#39;s ring all-reduce]:             invalid argument (run with NCCL_DEBUG=WARN for details) (code 4)
-<a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a>ncclAllGather()      [Chapter 10, Section 10.1&#39;s all-gather]:   invalid argument (run with NCCL_DEBUG=WARN for details) (code 4)
-<a id="__codelineno-6-10" name="__codelineno-6-10" href="#__codelineno-6-10"></a>ncclReduceScatter()  [Chapter 10, Section 10.2&#39;s reduce-scatter]: invalid argument (run with NCCL_DEBUG=WARN for details) (code 4)
-<a id="__codelineno-6-11" name="__codelineno-6-11" href="#__codelineno-6-11"></a>
-<a id="__codelineno-6-12" name="__codelineno-6-12" href="#__codelineno-6-12"></a>-- All-to-all [Chapter 10, Section 10.3]: no dedicated call --
-<a id="__codelineno-6-13" name="__codelineno-6-13" href="#__codelineno-6-13"></a>   built from ncclSend()/ncclRecv(), exactly like this book&#39;s
-<a id="__codelineno-6-14" name="__codelineno-6-14" href="#__codelineno-6-14"></a>   own direct implementation: --
-<a id="__codelineno-6-15" name="__codelineno-6-15" href="#__codelineno-6-15"></a>
-<a id="__codelineno-6-16" name="__codelineno-6-16" href="#__codelineno-6-16"></a>ncclGroupStart(): no error (code 0)
-<a id="__codelineno-6-17" name="__codelineno-6-17" href="#__codelineno-6-17"></a>ncclGroupEnd(): no error (code 0)
-<a id="__codelineno-6-18" name="__codelineno-6-18" href="#__codelineno-6-18"></a>
-<a id="__codelineno-6-19" name="__codelineno-6-19" href="#__codelineno-6-19"></a>0 device(s) worth of ncclSend()/ncclRecv() pairs attempted
-<a id="__codelineno-6-20" name="__codelineno-6-20" href="#__codelineno-6-20"></a>inside the group. Every one of the six real calls above
-<a id="__codelineno-6-21" name="__codelineno-6-21" href="#__codelineno-6-21"></a>reports the same honest failure this chapter&#39;s communicator
-<a id="__codelineno-6-22" name="__codelineno-6-22" href="#__codelineno-6-22"></a>already earned -- a comm that was requested but never
-<a id="__codelineno-6-23" name="__codelineno-6-23" href="#__codelineno-6-23"></a>successfully created can&#39;t run any collective, real or
-<a id="__codelineno-6-24" name="__codelineno-6-24" href="#__codelineno-6-24"></a>hand-built, on real hardware or in this driver-less
-<a id="__codelineno-6-25" name="__codelineno-6-25" href="#__codelineno-6-25"></a>environment. Section 11.3 turns to the one real difference
-<a id="__codelineno-6-26" name="__codelineno-6-26" href="#__codelineno-6-26"></a>that would matter if a comm HAD been created: how NCCL
-<a id="__codelineno-6-27" name="__codelineno-6-27" href="#__codelineno-6-27"></a>chooses an algorithm for ncclAllReduce().
+<details>
+<summary>Historical authoring output — superseded by the current execution above</summary>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a>cudaGetDeviceCount(): 0 device(s).
+<a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a>
+<a id="__codelineno-14-3" name="__codelineno-14-3" href="#__codelineno-14-3"></a>-- Five of this book's six hand-built collectives, as one
+<a id="__codelineno-14-4" name="__codelineno-14-4" href="#__codelineno-14-4"></a>   real NCCL call each: --
+<a id="__codelineno-14-5" name="__codelineno-14-5" href="#__codelineno-14-5"></a>
+<a id="__codelineno-14-6" name="__codelineno-14-6" href="#__codelineno-14-6"></a>ncclBroadcast()      [Chapter 8, Section 8.1's broadcast]:      invalid argument (run with NCCL_DEBUG=WARN for details) (code 4)
+<a id="__codelineno-14-7" name="__codelineno-14-7" href="#__codelineno-14-7"></a>ncclReduce()         [Chapter 8, Section 8.2's reduce]:         invalid argument (run with NCCL_DEBUG=WARN for details) (code 4)
+<a id="__codelineno-14-8" name="__codelineno-14-8" href="#__codelineno-14-8"></a>ncclAllReduce()      [Chapter 9's ring all-reduce]:             invalid argument (run with NCCL_DEBUG=WARN for details) (code 4)
+<a id="__codelineno-14-9" name="__codelineno-14-9" href="#__codelineno-14-9"></a>ncclAllGather()      [Chapter 10, Section 10.1's all-gather]:   invalid argument (run with NCCL_DEBUG=WARN for details) (code 4)
+<a id="__codelineno-14-10" name="__codelineno-14-10" href="#__codelineno-14-10"></a>ncclReduceScatter()  [Chapter 10, Section 10.2's reduce-scatter]: invalid argument (run with NCCL_DEBUG=WARN for details) (code 4)
+<a id="__codelineno-14-11" name="__codelineno-14-11" href="#__codelineno-14-11"></a>
+<a id="__codelineno-14-12" name="__codelineno-14-12" href="#__codelineno-14-12"></a>-- All-to-all [Chapter 10, Section 10.3]: no dedicated call in 2.18.3 --
+<a id="__codelineno-14-13" name="__codelineno-14-13" href="#__codelineno-14-13"></a>   built from ncclSend()/ncclRecv(), exactly like this book's
+<a id="__codelineno-14-14" name="__codelineno-14-14" href="#__codelineno-14-14"></a>   own direct implementation: --
+<a id="__codelineno-14-15" name="__codelineno-14-15" href="#__codelineno-14-15"></a>
+<a id="__codelineno-14-16" name="__codelineno-14-16" href="#__codelineno-14-16"></a>ncclGroupStart(): no error (code 0)
+<a id="__codelineno-14-17" name="__codelineno-14-17" href="#__codelineno-14-17"></a>ncclGroupEnd(): no error (code 0)
+<a id="__codelineno-14-18" name="__codelineno-14-18" href="#__codelineno-14-18"></a>
+<a id="__codelineno-14-19" name="__codelineno-14-19" href="#__codelineno-14-19"></a>0 device(s) worth of ncclSend()/ncclRecv() pairs attempted
+<a id="__codelineno-14-20" name="__codelineno-14-20" href="#__codelineno-14-20"></a>inside the group, so ncclSend()/ncclRecv() were never actually
+<a id="__codelineno-14-21" name="__codelineno-14-21" href="#__codelineno-14-21"></a>called. All five collective calls above report the same
+<a id="__codelineno-14-22" name="__codelineno-14-22" href="#__codelineno-14-22"></a>failure: ncclInvalidArgument, because the comm handle they were
+<a id="__codelineno-14-23" name="__codelineno-14-23" href="#__codelineno-14-23"></a>given is NULL (NCCL_DEBUG=WARN: "comm argument is NULL").
+<a id="__codelineno-14-24" name="__codelineno-14-24" href="#__codelineno-14-24"></a>ncclGroupStart()/ncclGroupEnd() succeed: they touch no comm.
+<a id="__codelineno-14-25" name="__codelineno-14-25" href="#__codelineno-14-25"></a>Section 11.3 turns to the one real difference that would
+<a id="__codelineno-14-26" name="__codelineno-14-26" href="#__codelineno-14-26"></a>matter if a comm HAD been created: how NCCL chooses an
+<a id="__codelineno-14-27" name="__codelineno-14-27" href="#__codelineno-14-27"></a>algorithm for ncclAllReduce().
 </code></pre></div>
-<p><code>ncclGroupStart()</code> and <code>ncclGroupEnd()</code> genuinely succeed -- like <code>ncclGetVersion()</code>, they only manage process-local grouping state, not device state, so they need no real hardware at all. With <code>deviceCount = 0</code>, the loop between them never runs, so no <code>ncclSend()</code>/<code>ncclRecv()</code> pair is ever attempted -- the same honest degradation this book has shown for every device-count-driven loop since Chapter 4. Every one of the five direct collective calls, genuinely checked against a real, never-successfully-created communicator, reports exactly the failure Section 11.1 already predicted.</p>
+</details>
+<p><code>ncclGroupStart()</code> and <code>ncclGroupEnd()</code> genuinely succeed -- like <code>ncclGetVersion()</code>, they only manage process-local grouping state, not device state, and take no communicator, so they need no real hardware at all. With <code>deviceCount = 0</code>, the loop between them never runs, so <code>ncclSend()</code>/<code>ncclRecv()</code> are never actually called -- the same honest degradation this book has shown for every device-count-driven loop since Chapter 4. So exactly five real NCCL calls fail here, not six, and all five fail for the reason <code>NCCL_DEBUG=WARN</code> reports: a <code>NULL</code> comm argument.</p>
 <div class="admonition warning">
-<p class="admonition-title">[COMMON TRAP] Assuming NCCL's lack of a dedicated all-to-all call means all-to-all is somehow a second-class operation in NCCL</p>
-<p>It would be easy to read "no dedicated call" as "NCCL doesn't really support this." NCCL's own documentation says otherwise: point-to-point <code>ncclSend()</code>/<code>ncclRecv()</code> calls "can be fused together with <code>ncclGroupStart()</code> and <code>ncclGroupEnd()</code> to form more complex communication patterns," and the documentation's own example for exactly this fusion is an all-to-all loop, line for line the same shape as this section's code. All-to-all is fully supported -- it's just supported as a composition of two more primitive calls, the same way this book's own Chapter 10 built it as a composition of <code>cudaMemcpyPeer()</code> calls, rather than as one specially-named function.</p>
+<p class="admonition-title">[COMMON TRAP] Assuming the missing all-to-all call (in NCCL 2.18.3) means all-to-all is somehow a second-class operation in NCCL</p>
+<p>It would be easy to read "no dedicated call" as "NCCL doesn't really support this." Two things say otherwise. First, the gap is version-specific: NCCL 2.28 added a dedicated <code>ncclAlltoAll()</code>, so on a current NCCL the one-call form exists. Second, even in the 2.18.3 this book links against, NCCL's own documentation says otherwise: point-to-point <code>ncclSend()</code>/<code>ncclRecv()</code> calls "can be fused together with <code>ncclGroupStart()</code> and <code>ncclGroupEnd()</code> to form more complex communication patterns," and the documentation's own example for exactly this fusion is an all-to-all loop, line for line the same shape as this section's code. All-to-all is fully supported in 2.18.3 -- it's just supported there as a composition of two more primitive calls, the same way this book's own Chapter 10 built it as a composition of <code>cudaMemcpyPeer()</code> calls, rather than as one specially-named function.</p>
 </div>
 <h2 id="113-ring-vs-tree-the-latency-problem-chapter-9-never-had-to-solve">11.3 Ring vs. Tree: The Latency Problem Chapter 9 Never Had to Solve<a class="headerlink" href="#113-ring-vs-tree-the-latency-problem-chapter-9-never-had-to-solve" title="Permanent link">&para;</a></h2>
 <h3 id="intuition_2">Intuition<a class="headerlink" href="#intuition_2" title="Permanent link">&para;</a></h3>
 <p>Chapter 9's ring all-reduce runs in <code>2*(N-1)</code> rounds, and at <code>N=4</code> that's a perfectly reasonable 6 rounds -- nobody would notice. But <code>2*(N-1)</code> is a straight line: double the device count, and you roughly double the number of rounds. At the scale real large training clusters actually reach -- thousands, sometimes tens of thousands of devices -- that straight line stops being a minor detail and starts being the whole bottleneck. NCCL's answer, since version 2.4, is a second algorithm for exactly this situation: instead of a ring, arrange the devices as a tree, where a value only has to climb up to a root and back down, a number of hops set by the tree's <em>height</em> rather than its device <em>count</em> -- and a balanced tree's height barely grows at all as you add more devices.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>Ring (Ch9): every device touches only its 2 neighbors, but a chunk
-<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>needs N-1 hops to cross the whole ring once:
-<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>
-<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a>  dev0 -&gt; dev1 -&gt; dev2 -&gt; dev3 -&gt; ... -&gt; dev(N-1)     (N-1 hops)
-<a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a>
-<a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a>Tree: every device is a node in a tree of height ~log2(N); a value
-<a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a>climbs UP to the root in ~log2(N) hops, then comes back DOWN in
-<a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a>~log2(N) more:
-<a id="__codelineno-7-9" name="__codelineno-7-9" href="#__codelineno-7-9"></a>
-<a id="__codelineno-7-10" name="__codelineno-7-10" href="#__codelineno-7-10"></a>              root
-<a id="__codelineno-7-11" name="__codelineno-7-11" href="#__codelineno-7-11"></a>             /    \
-<a id="__codelineno-7-12" name="__codelineno-7-12" href="#__codelineno-7-12"></a>          node    node
-<a id="__codelineno-7-13" name="__codelineno-7-13" href="#__codelineno-7-13"></a>          /  \    /  \
-<a id="__codelineno-7-14" name="__codelineno-7-14" href="#__codelineno-7-14"></a>        leaf leaf leaf leaf        (only log2(N) levels, for N leaves)
+<div class="highlight"><pre><span></span><code><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a>Ring (Ch9): every device touches only its 2 neighbors, but a chunk
+<a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a>needs N-1 hops to cross the whole ring once:
+<a id="__codelineno-15-3" name="__codelineno-15-3" href="#__codelineno-15-3"></a>
+<a id="__codelineno-15-4" name="__codelineno-15-4" href="#__codelineno-15-4"></a>  dev0 -&gt; dev1 -&gt; dev2 -&gt; dev3 -&gt; ... -&gt; dev(N-1)     (N-1 hops)
+<a id="__codelineno-15-5" name="__codelineno-15-5" href="#__codelineno-15-5"></a>
+<a id="__codelineno-15-6" name="__codelineno-15-6" href="#__codelineno-15-6"></a>Tree: every device is a node in a tree of height ~log2(N); a value
+<a id="__codelineno-15-7" name="__codelineno-15-7" href="#__codelineno-15-7"></a>climbs UP to the root in ~log2(N) hops, then comes back DOWN in
+<a id="__codelineno-15-8" name="__codelineno-15-8" href="#__codelineno-15-8"></a>~log2(N) more:
+<a id="__codelineno-15-9" name="__codelineno-15-9" href="#__codelineno-15-9"></a>
+<a id="__codelineno-15-10" name="__codelineno-15-10" href="#__codelineno-15-10"></a>                 root
+<a id="__codelineno-15-11" name="__codelineno-15-11" href="#__codelineno-15-11"></a>                   |
+<a id="__codelineno-15-12" name="__codelineno-15-12" href="#__codelineno-15-12"></a>          +--------+--------+
+<a id="__codelineno-15-13" name="__codelineno-15-13" href="#__codelineno-15-13"></a>          |                 |
+<a id="__codelineno-15-14" name="__codelineno-15-14" href="#__codelineno-15-14"></a>         node              node
+<a id="__codelineno-15-15" name="__codelineno-15-15" href="#__codelineno-15-15"></a>          |                 |
+<a id="__codelineno-15-16" name="__codelineno-15-16" href="#__codelineno-15-16"></a>      +---+---+         +---+---+
+<a id="__codelineno-15-17" name="__codelineno-15-17" href="#__codelineno-15-17"></a>      |       |         |       |
+<a id="__codelineno-15-18" name="__codelineno-15-18" href="#__codelineno-15-18"></a>     leaf    leaf      leaf    leaf
+<a id="__codelineno-15-19" name="__codelineno-15-19" href="#__codelineno-15-19"></a>
+<a id="__codelineno-15-20" name="__codelineno-15-20" href="#__codelineno-15-20"></a>  N = 4 leaves: height log2(4) = 2 hops from any leaf up to the root
+<a id="__codelineno-15-21" name="__codelineno-15-21" href="#__codelineno-15-21"></a>  (3 levels of nodes, counting the leaves themselves). In general a
+<a id="__codelineno-15-22" name="__codelineno-15-22" href="#__codelineno-15-22"></a>  balanced binary tree over N leaves has height ceil(log2(N)).
 </code></pre></div>
 <h3 id="background_2">Background<a class="headerlink" href="#background_2" title="Permanent link">&para;</a></h3>
 <p>NVIDIA's own announcement of this feature states the ring's problem plainly: "latency scales linearly with the number of GPUs, preventing scaling above hundreds of GPUs." Its fix, the double binary tree, is described as offering "full bandwidth and a logarithmic latency" -- and, importantly, NCCL doesn't force a choice between the two: "NCCL automatically switches back to rings when that pattern results in greater bandwidth," picking whichever algorithm actually wins for the real topology and message size in front of it. The model below doesn't measure any real timing -- it counts, in the same closed-form spirit as Chapter 2's topology model and Chapter 5's cost model, exactly how many communication <em>rounds</em> each shape needs, reusing Chapter 9's own <code>2*(N-1)</code> ring formula unchanged and adding the matching round count for a tree of height <code>ceil(log2(N))</code>.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="c1">// Chapter 11: NCCL -- What It Actually Does Differently From What You</span>
-<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a><span class="c1">// Just Built</span>
-<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a><span class="c1">// 32_ring_vs_tree_model.cpp</span>
-<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a><span class="c1">//</span>
-<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a><span class="c1">// Plain host C++ -- a closed-form ROUND-COUNT model, in the same</span>
-<a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a><span class="c1">// spirit as Chapter 2&#39;s topology model and Chapter 5&#39;s cost model:</span>
-<a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a><span class="c1">// no fabricated timings, only real, defensible structural counts.</span>
-<a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a><span class="c1">// This compares Chapter 9&#39;s own ring all-reduce round count against</span>
-<a id="__codelineno-8-9" name="__codelineno-8-9" href="#__codelineno-8-9"></a><span class="c1">// a double binary tree&#39;s round count, for growing device counts, to</span>
-<a id="__codelineno-8-10" name="__codelineno-8-10" href="#__codelineno-8-10"></a><span class="c1">// make the NCCL 2.4 blog post&#39;s &quot;latency scales linearly... versus</span>
-<a id="__codelineno-8-11" name="__codelineno-8-11" href="#__codelineno-8-11"></a><span class="c1">// logarithmic latency&quot; claim (cited in Sources) concrete as numbers.</span>
-<a id="__codelineno-8-12" name="__codelineno-8-12" href="#__codelineno-8-12"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;cstdio&gt;</span>
-<a id="__codelineno-8-13" name="__codelineno-8-13" href="#__codelineno-8-13"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;cmath&gt;</span>
-<a id="__codelineno-8-14" name="__codelineno-8-14" href="#__codelineno-8-14"></a>
-<a id="__codelineno-8-15" name="__codelineno-8-15" href="#__codelineno-8-15"></a><span class="kt">int</span><span class="w"> </span><span class="nf">main</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
-<a id="__codelineno-8-16" name="__codelineno-8-16" href="#__codelineno-8-16"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;%-10s %-22s %-22s %-10s</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;N&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;Ring rounds (Ch9)&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;Tree rounds (up+down)&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;Ratio&quot;</span><span class="p">);</span>
-<a id="__codelineno-8-17" name="__codelineno-8-17" href="#__codelineno-8-17"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;%-10s %-22s %-22s %-10s</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;-&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;2*(N-1)&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;2*ceil(log2(N))&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;ring/tree&quot;</span><span class="p">);</span>
-<a id="__codelineno-8-18" name="__codelineno-8-18" href="#__codelineno-8-18"></a>
-<a id="__codelineno-8-19" name="__codelineno-8-19" href="#__codelineno-8-19"></a><span class="w">    </span><span class="kt">int</span><span class="w"> </span><span class="n">Ns</span><span class="p">[]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span><span class="mi">4</span><span class="p">,</span><span class="w"> </span><span class="mi">8</span><span class="p">,</span><span class="w"> </span><span class="mi">16</span><span class="p">,</span><span class="w"> </span><span class="mi">64</span><span class="p">,</span><span class="w"> </span><span class="mi">256</span><span class="p">,</span><span class="w"> </span><span class="mi">1024</span><span class="p">,</span><span class="w"> </span><span class="mi">8192</span><span class="p">,</span><span class="w"> </span><span class="mi">24576</span><span class="p">};</span>
-<a id="__codelineno-8-20" name="__codelineno-8-20" href="#__codelineno-8-20"></a><span class="w">    </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">N</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="n">Ns</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
-<a id="__codelineno-8-21" name="__codelineno-8-21" href="#__codelineno-8-21"></a><span class="w">        </span><span class="c1">// Ring: Chapter 9&#39;s own totalSteps formula, unchanged.</span>
-<a id="__codelineno-8-22" name="__codelineno-8-22" href="#__codelineno-8-22"></a><span class="w">        </span><span class="kt">long</span><span class="w"> </span><span class="kt">long</span><span class="w"> </span><span class="n">ringRounds</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">2L</span><span class="n">L</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="p">(</span><span class="n">N</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="mi">1</span><span class="p">);</span>
-<a id="__codelineno-8-23" name="__codelineno-8-23" href="#__codelineno-8-23"></a>
-<a id="__codelineno-8-24" name="__codelineno-8-24" href="#__codelineno-8-24"></a><span class="w">        </span><span class="c1">// Double binary tree: reducing up to a root takes one round per</span>
-<a id="__codelineno-8-25" name="__codelineno-8-25" href="#__codelineno-8-25"></a><span class="w">        </span><span class="c1">// level of the tree, and broadcasting back down takes another</span>
-<a id="__codelineno-8-26" name="__codelineno-8-26" href="#__codelineno-8-26"></a><span class="w">        </span><span class="c1">// round per level -- a balanced binary tree over N leaves has</span>
-<a id="__codelineno-8-27" name="__codelineno-8-27" href="#__codelineno-8-27"></a><span class="w">        </span><span class="c1">// ceil(log2(N)) levels.</span>
-<a id="__codelineno-8-28" name="__codelineno-8-28" href="#__codelineno-8-28"></a><span class="w">        </span><span class="kt">int</span><span class="w"> </span><span class="n">levels</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="p">)</span><span class="n">std</span><span class="o">::</span><span class="n">ceil</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">log2</span><span class="p">((</span><span class="kt">double</span><span class="p">)</span><span class="n">N</span><span class="p">));</span>
-<a id="__codelineno-8-29" name="__codelineno-8-29" href="#__codelineno-8-29"></a><span class="w">        </span><span class="kt">long</span><span class="w"> </span><span class="kt">long</span><span class="w"> </span><span class="n">treeRounds</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">2L</span><span class="n">L</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="n">levels</span><span class="p">;</span>
-<a id="__codelineno-8-30" name="__codelineno-8-30" href="#__codelineno-8-30"></a>
-<a id="__codelineno-8-31" name="__codelineno-8-31" href="#__codelineno-8-31"></a><span class="w">        </span><span class="kt">double</span><span class="w"> </span><span class="n">ratio</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="kt">double</span><span class="p">)</span><span class="n">ringRounds</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="p">(</span><span class="kt">double</span><span class="p">)</span><span class="n">treeRounds</span><span class="p">;</span>
-<a id="__codelineno-8-32" name="__codelineno-8-32" href="#__codelineno-8-32"></a><span class="w">        </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;%-10d %-22lld %-22lld %-10.2fx</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">N</span><span class="p">,</span><span class="w"> </span><span class="n">ringRounds</span><span class="p">,</span><span class="w"> </span><span class="n">treeRounds</span><span class="p">,</span><span class="w"> </span><span class="n">ratio</span><span class="p">);</span>
-<a id="__codelineno-8-33" name="__codelineno-8-33" href="#__codelineno-8-33"></a><span class="w">    </span><span class="p">}</span>
-<a id="__codelineno-8-34" name="__codelineno-8-34" href="#__codelineno-8-34"></a>
-<a id="__codelineno-8-35" name="__codelineno-8-35" href="#__codelineno-8-35"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;</span><span class="se">\n</span><span class="s">Ring&#39;s round count grows linearly with N (doubling N roughly</span><span class="se">\n</span><span class="s">&quot;</span>
-<a id="__codelineno-8-36" name="__codelineno-8-36" href="#__codelineno-8-36"></a><span class="w">           </span><span class="s">&quot;doubles the rounds needed); the tree&#39;s grows logarithmically</span><span class="se">\n</span><span class="s">&quot;</span>
-<a id="__codelineno-8-37" name="__codelineno-8-37" href="#__codelineno-8-37"></a><span class="w">           </span><span class="s">&quot;(doubling N adds only one more level in each direction). This</span><span class="se">\n</span><span class="s">&quot;</span>
-<a id="__codelineno-8-38" name="__codelineno-8-38" href="#__codelineno-8-38"></a><span class="w">           </span><span class="s">&quot;is a structural count of communication ROUNDS, not a measured</span><span class="se">\n</span><span class="s">&quot;</span>
-<a id="__codelineno-8-39" name="__codelineno-8-39" href="#__codelineno-8-39"></a><span class="w">           </span><span class="s">&quot;time -- it makes concrete exactly the shape of the claim this</span><span class="se">\n</span><span class="s">&quot;</span>
-<a id="__codelineno-8-40" name="__codelineno-8-40" href="#__codelineno-8-40"></a><span class="w">           </span><span class="s">&quot;chapter cites from NVIDIA&#39;s own NCCL 2.4 announcement, without</span><span class="se">\n</span><span class="s">&quot;</span>
-<a id="__codelineno-8-41" name="__codelineno-8-41" href="#__codelineno-8-41"></a><span class="w">           </span><span class="s">&quot;fabricating a single timing number of its own.</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
-<a id="__codelineno-8-42" name="__codelineno-8-42" href="#__codelineno-8-42"></a>
-<a id="__codelineno-8-43" name="__codelineno-8-43" href="#__codelineno-8-43"></a><span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
-<a id="__codelineno-8-44" name="__codelineno-8-44" href="#__codelineno-8-44"></a><span class="p">}</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a><span class="c1">// Chapter 11: NCCL -- What It Actually Does Differently From What You</span>
+<a id="__codelineno-16-2" name="__codelineno-16-2" href="#__codelineno-16-2"></a><span class="c1">// Just Built</span>
+<a id="__codelineno-16-3" name="__codelineno-16-3" href="#__codelineno-16-3"></a><span class="c1">// 32_ring_vs_tree_model.cpp</span>
+<a id="__codelineno-16-4" name="__codelineno-16-4" href="#__codelineno-16-4"></a><span class="c1">//</span>
+<a id="__codelineno-16-5" name="__codelineno-16-5" href="#__codelineno-16-5"></a><span class="c1">// Plain host C++ -- a closed-form ROUND-COUNT model, in the same</span>
+<a id="__codelineno-16-6" name="__codelineno-16-6" href="#__codelineno-16-6"></a><span class="c1">// spirit as Chapter 2's topology model and Chapter 5's cost model:</span>
+<a id="__codelineno-16-7" name="__codelineno-16-7" href="#__codelineno-16-7"></a><span class="c1">// no fabricated timings, only real, defensible structural counts.</span>
+<a id="__codelineno-16-8" name="__codelineno-16-8" href="#__codelineno-16-8"></a><span class="c1">// This compares Chapter 9's own ring all-reduce round count against</span>
+<a id="__codelineno-16-9" name="__codelineno-16-9" href="#__codelineno-16-9"></a><span class="c1">// a double binary tree's round count, for growing device counts, to</span>
+<a id="__codelineno-16-10" name="__codelineno-16-10" href="#__codelineno-16-10"></a><span class="c1">// make the NCCL 2.4 blog post's "latency scales linearly... versus</span>
+<a id="__codelineno-16-11" name="__codelineno-16-11" href="#__codelineno-16-11"></a><span class="c1">// logarithmic latency" claim (cited in Sources) concrete as numbers.</span>
+<a id="__codelineno-16-12" name="__codelineno-16-12" href="#__codelineno-16-12"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;cstdio&gt;</span>
+<a id="__codelineno-16-13" name="__codelineno-16-13" href="#__codelineno-16-13"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;cmath&gt;</span>
+<a id="__codelineno-16-14" name="__codelineno-16-14" href="#__codelineno-16-14"></a>
+<a id="__codelineno-16-15" name="__codelineno-16-15" href="#__codelineno-16-15"></a><span class="kt">int</span><span class="w"> </span><span class="nf">main</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-16-16" name="__codelineno-16-16" href="#__codelineno-16-16"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">"%-10s %-22s %-22s %-10s</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span><span class="w"> </span><span class="s">"N"</span><span class="p">,</span><span class="w"> </span><span class="s">"Ring rounds (Ch9)"</span><span class="p">,</span><span class="w"> </span><span class="s">"Tree rounds (up+down)"</span><span class="p">,</span><span class="w"> </span><span class="s">"Ratio"</span><span class="p">);</span>
+<a id="__codelineno-16-17" name="__codelineno-16-17" href="#__codelineno-16-17"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">"%-10s %-22s %-22s %-10s</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span><span class="w"> </span><span class="s">"-"</span><span class="p">,</span><span class="w"> </span><span class="s">"2*(N-1)"</span><span class="p">,</span><span class="w"> </span><span class="s">"2*ceil(log2(N))"</span><span class="p">,</span><span class="w"> </span><span class="s">"ring/tree"</span><span class="p">);</span>
+<a id="__codelineno-16-18" name="__codelineno-16-18" href="#__codelineno-16-18"></a>
+<a id="__codelineno-16-19" name="__codelineno-16-19" href="#__codelineno-16-19"></a><span class="w">    </span><span class="kt">int</span><span class="w"> </span><span class="n">Ns</span><span class="p">[]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span><span class="mi">4</span><span class="p">,</span><span class="w"> </span><span class="mi">8</span><span class="p">,</span><span class="w"> </span><span class="mi">16</span><span class="p">,</span><span class="w"> </span><span class="mi">64</span><span class="p">,</span><span class="w"> </span><span class="mi">256</span><span class="p">,</span><span class="w"> </span><span class="mi">1024</span><span class="p">,</span><span class="w"> </span><span class="mi">8192</span><span class="p">,</span><span class="w"> </span><span class="mi">24576</span><span class="p">};</span>
+<a id="__codelineno-16-20" name="__codelineno-16-20" href="#__codelineno-16-20"></a><span class="w">    </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">N</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="n">Ns</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-16-21" name="__codelineno-16-21" href="#__codelineno-16-21"></a><span class="w">        </span><span class="c1">// Ring: Chapter 9's own totalSteps formula, unchanged.</span>
+<a id="__codelineno-16-22" name="__codelineno-16-22" href="#__codelineno-16-22"></a><span class="w">        </span><span class="kt">long</span><span class="w"> </span><span class="kt">long</span><span class="w"> </span><span class="n">ringRounds</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">2L</span><span class="n">L</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="p">(</span><span class="n">N</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="mi">1</span><span class="p">);</span>
+<a id="__codelineno-16-23" name="__codelineno-16-23" href="#__codelineno-16-23"></a>
+<a id="__codelineno-16-24" name="__codelineno-16-24" href="#__codelineno-16-24"></a><span class="w">        </span><span class="c1">// Double binary tree: reducing up to a root takes one round per</span>
+<a id="__codelineno-16-25" name="__codelineno-16-25" href="#__codelineno-16-25"></a><span class="w">        </span><span class="c1">// level of the tree, and broadcasting back down takes another</span>
+<a id="__codelineno-16-26" name="__codelineno-16-26" href="#__codelineno-16-26"></a><span class="w">        </span><span class="c1">// round per level -- a balanced binary tree over N leaves has</span>
+<a id="__codelineno-16-27" name="__codelineno-16-27" href="#__codelineno-16-27"></a><span class="w">        </span><span class="c1">// ceil(log2(N)) levels.</span>
+<a id="__codelineno-16-28" name="__codelineno-16-28" href="#__codelineno-16-28"></a><span class="w">        </span><span class="kt">int</span><span class="w"> </span><span class="n">levels</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="p">)</span><span class="n">std</span><span class="o">::</span><span class="n">ceil</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">log2</span><span class="p">((</span><span class="kt">double</span><span class="p">)</span><span class="n">N</span><span class="p">));</span>
+<a id="__codelineno-16-29" name="__codelineno-16-29" href="#__codelineno-16-29"></a><span class="w">        </span><span class="kt">long</span><span class="w"> </span><span class="kt">long</span><span class="w"> </span><span class="n">treeRounds</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">2L</span><span class="n">L</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="n">levels</span><span class="p">;</span>
+<a id="__codelineno-16-30" name="__codelineno-16-30" href="#__codelineno-16-30"></a>
+<a id="__codelineno-16-31" name="__codelineno-16-31" href="#__codelineno-16-31"></a><span class="w">        </span><span class="kt">double</span><span class="w"> </span><span class="n">ratio</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="kt">double</span><span class="p">)</span><span class="n">ringRounds</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="p">(</span><span class="kt">double</span><span class="p">)</span><span class="n">treeRounds</span><span class="p">;</span>
+<a id="__codelineno-16-32" name="__codelineno-16-32" href="#__codelineno-16-32"></a><span class="w">        </span><span class="n">printf</span><span class="p">(</span><span class="s">"%-10d %-22lld %-22lld %-10.2fx</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span><span class="w"> </span><span class="n">N</span><span class="p">,</span><span class="w"> </span><span class="n">ringRounds</span><span class="p">,</span><span class="w"> </span><span class="n">treeRounds</span><span class="p">,</span><span class="w"> </span><span class="n">ratio</span><span class="p">);</span>
+<a id="__codelineno-16-33" name="__codelineno-16-33" href="#__codelineno-16-33"></a><span class="w">    </span><span class="p">}</span>
+<a id="__codelineno-16-34" name="__codelineno-16-34" href="#__codelineno-16-34"></a>
+<a id="__codelineno-16-35" name="__codelineno-16-35" href="#__codelineno-16-35"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">"</span><span class="se">\n</span><span class="s">Ring's round count grows linearly with N (doubling N roughly</span><span class="se">\n</span><span class="s">"</span>
+<a id="__codelineno-16-36" name="__codelineno-16-36" href="#__codelineno-16-36"></a><span class="w">           </span><span class="s">"doubles the rounds needed); the tree's grows logarithmically</span><span class="se">\n</span><span class="s">"</span>
+<a id="__codelineno-16-37" name="__codelineno-16-37" href="#__codelineno-16-37"></a><span class="w">           </span><span class="s">"(doubling N adds only one more level in each direction). This</span><span class="se">\n</span><span class="s">"</span>
+<a id="__codelineno-16-38" name="__codelineno-16-38" href="#__codelineno-16-38"></a><span class="w">           </span><span class="s">"is a structural count of communication ROUNDS, not a measured</span><span class="se">\n</span><span class="s">"</span>
+<a id="__codelineno-16-39" name="__codelineno-16-39" href="#__codelineno-16-39"></a><span class="w">           </span><span class="s">"time -- it makes concrete exactly the shape of the claim this</span><span class="se">\n</span><span class="s">"</span>
+<a id="__codelineno-16-40" name="__codelineno-16-40" href="#__codelineno-16-40"></a><span class="w">           </span><span class="s">"chapter cites from NVIDIA's own NCCL 2.4 announcement, without</span><span class="se">\n</span><span class="s">"</span>
+<a id="__codelineno-16-41" name="__codelineno-16-41" href="#__codelineno-16-41"></a><span class="w">           </span><span class="s">"fabricating a single timing number of its own.</span><span class="se">\n</span><span class="s">"</span><span class="p">);</span>
+<a id="__codelineno-16-42" name="__codelineno-16-42" href="#__codelineno-16-42"></a>
+<a id="__codelineno-16-43" name="__codelineno-16-43" href="#__codelineno-16-43"></a><span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
+<a id="__codelineno-16-44" name="__codelineno-16-44" href="#__codelineno-16-44"></a><span class="p">}</span>
 </code></pre></div>
+<!-- execution:start:a100:32_ring_vs_tree_model.cpp -->
+<blockquote>
+<p><strong>Current execution — 2026-11-17-a100: Host program/model (exit-only).</strong> UTC (program start): <code>2026-11-18T00:01:59.285330+00:00</code>. Source SHA-256: <code>26cb373d652c1985ee1c42d2aa5edb5bee5a47ca5900dc938ca2e110e76967e5</code>.</p>
+</blockquote>
+<p><a href="../../validation/2026-11-17-a100/32_ring_vs_tree_model/32_ring_vs_tree_model.cpp">Exact tested source</a> · <a href="../../validation/2026-11-17-a100/32_ring_vs_tree_model/compile.log">Compiler log</a> · <a href="../../validation/2026-11-17-a100/32_ring_vs_tree_model/run.log">Execution log</a>. Compile exit: <code>0</code>; run exit: <code>0</code>.</p>
+<p>Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a>g++<span class="w"> </span>-std<span class="o">=</span>c++17<span class="w"> </span>-O2<span class="w"> </span>32_ring_vs_tree_model.cpp<span class="w"> </span>-o<span class="w"> </span>./example
+<a id="__codelineno-17-2" name="__codelineno-17-2" href="#__codelineno-17-2"></a>./example
+</code></pre></div>
+<details>
+<summary>Captured current-source output</summary>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-18-1" name="__codelineno-18-1" href="#__codelineno-18-1"></a>N          Ring rounds (Ch9)      Tree rounds (up+down)  Ratio
+<a id="__codelineno-18-2" name="__codelineno-18-2" href="#__codelineno-18-2"></a>-          2*(N-1)                2*ceil(log2(N))        ring/tree
+<a id="__codelineno-18-3" name="__codelineno-18-3" href="#__codelineno-18-3"></a>4          6                      4                      1.50      x
+<a id="__codelineno-18-4" name="__codelineno-18-4" href="#__codelineno-18-4"></a>8          14                     6                      2.33      x
+<a id="__codelineno-18-5" name="__codelineno-18-5" href="#__codelineno-18-5"></a>16         30                     8                      3.75      x
+<a id="__codelineno-18-6" name="__codelineno-18-6" href="#__codelineno-18-6"></a>64         126                    12                     10.50     x
+<a id="__codelineno-18-7" name="__codelineno-18-7" href="#__codelineno-18-7"></a>256        510                    16                     31.88     x
+<a id="__codelineno-18-8" name="__codelineno-18-8" href="#__codelineno-18-8"></a>1024       2046                   20                     102.30    x
+<a id="__codelineno-18-9" name="__codelineno-18-9" href="#__codelineno-18-9"></a>8192       16382                  26                     630.08    x
+<a id="__codelineno-18-10" name="__codelineno-18-10" href="#__codelineno-18-10"></a>24576      49150                  30                     1638.33   x
+<a id="__codelineno-18-11" name="__codelineno-18-11" href="#__codelineno-18-11"></a>
+<a id="__codelineno-18-12" name="__codelineno-18-12" href="#__codelineno-18-12"></a>Ring's round count grows linearly with N (doubling N roughly
+<a id="__codelineno-18-13" name="__codelineno-18-13" href="#__codelineno-18-13"></a>doubles the rounds needed); the tree's grows logarithmically
+<a id="__codelineno-18-14" name="__codelineno-18-14" href="#__codelineno-18-14"></a>(doubling N adds only one more level in each direction). This
+<a id="__codelineno-18-15" name="__codelineno-18-15" href="#__codelineno-18-15"></a>is a structural count of communication ROUNDS, not a measured
+<a id="__codelineno-18-16" name="__codelineno-18-16" href="#__codelineno-18-16"></a>time -- it makes concrete exactly the shape of the claim this
+<a id="__codelineno-18-17" name="__codelineno-18-17" href="#__codelineno-18-17"></a>chapter cites from NVIDIA's own NCCL 2.4 announcement, without
+<a id="__codelineno-18-18" name="__codelineno-18-18" href="#__codelineno-18-18"></a>fabricating a single timing number of its own.
+</code></pre></div>
+</details>
+<!-- execution:end:a100:32_ring_vs_tree_model.cpp -->
+
+<!-- execution:start:h100:32_ring_vs_tree_model.cpp -->
+<blockquote>
+<p><strong>Current execution — 2026-11-17-h100: Host program/model (exit-only).</strong> UTC (run-batch start; per-program time unrecorded): <code>2026-11-17T23:48:18.967387+00:00</code>. Source SHA-256: <code>26cb373d652c1985ee1c42d2aa5edb5bee5a47ca5900dc938ca2e110e76967e5</code>.</p>
+</blockquote>
+<p><a href="../../validation/2026-11-17-h100/32_ring_vs_tree_model/32_ring_vs_tree_model.cpp">Exact tested source</a> · <a href="../../validation/2026-11-17-h100/32_ring_vs_tree_model/compile.log">Compiler log</a> · <a href="../../validation/2026-11-17-h100/32_ring_vs_tree_model/run.log">Execution log</a>. Compile exit: <code>0</code>; run exit: <code>0</code>.</p>
+<p>Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-19-1" name="__codelineno-19-1" href="#__codelineno-19-1"></a>g++<span class="w"> </span>-std<span class="o">=</span>c++17<span class="w"> </span>-O2<span class="w"> </span>32_ring_vs_tree_model.cpp<span class="w"> </span>-o<span class="w"> </span>./example
+<a id="__codelineno-19-2" name="__codelineno-19-2" href="#__codelineno-19-2"></a>./example
+</code></pre></div>
+<details>
+<summary>Captured current-source output</summary>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-20-1" name="__codelineno-20-1" href="#__codelineno-20-1"></a>N          Ring rounds (Ch9)      Tree rounds (up+down)  Ratio
+<a id="__codelineno-20-2" name="__codelineno-20-2" href="#__codelineno-20-2"></a>-          2*(N-1)                2*ceil(log2(N))        ring/tree
+<a id="__codelineno-20-3" name="__codelineno-20-3" href="#__codelineno-20-3"></a>4          6                      4                      1.50      x
+<a id="__codelineno-20-4" name="__codelineno-20-4" href="#__codelineno-20-4"></a>8          14                     6                      2.33      x
+<a id="__codelineno-20-5" name="__codelineno-20-5" href="#__codelineno-20-5"></a>16         30                     8                      3.75      x
+<a id="__codelineno-20-6" name="__codelineno-20-6" href="#__codelineno-20-6"></a>64         126                    12                     10.50     x
+<a id="__codelineno-20-7" name="__codelineno-20-7" href="#__codelineno-20-7"></a>256        510                    16                     31.88     x
+<a id="__codelineno-20-8" name="__codelineno-20-8" href="#__codelineno-20-8"></a>1024       2046                   20                     102.30    x
+<a id="__codelineno-20-9" name="__codelineno-20-9" href="#__codelineno-20-9"></a>8192       16382                  26                     630.08    x
+<a id="__codelineno-20-10" name="__codelineno-20-10" href="#__codelineno-20-10"></a>24576      49150                  30                     1638.33   x
+<a id="__codelineno-20-11" name="__codelineno-20-11" href="#__codelineno-20-11"></a>
+<a id="__codelineno-20-12" name="__codelineno-20-12" href="#__codelineno-20-12"></a>Ring's round count grows linearly with N (doubling N roughly
+<a id="__codelineno-20-13" name="__codelineno-20-13" href="#__codelineno-20-13"></a>doubles the rounds needed); the tree's grows logarithmically
+<a id="__codelineno-20-14" name="__codelineno-20-14" href="#__codelineno-20-14"></a>(doubling N adds only one more level in each direction). This
+<a id="__codelineno-20-15" name="__codelineno-20-15" href="#__codelineno-20-15"></a>is a structural count of communication ROUNDS, not a measured
+<a id="__codelineno-20-16" name="__codelineno-20-16" href="#__codelineno-20-16"></a>time -- it makes concrete exactly the shape of the claim this
+<a id="__codelineno-20-17" name="__codelineno-20-17" href="#__codelineno-20-17"></a>chapter cites from NVIDIA's own NCCL 2.4 announcement, without
+<a id="__codelineno-20-18" name="__codelineno-20-18" href="#__codelineno-20-18"></a>fabricating a single timing number of its own.
+</code></pre></div>
+</details>
+<!-- execution:end:h100:32_ring_vs_tree_model.cpp -->
+
 <p>Genuinely compiled with <code>g++</code> and genuinely run. Locked output, deterministic across repeated runs:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>N          Ring rounds (Ch9)      Tree rounds (up+down)  Ratio     
-<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>-          2*(N-1)                2*ceil(log2(N))        ring/tree 
-<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>4          6                      4                      1.50      x
-<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a>8          14                     6                      2.33      x
-<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a>16         30                     8                      3.75      x
-<a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a>64         126                    12                     10.50     x
-<a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a>256        510                    16                     31.88     x
-<a id="__codelineno-9-8" name="__codelineno-9-8" href="#__codelineno-9-8"></a>1024       2046                   20                     102.30    x
-<a id="__codelineno-9-9" name="__codelineno-9-9" href="#__codelineno-9-9"></a>8192       16382                  26                     630.08    x
-<a id="__codelineno-9-10" name="__codelineno-9-10" href="#__codelineno-9-10"></a>24576      49150                  30                     1638.33   x
-<a id="__codelineno-9-11" name="__codelineno-9-11" href="#__codelineno-9-11"></a>
-<a id="__codelineno-9-12" name="__codelineno-9-12" href="#__codelineno-9-12"></a>Ring&#39;s round count grows linearly with N (doubling N roughly
-<a id="__codelineno-9-13" name="__codelineno-9-13" href="#__codelineno-9-13"></a>doubles the rounds needed); the tree&#39;s grows logarithmically
-<a id="__codelineno-9-14" name="__codelineno-9-14" href="#__codelineno-9-14"></a>(doubling N adds only one more level in each direction). This
-<a id="__codelineno-9-15" name="__codelineno-9-15" href="#__codelineno-9-15"></a>is a structural count of communication ROUNDS, not a measured
-<a id="__codelineno-9-16" name="__codelineno-9-16" href="#__codelineno-9-16"></a>time -- it makes concrete exactly the shape of the claim this
-<a id="__codelineno-9-17" name="__codelineno-9-17" href="#__codelineno-9-17"></a>chapter cites from NVIDIA&#39;s own NCCL 2.4 announcement, without
-<a id="__codelineno-9-18" name="__codelineno-9-18" href="#__codelineno-9-18"></a>fabricating a single timing number of its own.
+<details>
+<summary>Historical authoring output — superseded by the current execution above</summary>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-21-1" name="__codelineno-21-1" href="#__codelineno-21-1"></a>N          Ring rounds (Ch9)      Tree rounds (up+down)  Ratio     
+<a id="__codelineno-21-2" name="__codelineno-21-2" href="#__codelineno-21-2"></a>-          2*(N-1)                2*ceil(log2(N))        ring/tree 
+<a id="__codelineno-21-3" name="__codelineno-21-3" href="#__codelineno-21-3"></a>4          6                      4                      1.50      x
+<a id="__codelineno-21-4" name="__codelineno-21-4" href="#__codelineno-21-4"></a>8          14                     6                      2.33      x
+<a id="__codelineno-21-5" name="__codelineno-21-5" href="#__codelineno-21-5"></a>16         30                     8                      3.75      x
+<a id="__codelineno-21-6" name="__codelineno-21-6" href="#__codelineno-21-6"></a>64         126                    12                     10.50     x
+<a id="__codelineno-21-7" name="__codelineno-21-7" href="#__codelineno-21-7"></a>256        510                    16                     31.88     x
+<a id="__codelineno-21-8" name="__codelineno-21-8" href="#__codelineno-21-8"></a>1024       2046                   20                     102.30    x
+<a id="__codelineno-21-9" name="__codelineno-21-9" href="#__codelineno-21-9"></a>8192       16382                  26                     630.08    x
+<a id="__codelineno-21-10" name="__codelineno-21-10" href="#__codelineno-21-10"></a>24576      49150                  30                     1638.33   x
+<a id="__codelineno-21-11" name="__codelineno-21-11" href="#__codelineno-21-11"></a>
+<a id="__codelineno-21-12" name="__codelineno-21-12" href="#__codelineno-21-12"></a>Ring's round count grows linearly with N (doubling N roughly
+<a id="__codelineno-21-13" name="__codelineno-21-13" href="#__codelineno-21-13"></a>doubles the rounds needed); the tree's grows logarithmically
+<a id="__codelineno-21-14" name="__codelineno-21-14" href="#__codelineno-21-14"></a>(doubling N adds only one more level in each direction). This
+<a id="__codelineno-21-15" name="__codelineno-21-15" href="#__codelineno-21-15"></a>is a structural count of communication ROUNDS, not a measured
+<a id="__codelineno-21-16" name="__codelineno-21-16" href="#__codelineno-21-16"></a>time -- it makes concrete exactly the shape of the claim this
+<a id="__codelineno-21-17" name="__codelineno-21-17" href="#__codelineno-21-17"></a>chapter cites from NVIDIA's own NCCL 2.4 announcement, without
+<a id="__codelineno-21-18" name="__codelineno-21-18" href="#__codelineno-21-18"></a>fabricating a single timing number of its own.
 </code></pre></div>
+</details>
 <p>The last row uses <code>N=24576</code> deliberately: NVIDIA's own announcement cites testing this exact feature at 24,576 GPUs on the Summit supercomputer, reporting "up to 180x" latency improvement at that scale. This model's own round-count ratio at that same <code>N</code> -- 1638.33x -- is not that measured number, and shouldn't be read as if it were; a round-count ratio and a measured latency-improvement ratio are different quantities, computed differently, and this book has no real timing data to produce the second one. What this table <em>does</em> honestly establish is the shape both numbers share: at small <code>N</code> the two algorithms are close enough that either one is fine, and the gap between them widens dramatically, in the same direction, as <code>N</code> grows into the thousands.</p>
 <div class="admonition warning">
 <p class="admonition-title">[COMMON TRAP] Treating this section's round-count ratio as a measured performance number</p>
 <p>Section 11.3's table looks, superficially, like a benchmark result -- it has an N column and a ratio column, the same shape a real measured speedup table would have. It is not one. Every number in it is a pure count of communication <em>rounds</em>, computed from two closed-form formulas (<code>2*(N-1)</code> and <code>2*ceil(log2(N))</code>), with no notion of how long any single round actually takes on any real network. The real, measured "up to 180x" figure cited from NVIDIA's own Summit testing is a genuinely different quantity -- and this chapter is careful to cite that number as NVIDIA's own measurement, not to reproduce or approximate it with a model that was never designed to predict real timings in the first place.</p>
 </div>
 <h2 id="chapter-summary">Chapter Summary<a class="headerlink" href="#chapter-summary" title="Permanent link">&para;</a></h2>
-<p>This chapter checked this book's own hand-built work in Chapters 8 through 10 against a real, genuinely-linked NCCL library, rather than building a new hand-rolled substitute. A real communicator (Section 11.1) plays exactly the role this book's own <code>deviceCount</code> loops have played informally since Chapter 3, and genuinely fails in two different, genuinely informative ways depending on whether the request itself was malformed or merely undeliverable on this hardware. Five of this book's six hand-built collectives turn out to have a literal, one-call NCCL equivalent (Section 11.2); the sixth, all-to-all, has no dedicated call even in real NCCL, and is built the same way Chapter 10 built it -- from repeated point-to-point transfers, just using <code>ncclSend()</code>/<code>ncclRecv()</code> instead of <code>cudaMemcpyPeer()</code>. The one place this book's own algorithm genuinely falls short of what NCCL does for real is scale: Chapter 9's ring all-reduce needs a round count that grows linearly with the number of devices, which is fine at the <code>N=4</code> this book has used throughout but becomes a genuine bottleneck at the thousands-of-devices scale real training clusters reach -- which is exactly why NCCL, since version 2.4, automatically chooses between the ring this book built and a second, tree-based algorithm with logarithmic round growth (Section 11.3). With this, <strong>Part 2 is complete</strong>: Chapters 8 through 11 took this book from broadcast and reduce, by hand, all the way to checking that hand-built work against the real library every real multi-GPU training job actually uses. Part 3 turns to what all of this communication infrastructure is actually <em>for</em>: the parallelization strategies -- data, model, tensor, and pipeline parallelism -- that decide who computes what, and when they need to talk to each other at all.</p>
+<p>This chapter checked this book's own hand-built work in Chapters 8 through 10 against a real, genuinely-linked NCCL library, rather than building a new hand-rolled substitute. A real communicator (Section 11.1) plays exactly the role this book's own <code>deviceCount</code> loops have played informally since Chapter 3, and genuinely fails in two different, genuinely informative ways: a malformed argument (a <code>NULL</code> <code>comms</code> pointer, a negative device count) is rejected up front as <code>ncclInvalidArgument</code>, while any well-formed request -- <code>ndev=0</code> included -- fails inside CUDA as <code>ncclUnhandledCudaError</code>, with <code>NCCL_DEBUG=WARN</code> naming the cause in each case. Five of this book's six hand-built collectives turn out to have a literal, one-call NCCL equivalent (Section 11.2), and each one, handed a <code>NULL</code> comm, reports "comm argument is NULL"; the sixth, all-to-all, has no dedicated call in the NCCL 2.18.3 this book links against (NCCL 2.28 later added <code>ncclAlltoAll()</code>), and there is built the same way Chapter 10 built it -- from repeated point-to-point transfers, just using <code>ncclSend()</code>/<code>ncclRecv()</code> instead of <code>cudaMemcpyPeer()</code>. The one place this book's own algorithm genuinely falls short of what NCCL does for real is scale: Chapter 9's ring all-reduce needs a round count that grows linearly with the number of devices, which is fine at the <code>N=4</code> this book has used throughout but becomes a genuine bottleneck at the thousands-of-devices scale real training clusters reach -- which is exactly why NCCL, since version 2.4, automatically chooses between the ring this book built and a second, tree-based algorithm with logarithmic round growth (Section 11.3). With this, <strong>Part 2 is complete</strong>: Chapters 8 through 11 took this book from broadcast and reduce, by hand, all the way to checking that hand-built work against the real library every real multi-GPU training job actually uses. Part 3 turns to what all of this communication infrastructure is actually <em>for</em>: the parallelization strategies -- data, model, tensor, and pipeline parallelism -- that decide who computes what, and when they need to talk to each other at all.</p>
 <h2 id="self-check-questions">Self-Check Questions<a class="headerlink" href="#self-check-questions" title="Permanent link">&para;</a></h2>
 <ol>
-<li>What does <code>ncclGetVersion()</code> need that <code>ncclCommInitAll()</code> does, and why can the first genuinely succeed on this machine while the second cannot?</li>
-<li>Section 11.1 shows two different NCCL error codes for two different requests. Explain the difference between what <code>ndev=0</code> and <code>ndev=1</code> each represent, and why they fail differently.</li>
-<li>Match each of this book's six hand-built collectives (Chapters 8-10) to its one real NCCL call name from Section 11.2 -- for the one collective with no single matching call, explain what it's built from instead.</li>
+<li>What does <code>ncclGetVersion()</code> need that <code>ncclCommInitAll()</code> does, and why is a version query insufficient to establish successful communicator initialization?</li>
+<li>Section 11.1 shows two different NCCL error codes across four requests. Explain why <code>ndev=0</code> and <code>ndev=1</code> (each with a real <code>comms</code> array) fail with the <em>same</em> code, while a <code>NULL</code> <code>comms</code> pointer or <code>ndev=-1</code> fail with a different one -- and how <code>NCCL_DEBUG=WARN</code> lets you tell which argument was at fault.</li>
+<li>Match each of this book's six hand-built collectives (Chapters 8-10) to its one real NCCL call name from Section 11.2 -- for the one collective with no single matching call in NCCL 2.18.3, explain what it's built from instead, and what changed in NCCL 2.28.</li>
 <li>Section 11.2's all-to-all code wraps <code>ncclSend()</code>/<code>ncclRecv()</code> in <code>ncclGroupStart()</code>/<code>ncclGroupEnd()</code>. Per NCCL's own documented ordering guarantee, what's different about two calls inside that group targeting the SAME peer versus two calls targeting DIFFERENT peers?</li>
 <li>Quote the specific claim this chapter cites from NVIDIA's NCCL 2.4 announcement explaining why ring all-reduce alone isn't good enough at very large scale.</li>
 <li>Using Section 11.3's model, compute the ring-to-tree round-count ratio for N=1024, and explain in your own words why that ratio keeps growing as N grows, using the formulas the code actually computes.</li>
@@ -2934,9 +3106,11 @@
 <h2 id="where-we-go-next">Where We Go Next<a class="headerlink" href="#where-we-go-next" title="Permanent link">&para;</a></h2>
 <p>Part 2 is complete. Part 3 turns to parallelization strategies -- starting with Chapter 12, data parallelism, where every device holds a full replica of the same model and this book's own all-reduce (not hand-built this time, but the real <code>ncclAllReduce()</code> this chapter just linked against) is what keeps every replica's gradients in sync.</p>
 <h2 id="worked-solutions">Worked Solutions<a class="headerlink" href="#worked-solutions" title="Permanent link">&para;</a></h2>
-<p><strong>1.</strong> <code>ncclGetVersion()</code> only reads a version number baked into the linked library at build time -- it needs no CUDA device, no context, nothing about the actual machine's hardware. <code>ncclCommInitAll()</code> has to actually attach each requested communicator to a real CUDA device, so it can only succeed once a real device genuinely exists. That's exactly why the first call in Section 11.1's code reports "no error" while every later call reports a real failure.</p>
-<p><strong>2.</strong> <code>ndev=0</code> asks NCCL to create a clique of zero communicators -- a malformed request on its face, rejected by argument validation (<code>ncclInvalidArgument</code>) before NCCL ever looks for a device. <code>ndev=1</code> asks for a completely reasonable, well-formed clique of one communicator; that request passes validation and only fails once NCCL actually tries to attach it to a CUDA device and finds none (<code>ncclUnhandledCudaError</code>). One failure is about the request being invalid; the other is about the hardware being absent.</p>
-<p><strong>3.</strong> <code>ncclBroadcast()</code> &lt;- Chapter 8, Section 8.1 (broadcast); <code>ncclReduce()</code> &lt;- Chapter 8, Section 8.2 (reduce); <code>ncclAllReduce()</code> &lt;- Chapter 9 (ring all-reduce); <code>ncclAllGather()</code> &lt;- Chapter 10, Section 10.1 (all-gather); <code>ncclReduceScatter()</code> &lt;- Chapter 10, Section 10.2 (reduce-scatter). All-to-all (Chapter 10, Section 10.3) has no single matching call in this installed NCCL version -- it's built the same way this book built it, from repeated point-to-point transfers (<code>ncclSend()</code>/<code>ncclRecv()</code>) covering every ordered pair, fused into one operation with <code>ncclGroupStart()</code>/<code>ncclGroupEnd()</code>.</p>
+<p><strong>1.</strong> <code>ncclGetVersion()</code> reads library version information without performing a collective. A valid communicator additionally requires the requested CUDA devices and successful initialization. The current probe checks this lifecycle and handles expected invalid arguments separately.</p>
+<p>The <a href="../../validation-h100/">2026-11-17 H100 execution record</a> covers two GPUs connected by local NV18. It distinguishes numerical checks, API probes and other executions; a successful exit alone does not establish GPU algorithm correctness.</p>
+<p><strong>2.</strong> Separate valid communicator initialization from intentionally invalid pointer/count cases. Use explicit expected-error checks and warning text rather than attributing every failure to device count. A historical no-device error is not a portable specification for <code>ndev=0</code> or evidence of a working communicator.</p>
+<p>The <a href="../../validation-h100/">2026-11-17 H100 execution record</a> covers two GPUs connected by local NV18. It distinguishes numerical checks, API probes and other executions; a successful exit alone does not establish GPU algorithm correctness.</p>
+<p><strong>3.</strong> <code>ncclBroadcast()</code> &lt;- Chapter 8, Section 8.1 (broadcast); <code>ncclReduce()</code> &lt;- Chapter 8, Section 8.2 (reduce); <code>ncclAllReduce()</code> &lt;- Chapter 9 (ring all-reduce); <code>ncclAllGather()</code> &lt;- Chapter 10, Section 10.1 (all-gather); <code>ncclReduceScatter()</code> &lt;- Chapter 10, Section 10.2 (reduce-scatter). All-to-all (Chapter 10, Section 10.3) has no single matching call in this installed NCCL version (2.18.3) -- it's built the same way this book built it, from repeated point-to-point transfers (<code>ncclSend()</code>/<code>ncclRecv()</code>) covering every ordered pair, fused into one operation with <code>ncclGroupStart()</code>/<code>ncclGroupEnd()</code>. NCCL 2.28 added a dedicated <code>ncclAlltoAll()</code>, so on a current NCCL it does have a one-call form.</p>
 <p><strong>4.</strong> Per NCCL's own documented ordering guarantee, point-to-point calls within a group targeting the SAME peer execute in order -- so two sends to the same peer inside one group would still need to be issued in the correct relative order, or that peer would receive them in the wrong sequence. Calls targeting DIFFERENT peers have no such ordering requirement and can progress concurrently -- which is exactly why Section 11.2's all-to-all loop, issuing one send and one receive per peer, can safely fuse all of them into a single group without worrying about cross-peer ordering.</p>
 <p><strong>5.</strong> "Latency scales linearly with the number of GPUs, preventing scaling above hundreds of GPUs" -- this is the specific limitation of the ring algorithm that motivated NCCL 2.4's double binary tree addition, cited directly from NVIDIA's own announcement.</p>
 <p><strong>6.</strong> From Section 11.3's printed table, N=1024 gives ring rounds = <code>2*(1024-1) = 2046</code> and tree rounds = <code>2*ceil(log2(1024)) = 2*10 = 20</code>, for a ratio of <code>2046/20 = 102.30x</code>. The ratio keeps growing because the numerator (ring rounds) grows linearly in N while the denominator (tree rounds) grows only logarithmically in N -- doubling N roughly doubles the ring's round count but adds only one more level (two more rounds) to the tree's.</p>
@@ -2948,7 +3122,9 @@
 <li><a href="https://developer.nvidia.com/blog/massively-scale-deep-learning-training-nccl-2-4">Massively Scale Your Deep Learning Training with NCCL 2.4 — NVIDIA Developer Blog</a> -- the ring algorithm's linear latency scaling limitation, the double binary tree's logarithmic-latency design and "each rank is at most a node in one tree and a leaf in the other" structure, NCCL's automatic ring/tree selection ("automatically switches back to rings when that pattern results in greater bandwidth"), and the Summit supercomputer test at 24,576 GPUs with "up to 180x" latency improvement.</li>
 <li><a href="https://docs.nvidia.com/deeplearning/nccl/user-guide/docs/api/comms.html">NCCL User Guide — Communicator API (comms.html)</a> -- the exact <code>ncclGetVersion()</code>, <code>ncclCommInitAll()</code>, and <code>ncclCommInitRank()</code> signatures and descriptions, including how rank count and device list determine a communicator clique's size.</li>
 <li><a href="https://docs.nvidia.com/deeplearning/nccl/user-guide/docs/usage/p2p.html">NCCL User Guide — Point-to-Point Communication (p2p.html)</a> -- the documented <code>ncclSend()</code>/<code>ncclRecv()</code> pairing requirement, the <code>ncclGroupStart()</code>/<code>ncclGroupEnd()</code> fusion mechanism for building "more complex communication patterns," its own all-to-all code example, and the same-peer-vs-different-peer ordering guarantee.</li>
-<li><a href="https://docs.nvidia.com/deeplearning/nccl/user-guide/docs/usage/collectives.html">NCCL User Guide — Collective Operations (collectives.html)</a> -- the real <code>ncclBroadcast()</code>, <code>ncclReduce()</code>, <code>ncclAllReduce()</code>, <code>ncclAllGather()</code>, and <code>ncclReduceScatter()</code> definitions matched against this book's own Chapters 8-10.</li>
+<li><a href="https://docs.nvidia.com/deeplearning/nccl/user-guide/docs/usage/collectives.html">NCCL User Guide — Collective Operations (collectives.html)</a> -- the real <code>ncclBroadcast()</code>, <code>ncclReduce()</code>, <code>ncclAllReduce()</code>, <code>ncclAllGather()</code>, and <code>ncclReduceScatter()</code> definitions matched against this book's own Chapters 8-10, and (in current versions) the dedicated <code>ncclAlltoAll</code>.</li>
+<li><a href="https://docs.nvidia.com/deeplearning/nccl/release-notes/index.html">NCCL Release Notes — NVIDIA</a> -- NCCL 2.28.3: "Added new host collective APIs: ncclAlltoAll, ncclScatter, and ncclGather," which dates the end of the no-dedicated-all-to-all situation this chapter describes for 2.18.3.</li>
+<li>Real <code>NCCL_DEBUG=WARN</code> output from the installed NCCL 2.18.3 (<code>misc/argcheck.cc</code>: "comms argument is NULL" / "comm argument is NULL"; <code>init.cc</code>: "Invalid device count requested" and "Cuda failure 'no CUDA-capable device is detected'") -- the evidence for every failure attribution in Sections 11.1 and 11.2.</li>
 </ul>
 
 
@@ -3049,10 +3225,10 @@
     
       
       
-      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.instant", "navigation.tracking", "navigation.sections", "navigation.expand", "navigation.top", "navigation.footer", "toc.follow", "search.suggest", "search.highlight", "content.code.copy", "content.code.annotate"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.instant", "navigation.tracking", "navigation.sections", "navigation.expand", "navigation.top", "navigation.footer", "toc.follow", "search.suggest", "search.highlight", "content.code.copy", "content.code.annotate"], "search": "../../assets/javascripts/workers/search.a7633da7.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
-      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      <script src="../../assets/javascripts/bundle.a5f9d56c.min.js"></script>
       
     
   </body>

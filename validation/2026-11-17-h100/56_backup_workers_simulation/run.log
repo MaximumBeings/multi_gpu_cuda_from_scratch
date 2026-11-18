@@ -1,0 +1,27 @@
+$ /home/ubuntu/codex-multigpu-audit-20261117/multi-gpu-audit/artifacts/h100-reviewed-20261117/56_backup_workers_simulation/example
+Section 19.3: backup workers, N=4 required + b=2 backup, 3 fixed scenarios.
+
+Scenario: no true straggler
+  required times: [10.0, 11.0, 9.0, 12.0]   backup times: [10.5, 11.5]
+  without backups (max of the 4 required):        12.0
+  with backups (4th-fastest of all 6, pooled):     11.0
+  with <= without: PASS
+  Nothing is actually hung -- every one of the 6 workers finishes in ordinary time. Even here, backups still help: the 4th-fastest of all 6 (11.0) beats the slowest of the 4 originally-required ones (12.0), purely from having two extra chances at the draw.
+
+Scenario: a required worker catastrophically straggles
+  required times: [10.0, 11.0, 9.0, 1000000.0]   backup times: [12.0, 13.0]
+  without backups (max of the 4 required):        1000000.0
+  with backups (4th-fastest of all 6, pooled):     12.0
+  with <= without: PASS
+  One of the 4 ORIGINALLY-REQUIRED workers is the real target case -- effectively hung (a straggler so slow it may as well be Section 19.1's dead peer). Without backups, the whole step is held hostage to it. With 2 backups in flight, the pool has 4 OTHER finishers well under the straggler's time, so the step proceeds without ever waiting on it at all.
+
+Scenario: slow backups, no downside
+  required times: [10.0, 11.0, 9.0, 12.0]   backup times: [500.0, 600.0]
+  without backups (max of the 4 required):        12.0
+  with backups (4th-fastest of all 6, pooled):     12.0
+  with <= without: PASS
+  The backups themselves are the slow ones this time, far slower than any required worker. That costs nothing: the first 4 finishers are still the 4 required workers (9,10,11,12), so the backups' own results are simply dropped, unused, exactly as designed.
+
+Invariant across every scenario above -- waiting for backups is never slower than waiting for the fixed required set alone -- holds in all 3/3 cases: PASS
+
+This is exactly Chen et al.'s own real claim, checked here on fixed numbers rather than assumed: taking the n-th order statistic of a LARGER pool can only ever be less than or equal to the max of one FIXED subset of that same pool's own n members, for any numbers at all -- adding more candidates and picking the best n of them never makes the n-th-best candidate's time worse.

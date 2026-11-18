@@ -1,0 +1,23 @@
+$ /home/ubuntu/codex-multigpu-audit-20261117/multi-gpu-audit/artifacts/h100-reviewed-20261117/93_moe_dispatch_combine_correctness_simulation/example
+Part A -- GShard-style per-group capacity, 24 tokens, 6 experts, top-2, capacity factor 1.25
+Reference (P=1, whole batch is one group): 19 overflowed (token,expert) slots of 48, 7 tokens fully overflowed.
+
+P    cap/group  overflow slots   fully overflowed  tokens changed  max |y - reference.y| 
+1    10         19               7                 0               0                     
+2    5          19               6                 4               36                    
+3    4          15               4                 5               42.3                  
+4    3          16               5                 6               42.3                  
+6    2          16               5                 4               30                    
+8    2          9                2                 4               42.3                  
+12   1          16               5                 8               42.3                  
+24   1          0                0                 4               42.3                  
+
+Part B -- hierarchical combine (per-rank partial sums, then a sum of partials), 4096 tokens, 32 experts sharded contiguously across P ranks.
+Tokens whose combined output differs from the P=1 left-to-right sum:
+top-k   P=2       P=4       P=8       P=16      P=32      
+2       0         0         0         0         0         
+3       429       295       142       58        0         
+4       696       553       290       109       0         
+8       1332      1232      867       364       0         
+
+Part A: once capacity is enforced per group (per rank), the SAME tokens and the SAME gate give different outputs for different P -- which tokens overflow depends on which tokens share a capacity budget. Part B: with top-2 routing a token's combine is a 2-term sum, and IEEE 754 addition is commutative, so no grouping can change it; at top-3 and beyond the grouping of the terms matters and the result depends on how experts are spread across ranks.

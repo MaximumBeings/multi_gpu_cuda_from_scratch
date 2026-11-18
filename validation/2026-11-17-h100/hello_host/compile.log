@@ -1,0 +1,1 @@
+$ g++ -std=c++17 -O2 /home/ubuntu/codex-multigpu-audit-20261117/multi-gpu-audit/docs/appendix/code/hello_host.cpp -o /home/ubuntu/codex-multigpu-audit-20261117/multi-gpu-audit/artifacts/h100-reviewed-20261117/hello_host/example

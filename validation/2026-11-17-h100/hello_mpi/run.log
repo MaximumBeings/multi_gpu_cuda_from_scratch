@@ -1,0 +1,41 @@
+$ /home/ubuntu/book2-bin/mpirun --oversubscribe -np 2 /home/ubuntu/codex-multigpu-audit-20261117/multi-gpu-audit/artifacts/h100-reviewed-20261117/hello_mpi/example
+--------------------------------------------------------------------------
+Sorry!  You were supposed to get help about:
+    unavailable
+But I couldn't open the help file:
+    /usr/lib/x86_64-linux-gnu/pmix2/share/pmix/help-pcompress.txt: No such file or directory.  Sorry!
+--------------------------------------------------------------------------
+libibverbs: Warning: couldn't load driver 'libvmw_pvrdma-rdmav34.so': libvmw_pvrdma-rdmav34.so: cannot open shared object file: No such file or directory
+libibverbs: Warning: couldn't load driver 'libvmw_pvrdma-rdmav34.so': libvmw_pvrdma-rdmav34.so: cannot open shared object file: No such file or directory
+--------------------------------------------------------------------------
+WARNING: No preset parameters were found for the device that Open MPI
+detected:
+
+  Local host:            192-222-53-210
+  Device name:           mlx5_0
+  Device vendor ID:      0x02c9
+  Device vendor part ID: 4124
+
+Default device parameters will be used, which may result in lower
+performance.  You can edit any of the files specified by the
+btl_openib_device_param_files MCA parameter to set values for your
+device.
+
+NOTE: You can turn off this warning by setting the MCA parameter
+      btl_openib_warn_no_device_params_found to 0.
+--------------------------------------------------------------------------
+--------------------------------------------------------------------------
+No OpenFabrics connection schemes reported that they were able to be
+used on a specific port.  As such, the openib BTL (OpenFabrics
+support) will be disabled for this port.
+
+  Local host:           192-222-53-210
+  Local device:         mlx5_0
+  Local port:           1
+  CPCs attempted:       udcm
+--------------------------------------------------------------------------
+hello_mpi: rank 1, linked against real libcudart (CUDA runtime 12.8)
+hello_mpi: rank 0, linked against real libcudart (CUDA runtime 12.8)
+[192-222-53-210:11032] 1 more process has sent help message help-mpi-btl-openib.txt / no device params found
+[192-222-53-210:11032] Set MCA parameter "orte_base_help_aggregate" to 0 to see all help / error messages
+[192-222-53-210:11032] 1 more process has sent help message help-mpi-btl-openib-cpc-base.txt / no cpcs for port

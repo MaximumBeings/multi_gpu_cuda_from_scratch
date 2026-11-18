@@ -1,0 +1,2 @@
+$ /home/ubuntu/codex-eight-gpu-audit-20261117/multi-gpu-audit/artifacts/a100-eight-20261117/hello_nccl/example
+hello_nccl: compiled and linked against real libnccl (NCCL 2.26.2).

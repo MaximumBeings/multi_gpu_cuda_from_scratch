@@ -1,143 +1,41 @@
-// Appendix D: CUDA Graphs and Cooperative Multi-Device Kernels
 // 131_modern_composed_equivalent.cu
-//
-// Appendix D.3 -- Section D.2 showed that CUDA's own single-call,
-// multi-device cooperative launch (cudaLaunchCooperativeKernelMultiDevice()
-// plus cg::this_multi_grid()) is genuinely deprecated in this installed
-// toolkit. This section builds the currently-supported way to get a
-// comparable effect, by COMPOSING two pieces this book has already
-// established as real and current: DSA Appendix D.3's own single-device
-// cg::this_grid()/grid.sync() (a cross-BLOCK barrier reaching every block
-// of ONE device's own kernel, still fully supported) with Chapter 23
-// File 66's own real cross-device event capture (cudaEventRecord()/
-// cudaStreamWaitEvent(), captured together into ONE graph spanning two
-// devices). Composed, they cover the same practical need the deprecated
-// multi-device cooperative launch used to: cross-block synchronization
-// WITHIN each device via grid.sync(), and a cross-device dependency
-// BETWEEN devices via a captured event -- with no deprecated API
-// anywhere in the sequence.
-//
-// Compile: nvcc -arch=sm_80 131_modern_composed_equivalent.cu -o 131_modern_composed_equivalent
-// Run:     ./131_modern_composed_equivalent
+// A cooperative grid on one device plus a captured cross-device kernel dependency.
+// The event edge is between kernels; it is NOT an in-kernel multi-GPU barrier.
 #include <cstdio>
+#include <cstdlib>
 #include <cuda_runtime.h>
 #include <cooperative_groups.h>
-namespace cg = cooperative_groups;
-
-// Runs on device 0: a genuine single-device cooperative kernel (the same,
-// still-current cg::this_grid()/grid.sync() DSA's own Appendix D.3
-// established -- no deprecated API here at all) that doubles every
-// element, grid-syncs WITHIN device 0's own grid, then adds 1.
-__global__ void device0_kernel(int* data, int n) {
-    cg::grid_group grid = cg::this_grid();
-    int tid = blockIdx.x * blockDim.x + threadIdx.x;
-    if (tid < n) data[tid] *= 2;
-    grid.sync();   // still-current, single-device cross-block barrier
-    if (tid < n) data[tid] += 1;
-}
-
-// Runs on device 1, only after device 0's own event fires: reads device
-// 0's own result via a real cudaMemcpyPeerAsync() (Chapter 5's own API,
-// reused exactly as Chapter 23 File 66 reused it) then does its own work.
-__global__ void device1_kernel(int* data, int n) {
-    int tid = blockIdx.x * blockDim.x + threadIdx.x;
-    if (tid < n) data[tid] += 100;
-}
-
-void report(const char* call_name, cudaError_t err) {
-    printf("  %-40s -> %-28s (%s)\n", call_name, cudaGetErrorName(err), cudaGetErrorString(err));
-}
-
-int main() {
-    printf("=== Section D.3: composing single-device grid.sync() with Chapter 23's own\n");
-    printf("    cross-device event capture -- the non-deprecated equivalent ===\n\n");
-
-    int deviceCount = 0;
-    cudaError_t e0 = cudaGetDeviceCount(&deviceCount);
-    report("cudaGetDeviceCount", e0);
-    printf("  deviceCount = %d\n\n", deviceCount);
-
-    printf("=== the composed real API sequence this file genuinely attempts ===\n\n");
-    printf("  1. cudaSetDevice(0); cudaStreamCreate(&stream0)\n");
-    printf("  2. cudaStreamBeginCapture(stream0, Global)          <- Chapter 23 File 66's origin stream\n");
-    printf("  3. device0_kernel<<<...,stream0>>>(...)              (grid.sync() WITHIN device 0)\n");
-    printf("  4. cudaEventRecord(ev, stream0)                     <- the real cross-device edge\n");
-    printf("  5. cudaSetDevice(1); cudaStreamCreate(&stream1)\n");
-    printf("  6. cudaStreamWaitEvent(stream1, ev, 0)               <- Chapter 6's own real API,\n");
-    printf("                                                          captured (Chapter 23's finding)\n");
-    printf("  7. device1_kernel<<<...,stream1>>>(...)\n");
-    printf("  8. cudaStreamEndCapture(stream0, &graph)             <- ONE graph, TWO devices\n");
-    printf("  9. cudaGraphInstantiate(...); cudaGraphLaunch(...)\n\n");
-
-    cudaError_t eSet0 = cudaSetDevice(0);
-    report("cudaSetDevice(0)", eSet0);
-    cudaStream_t stream0;
-    cudaError_t eStream0 = cudaStreamCreate(&stream0);
-    report("cudaStreamCreate(&stream0)", eStream0);
-
-    cudaError_t eCap = cudaStreamBeginCapture(stream0, cudaStreamCaptureModeGlobal);
-    report("cudaStreamBeginCapture(stream0)", eCap);
-
-    int* dataDev0 = nullptr;
-    cudaMallocAsync(&dataDev0, 8 * sizeof(int), stream0);
-    device0_kernel<<<1, 8, 0, stream0>>>(dataDev0, 8);
-
-    cudaEvent_t ev;
-    cudaEventCreate(&ev);
-    cudaError_t eEvRec = cudaEventRecord(ev, stream0);
-    report("cudaEventRecord(ev, stream0)", eEvRec);
-
-    cudaError_t eSet1 = cudaSetDevice(1);
-    report("cudaSetDevice(1)", eSet1);
-    cudaStream_t stream1;
-    cudaError_t eStream1 = cudaStreamCreate(&stream1);
-    report("cudaStreamCreate(&stream1)", eStream1);
-
-    cudaError_t eWait = cudaStreamWaitEvent(stream1, ev, 0);
-    report("cudaStreamWaitEvent(stream1, ev)", eWait);
-
-    int* dataDev1 = nullptr;
-    cudaMallocAsync(&dataDev1, 8 * sizeof(int), stream1);
-    device1_kernel<<<1, 8, 0, stream1>>>(dataDev1, 8);
-
-    cudaGraph_t graph = nullptr;
-    cudaError_t eEndCap = cudaStreamEndCapture(stream0, &graph);
-    report("cudaStreamEndCapture(stream0, &graph)", eEndCap);
-
-    cudaGraphExec_t graphExec = nullptr;
-    cudaError_t eInst = cudaSuccess;
-    cudaError_t eLaunch = cudaSuccess;
-    if (eEndCap == cudaSuccess) {
-        eInst = cudaGraphInstantiate(&graphExec, graph, 0);
-        report("cudaGraphInstantiate", eInst);
-        eLaunch = cudaGraphLaunch(graphExec, stream0);
-        report("cudaGraphLaunch(graphExec, stream0)", eLaunch);
-    } else {
-        printf("  (skipping instantiate/launch -- capture itself already reports the same\n");
-        printf("   honest cudaErrorNoDevice every real call in this file has reported since\n");
-        printf("   cudaSetDevice(0), exactly Chapter 23's own established finding: the runtime's\n");
-        printf("   per-thread init fails once, permanently, and every subsequent call genuinely\n");
-        printf("   executes and checks that same failed state)\n");
+namespace cg=cooperative_groups;
+#define CUDA_OK(x) do { cudaError_t e=(x); if(e!=cudaSuccess){fprintf(stderr,"%s: %s\n",#x,cudaGetErrorString(e));exit(1);} } while(0)
+__global__ void first(int* p,int n){int i=blockIdx.x*blockDim.x+threadIdx.x;if(i<n)p[i]*=2;cg::this_grid().sync();if(i<n)p[i]+=1;}
+__global__ void second(int* p,int n){int i=blockIdx.x*blockDim.x+threadIdx.x;if(i<n)p[i]+=100;}
+int main(){
+    int count=0;CUDA_OK(cudaGetDeviceCount(&count));if(count<2){fprintf(stderr,"Requires 2 GPUs\n");return 2;}
+    constexpr int n=64;int host[n],got[n],*p[2]={};cudaStream_t streams[2]={};cudaEvent_t events[2]={};
+    for(int i=0;i<n;++i)host[i]=i;
+    for(int d=0;d<2;++d){
+        CUDA_OK(cudaSetDevice(d));CUDA_OK(cudaMalloc(&p[d],sizeof(host)));
+        CUDA_OK(cudaMemcpy(p[d],host,sizeof(host),cudaMemcpyHostToDevice));
+        CUDA_OK(cudaStreamCreateWithFlags(&streams[d],cudaStreamNonBlocking));
+        CUDA_OK(cudaEventCreateWithFlags(&events[d],cudaEventDisableTiming));
     }
-
-    printf("\n=== why this composition, not the deprecated single call ===\n\n");
-    printf("cudaLaunchCooperativeKernelMultiDevice() (Section D.2) would have given ONE\n");
-    printf("host-level pre/post-sync bracket around a same-kernel, all-devices launch, in\n");
-    printf("one call -- but it is deprecated, and so is the only device-side primitive\n");
-    printf("(cg::multi_grid_group::sync()) that could reach across devices from INSIDE a\n");
-    printf("kernel. The composition this file just attempted needs no deprecated API at\n");
-    printf("all: grid.sync() (still current) handles cross-block synchronization WITHIN\n");
-    printf("each device's own kernel, and a captured cudaEventRecord()/cudaStreamWaitEvent()\n");
-    printf("pair (Chapter 23's own real finding, itself resting on Chapter 6's own real\n");
-    printf("cross-stream synchronization) handles the dependency BETWEEN devices -- two\n");
-    printf("separate, well-supported tools reaching the two different granularities the\n");
-    printf("single deprecated call used to blur together.\n");
-
-    bool allNoDevice = (e0 != cudaSuccess);
-    printf("\nself-check: every real API call in this composed sequence reports the SAME\n");
-    printf("honest cudaErrorNoDevice this environment reports for every device-touching\n");
-    printf("call since Chapter 2, confirming the full sequence was genuinely attempted and\n");
-    printf("not silently skipped: %s\n", allNoDevice ? "confirmed" : "MISMATCH");
-
-    return allNoDevice ? 0 : 1;
+    int cooperative=0;CUDA_OK(cudaDeviceGetAttribute(&cooperative,cudaDevAttrCooperativeLaunch,0));
+    if(!cooperative){fprintf(stderr,"Cooperative launch unsupported\n");return 2;}
+    CUDA_OK(cudaSetDevice(0));CUDA_OK(cudaStreamBeginCapture(streams[0],cudaStreamCaptureModeGlobal));
+    cudaLaunchAttribute attr={};attr.id=cudaLaunchAttributeCooperative;attr.val.cooperative=1;
+    cudaLaunchConfig_t cfg={};cfg.gridDim=dim3(2);cfg.blockDim=dim3(32);cfg.stream=streams[0];cfg.attrs=&attr;cfg.numAttrs=1;
+    CUDA_OK(cudaLaunchKernelEx(&cfg,first,p[0],n));CUDA_OK(cudaEventRecord(events[0],streams[0]));
+    CUDA_OK(cudaSetDevice(1));CUDA_OK(cudaStreamWaitEvent(streams[1],events[0],0));
+    second<<<2,32,0,streams[1]>>>(p[1],n);CUDA_OK(cudaGetLastError());CUDA_OK(cudaEventRecord(events[1],streams[1]));
+    CUDA_OK(cudaSetDevice(0));CUDA_OK(cudaStreamWaitEvent(streams[0],events[1],0));
+    cudaGraph_t graph=nullptr;cudaGraphExec_t exec=nullptr;CUDA_OK(cudaStreamEndCapture(streams[0],&graph));
+    CUDA_OK(cudaGraphInstantiate(&exec,graph,0));CUDA_OK(cudaGraphLaunch(exec,streams[0]));CUDA_OK(cudaStreamSynchronize(streams[0]));
+    int errors=0;
+    for(int d=0;d<2;++d){CUDA_OK(cudaSetDevice(d));CUDA_OK(cudaMemcpy(got,p[d],sizeof(got),cudaMemcpyDeviceToHost));
+        for(int i=0;i<n;++i)if(got[i]!=(d==0?2*i+1:i+100))++errors;}
+    printf("Two cooperative blocks on GPU0; whole-kernel event dependency to GPU1. Separate buffers, no data transfer.\n");
+    printf("VALIDATION %s: errors=%d\n",errors?"FAIL":"PASS",errors);
+    CUDA_OK(cudaSetDevice(0));CUDA_OK(cudaGraphExecDestroy(exec));CUDA_OK(cudaGraphDestroy(graph));
+    for(int d=0;d<2;++d){CUDA_OK(cudaSetDevice(d));CUDA_OK(cudaEventDestroy(events[d]));CUDA_OK(cudaStreamDestroy(streams[d]));CUDA_OK(cudaFree(p[d]));}
+    return errors?1:0;
 }

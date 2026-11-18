@@ -1,0 +1,3 @@
+$ /usr/mpi/gcc/openmpi-4.1.7rc1/bin/mpirun --oversubscribe -np 1 /home/ubuntu/codex-eight-gpu-audit-20261117/multi-gpu-audit/artifacts/a100-eight-20261117/63_nvshmem_init_single_pe/example
+PE 0 of 1: MPI bootstrap, allocation and CUDA copy checked
+VALIDATION PASS: 1 PEs, errors=0

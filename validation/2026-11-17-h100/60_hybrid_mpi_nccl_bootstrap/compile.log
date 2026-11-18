@@ -1,0 +1,1 @@
+$ mpicxx -std=c++17 -O2 -I/usr/include -L/usr/local/cuda/lib64 -Wl,-rpath,/usr/local/cuda/lib64 /home/ubuntu/codex-multigpu-audit-20261117/multi-gpu-audit/docs/part5/code/60_hybrid_mpi_nccl_bootstrap.cpp -o /home/ubuntu/codex-multigpu-audit-20261117/multi-gpu-audit/artifacts/h100-reviewed-20261117/60_hybrid_mpi_nccl_bootstrap/example -lnccl -lcudart

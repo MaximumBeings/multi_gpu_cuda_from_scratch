@@ -1,0 +1,19 @@
+$ /home/ubuntu/codex-eight-gpu-audit-20261117/multi-gpu-audit/artifacts/a100-eight-20261117/83_direction_optimizing_and_2d_partitioning_model/example
+--- Beamer et al.'s own real direction-optimizing idea, illustrated (NOT a real graph's measured data) ---
+This chapter's own illustrative frontier-fraction progression across 6 BFS levels of a hypothetical graph (chosen only to show the real SHAPE Beamer et al. describe, summing to 1.0):
+
+Level    frontier frac    undiscovered frac top-down cost ~ f*d      bottom-up cost ~ u*d    
+0        0.0002           0.9998           0.003                    15.997                   
+1        0.0200           0.9798           0.320                    15.677                   
+2        0.3500           0.6298           5.600                    10.077                   
+3        0.5500           0.0798           8.800                    1.277                    <- bottom-up cheaper here
+4        0.0750           0.0048           1.200                    0.077                    <- bottom-up cheaper here
+5        0.0048           0.0000           0.077                    0.000                    <- bottom-up cheaper here
+
+At the levels where the frontier is LARGE, the undiscovered fraction has already shrunk enough that bottom-up's own worst-case cost (checking every undiscovered vertex) undercuts top-down's cost (checking every frontier vertex's full neighbor list) -- exactly Beamer et al.'s own real stated rationale: "the bottom-up approach is advantageous when a large fraction of the vertices are in the frontier." Real bottom-up implementations do even better than this simple model shows, because "once a vertex has found a parent, it does not need to check the rest of its neighbors" -- an early-exit saving this illustrative model does not attempt to quantify.
+
+--- Yoo et al.'s own real 2D partitioning definition ---
+"A 2D partitioning of a graph is a partitioning of its edges such that each edge is owned by one processor" -- reducing collective-communication participants from O(P) (Section 28.2's own 1D worst case) to O(sqrt(P)).
+
+--- Real, cited result at supercomputer scale (NOT computed by this program) ---
+Graph500 BFS benchmark, June 2024 list: Fugaku (RIKEN), SCALE 42, 166,029 GTEPS (giga-traversed-edges-per-second) -- RIKEN's own stated reason for the improvement: "we enhanced performance to 166,029 GTEPS by developing a feature that removes unnecessary vertices."

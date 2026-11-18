@@ -1,0 +1,2 @@
+$ /home/ubuntu/codex-multigpu-audit-20261117/multi-gpu-audit/artifacts/h100-reviewed-20261117/34_gradient_allreduce/example
+PASS: average and sum gradient AllReduce on 2 GPUs; all reference values checked.

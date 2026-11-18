@@ -1,76 +1,32 @@
-// Chapter 9: Ring All-Reduce -- The Algorithm Behind Every Multi-GPU
-// Training Job
 // 23_naive_allreduce.cu
-//
-// The naive baseline: reduce every device's buffer to a host
-// accumulator (Chapter 8, Section 8.2), write the result back onto
-// the root device, then broadcast it out to every other device
-// (Chapter 8, Section 8.1). Genuinely compiled with a real nvcc and
-// genuinely run.
+// Checked teaching implementation; serial host scheduling favors clarity, not speed.
 #include <cstdio>
+#include <vector>
+#include <algorithm>
 #include <cuda_runtime.h>
-
+#define CUDA(call) do { cudaError_t status = (call); if (status != cudaSuccess) { \
+ fprintf(stderr,"%s: %s\n",#call,cudaGetErrorString(status)); \
+ return status==cudaErrorNoDevice || status==cudaErrorInsufficientDriver ? 2 : 1; } } while(0)
+static int pattern(int rank, int i) { return rank*1000+i*3+i%7; }
 int main() {
-    int deviceCount = 0;
-    cudaGetDeviceCount(&deviceCount);
-    printf("cudaGetDeviceCount(): %d device(s).\n", deviceCount);
-
-    const int ROOT = 0;
-    const size_t N_INTS = 4;
-    const size_t BYTES = N_INTS * sizeof(int);
-
-    // Phase 1: reduce every device's buffer to a host accumulator,
-    // exactly like Chapter 8, Section 8.2.
-    long long accumulator[N_INTS] = {0, 0, 0, 0};
-    int hostStaging[N_INTS];
-    int devicesReduced = 0;
-    for (int src = 0; src < deviceCount; ++src) {
-        void* devPtr = nullptr;
-        cudaError_t eAlloc = cudaMalloc(&devPtr, BYTES);
-        cudaError_t eCopy = cudaMemcpy(hostStaging, devPtr, BYTES, cudaMemcpyDeviceToHost);
-        printf("Reduce phase, cudaMemcpy(device %d -> host): %s (code %d)\n",
-               src, cudaGetErrorString(eCopy), (int)eCopy);
-        if (eCopy == cudaSuccess) {
-            for (size_t i = 0; i < N_INTS; ++i) accumulator[i] += hostStaging[i];
-            ++devicesReduced;
-        }
-        if (eAlloc == cudaSuccess) cudaFree(devPtr);
-    }
-
-    // Phase 2: write the reduced result back onto the root device, then
-    // broadcast it to every other device -- exactly like Chapter 8,
-    // Section 8.1. Only after this phase does every device hold the
-    // SAME reduced value; this two-phase, root-centered round trip is
-    // the "naive" all-reduce this chapter improves on.
-    int hostResult[N_INTS];
-    for (size_t i = 0; i < N_INTS; ++i) hostResult[i] = (int)accumulator[i];
-
-    void* rootPtr = nullptr;
-    cudaError_t eAllocRoot = cudaMalloc(&rootPtr, BYTES);
-    cudaError_t eWriteRoot = cudaMemcpy(rootPtr, hostResult, BYTES, cudaMemcpyHostToDevice);
-    printf("Broadcast phase, cudaMemcpy(host result -> root device): %s (code %d)\n",
-           cudaGetErrorString(eWriteRoot), (int)eWriteRoot);
-
-    int broadcastCount = 0;
-    for (int dst = 0; dst < deviceCount; ++dst) {
-        if (dst == ROOT) continue;
-        void* dstPtr = nullptr;
-        cudaError_t eAllocDst = cudaMalloc(&dstPtr, BYTES);
-        cudaError_t eCopy = cudaMemcpyPeer(dstPtr, dst, rootPtr, ROOT, BYTES);
-        printf("Broadcast phase, cudaMemcpyPeer(dst=dev%d, src=root): %s (code %d)\n",
-               dst, cudaGetErrorString(eCopy), (int)eCopy);
-        if (eCopy == cudaSuccess) ++broadcastCount;
-        if (eAllocDst == cudaSuccess) cudaFree(dstPtr);
-    }
-
-    printf("\nReduced %d device(s), then broadcast reached %d non-root "
-           "device(s). Every byte of this all-reduce passed through the\n"
-           "root device TWICE -- once inbound during the reduce phase, "
-           "once outbound during the broadcast phase -- while every other\n"
-           "device only ever sent or received once. Section 9.3 makes this\n"
-           "asymmetry concrete with real counted data-volume numbers.\n",
-           devicesReduced, broadcastCount);
-
-    if (eAllocRoot == cudaSuccess) cudaFree(rootPtr);
-    return 0;
+ int count=0; CUDA(cudaGetDeviceCount(&count));
+ if(count<2){printf("BLOCKED: requires 2 GPUs; found %d.\n",count);return 2;}
+ const int world=std::min(count,4), CHUNK=33;
+ const int n=257, out_n=257;
+ const size_t bytes=n*sizeof(int), out_bytes=out_n*sizeof(int);
+ std::vector<int*> send(world,nullptr),receive(world,nullptr);
+ for(int rank=0;rank<world;++rank){
+  CUDA(cudaSetDevice(rank));CUDA(cudaMalloc(&send[rank],bytes));CUDA(cudaMalloc(&receive[rank],out_bytes));
+  std::vector<int> input(n);for(int i=0;i<n;++i)input[i]=pattern(rank,i);
+  CUDA(cudaMemcpy(send[rank],input.data(),bytes,cudaMemcpyHostToDevice));CUDA(cudaMemset(receive[rank],0xff,out_bytes));
+ }
+ std::vector<int> sum(n,0), staging(n);
+ for(int rank=0;rank<world;++rank){CUDA(cudaSetDevice(rank));CUDA(cudaMemcpy(staging.data(),send[rank],bytes,cudaMemcpyDeviceToHost));for(int i=0;i<n;++i)sum[i]+=staging[i];}
+ CUDA(cudaSetDevice(0));CUDA(cudaMemcpy(receive[0],sum.data(),out_bytes,cudaMemcpyHostToDevice));
+ for(int dst=1;dst<world;++dst){CUDA(cudaSetDevice(dst));CUDA(cudaMemcpyPeer(receive[dst],dst,receive[0],0,out_bytes));}
+ for(int rank=0;rank<world;++rank){CUDA(cudaSetDevice(rank));CUDA(cudaDeviceSynchronize());}
+ for(int rank=0;rank<world;++rank){std::vector<int> output(out_n);CUDA(cudaSetDevice(rank));CUDA(cudaMemcpy(output.data(),receive[rank],out_bytes,cudaMemcpyDeviceToHost));for(int i=0;i<out_n;++i){int expected=1000*world*(world-1)/2+world*(i*3+i%7);if(output[i]!=expected){fprintf(stderr,"FAIL rank %d output[%d]: %d expected %d\n",rank,i,output[i],expected);return 1;}}}
+ for(int rank=0;rank<world;++rank){CUDA(cudaSetDevice(rank));CUDA(cudaFree(send[rank]));CUDA(cudaFree(receive[rank]));}
+ printf("PASS: naive host-reduce plus peer-broadcast all-reduce on %d GPUs, all nonuniform output values checked.\n",world);
+ return 0;
 }

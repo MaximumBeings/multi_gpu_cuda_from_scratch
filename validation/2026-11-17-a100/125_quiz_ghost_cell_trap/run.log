@@ -1,0 +1,15 @@
+$ /home/ubuntu/codex-eight-gpu-audit-20261117/multi-gpu-audit/artifacts/a100-eight-20261117/125_quiz_ghost_cell_trap/example
+=== 8-cell array split across 2 ranks, 4 interior cells each ===
+
+cell   reference      correct-sync   buggy(no-sync)
+0      10.5000        matches        matches   
+1      11.0000        matches        matches   
+2      12.0000        matches        matches   
+3      13.0000        matches        MISMATCH (stale ghost=0)
+4      14.0000        matches        MISMATCH (stale ghost=0)
+5      15.0000        matches        matches   
+6      16.0000        matches        matches   
+7      16.5000        matches        matches   
+
+total cells where the no-sync version disagrees with the single-process reference: 2 out of 8
+those mismatches occur ONLY at the two rank-boundary cells (index 3 and index 4) -- every purely interior cell (0,1,2 and 5,6,7) never reads a neighbor across the rank boundary at all, so it is correct with or without the ghost-cell exchange. This is exactly Chapters 16 and 40's own real finding: a missing halo sync does not corrupt the whole domain, it silently corrupts precisely the cells whose correctness depends on it -- the boundary, and nowhere else.

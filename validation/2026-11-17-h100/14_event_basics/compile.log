@@ -1,0 +1,1 @@
+$ nvcc -std=c++17 -O2 -arch=sm_90 /home/ubuntu/codex-multigpu-audit-20261117/multi-gpu-audit/docs/part1/code/14_event_basics.cu -o /home/ubuntu/codex-multigpu-audit-20261117/multi-gpu-audit/artifacts/h100-reviewed-20261117/14_event_basics/example

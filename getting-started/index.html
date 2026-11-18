@@ -12,18 +12,20 @@
         <meta name="author" content="Oluwaseyi Awoga">
       
       
+        <link rel="canonical" href="https://maximumbeings.github.io/multi_gpu_cuda_from_scratch/getting-started/">
+      
       
         <link rel="prev" href="..">
       
       
-        <link rel="next" href="../part0/01-why-one-gpu-is-not-enough/">
+        <link rel="next" href="../validation-a100/">
       
       
         
       
       
       <link rel="icon" href="../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.8.1">
     
     
       
@@ -31,10 +33,10 @@
       
     
     
-      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
+      <link rel="stylesheet" href="../assets/stylesheets/main.57a0d79d.min.css">
       
         
-        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+        <link rel="stylesheet" href="../assets/stylesheets/palette.fb2fffe2.min.css">
       
       
 
@@ -52,6 +54,8 @@
         <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
       
     
+    
+      <link rel="stylesheet" href="../stylesheets/illustrations.css">
     
     <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
     
@@ -195,6 +199,18 @@
       
     
     
+      <div class="md-header__source">
+        <a href="https://github.com/MaximumBeings/multi_gpu_cuda_from_scratch" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    MaximumBeings/multi_gpu_cuda_from_scratch
+  </div>
+</a>
+      </div>
+    
   </nav>
   
 </header>
@@ -228,6 +244,18 @@
     </a>
     Multi-GPU Programming in CUDA C++ -- Under Development
   </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/MaximumBeings/multi_gpu_cuda_from_scratch" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    MaximumBeings/multi_gpu_cuda_from_scratch
+  </div>
+</a>
+    </div>
   
   <ul class="md-nav__list" data-md-scrollfix>
     
@@ -382,6 +410,60 @@
   
   
   
+    <li class="md-nav__item">
+      <a href="../validation-a100/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    A100 Execution Validation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../validation-h100/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    H100 Execution Validation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
     
     
     
@@ -398,10 +480,10 @@
         
           
         
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3" >
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5" >
         
           
-          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="">
             
   
   
@@ -419,8 +501,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_3">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -543,10 +625,10 @@
         
           
         
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4" >
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6" >
         
           
-          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="">
             
   
   
@@ -564,8 +646,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_4">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -716,10 +798,10 @@
         
           
         
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5" >
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_7" >
         
           
-          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="">
+          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="">
             
   
   
@@ -737,8 +819,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_5">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -889,10 +971,10 @@
         
           
         
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6" >
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_8" >
         
           
-          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="">
+          <label class="md-nav__link" for="__nav_8" id="__nav_8_label" tabindex="">
             
   
   
@@ -910,8 +992,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_6">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_8">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -1090,10 +1172,10 @@
         
           
         
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_7" >
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_9" >
         
           
-          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="">
+          <label class="md-nav__link" for="__nav_9" id="__nav_9_label" tabindex="">
             
   
   
@@ -1111,8 +1193,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_7">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_9">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -1235,10 +1317,10 @@
         
           
         
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_8" >
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_10" >
         
           
-          <label class="md-nav__link" for="__nav_8" id="__nav_8_label" tabindex="">
+          <label class="md-nav__link" for="__nav_10" id="__nav_10_label" tabindex="">
             
   
   
@@ -1256,8 +1338,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_8">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_10_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_10">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -1408,10 +1490,10 @@
         
           
         
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_9" >
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_11" >
         
           
-          <label class="md-nav__link" for="__nav_9" id="__nav_9_label" tabindex="">
+          <label class="md-nav__link" for="__nav_11" id="__nav_11_label" tabindex="">
             
   
   
@@ -1429,8 +1511,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_9_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_9">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_11_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_11">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -1693,10 +1775,10 @@
         
           
         
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_10" >
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_12" >
         
           
-          <label class="md-nav__link" for="__nav_10" id="__nav_10_label" tabindex="">
+          <label class="md-nav__link" for="__nav_12" id="__nav_12_label" tabindex="">
             
   
   
@@ -1714,8 +1796,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_10_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_10">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_12_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_12">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -2006,10 +2088,10 @@
         
           
         
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_11" >
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_13" >
         
           
-          <label class="md-nav__link" for="__nav_11" id="__nav_11_label" tabindex="">
+          <label class="md-nav__link" for="__nav_13" id="__nav_13_label" tabindex="">
             
   
   
@@ -2027,8 +2109,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_11_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_11">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_13_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_13">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -2327,28 +2409,43 @@
                   
 
 
+  
+  
+
 
 <h1 id="getting-started">Getting Started<a class="headerlink" href="#getting-started" title="Permanent link">&para;</a></h1>
-<p>This book targets CUDA C++ compiled with <code>nvcc</code> for real NVIDIA GPU architectures -- <code>sm_70</code> (Volta) and newer covers everything this book builds -- plus MPI (OpenMPI or MPICH) for Part 5's multi-node material. A real multi-GPU machine with a matching driver is what you need to <em>run</em> the code in this book end to end; <code>nvcc</code> itself only needs a CUDA toolkit and will happily compile for architectures your current machine doesn't have, and MPI programs compile and run fine as multiple local ranks on a single machine with no GPU at all.</p>
+<!-- execution:overview -->
+<div class="admonition success">
+<p class="admonition-title">Recorded hardware validation</p>
+<p>All 145 current source programs compiled and executed on <a href="../validation-h100/">two H100 GPUs</a> and again on <a href="../validation-a100/">eight A100 GPUs</a>. Each pass records 33 numerical/transport validations, 13 API validations and 99 other executions with limited correctness scope. The A100 pass uses eight MPI processes for multi-rank examples; individual programs retain their documented participant counts. A separate eight-device harness checks all 56 ordered peer-copy pairs, four collective patterns and three halo generations. B200 execution remains untested.</p>
+</div>
+<!-- mgpu:opener:start -->
+<p><a href="../images/chapter-openers/getting-started.svg"><img alt="Getting Started" src="../images/chapter-openers/getting-started.svg" /></a></p>
+<!-- mgpu:opener:end -->
+
+<p>This book targets CUDA C++ compiled with <code>nvcc</code> for real NVIDIA GPU architectures -- the appropriate target must be selected per example -- plus MPI (OpenMPI or MPICH) for Part 5's multi-node material. A real multi-GPU machine with a matching driver is what you need to <em>run</em> the code in this book end to end; <code>nvcc</code> itself only needs a CUDA toolkit and will happily compile for architectures your current machine doesn't have, and host-only MPI programs can run as multiple local ranks without GPUs; CUDA-aware MPI examples still need CUDA devices.</p>
 <h2 id="installing-a-toolchain">Installing a toolchain<a class="headerlink" href="#installing-a-toolchain" title="Permanent link">&para;</a></h2>
-<p>A full NVIDIA CUDA Toolkit install (from developer.nvidia.com, or via your platform's package manager, e.g. <code>apt-get install nvidia-cuda-toolkit</code> on Debian/Ubuntu) gives you a genuine, working <code>nvcc</code>, <code>ptxas</code>, <code>cicc</code>, and every header this book uses, with no GPU or driver required to <em>compile</em> -- only to run device code. This is what this book's own examples are authored and verified with.</p>
-<p>The lighter-weight <code>pip install nvidia-cuda-nvcc-cu12</code> route some CUDA guides suggest is <strong>verified here not to work as a drop-in <code>nvcc</code> replacement</strong>: as of the versions checked while writing this book (12.9.86 and 12.4.131, on both x86_64 and aarch64), that wheel installs only <code>ptxas</code>, the <code>nvvm</code> backend, and CUDA C++ headers -- it does <em>not</em> include the <code>nvcc</code> driver script or the <code>cicc</code> front-end compiler, so there is no <code>nvcc</code> binary to invoke afterward. This matches multiple reports on NVIDIA's own developer forums of the same gap. If a lighter-than-full-toolkit option matters to you, check for an <code>nvcc</code> binary under the installed package's <code>bin/</code> directory before relying on it -- don't assume the package name implies a working compiler. For Part 5's MPI material, an ordinary OpenMPI install (<code>apt-get install libopenmpi-dev openmpi-bin</code> or your platform's equivalent) is enough to compile and run real, multi-rank MPI programs on one machine -- CUDA-aware MPI specifically (an OpenMPI build configured <code>--with-cuda</code>) is the one piece of this book's own toolchain that a driver-less, device-less environment cannot exercise for real, and Chapter 20 and Appendix A both say exactly which parts of that chapter's code are genuinely run as ordinary MPI ranks versus checked by simulation for that reason.</p>
+<!-- mgpu:figure-overview:start -->
+<p><a href="../images/technical/getting-started.svg"><img alt="Separate build checks from hardware execution" src="../images/technical/getting-started.svg" /></a></p>
+<!-- mgpu:figure-overview:end -->
+
+<p>A full NVIDIA CUDA Toolkit install (from developer.nvidia.com, or via your platform's package manager, e.g. <code>apt-get install nvidia-cuda-toolkit</code> on Debian/Ubuntu) gives you a genuine, working <code>nvcc</code>, <code>ptxas</code>, <code>cicc</code>, and CUDA headers; NCCL, NVSHMEM and MPI development packages are separate dependencies, with no GPU or driver required to <em>compile</em> -- only to run device code. The package name and supported compiler/architecture targets depend on the distribution and toolkit version. Use <a href="https://docs.nvidia.com/cuda/cuda-installation-guide-linux/">NVIDIA’s installation guide</a> for the actual host.</p>
+<p>Check that your selected toolkit provides <code>nvcc --version</code>; a Python package containing some CUDA components is not automatically a full C++ build environment. Install NCCL/NVSHMEM headers and libraries separately where required. Host-only MPI can run without CUDA devices; CUDA-aware MPI requires a compatible MPI build and real device buffers. Follow <a href="https://developer.nvidia.com/blog/introduction-cuda-aware-mpi/">NVIDIA’s CUDA-aware MPI guidance</a> and the chapter’s actual build options rather than assuming an ordinary MPI installation supports GPU pointers.</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>nvcc<span class="w"> </span>--version<span class="w">   </span><span class="c1"># compiler, needed to build anything</span>
 <a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>nvcc<span class="w"> </span>-arch<span class="o">=</span>sm_80<span class="w"> </span>hello_cuda.cu<span class="w"> </span>-o<span class="w"> </span>hello_cuda<span class="w">   </span><span class="c1"># pick the arch flag matching your GPU</span>
 <a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>mpirun<span class="w"> </span>--version<span class="w">   </span><span class="c1"># for Part 5 onward</span>
 </code></pre></div>
 <h2 id="the-honesty-discipline-this-book-follows">The honesty discipline this book follows<a class="headerlink" href="#the-honesty-discipline-this-book-follows" title="Permanent link">&para;</a></h2>
-<p>This book's reference implementations were authored and compiled in an environment with a full CUDA and MPI toolchain but <strong>no NVIDIA GPU, no NVIDIA driver, and no real second device of any kind</strong> -- a more severe version of the constraint a single-GPU CUDA book already has, since a multi-GPU book's own central claims are about what happens <em>between</em> devices, not just on one. This book handles that limitation the same way throughout, stated once here rather than repeated on every page:</p>
+<p>The original authoring transcripts were produced with a CUDA and MPI toolchain but <strong>no NVIDIA GPU or driver</strong> -- a more severe version of the constraint a single-GPU CUDA book already has, since a multi-GPU book's own central claims are about what happens <em>between</em> devices, not just on one. The subsequent two-H100 execution removes that earlier hardware limitation for the recorded tests. Current validation uses the following scopes:</p>
 <ul>
-<li><strong>Plain C++ host code</strong> (no <code>__global__</code>, no <code>__device__</code>, no CUDA Runtime API calls) is genuinely compiled with <code>g++</code> and genuinely run. Its output is locked into the page and re-verified by a fresh recompile and rerun before publication.</li>
-<li><strong>CUDA kernels that need a device to execute</strong> are genuinely compiled with <code>nvcc</code> for a real architecture, then checked by a <strong>host-side simulation</strong>: ordinary C++ that walks the exact same grid, block, and thread loop nest the kernel's own launch configuration would produce, checked against an independent scalar reference.</li>
-<li><strong>Multi-device orchestration</strong> -- a peer-to-peer transfer, a collective like ring all-reduce, a cross-device barrier -- is checked by a <strong>host-side simulation of every participating device</strong>: N real in-memory buffers standing in for N real devices, exchanging data with the exact same message pattern (same ring order, same tree shape, same round count) the real collective would use, with the final result checked against an independently computed reference (an ordinary sequential sum, for instance, checked against a simulated ring all-reduce's result). This is a real, exhaustive verification of the collective's <em>logic</em> -- where nearly every genuine multi-GPU bug actually lives (an off-by-one in a ring's neighbor index, a race between a send and the buffer it reads from, a barrier one rank never reaches) -- not a substitute for measuring it on real hardware.</li>
-<li><strong>CUDA Runtime API calls that can be genuinely made without a device</strong> (<code>cudaGetDeviceCount</code>, <code>cudaMalloc</code>, <code>cudaDeviceCanAccessPeer</code>, and similar) are genuinely called, and this environment honestly reports back whatever a driver-less, device-less machine actually reports -- typically a device count of zero and <code>cudaErrorNoDevice</code> or <code>cudaErrorInsufficientDriver</code> -- rather than a fabricated success.</li>
-<li><strong>Plain MPI code</strong> (point-to-point sends/receives, communicators, collectives) genuinely runs as multiple real local ranks (<code>mpirun -np 4 ...</code>) on a single machine, with no GPU involved at all -- this is real, not simulated, since MPI itself needs no special hardware.</li>
-<li><strong>Real hardware facts</strong> this book states -- NVLink or PCIe generation bandwidth figures, a specific GPU's real interconnect topology, a real cluster's real numbers -- are cited to real, current vendor documentation rather than assumed from memory, the same discipline this book's own sibling volume follows for edge-hardware bandwidth figures.</li>
-<li><strong>Timing and throughput numbers are never fabricated.</strong> Where a chapter's argument depends on which of two approaches is faster rather than merely which is correct, this book measures a genuinely computed, deterministic quantity instead of a wall-clock number -- a message count, a round count, a byte count moved -- specifically because a wall-clock number captured once on one machine is not reproducible on a rerun, let alone on a reader's own cluster, the way an exact count is.</li>
+<li><strong>Host programs and simulations</strong> are compiled and executed as host programs. Their results check the modeled arithmetic and scheduling, not CUDA concurrency or physical links.</li>
+<li><strong>GPU numerical checks</strong> initialize data and compare actual device results with an explicit reference.</li>
+<li><strong>API probes</strong> check the stated capability, lifecycle or expected-error behavior; they are not numerical collective tests.</li>
+<li><strong>Execution evidence</strong> records source hashes, commands, timestamps, system information and raw logs. The 2026-11-17 two-H100 local NV18 run compiled and executed all 145 programs: 33 numerical checks, 13 API probes and 99 other executions. See <a href="../validation-h100/">H100 validation</a>. Host simulations remain useful supplementary checks; neither they nor this single-node run validate cross-node RDMA, failure recovery or performance on other hardware.</li>
 </ul>
-<p>Every chapter states which of the above applies to each piece of its own code, so nothing is left for a reader to guess about how a claim was actually established.</p>
+<p>Historical no-device output establishes an observed prerequisite/error path, not a successful GPU workload. Current-source execution must be supported by a fresh manifest, source hashes, commands and logs; compilation alone does not establish correctness.</p>
+<p>Before execution, run <code>nvidia-smi</code>, <code>nvcc --version</code>, and the chapter’s device-count/topology checks. H100 uses the generic <code>sm_90</code> target for these ordinary CUDA examples; B200 uses <code>sm_100</code> with a toolkit that supports it. Rebuild and revalidate rather than reusing a Hopper cubin on Blackwell. <a href="https://docs.nvidia.com/cuda/blackwell-compatibility-guide/index.html">NVIDIA’s compatibility guide</a> explains cubin and PTX compatibility. Run MPI examples with the required number of distinct visible devices; multiple ranks on one GPU are not a substitute for a multi-GPU collective.</p>
+<p>From the repository root, <code>python3 tools/validate_examples.py --output artifacts/local-audit</code> collects compiler evidence. GPU execution is opt-in with <code>--execute --arch sm_90</code> on H100 or <code>--execute --arch sm_100</code> on B200. Keep each architecture’s output separate and inspect per-example classifications; API diagnostics and simulations are not numerical GPU validations.</p>
 <h2 id="compile-line-conventions">Compile-line conventions<a class="headerlink" href="#compile-line-conventions" title="Permanent link">&para;</a></h2>
 <ul>
 <li>Plain C++ host files (<code>.cpp</code>): <code>g++ -std=c++17 -Wall -Wextra -O2 file.cpp -o binary</code></li>
@@ -2411,13 +2508,13 @@
         
         
           
-          <a href="../part0/01-why-one-gpu-is-not-enough/" class="md-footer__link md-footer__link--next" aria-label="Next: 1. Why One GPU Is Not Enough">
+          <a href="../validation-a100/" class="md-footer__link md-footer__link--next" aria-label="Next: A100 Execution Validation">
             <div class="md-footer__title">
               <span class="md-footer__direction">
                 Next
               </span>
               <div class="md-ellipsis">
-                1. Why One GPU Is Not Enough
+                A100 Execution Validation
               </div>
             </div>
             <div class="md-footer__button md-icon">
@@ -2458,10 +2555,10 @@
     
       
       
-      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.instant", "navigation.tracking", "navigation.sections", "navigation.expand", "navigation.top", "navigation.footer", "toc.follow", "search.suggest", "search.highlight", "content.code.copy", "content.code.annotate"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.instant", "navigation.tracking", "navigation.sections", "navigation.expand", "navigation.top", "navigation.footer", "toc.follow", "search.suggest", "search.highlight", "content.code.copy", "content.code.annotate"], "search": "../assets/javascripts/workers/search.a7633da7.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
-      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
+      <script src="../assets/javascripts/bundle.a5f9d56c.min.js"></script>
       
     
   </body>

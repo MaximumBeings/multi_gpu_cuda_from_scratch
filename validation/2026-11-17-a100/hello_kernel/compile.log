@@ -1,0 +1,1 @@
+$ nvcc -std=c++17 -O2 -arch=sm_80 /home/ubuntu/codex-eight-gpu-audit-20261117/multi-gpu-audit/docs/appendix/code/hello_kernel.cu -o /home/ubuntu/codex-eight-gpu-audit-20261117/multi-gpu-audit/artifacts/a100-eight-20261117/hello_kernel/example

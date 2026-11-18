@@ -1,34 +1,36 @@
 // Chapter 6: Streams, Events, and Cross-Device Synchronization
 // 14_event_basics.cu
-//
-// The real event lifecycle: create, record (asynchronously, into a
-// stream), check without blocking (cudaEventQuery), and check while
-// blocking (cudaEventSynchronize). Genuinely compiled with a real nvcc
-// and genuinely run.
+// Guard each lifecycle step; no-device diagnostics are not a GPU pass.
 #include <cstdio>
 #include <cuda_runtime.h>
 
+static int failure(cudaError_t error) {
+    return error == cudaErrorNoDevice || error == cudaErrorInsufficientDriver ? 2 : 1;
+}
+
 int main() {
-    cudaStream_t stream;
-    cudaError_t eStream = cudaStreamCreate(&stream);
-    printf("cudaStreamCreate: %s (code %d)\n", cudaGetErrorString(eStream), (int)eStream);
-
-    cudaEvent_t event;
-    cudaError_t eEvent = cudaEventCreate(&event);
-    printf("cudaEventCreate: %s (code %d)\n", cudaGetErrorString(eEvent), (int)eEvent);
-
-    cudaError_t eRecord = cudaEventRecord(event, stream);
-    printf("cudaEventRecord(event, stream): %s (code %d)\n", cudaGetErrorString(eRecord), (int)eRecord);
-
-    cudaError_t eQuery = cudaEventQuery(event);
-    printf("cudaEventQuery(event) [non-blocking check]: %s (code %d)\n",
-           cudaGetErrorString(eQuery), (int)eQuery);
-
-    cudaError_t eSync = cudaEventSynchronize(event);
-    printf("cudaEventSynchronize(event) [blocking wait]: %s (code %d)\n",
-           cudaGetErrorString(eSync), (int)eSync);
-
-    if (eEvent == cudaSuccess) cudaEventDestroy(event);
-    if (eStream == cudaSuccess) cudaStreamDestroy(stream);
-    return 0;
+    cudaStream_t stream = nullptr;
+    cudaError_t status = cudaStreamCreate(&stream);
+    printf("cudaStreamCreate: %s (code %d)\n", cudaGetErrorString(status), (int)status);
+    if (status != cudaSuccess) return failure(status);
+    cudaEvent_t event = nullptr;
+    status = cudaEventCreate(&event);
+    printf("cudaEventCreate: %s (code %d)\n", cudaGetErrorString(status), (int)status);
+    if (status != cudaSuccess) { cudaStreamDestroy(stream); return failure(status); }
+    status = cudaEventRecord(event, stream);
+    printf("cudaEventRecord(event, stream): %s (code %d)\n", cudaGetErrorString(status), (int)status);
+    int result = status == cudaSuccess ? 0 : failure(status);
+    if (result == 0) {
+        status = cudaEventQuery(event);
+        printf("cudaEventQuery(event) [non-blocking check]: %s (code %d)\n", cudaGetErrorString(status), (int)status);
+        if (status != cudaSuccess && status != cudaErrorNotReady) result = failure(status);
+    }
+    if (result == 0) {
+        status = cudaEventSynchronize(event);
+        printf("cudaEventSynchronize(event) [blocking wait]: %s (code %d)\n", cudaGetErrorString(status), (int)status);
+        if (status != cudaSuccess) result = failure(status);
+    }
+    if (cudaEventDestroy(event) != cudaSuccess) result = 1;
+    if (cudaStreamDestroy(stream) != cudaSuccess) result = 1;
+    return result;
 }

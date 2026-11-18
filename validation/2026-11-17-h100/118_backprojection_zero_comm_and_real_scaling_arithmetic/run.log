@@ -1,0 +1,21 @@
+$ /home/ubuntu/codex-multigpu-audit-20261117/multi-gpu-audit/artifacts/h100-reviewed-20261117/118_backprojection_zero_comm_and_real_scaling_arithmetic/example
+Reference (single-process) BP: volume 6x6x60, value at (0,0,0)=0.0000
+
+P      all match (zero cross-slab reads)
+1      YES
+2      YES
+4      YES
+6      YES
+10     YES
+15     YES
+20     YES
+30     YES
+60     YES
+
+Every P matches, and unlike File 117's own smoothing operation, this computation never reads globalZ-1 or globalZ+1 at all -- BP's own real cited independence from neighboring z-slabs, not merely a correctly-synchronized ghost cell standing in for one.
+
+Real cited timing (Palenstijn et al. 2017, Figure 5, parallel-beam, N=1024):
+- BP: 1 GPU = 0.80s, 21 GPUs = 0.05s
+- FP: 1 GPU = 1.20s, 21 GPUs = 0.15s
+
+Honest arithmetic on those real cited numbers: going from 1 to 21 GPUs, BP achieved a real 16.0x speedup (76.2% of ideal 21x), while FP achieved only a real 8.0x speedup (38.1% of ideal 21x) -- on the exact same real paper's own benchmark, the exact same real hardware, the exact same GPU counts. This is the real, measured consequence of the real structural difference the paper itself names: "each node locally stores the part of the detector data needed to perform a BP operation, so this can be performed locally and independently on each node," while "computing the result of an FP operation on the overlapping regions on the detector requires volume data from multiple nodes." Section 40.3 asks what happens to FP's own already-weaker scaling as the GPU count keeps growing past 21.

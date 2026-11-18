@@ -1,0 +1,16 @@
+$ /home/ubuntu/codex-multigpu-audit-20261117/multi-gpu-audit/artifacts/h100-reviewed-20261117/89_out_of_core_scene_scale_model/example
+--- R2E2's own real scale problem ---
+Real cited fact: "scenes with up to a terabyte of geometry and texture data (where as little as 1/250th of the scene can fit on any one node)" -- Fouladi et al., SIGGRAPH 2022.
+
+total scene size         per-node capacity    nodes needed (this chapter's own model)
+100 GB (illustrative)    0.40                 250                     
+500 GB (illustrative)    2.00                 250                     
+1024 GB = 1 TB (R2E2 cited) 4.10                 250                     
+
+At R2E2's own real terabyte scale, roughly 250 nodes are needed just to HOLD the scene data -- this is now a genuine data DECOMPOSITION problem, structurally the same kind of problem Chapter 24 solved for a matrix too large for one device's memory, not the zero-communication case Section 30.1 built.
+
+--- Why this reintroduces communication DURING rendering ---
+Section 30.1's own simulation worked because every pixel's ray test needed ONLY the fixed scene description and that pixel's own coordinates -- and the whole scene fit in that simulation's own memory. Once the scene itself is partitioned across nodes (because no single node can hold it), a ray that would need to test against geometry owned by ANOTHER node must either fetch that geometry or forward the ray's own state to the node that owns it -- a real per-ray communication requirement Section 30.1's clean model never had to pay.
+
+--- Real payoff, cited ---
+R2E2's own real reported results against a single-machine in-memory baseline (pbrt-treelet): "R2E2 is 3.5-7.8x faster than pbrt-treelet's single-machine in-memory path tracer," with scene loading itself "4.9x (Moana-XL) and 2.9x (Terrace) faster." The real headline finding: "R2E2 completes the entire path tracing job before pbrt-treelet begins tracing a single ray" for most of their tested configurations -- because the single-machine baseline cannot even START until the whole scene has been paged in from disk, while R2E2's own distributed approach never needs the whole scene on any one node at all.

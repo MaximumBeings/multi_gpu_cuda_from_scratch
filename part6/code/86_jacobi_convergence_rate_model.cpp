@@ -7,13 +7,16 @@
 // COMMUNICATION PATTERN (this chapter's own real subject) carries over
 // directly to the smarter methods that replace it. James Demmel's own real
 // UC Berkeley CS267 lecture notes give the classic result for an n x n
-// grid discretized Poisson problem: Jacobi needs "m ~ ((n+1)/pi)^2"
-// iterations just to HALVE the error once, and state a real serial
+// grid discretized Poisson problem: Jacobi's spectral radius is
+// cos(pi/(n+1)) ~ 1 - pi^2/(2(n+1)^2), so reducing the error by a factor
+// of e takes m = 2(n+1)^2/pi^2 iterations, and HALVING it once takes
+// 2*ln(2)*((n+1)/pi)^2 (a bare ((n+1)/pi)^2 only reduces it by e^(-1/2),
+// not by half). The same notes state a real serial
 // complexity table (N = n^2 unknowns) contrasting Jacobi's O(N^2) serial
 // cost against Conjugate Gradient's O(N^1.5), SOR's O(N^1.5), and
 // Multigrid's O(N) -- and separately that Gauss-Seidel "converge[s] twice
 // as fast (rho_GaussSeidel(n) = rho_Jacobi(n)^2)" than Jacobi. This
-// section computes Demmel's own real formula at several real grid sizes,
+// section computes that halving count at several real grid sizes,
 // and closes with NVIDIA's own real AmgX paper (Naumov et al., SIAM J.
 // Sci. Comput. 37(5), 2015) -- a real production GPU multigrid library
 // that reuses this exact chapter's own halo-exchange-plus-Allreduce
@@ -22,9 +25,9 @@
 #include <cmath>
 
 int main() {
-    printf("--- Demmel's own real formula: Jacobi iterations to HALVE the error, "
-           "n x n grid ---\n");
-    printf("m ~ ((n+1)/pi)^2   (CS267 Lecture 24, Demmel)\n\n");
+    printf("--- Jacobi iterations to HALVE the error, n x n grid ---\n");
+    printf("rho_Jacobi = cos(pi/(n+1)) ~ 1 - pi^2/(2(n+1)^2)  (Demmel, CS267)\n");
+    printf("m_half ~ 2*ln(2)*((n+1)/pi)^2\n\n");
     printf("%-10s %-24s %-28s\n", "n (grid)", "m: iters to halve error",
            "iters for error <= 1e-6 (~20 halvings)");
     const int ns[] = {10, 100, 1000, 10000};
@@ -32,7 +35,7 @@ int main() {
     // log2(1/1e-6) = log2(1e6) ~= 19.93 halvings needed to shrink error by 1e-6
     double halvingsNeeded = std::log2(1.0e6);
     for (int n : ns) {
-        double m = ((double)(n + 1) / PI) * ((double)(n + 1) / PI);
+        double m = 2.0 * std::log(2.0) * ((double)(n + 1) / PI) * ((double)(n + 1) / PI);
         double totalIters = m * halvingsNeeded;
         printf("%-10d %-24.1f %-28.1f\n", n, m, totalIters);
     }
@@ -42,7 +45,8 @@ int main() {
            "error. This is exactly why this chapter's own solver is a "
            "DIDACTIC vehicle for the communication pattern, not a claim that "
            "Jacobi itself is production-grade.\n\n",
-           ((double)(10001) / PI) * ((double)(10001) / PI) * halvingsNeeded);
+           2.0 * std::log(2.0) * ((double)(10001) / PI) * ((double)(10001) / PI) *
+               halvingsNeeded);
 
     printf("--- Demmel's own real serial/PRAM complexity table (N = n^2 unknowns) ---\n");
     printf("%-14s %-14s %-18s\n", "Method", "Serial", "PRAM (parallel depth)");

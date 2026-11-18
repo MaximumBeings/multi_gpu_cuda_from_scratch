@@ -1,0 +1,13 @@
+$ /home/ubuntu/codex-multigpu-audit-20261117/multi-gpu-audit/artifacts/h100-reviewed-20261117/62_staged_vs_rdma_cost_model/example
+Part A -- small-message fixed latency (cited, not measured here):
+  GPUDirect RDMA, GPU-to-GPU:  1.9us  (Host-to-GPU: 1.7us, a different path, not averaged in)
+  Staged GPU-to-GPU (D2H + IB host-to-host + H2D): ~17.0us
+  Ratio: 8.9x -- this book's own arithmetic on the post's two GPU-to-GPU numbers; the post itself states no single speedup factor.
+
+Part B -- large-message bandwidth, same real post, single-rail vs single-rail:
+  Single rail, GPU and NIC on a good PCIe path: ~6.1 GB/s
+  Single rail, crossing inter-socket QPI on Ivy Bridge (SYS-class): 0.25 GB/s
+  Degradation: ~24x (the post's 11.6 GB/s headline is dual-rail, so 11.6 / 0.25 would double-count the second NIC). Even this ~24x is not one controlled experiment -- the two figures need not come from the same server platform -- but the order of magnitude is the point: "GPUDirect RDMA capable" (Section 21.2's own boolean attribute) is NECESSARY but not SUFFICIENT; a bad PCIe path between a capable GPU and a capable NIC can cost more than an order of magnitude of bandwidth with no code change at all.
+
+Part C -- the source's own real crossover finding:
+  The same post states: "GPUDirect RDMA is faster than the staging approach for message sizes up to 400-500KB (on Ivy Bridge Xeon)" -- a real, cited finding this book reports rather than re-derives. A simple two-term (fixed latency + bandwidth) model built from Part A's latency and Part B's good-topology bandwidth would put GPUDirect RDMA ahead at every size, so it cannot reproduce the crossover; the post ties the crossover to the platform it measured (Ivy Bridge Xeon, whose cross-socket QPI path is also Part B's 250 MB/s case), and this book does not rebuild that platform-specific bandwidth model here.

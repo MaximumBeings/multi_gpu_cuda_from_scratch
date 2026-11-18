@@ -1,0 +1,1 @@
+$ g++ -std=c++17 -O2 /home/ubuntu/codex-eight-gpu-audit-20261117/multi-gpu-audit/docs/part7/code/104_distributed_fft_communication_cost_model.cpp -o /home/ubuntu/codex-eight-gpu-audit-20261117/multi-gpu-audit/artifacts/a100-eight-20261117/104_distributed_fft_communication_cost_model/example

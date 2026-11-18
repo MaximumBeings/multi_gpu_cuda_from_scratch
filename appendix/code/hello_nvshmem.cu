@@ -1,4 +1,4 @@
-// Appendix A.4: Recipe 5 stub -- nvcc + NVSHMEM + MPI, GPU-initiated
+// hello_nvshmem.cu -- Recipe 5 stub: nvcc + NVSHMEM + MPI, GPU-initiated
 // one-sided communication's own real link line (Chapter 22's own recipe).
 #include <cstdio>
 #include <nvshmem.h>

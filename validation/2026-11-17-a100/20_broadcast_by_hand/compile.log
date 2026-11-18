@@ -1,0 +1,7 @@
+$ nvcc -std=c++17 -O2 -arch=sm_80 /home/ubuntu/codex-eight-gpu-audit-20261117/multi-gpu-audit/docs/part2/code/20_broadcast_by_hand.cu -o /home/ubuntu/codex-eight-gpu-audit-20261117/multi-gpu-audit/artifacts/a100-eight-20261117/20_broadcast_by_hand/example
+/home/ubuntu/codex-eight-gpu-audit-20261117/multi-gpu-audit/docs/part2/code/20_broadcast_by_hand.cu(14): warning #177-D: variable "CHUNK" was declared but never referenced
+   const int world=std::min(count,4), CHUNK=33;
+                                      ^
+
+Remark: The warnings can be suppressed with "-diag-suppress <warning-number>"
+

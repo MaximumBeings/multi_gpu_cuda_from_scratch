@@ -1,0 +1,45 @@
+{
+  "timestamp_utc": "2026-11-17T23:59:17.246364+00:00",
+  "source": "validate_eight_gpus.cu",
+  "source_sha256": "d57281667f11129124d31e7abaa13fe530509689cc42378d4f2eba3fb8aa636a",
+  "arch": "sm_80",
+  "pass_marker": "EIGHT_GPU_AUDIT: PASS",
+  "host_python": "3.12.3",
+  "status": "PASS",
+  "system_sha256": "61d8a540a520be82931cb4b6dcd9f977bd7715506efceba3030b1695d0c7c35d",
+  "compile": {
+    "command": [
+      "nvcc",
+      "-std=c++17",
+      "-arch=sm_80",
+      "-O2",
+      "/home/ubuntu/codex-eight-gpu-audit-20261117/eight-device-harness/validate_eight_gpus.cu",
+      "-o",
+      "/home/ubuntu/codex-eight-gpu-audit-20261117/eight-device-harness/example",
+      "-lnccl",
+      "-Xcompiler",
+      "-pthread"
+    ],
+    "started_utc": "2026-11-17T23:59:18.027671+00:00",
+    "finished_utc": "2026-11-17T23:59:20.666609+00:00",
+    "seconds": 2.638943170999937,
+    "exit_code": 0,
+    "timed_out": false,
+    "log": "compile.log",
+    "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "binary_sha256": "67be41f99992b76d276c4501625cdcd56ff842b69dd88d61c7aa27693e3683f2",
+  "run": {
+    "command": [
+      "/home/ubuntu/codex-eight-gpu-audit-20261117/eight-device-harness/example"
+    ],
+    "started_utc": "2026-11-17T23:59:20.668221+00:00",
+    "finished_utc": "2026-11-17T23:59:34.268617+00:00",
+    "seconds": 13.600405921999936,
+    "exit_code": 0,
+    "timed_out": false,
+    "log": "run.log",
+    "log_sha256": "65e2cec0f18a0bc10ca7d5d7ba8bdce737973b5d44d1211b3c73636ba4aacd35"
+  },
+  "finished_utc": "2026-11-17T23:59:34.268733+00:00"
+}

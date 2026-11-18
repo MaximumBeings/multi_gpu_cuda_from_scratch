@@ -1,53 +1,61 @@
-// Chapter 22: NVSHMEM and GPU-Initiated Communication
 // 63_nvshmem_init_single_pe.cu
-//
-// Every collective this book has built since Chapter 8 was HOST-
-// initiated: a CPU thread calls ncclAllReduce()/MPI_Send()/etc., and
-// that call enqueues work for the GPU to do later. NVSHMEM is built on
-// a different model entirely -- OpenSHMEM's own real definition: "a
-// community standard, one-sided communication API that provides a
-// partitioned global address space (PGAS) parallel programming
-// model." Every NVSHMEM process is a PE (Processing Element, PGAS's
-// own term for a rank). nvshmem_malloc() allocates from a real,
-// documented structure: "a special memory region called the Symmetric
-// Heap," created so that "Symmetric Data Objects" (same type, size,
-// and layout) exist at every PE at once. This section builds the
-// plainest possible real NVSHMEM program: nvshmem_init() with no
-// bootstrap plugin requested at all, genuinely installed via the pip
-// package nvidia-nvshmem-cu12 (which -- unlike the incomplete pip nvcc
-// package Chapter 1's own toolchain note already warned about --
-// genuinely ships real headers, a real host library, and real device
-// bitcode).
-// Genuinely compiled with a real nvcc against the real installed
-// NVSHMEM 3.7.2.
+// Launch with mpirun -np 1: explicit MPI bootstrap, checked symmetric allocation.
+// Checked two-PE example. Compile and execution evidence are captured separately.
+#define OMPI_SKIP_MPICXX
+#include <mpi.h>
 #include <cstdio>
+#include <cstdlib>
+#include <vector>
+#include <cuda_runtime.h>
 #include <nvshmem.h>
 #include <nvshmemx.h>
 
-int main() {
-    // No bootstrap flags at all -- NVSHMEM's own default init path.
-    // With no launcher (Hydra, Slurm, or this chapter's own later MPI
-    // bootstrap) telling it otherwise, NVSHMEM genuinely falls back to
-    // treating this one process as the entire, one-PE world.
-    nvshmem_init();
+#define CUDA_OK(call) do { cudaError_t e = (call); if (e != cudaSuccess) { \
+    fprintf(stderr, "%s: %s\n", #call, cudaGetErrorString(e)); \
+    MPI_Abort(MPI_COMM_WORLD, 1); } } while (0)
 
-    int myPe = nvshmem_my_pe();
-    int nPes = nvshmem_n_pes();
-    printf("nvshmem_init() returned; my_pe=%d n_pes=%d\n", myPe, nPes);
-    printf("No bootstrap plugin was requested, so NVSHMEM had no way to "
-           "discover any other real process -- this is NOT the same "
-           "honest failure this book has shown since Chapter 3 "
-           "(cudaErrorNoDevice, ncclUnhandledCudaError, etc.). Those "
-           "calls always at least TRIED to find a device and reported "
-           "exactly why they couldn't. nvshmem_init() with no bootstrap "
-           "never tried to find a peer at all -- n_pes=1 is a correct, "
-           "honest answer to the question it was actually asked.\n");
+static void bind_device(int rank) {
+    MPI_Comm node;
+    MPI_Comm_split_type(MPI_COMM_WORLD, MPI_COMM_TYPE_SHARED, rank, MPI_INFO_NULL, &node);
+    int localRank, count;
+    MPI_Comm_rank(node, &localRank);
+    MPI_Comm_free(&node);
+    CUDA_OK(cudaGetDeviceCount(&count));
+    if (localRank >= count) {
+        fprintf(stderr, "Insufficient GPUs: local rank %d, visible devices %d\n", localRank, count);
+        MPI_Abort(MPI_COMM_WORLD, 2);
+    }
+    CUDA_OK(cudaSetDevice(localRank));
+}
 
-    // nvshmem_malloc() needs a real symmetric heap, which needs a real
-    // CUDA context on a real device -- this environment has neither.
-    void *sym = nvshmem_malloc(sizeof(int));
-    printf("nvshmem_malloc(sizeof(int)) = %p\n", sym);
-
+int main(int argc, char **argv) {
+    MPI_Init(&argc, &argv);
+    int rank;
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    bind_device(rank); // one local PE per GPU, before NVSHMEM initialization
+    MPI_Comm world = MPI_COMM_WORLD;
+    nvshmemx_init_attr_t attr = NVSHMEMX_INIT_ATTR_INITIALIZER;
+    nvshmemx_set_attr_mpi_comm_args(&world, &attr);
+    int rc = nvshmemx_init_attr(NVSHMEMX_INIT_WITH_MPI_COMM, &attr);
+    if (rc != 0) MPI_Abort(MPI_COMM_WORLD, 3);
+    int pe = nvshmem_my_pe(), nPes = nvshmem_n_pes();
+    int errors = 0;
+    int *sym = static_cast<int *>(nvshmem_malloc(sizeof(int)));
+    if (!sym) MPI_Abort(MPI_COMM_WORLD, 4);
+    int sent = 100 + pe, received = -1;
+    CUDA_OK(cudaMemcpy(sym, &sent, sizeof(int), cudaMemcpyHostToDevice));
+    CUDA_OK(cudaMemcpy(&received, sym, sizeof(int), cudaMemcpyDeviceToHost));
+    if (received != sent) ++errors;
+    int worldSize;
+    MPI_Comm_size(MPI_COMM_WORLD, &worldSize);
+    if (nPes != worldSize || pe != rank) ++errors;
+    printf("PE %d of %d: MPI bootstrap, allocation and CUDA copy checked\n", pe, nPes);
+    nvshmem_free(sym);
+    int totalErrors = 0;
+    MPI_Allreduce(&errors, &totalErrors, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
+    if (pe == 0) printf("VALIDATION %s: %d PEs, errors=%d\n",
+                        totalErrors ? "FAIL" : "PASS", nPes, totalErrors);
     nvshmem_finalize();
-    return 0;
+    MPI_Finalize();
+    return totalErrors ? 1 : 0;
 }

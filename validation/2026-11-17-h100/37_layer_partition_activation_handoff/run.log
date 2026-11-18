@@ -1,0 +1,5 @@
+$ /home/ubuntu/codex-multigpu-audit-20261117/multi-gpu-audit/artifacts/h100-reviewed-20261117/37_layer_partition_activation_handoff/example
+rank 0: layer indices [0, 48)
+rank 1: layer indices [48, 96)
+PASS: 25165824 nonuniform FP16-sized activation words (50331648 bytes) handed off exactly.
+Scope: layer-index partition and transfer payload, not a transformer forward pass.

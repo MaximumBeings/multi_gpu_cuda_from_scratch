@@ -1,0 +1,36 @@
+{
+  "execution_date_utc": "2026-11-17",
+  "tool": "Compute Sanitizer memcheck",
+  "tests": [
+    {
+      "source": "docs/part1/code/11_memcpy_peer.cu",
+      "source_sha256": "f8151f3549665a26fc20ba93fea9ba286120e625b4991dc8342e8c3ee030a299",
+      "command": [
+        "compute-sanitizer",
+        "--tool",
+        "memcheck",
+        "--error-exitcode",
+        "99",
+        "artifacts/h100-reviewed-20261117/11_memcpy_peer/example"
+      ],
+      "process_exit": 0,
+      "log": "11-memcheck.log",
+      "reported_errors": 0
+    },
+    {
+      "source": "docs/part3/code/46_halo_exchange.cu",
+      "source_sha256": "b42cfd48dd942f176fdaa604f43a16dce4d5d1cf9c5dc59c320e0c4b9a72e1bb",
+      "command": [
+        "compute-sanitizer",
+        "--tool",
+        "memcheck",
+        "--error-exitcode",
+        "99",
+        "artifacts/h100-reviewed-20261117/46_halo_exchange/example"
+      ],
+      "process_exit": 0,
+      "log": "46-memcheck.log",
+      "reported_errors": 0
+    }
+  ]
+}

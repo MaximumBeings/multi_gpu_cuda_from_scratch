@@ -1,0 +1,12 @@
+{
+  "execution_date_utc": "2026-11-17",
+  "command": [
+    "make",
+    "-C",
+    "docs/appendix/code",
+    "all"
+  ],
+  "compile_exit": 0,
+  "scope": "Five compiler/link recipes; numbered hello source execution is separately recorded in the main dataset.",
+  "makefile_sha256": "36d322741193e35c93a30cd42c1895a404bd583a3358709c7f458974836b648a"
+}

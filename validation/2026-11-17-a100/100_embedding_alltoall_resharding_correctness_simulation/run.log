@@ -1,0 +1,12 @@
+$ /home/ubuntu/codex-eight-gpu-audit-20261117/multi-gpu-audit/artifacts/a100-eight-20261117/100_embedding_alltoall_resharding_correctness_simulation/example
+Reference (single-process): sample 0's full feature vector: 0 72 83 9 70 91 47 15 70 58 85 85 
+
+P      values sent off-rank   cyclic unpack: all match   contiguous-bug unpack: wrong
+1      0                      YES                        0 of 288 slots
+2      144                    YES                        239 of 288 slots
+3      192                    YES                        238 of 288 slots
+4      216                    YES                        238 of 288 slots
+6      240                    YES                        239 of 288 slots
+12     264                    YES                        0 of 288 slots
+
+The correct unpacker reproduces every sample's feature vector at every P, and the number of values that cross the network is exactly B*F*(P-1)/P. The buggy unpacker -- which assumes each rank owned a CONTIGUOUS block of features when the schedule actually stripes them CYCLICALLY (feature index modulo P) -- scrambles feature slots at every P where the two layouts differ (they coincide only at P=1 and P=F, where each rank owns either every feature or exactly one). Nothing here is ever summed, so the operation is exact; what CAN go wrong is the bookkeeping, which is why the pack and unpack sides of an all-to-all must agree on one layout.

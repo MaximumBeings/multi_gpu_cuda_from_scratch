@@ -1,0 +1,1 @@
+$ mpicc -std=c11 -O2 /home/ubuntu/codex-eight-gpu-audit-20261117/multi-gpu-audit/docs/part5/code/57_mpi_ring_send_recv.c -o /home/ubuntu/codex-eight-gpu-audit-20261117/multi-gpu-audit/artifacts/a100-eight-20261117/57_mpi_ring_send_recv/example

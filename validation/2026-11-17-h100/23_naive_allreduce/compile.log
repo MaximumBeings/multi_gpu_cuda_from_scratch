@@ -1,0 +1,7 @@
+$ nvcc -std=c++17 -O2 -arch=sm_90 /home/ubuntu/codex-multigpu-audit-20261117/multi-gpu-audit/docs/part2/code/23_naive_allreduce.cu -o /home/ubuntu/codex-multigpu-audit-20261117/multi-gpu-audit/artifacts/h100-reviewed-20261117/23_naive_allreduce/example
+/home/ubuntu/codex-multigpu-audit-20261117/multi-gpu-audit/docs/part2/code/23_naive_allreduce.cu(14): warning #177-D: variable "CHUNK" was declared but never referenced
+   const int world=std::min(count,4), CHUNK=33;
+                                      ^
+
+Remark: The warnings can be suppressed with "-diag-suppress <warning-number>"
+

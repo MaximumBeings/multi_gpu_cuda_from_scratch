@@ -1,0 +1,1 @@
+$ nvcc -std=c++17 -O2 -arch=sm_90 -rdc=true /home/ubuntu/codex-multigpu-audit-20261117/multi-gpu-audit/docs/appendix/code/130_cooperative_multi_device.cu -o /home/ubuntu/codex-multigpu-audit-20261117/multi-gpu-audit/artifacts/h100-reviewed-20261117/130_cooperative_multi_device/example -lcudadevrt

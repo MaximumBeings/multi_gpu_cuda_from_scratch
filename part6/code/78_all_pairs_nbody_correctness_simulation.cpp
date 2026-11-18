@@ -78,14 +78,35 @@ std::vector<long long> naiveAllPairs(const std::vector<Body> &bodies) {
 // applied per shard instead of per thread. ---
 std::vector<long long> distributedAllPairs(const std::vector<Body> &bodies) {
     std::vector<long long> force(N, 0);
-    for (int s = 0; s < P; s++) {
-        // The all-gather itself: this shard's own view of "all bodies"
-        // is simply the full input list, standing in for a real
-        // ncclAllGather()-style collective (Chapter 10) that would, on
-        // real hardware, assemble this same complete list from every
-        // shard's own local partition.
-        const std::vector<Body> &gathered = bodies;
 
+    // Each shard starts with ONLY its own SHARD_SIZE bodies, placed in
+    // its own slot of an otherwise-EMPTY N-entry buffer (mass 0, x
+    // sentinel), so any slot the all-gather fails to fill would visibly
+    // corrupt the forces below.
+    const Body EMPTY = {-999999, 0};
+    std::vector<std::vector<Body>> buf(P, std::vector<Body>(N, EMPTY));
+    for (int s = 0; s < P; s++)
+        for (int k = 0; k < SHARD_SIZE; k++)
+            buf[s][s * SHARD_SIZE + k] = bodies[s * SHARD_SIZE + k];
+
+    // The all-gather itself, as Chapter 10's ring algorithm: P-1 steps;
+    // at step t, shard s forwards block (s - t) mod P to shard (s+1) mod
+    // P, which copies it into the same slot of its own buffer.
+    for (int t = 0; t < P - 1; t++) {
+        std::vector<std::vector<Body>> msg(P, std::vector<Body>(SHARD_SIZE));
+        for (int s = 0; s < P; s++) {
+            int blk = ((s - t) % P + P) % P;
+            for (int k = 0; k < SHARD_SIZE; k++) msg[s][k] = buf[s][blk * SHARD_SIZE + k];
+        }
+        for (int s = 0; s < P; s++) {
+            int dst = (s + 1) % P;
+            int blk = ((s - t) % P + P) % P;
+            for (int k = 0; k < SHARD_SIZE; k++) buf[dst][blk * SHARD_SIZE + k] = msg[s][k];
+        }
+    }
+
+    for (int s = 0; s < P; s++) {
+        const std::vector<Body> &gathered = buf[s];  // THIS shard's own view
         int start = s * SHARD_SIZE;
         int end = start + SHARD_SIZE;
         for (int i = start; i < end; i++) {

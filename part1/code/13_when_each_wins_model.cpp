@@ -25,10 +25,11 @@ int main() {
     double peerTimePCIe   = transferSizeGB / PCIE_GBPS;
 
     // Staged route: two hops through the host, device->host and
-    // host->device, each paying the PCIe rate -- this is exactly what
-    // Section 5.2's explicit two-step transfer measured the call
-    // pattern for, and what cudaMemcpyPeer itself falls back to
-    // whenever peer access has not been enabled for that pair.
+    // host->device, each paying the PCIe rate -- the call pattern
+    // Section 5.2's explicit two-step transfer exercises. This is the
+    // book's cost model for cudaMemcpyPeer's staged fallback, an upper
+    // bound: the driver's internal staging is undocumented and may
+    // pipeline the two hops, which would bring the real cost below 2x.
     double stagedTime = 2.0 * (transferSizeGB / PCIE_GBPS);
 
     printf("Transfer size: %.1f GB\n\n", transferSizeGB);

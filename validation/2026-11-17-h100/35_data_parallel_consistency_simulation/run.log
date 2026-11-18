@@ -1,0 +1,18 @@
+$ /home/ubuntu/codex-multigpu-audit-20261117/multi-gpu-audit/artifacts/h100-reviewed-20261117/35_data_parallel_consistency_simulation/example
+WITH synchronization (average gradients via ncclAvg every step):
+step 0: replica0=0.0000 replica1=0.0000 replica2=0.0000 replica3=0.0000  | reference=0.0000
+step 1: replica0=1.4000 replica1=1.4000 replica2=1.4000 replica3=1.4000  | reference=1.4000
+step 2: replica0=2.6600 replica1=2.6600 replica2=2.6600 replica3=2.6600  | reference=2.6600
+step 3: replica0=3.7940 replica1=3.7940 replica2=3.7940 replica3=3.7940  | reference=3.7940
+step 4: replica0=4.8146 replica1=4.8146 replica2=4.8146 replica3=4.8146  | reference=4.8146
+step 5: replica0=5.7331 replica1=5.7331 replica2=5.7331 replica3=5.7331  | reference=5.7331
+After 5 step(s): every replica identical to every other: PASS; every replica matches the independent single-model reference: PASS
+
+WITHOUT synchronization (each replica updates from its own local gradient only):
+step 0: replica0=0.0000 replica1=0.0000 replica2=0.0000 replica3=0.0000 
+step 1: replica0=1.2000 replica1=0.8000 replica2=2.0000 replica3=1.6000 
+step 2: replica0=2.2800 replica1=1.5200 replica2=3.8000 replica3=3.0400 
+step 3: replica0=3.2520 replica1=2.1680 replica2=5.4200 replica3=4.3360 
+step 4: replica0=4.1268 replica1=2.7512 replica2=6.8780 replica3=5.5024 
+step 5: replica0=4.9141 replica1=3.2761 replica2=8.1902 replica3=6.5522 
+After 5 step(s) with no synchronization: replicas have diverged from each other: PASS (divergence correctly demonstrated)

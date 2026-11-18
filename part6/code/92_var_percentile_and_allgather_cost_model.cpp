@@ -16,9 +16,10 @@
 // variance, an exact percentile of a distributed dataset genuinely
 // CANNOT be computed from a few summary numbers per rank -- it requires
 // knowing the relative rank/order of every single simulated loss, which
-// means gathering the actual data, reusing this book's own real
-// Chapter 10/27 all-gather pattern, not Chan et al.'s O(1)-per-rank
-// message.
+// means gathering the actual data to wherever the percentile is
+// computed (a gather to one root; an all-gather, Chapter 10/27's
+// pattern, only if every rank needs the answer), not Chan et al.'s
+// O(1)-per-rank message.
 #include <cstdio>
 #include <vector>
 #include <algorithm>
@@ -67,13 +68,13 @@ int main() {
 
     int Ps[] = {1, 2, 4, 5, 10, 20};
     printf("%-8s %-28s %-28s %-16s\n", "P", "Chan et al.: values/rank",
-           "exact VaR: values/rank (all-gather)", "VaR_99 EXACT match?");
+           "exact VaR: values/rank (gather)", "VaR_99 EXACT match?");
     for (int P : Ps) {
         long long pathsPerRank = N_PATHS / P;
         // Distributed: each rank computes its own local losses; an exact
-        // global percentile needs ALL of them gathered somewhere, exactly
-        // Chapter 10/27's own real all-gather shape -- NX values per rank,
-        // not O(1).
+        // global percentile needs ALL of them gathered at one root (a
+        // gather; an all-gather only if every rank needs the result) --
+        // N/P values per rank, not O(1).
         std::vector<long long> gathered;
         for (int r = 0; r < P; r++) {
             for (long long i = r * pathsPerRank; i < (r + 1) * pathsPerRank; i++)
@@ -93,7 +94,7 @@ int main() {
            "this exact tradeoff at genuinely large scale use approximate "
            "streaming-percentile techniques (e.g., t-digest-style sketches) "
            "specifically to avoid gathering every raw value -- an extension "
-           "this chapter's own exact all-gather model does not build, but "
+           "this chapter's own exact gather model does not build, but "
            "names honestly as the real next step production systems take.\n");
 
     return 0;

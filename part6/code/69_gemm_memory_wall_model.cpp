@@ -4,7 +4,8 @@
 // A real, closed-form model (no fabricated timings, matching this book's
 // own established practice since Ch2/Ch5/Ch16) of when a dense GEMM's
 // three matrices genuinely stop fitting on one real GPU. Reuses Chapter
-// 1's own real H100 SXM figure (80 GB HBM3) as the single-device budget.
+// 1's own real H100 SXM figure (80 GB HBM3, i.e. 80e9 bytes) as the
+// single-device budget.
 // A real NVIDIA forum thread on cuBLASXt states plainly what problem
 // this section is building toward: cuBLASXt's "main point" is to "work
 // around GPU memory capacity limits" -- i.e. out-of-core / multi-GPU
@@ -19,7 +20,9 @@ struct GemmShape {
 };
 
 int main() {
-    const double H100_SXM_HBM_BYTES = 80.0 * 1024.0 * 1024.0 * 1024.0; // Ch1's own real figure
+    // Ch1's own real figure: 80 GB, i.e. 80 x 10^9 bytes (about 74.5 GiB)
+    // -- decimal gigabytes, as memory capacities are specified.
+    const double H100_SXM_HBM_BYTES = 80.0e9;
     const double BYTES_PER_FP32 = 4.0;
 
     // Real GPT-3 175B dimensions (Brown et al. Table 2.1, already cited
@@ -30,14 +33,14 @@ int main() {
     // output C -- fit AT ONCE, at a batch size and sequence length a
     // real training run actually uses."
     GemmShape shapes[] = {
-        {"GPT-3 FFN weight alone (d_model x 4d_model)", 12288, 12288, 49152},
+        {"GPT-3 FFN GEMM, small batch (M=12288 tokens)", 12288, 12288, 49152},
         {"GPT-3 FFN forward, batch=512, seq=2048 (M=batch*seq)",
          512ull * 2048ull, 12288, 49152},
         {"A hypothetical 10x-larger FFN forward at the same batch/seq",
          512ull * 2048ull, 122880, 491520},
     };
 
-    printf("Single-device budget (Ch1's own real H100 SXM figure): %.1f GiB\n\n",
+    printf("Single-device budget (Ch1's own real H100 SXM figure): 80 GB = %.2f GiB\n\n",
            H100_SXM_HBM_BYTES / (1024.0 * 1024.0 * 1024.0));
 
     for (auto &s : shapes) {
@@ -49,6 +52,8 @@ int main() {
         printf("%s\n", s.label);
         printf("  M=%llu K=%llu N=%llu (fp32)\n",
                (unsigned long long)s.m, (unsigned long long)s.k, (unsigned long long)s.n);
+        printf("  B (weight) alone = %.2f GiB\n",
+               bytesB / (1024.0 * 1024.0 * 1024.0));
         printf("  A+B+C = %.2f GiB -> %s on one H100 SXM\n\n",
                totalGiB, fits ? "FITS" : "DOES NOT FIT");
     }

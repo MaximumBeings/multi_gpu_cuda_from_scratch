@@ -1,0 +1,18 @@
+$ /home/ubuntu/codex-multigpu-audit-20261117/multi-gpu-audit/artifacts/h100-reviewed-20261117/51_heterogeneous_capability_query/example
+cudaGetDeviceCount(): 2 device(s).
+
+Querying real per-device capability for every device this book's own real deviceCount (2) reports:
+  rank 0: cudaGetDeviceProperties(): no error (code 0)
+  rank 1: cudaGetDeviceProperties(): no error (code 0)
+  (2 device(s) -- nothing to print above.)
+
+cudaGetDeviceProperties(&prop, 0): no error (code 0)
+Two of the real fields cudaDeviceProp exposes for exactly this purpose -- comparing one device's real capability against another's -- are multiProcessorCount (how many streaming multiprocessors the device physically has) and clockRate (the device's core clock, in kHz). Neither field can be read here, since the call above never succeeded.
+
+A hypothetical 4-device cluster mixing GPU generations (real multiProcessorCount figures from NVIDIA's own architecture whitepapers):
+  A100 (rank 0)                          multiProcessorCount = 108
+  A100 (rank 1)                          multiProcessorCount = 108
+  H100 SXM (rank 2)                      multiProcessorCount = 132
+  A100, thermally throttled (rank 3)     multiProcessorCount = 108
+
+Every computeShard()-style function this book has written would still hand all four of these devices an IDENTICAL share of the work -- the SM count difference above, and rank 3's real thermal throttling (which multiProcessorCount can't even see, since the SMs are still physically there, just running slower), are both invisible to pure host arithmetic that only ever divides by worldSize.

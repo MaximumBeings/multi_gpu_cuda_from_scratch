@@ -1,0 +1,1 @@
+$ g++ -std=c++17 -O2 /home/ubuntu/codex-eight-gpu-audit-20261117/multi-gpu-audit/docs/part2/code/32_ring_vs_tree_model.cpp -o /home/ubuntu/codex-eight-gpu-audit-20261117/multi-gpu-audit/artifacts/a100-eight-20261117/32_ring_vs_tree_model/example

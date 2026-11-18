@@ -1,0 +1,16 @@
+$ /home/ubuntu/codex-eight-gpu-audit-20261117/multi-gpu-audit/artifacts/a100-eight-20261117/15_cross_device_wait/example
+cudaGetDeviceCount(&count): no error (code 0)
+cudaSetDevice(0): no error (code 0)
+cudaStreamCreate(&stream0): no error (code 0)
+cudaEventCreateWithFlags(&event0, cudaEventDisableTiming): no error (code 0)
+cudaEventRecord(event0, stream0): no error (code 0)
+cudaSetDevice(1): no error (code 0)
+cudaStreamCreate(&stream1): no error (code 0)
+cudaStreamWaitEvent(stream1, event0, 0): no error (code 0)
+Cross-device wait enqueued; host did not wait for event completion.
+cudaStreamSynchronize(stream1): no error (code 0)
+cudaStreamDestroy(stream1): no error (code 0)
+cudaSetDevice(0): no error (code 0)
+cudaEventDestroy(event0): no error (code 0)
+cudaStreamDestroy(stream0): no error (code 0)
+PASS: checked two-device event dependency lifecycle.

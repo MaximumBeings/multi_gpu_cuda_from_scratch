@@ -23,6 +23,34 @@
 #include <nccl.h>
 #include <cuda_runtime.h>
 #include <cstdio>
+#include <cstdint>
+#include <unistd.h>
+
+// A node-local rank: how many LOWER-numbered ranks share this rank's
+// host. NCCL's own MPI example computes exactly this (hash each
+// rank's hostname, MPI_Allgather the hashes, count matches below
+// myRank) because cudaSetDevice() takes a device index that only
+// means something on THIS node: with 2 nodes x 8 GPUs, global rank 9
+// is node-local rank 1, and cudaSetDevice(9) would name a device
+// that node doesn't have.
+static uint64_t hostHash(const char* s) {
+    uint64_t h = 5381; // djb2, the same hash NCCL's example uses
+    for (int i = 0; s[i] != '\0'; ++i) h = ((h << 5) + h) ^ (uint64_t)(unsigned char)s[i];
+    return h;
+}
+static int computeLocalRank(int myRank, int nRanks) {
+    char host[1024] = {0};
+    gethostname(host, sizeof(host) - 1);
+    for (int i = 0; host[i]; ++i) if (host[i] == '.') { host[i] = '\0'; break; }
+    uint64_t* hashes = new uint64_t[nRanks];
+    hashes[myRank] = hostHash(host);
+    MPI_Allgather(MPI_IN_PLACE, 0, MPI_DATATYPE_NULL,
+                  hashes, sizeof(uint64_t), MPI_BYTE, MPI_COMM_WORLD);
+    int localRank = 0;
+    for (int r = 0; r < myRank; ++r) if (hashes[r] == hashes[myRank]) ++localRank;
+    delete[] hashes;
+    return localRank;
+}
 
 int main(int argc, char** argv) {
     MPI_Init(&argc, &argv);
@@ -51,10 +79,14 @@ int main(int argc, char** argv) {
     // Real device binding, per rank, exactly like every earlier
     // ncclCommInitRank() precondition since Chapter 11 ("Each rank is
     // associated to a CUDA device, which has to be set before calling
-    // ncclCommInitRank" -- nccl.h's own comment). Honestly
-    // cudaErrorNoDevice: this environment has no device at all,
-    // regardless of which rank asks.
-    cudaError_t eSet = cudaSetDevice(myRank);
+    // ncclCommInitRank" -- nccl.h's own comment). The device index is
+    // the NODE-LOCAL rank, never the global MPI rank: this is a
+    // multi-node bootstrap, and device numbering restarts at 0 on
+    // every node. (On this single-host run localRank == myRank, so the
+    // difference can't show up here.) Honestly cudaErrorNoDevice: this
+    // environment has no device at all, regardless of which rank asks.
+    int localRank = computeLocalRank(myRank, nRanks);
+    cudaError_t eSet = cudaSetDevice(localRank);
 
     // Every rank now calls ncclCommInitRank() with the SAME id
     // (received via MPI, never regenerated) and its OWN rank/nRanks
@@ -62,11 +94,11 @@ int main(int argc, char** argv) {
     // to Chapter 19's own ncclCommInitRankConfig() calls, just fed by
     // real MPI-discovered values instead of this book's own literal
     // constants.
-    ncclComm_t comm;
+    ncclComm_t comm = nullptr; // a failed init never writes this handle
     ncclResult_t eInit = ncclCommInitRank(&comm, nRanks, id, myRank);
 
-    printf("rank %d of %d: cudaSetDevice(%d)=%s ncclCommInitRank=%s (code %d)\n",
-           myRank, nRanks, myRank, cudaGetErrorString(eSet),
+    printf("rank %d of %d: cudaSetDevice(localRank=%d)=%s ncclCommInitRank=%s (code %d)\n",
+           myRank, nRanks, localRank, cudaGetErrorString(eSet),
            ncclGetErrorString(eInit), (int)eInit);
 
     if (myRank == 0) {

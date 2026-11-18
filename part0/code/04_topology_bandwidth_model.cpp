@@ -65,11 +65,13 @@ Matrix partialNvlinkMeshTopology() {
 }
 
 // Topology C: NVSwitch, DGX H100-style. Every GPU reaches every other
-// GPU at the full per-GPU NVLink 4.0 aggregate bandwidth (900 GB/s,
-// real, cited H100 SXM figure) -- that's the entire point of a
-// non-blocking crossbar switch.
+// GPU at the full per-GPU NVLink 4.0 aggregate bandwidth -- that's the
+// entire point of a non-blocking crossbar switch. The cited H100 SXM
+// figure (900 GB/s) is BIDIRECTIONAL (18 links x 50 GB/s); every other
+// entry in this file is PER DIRECTION, so the like-for-like figure used
+// here is 18 links x 25 GB/s = 450 GB/s per direction.
 Matrix nvswitchTopology() {
-    const double UNIFORM = 900.0;
+    const double UNIFORM = 450.0;      // NVLink 4.0, 18 x 25 GB/s, per direction
     Matrix bw(N, std::vector<double>(N, UNIFORM));
     for (int i = 0; i < N; ++i) bw[i][i] = 0.0;
     return bw;
@@ -128,7 +130,7 @@ int main() {
 
     printf("\nNVSwitch's whole point: bottleneck bandwidth is %.1f GB/s "
            "regardless of visiting order, because there is no such thing "
-           "as an indirect hop -- every pair is one switch away.\n", 900.0);
+           "as an indirect hop -- every pair is one switch away.\n", 450.0);
 
     return 0;
 }

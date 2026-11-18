@@ -1,0 +1,2 @@
+$ /home/ubuntu/codex-eight-gpu-audit-20261117/multi-gpu-audit/artifacts/a100-eight-20261117/34_gradient_allreduce/example
+PASS: average and sum gradient AllReduce on 4 GPUs; all reference values checked.

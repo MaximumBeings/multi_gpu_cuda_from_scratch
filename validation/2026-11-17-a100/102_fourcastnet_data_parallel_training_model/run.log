@@ -1,0 +1,17 @@
+$ /home/ubuntu/codex-eight-gpu-audit-20261117/multi-gpu-audit/artifacts/a100-eight-20261117/102_fourcastnet_data_parallel_training_model/example
+Real cited anchor point (Pathak et al. 2022): 16 hours wall-clock on 64 real A100 GPUs.
+
+Illustrative near-linear data-parallel scaling model (Chapter 12's own technique: whole-model replicas, gradient all-reduce each step) anchored to that real point -- NOT a claim about measured scaling efficiency, which this sandbox cannot measure:
+GPU count    Illustrative hours  
+8            128.00              
+16           64.00               
+32           32.00               
+64           16.00               
+128          8.00                
+256          4.00                
+
+FourCastNet's own real cited results (not derived by this book):
+- "FourCastNet generates a week-long forecast in less than 2 seconds, orders of magnitude faster than IFS."
+- "FourCastNet is about 45,000 times faster than traditional NWP models on a node-hour basis."
+- "Once trained, however, FourCastNet uses about 12,000 times less energy to generate a forecast than the IFS model."
+- Real global grid: "a resolution of 0.25 degree... a global grid size of 720x1440 pixels" -- comfortably fits one real A100's memory, which is exactly why the real 64-GPU/16-hour training run above is ordinary data parallelism, not spatial domain decomposition.

@@ -12,6 +12,8 @@
         <meta name="author" content="Oluwaseyi Awoga">
       
       
+        <link rel="canonical" href="https://maximumbeings.github.io/multi_gpu_cuda_from_scratch/part2/08-broadcast-and-reduce-the-first-two-collectives-by-hand/">
+      
       
         <link rel="prev" href="../../part1/07-cuda-inter-process-communication/">
       
@@ -23,7 +25,7 @@
       
       
       <link rel="icon" href="../../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.8.1">
     
     
       
@@ -31,10 +33,10 @@
       
     
     
-      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      <link rel="stylesheet" href="../../assets/stylesheets/main.57a0d79d.min.css">
       
         
-        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.fb2fffe2.min.css">
       
       
 
@@ -52,6 +54,8 @@
         <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
       
     
+    
+      <link rel="stylesheet" href="../../stylesheets/illustrations.css">
     
     <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
     
@@ -195,6 +199,18 @@
       
     
     
+      <div class="md-header__source">
+        <a href="https://github.com/MaximumBeings/multi_gpu_cuda_from_scratch" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    MaximumBeings/multi_gpu_cuda_from_scratch
+  </div>
+</a>
+      </div>
+    
   </nav>
   
 </header>
@@ -228,6 +244,18 @@
     </a>
     Multi-GPU Programming in CUDA C++ -- Under Development
   </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/MaximumBeings/multi_gpu_cuda_from_scratch" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    MaximumBeings/multi_gpu_cuda_from_scratch
+  </div>
+</a>
+    </div>
   
   <ul class="md-nav__list" data-md-scrollfix>
     
@@ -291,6 +319,60 @@
   
   
   
+    <li class="md-nav__item">
+      <a href="../../validation-a100/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    A100 Execution Validation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../validation-h100/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    H100 Execution Validation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
     
     
     
@@ -307,10 +389,10 @@
         
           
         
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3" >
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5" >
         
           
-          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="">
             
   
   
@@ -328,8 +410,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_3">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -452,10 +534,10 @@
         
           
         
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4" >
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6" >
         
           
-          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="">
             
   
   
@@ -473,8 +555,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_4">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -625,10 +707,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" checked>
         
           
-          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="">
+          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="">
             
   
   
@@ -646,8 +728,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="true">
-          <label class="md-nav__title" for="__nav_5">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_7">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -1006,10 +1088,10 @@
         
           
         
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6" >
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_8" >
         
           
-          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="">
+          <label class="md-nav__link" for="__nav_8" id="__nav_8_label" tabindex="">
             
   
   
@@ -1027,8 +1109,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_6">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_8">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -1207,10 +1289,10 @@
         
           
         
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_7" >
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_9" >
         
           
-          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="">
+          <label class="md-nav__link" for="__nav_9" id="__nav_9_label" tabindex="">
             
   
   
@@ -1228,8 +1310,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_7">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_9">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -1352,10 +1434,10 @@
         
           
         
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_8" >
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_10" >
         
           
-          <label class="md-nav__link" for="__nav_8" id="__nav_8_label" tabindex="">
+          <label class="md-nav__link" for="__nav_10" id="__nav_10_label" tabindex="">
             
   
   
@@ -1373,8 +1455,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_8">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_10_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_10">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -1525,10 +1607,10 @@
         
           
         
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_9" >
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_11" >
         
           
-          <label class="md-nav__link" for="__nav_9" id="__nav_9_label" tabindex="">
+          <label class="md-nav__link" for="__nav_11" id="__nav_11_label" tabindex="">
             
   
   
@@ -1546,8 +1628,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_9_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_9">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_11_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_11">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -1810,10 +1892,10 @@
         
           
         
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_10" >
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_12" >
         
           
-          <label class="md-nav__link" for="__nav_10" id="__nav_10_label" tabindex="">
+          <label class="md-nav__link" for="__nav_12" id="__nav_12_label" tabindex="">
             
   
   
@@ -1831,8 +1913,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_10_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_10">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_12_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_12">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -2123,10 +2205,10 @@
         
           
         
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_11" >
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_13" >
         
           
-          <label class="md-nav__link" for="__nav_11" id="__nav_11_label" tabindex="">
+          <label class="md-nav__link" for="__nav_13" id="__nav_13_label" tabindex="">
             
   
   
@@ -2144,8 +2226,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_11_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_11">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_13_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_13">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -2561,8 +2643,20 @@
                   
 
 
+  
+  
+
 
 <h1 id="chapter-8-broadcast-and-reduce-the-first-two-collectives-by-hand">Chapter 8: Broadcast and Reduce: The First Two Collectives, By Hand<a class="headerlink" href="#chapter-8-broadcast-and-reduce-the-first-two-collectives-by-hand" title="Permanent link">&para;</a></h1>
+<!-- execution:provenance -->
+<div class="admonition info">
+<p class="admonition-title">Execution provenance</p>
+<p>Current execution blocks identify the tested source hash, hardware dataset, commands and captured output. References elsewhere on this page to a device-less environment describe the original authoring context. Historical output is superseded by the current record. Displayed output omits the runner command header and trims trailing line whitespace; raw logs remain exact. A host simulation or API validation has its stated scope; neither alone establishes a numerical multi-GPU workload or measured performance.</p>
+</div>
+<!-- mgpu:opener:start -->
+<p><a href="../../images/chapter-openers/08.svg"><img alt="Chapter 8: Broadcast and Reduce: The First Two Collectives, By Hand" src="../../images/chapter-openers/08.svg" /></a></p>
+<!-- mgpu:opener:end -->
+
 <p><strong>What you will understand by the end of this chapter:</strong></p>
 <ul>
 <li>What a "collective" operation actually is -- a communication pattern involving every device in a group at once, rather than one specific pair -- and why broadcast and reduce are the two simplest ones to build from what Part 1 already gave this book.</li>
@@ -2577,246 +2671,347 @@
 <hr />
 <p>Everything in Part 1 was about moving data or coordinating exactly two participants at a time -- one source device and one destination, one device's stream waiting on another's event, one process's memory shared with one other process's. A collective operation involves an entire group of devices at once, all participating in a single, coordinated communication pattern. Broadcast and reduce are the two simplest collectives, and this chapter builds both by hand, directly on top of Part 1's primitives: broadcast is one device's data reaching every other device, and reduce is every device's data being combined into one. Because correctness here is inherently a question about <em>multiple</em> devices' data ending up in the <em>right relationship to each other</em>, this chapter also marks a shift in how this book verifies itself: from here through the rest of Part 2, the host-side simulation technique introduced in Chapter 4 stops being an occasional tool and becomes the primary way this book proves a multi-device algorithm is actually correct.</p>
 <h2 id="81-broadcast-by-hand-one-to-many-correctly">8.1 Broadcast, By Hand: One-to-Many, Correctly<a class="headerlink" href="#81-broadcast-by-hand-one-to-many-correctly" title="Permanent link">&para;</a></h2>
+<!-- mgpu:figure-1:start -->
+<p><a href="../../images/technical/ch08/1-broadcast.svg"><img alt="Broadcast preserves one root value" src="../../images/technical/ch08/1-broadcast.svg" /></a></p>
+<!-- mgpu:figure-1:end -->
+
 <h3 id="intuition">Intuition<a class="headerlink" href="#intuition" title="Permanent link">&para;</a></h3>
 <p>A broadcast has one job: after it runs, every device in the group holds an identical copy of whatever the <em>root</em> device started with. The simplest way to guarantee that is also the most obvious one -- have the root send its data to every other device, one at a time, using nothing more exotic than the cross-device copy call Chapter 5 already built. There's no cleverness needed for correctness here; the cleverness real collective libraries add (broadcasting in a tree pattern across <code>log₂(N)</code> rounds instead of <code>N-1</code> sequential sends) is a <em>performance</em> optimization on top of this same one-to-many idea, not a different idea -- and Part 2 builds toward that later. This chapter's job is to get the simple version right first.</p>
 <h3 id="background">Background<a class="headerlink" href="#background" title="Permanent link">&para;</a></h3>
-<p>The straightforward broadcast is a loop: for every non-root device, call <code>cudaMemcpyPeer()</code> with the root's pointer as the source and that device's pointer as the destination. Every call in the loop reads from the <em>same</em>, unchanging root buffer -- nothing about the root's data changes as the loop progresses, so the order the non-root devices are visited in doesn't affect the result at all. This is the exact same function Chapter 5 introduced, used here in a loop rather than for a single pair, which is really all a broadcast collective <em>is</em> at this level: a specific, repeated pattern of an operation this book already has.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="c1">// Chapter 8: Broadcast and Reduce -- The First Two Collectives, By Hand</span>
-<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="c1">// 20_broadcast_by_hand.cu</span>
-<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="c1">//</span>
-<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="c1">// A broadcast, written by hand as the real API calls it actually is:</span>
-<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="c1">// one cudaMemcpyPeer() per non-root device, all sourced from the same</span>
-<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="c1">// unchanging root pointer. Genuinely compiled with a real nvcc and</span>
-<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="c1">// genuinely run.</span>
-<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;cstdio&gt;</span>
-<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;cuda_runtime.h&gt;</span>
-<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>
+<p>The straightforward broadcast is a loop: for every non-root device, call <code>cudaMemcpyPeer()</code> with the root's pointer as the source and that device's pointer as the destination. Every call in the loop reads from the <em>same</em>, unchanging root buffer -- nothing about the root's data changes as the loop progresses, so the order the non-root devices are visited in doesn't affect the result at all. This is the exact same function Chapter 5 introduced, used here in a loop rather than for a single pair, which is really all a broadcast collective <em>is</em> at this level: a specific, repeated pattern of an operation this book already has. One detail from Chapter 3 still applies inside the loop: <code>cudaMalloc()</code> allocates on whichever device is <em>current</em>, so the code calls <code>cudaSetDevice(dst)</code> before allocating each destination buffer -- otherwise every "per-device" buffer would silently land on the root, and passing <code>dst</code> as <code>cudaMemcpyPeer()</code>'s destination device would not make it so.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="c1">// 20_broadcast_by_hand.cu</span>
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="c1">// Checked teaching implementation; serial host scheduling favors clarity, not speed.</span>
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;cstdio&gt;</span>
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;vector&gt;</span>
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;algorithm&gt;</span>
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;cuda_runtime.h&gt;</span>
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="cp">#define CUDA(call) do { cudaError_t status = (call); if (status != cudaSuccess) { \</span>
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a><span class="cp"> fprintf(stderr,"%s: %s\n",#call,cudaGetErrorString(status)); \</span>
+<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a><span class="cp"> return status==cudaErrorNoDevice || status==cudaErrorInsufficientDriver ? 2 : 1; } } while(0)</span>
+<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a><span class="k">static</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="nf">pattern</span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">rank</span><span class="p">,</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">i</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="n">rank</span><span class="o">*</span><span class="mi">1000</span><span class="o">+</span><span class="n">i</span><span class="o">*</span><span class="mi">3</span><span class="o">+</span><span class="n">i</span><span class="o">%</span><span class="mi">7</span><span class="p">;</span><span class="w"> </span><span class="p">}</span>
 <a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a><span class="kt">int</span><span class="w"> </span><span class="nf">main</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
-<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a><span class="w">    </span><span class="kt">int</span><span class="w"> </span><span class="n">deviceCount</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
-<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a><span class="w">    </span><span class="n">cudaGetDeviceCount</span><span class="p">(</span><span class="o">&amp;</span><span class="n">deviceCount</span><span class="p">);</span>
-<a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;cudaGetDeviceCount(): %d device(s).</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">deviceCount</span><span class="p">);</span>
-<a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a>
-<a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a><span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">ROOT</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
-<a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a><span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="kt">size_t</span><span class="w"> </span><span class="n">BYTES</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">64</span><span class="p">;</span>
-<a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a><span class="w">    </span><span class="kt">void</span><span class="o">*</span><span class="w"> </span><span class="n">rootPtr</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nb">nullptr</span><span class="p">;</span>
-<a id="__codelineno-0-19" name="__codelineno-0-19" href="#__codelineno-0-19"></a>
-<a id="__codelineno-0-20" name="__codelineno-0-20" href="#__codelineno-0-20"></a><span class="w">    </span><span class="n">cudaError_t</span><span class="w"> </span><span class="n">eSetRoot</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">cudaSetDevice</span><span class="p">(</span><span class="n">ROOT</span><span class="p">);</span>
-<a id="__codelineno-0-21" name="__codelineno-0-21" href="#__codelineno-0-21"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;cudaSetDevice(root=%d): %s (code %d)</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">ROOT</span><span class="p">,</span><span class="w"> </span><span class="n">cudaGetErrorString</span><span class="p">(</span><span class="n">eSetRoot</span><span class="p">),</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="p">)</span><span class="n">eSetRoot</span><span class="p">);</span>
-<a id="__codelineno-0-22" name="__codelineno-0-22" href="#__codelineno-0-22"></a>
-<a id="__codelineno-0-23" name="__codelineno-0-23" href="#__codelineno-0-23"></a><span class="w">    </span><span class="n">cudaError_t</span><span class="w"> </span><span class="n">eAllocRoot</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">cudaMalloc</span><span class="p">(</span><span class="o">&amp;</span><span class="n">rootPtr</span><span class="p">,</span><span class="w"> </span><span class="n">BYTES</span><span class="p">);</span>
-<a id="__codelineno-0-24" name="__codelineno-0-24" href="#__codelineno-0-24"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;cudaMalloc(root&#39;s data): %s (code %d)</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">cudaGetErrorString</span><span class="p">(</span><span class="n">eAllocRoot</span><span class="p">),</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="p">)</span><span class="n">eAllocRoot</span><span class="p">);</span>
-<a id="__codelineno-0-25" name="__codelineno-0-25" href="#__codelineno-0-25"></a>
-<a id="__codelineno-0-26" name="__codelineno-0-26" href="#__codelineno-0-26"></a><span class="w">    </span><span class="kt">int</span><span class="w"> </span><span class="n">broadcastCount</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
-<a id="__codelineno-0-27" name="__codelineno-0-27" href="#__codelineno-0-27"></a><span class="w">    </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">dst</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span><span class="w"> </span><span class="n">dst</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="n">deviceCount</span><span class="p">;</span><span class="w"> </span><span class="o">++</span><span class="n">dst</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
-<a id="__codelineno-0-28" name="__codelineno-0-28" href="#__codelineno-0-28"></a><span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">dst</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="n">ROOT</span><span class="p">)</span><span class="w"> </span><span class="k">continue</span><span class="p">;</span>
-<a id="__codelineno-0-29" name="__codelineno-0-29" href="#__codelineno-0-29"></a><span class="w">        </span><span class="kt">void</span><span class="o">*</span><span class="w"> </span><span class="n">dstPtr</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nb">nullptr</span><span class="p">;</span>
-<a id="__codelineno-0-30" name="__codelineno-0-30" href="#__codelineno-0-30"></a><span class="w">        </span><span class="n">cudaError_t</span><span class="w"> </span><span class="n">eAllocDst</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">cudaMalloc</span><span class="p">(</span><span class="o">&amp;</span><span class="n">dstPtr</span><span class="p">,</span><span class="w"> </span><span class="n">BYTES</span><span class="p">);</span>
-<a id="__codelineno-0-31" name="__codelineno-0-31" href="#__codelineno-0-31"></a><span class="w">        </span><span class="n">cudaError_t</span><span class="w"> </span><span class="n">eCopy</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">cudaMemcpyPeer</span><span class="p">(</span><span class="n">dstPtr</span><span class="p">,</span><span class="w"> </span><span class="n">dst</span><span class="p">,</span><span class="w"> </span><span class="n">rootPtr</span><span class="p">,</span><span class="w"> </span><span class="n">ROOT</span><span class="p">,</span><span class="w"> </span><span class="n">BYTES</span><span class="p">);</span>
-<a id="__codelineno-0-32" name="__codelineno-0-32" href="#__codelineno-0-32"></a><span class="w">        </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;cudaMemcpyPeer(dst=dev%d, src=root=dev%d): %s (code %d)</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span>
-<a id="__codelineno-0-33" name="__codelineno-0-33" href="#__codelineno-0-33"></a><span class="w">               </span><span class="n">dst</span><span class="p">,</span><span class="w"> </span><span class="n">ROOT</span><span class="p">,</span><span class="w"> </span><span class="n">cudaGetErrorString</span><span class="p">(</span><span class="n">eCopy</span><span class="p">),</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="p">)</span><span class="n">eCopy</span><span class="p">);</span>
-<a id="__codelineno-0-34" name="__codelineno-0-34" href="#__codelineno-0-34"></a><span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">eCopy</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="n">cudaSuccess</span><span class="p">)</span><span class="w"> </span><span class="o">++</span><span class="n">broadcastCount</span><span class="p">;</span>
-<a id="__codelineno-0-35" name="__codelineno-0-35" href="#__codelineno-0-35"></a><span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">eAllocDst</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="n">cudaSuccess</span><span class="p">)</span><span class="w"> </span><span class="n">cudaFree</span><span class="p">(</span><span class="n">dstPtr</span><span class="p">);</span>
-<a id="__codelineno-0-36" name="__codelineno-0-36" href="#__codelineno-0-36"></a><span class="w">    </span><span class="p">}</span>
-<a id="__codelineno-0-37" name="__codelineno-0-37" href="#__codelineno-0-37"></a>
-<a id="__codelineno-0-38" name="__codelineno-0-38" href="#__codelineno-0-38"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;Broadcast reached %d of %d non-root device(s). On real hardware</span><span class="se">\n</span><span class="s">&quot;</span>
-<a id="__codelineno-0-39" name="__codelineno-0-39" href="#__codelineno-0-39"></a><span class="w">           </span><span class="s">&quot;this same loop -- one cudaMemcpyPeer per non-root device, all from</span><span class="se">\n</span><span class="s">&quot;</span>
-<a id="__codelineno-0-40" name="__codelineno-0-40" href="#__codelineno-0-40"></a><span class="w">           </span><span class="s">&quot;the same unchanging root pointer -- delivers an identical copy of</span><span class="se">\n</span><span class="s">&quot;</span>
-<a id="__codelineno-0-41" name="__codelineno-0-41" href="#__codelineno-0-41"></a><span class="w">           </span><span class="s">&quot;the root&#39;s data to every other device.</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">broadcastCount</span><span class="p">,</span><span class="w"> </span><span class="n">deviceCount</span><span class="w"> </span><span class="o">&gt;</span><span class="w"> </span><span class="mi">0</span><span class="w"> </span><span class="o">?</span><span class="w"> </span><span class="n">deviceCount</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="mi">1</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="mi">0</span><span class="p">);</span>
-<a id="__codelineno-0-42" name="__codelineno-0-42" href="#__codelineno-0-42"></a>
-<a id="__codelineno-0-43" name="__codelineno-0-43" href="#__codelineno-0-43"></a><span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">eAllocRoot</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="n">cudaSuccess</span><span class="p">)</span><span class="w"> </span><span class="n">cudaFree</span><span class="p">(</span><span class="n">rootPtr</span><span class="p">);</span>
-<a id="__codelineno-0-44" name="__codelineno-0-44" href="#__codelineno-0-44"></a><span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
-<a id="__codelineno-0-45" name="__codelineno-0-45" href="#__codelineno-0-45"></a><span class="p">}</span>
+<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">count</span><span class="o">=</span><span class="mi">0</span><span class="p">;</span><span class="w"> </span><span class="n">CUDA</span><span class="p">(</span><span class="n">cudaGetDeviceCount</span><span class="p">(</span><span class="o">&amp;</span><span class="n">count</span><span class="p">));</span>
+<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a><span class="w"> </span><span class="k">if</span><span class="p">(</span><span class="n">count</span><span class="o">&lt;</span><span class="mi">2</span><span class="p">){</span><span class="n">printf</span><span class="p">(</span><span class="s">"BLOCKED: requires 2 GPUs; found %d.</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span><span class="n">count</span><span class="p">);</span><span class="k">return</span><span class="w"> </span><span class="mi">2</span><span class="p">;}</span>
+<a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a><span class="w"> </span><span class="k">const</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">world</span><span class="o">=</span><span class="n">std</span><span class="o">::</span><span class="n">min</span><span class="p">(</span><span class="n">count</span><span class="p">,</span><span class="mi">4</span><span class="p">),</span><span class="w"> </span><span class="n">CHUNK</span><span class="o">=</span><span class="mi">33</span><span class="p">;</span>
+<a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a><span class="w"> </span><span class="k">const</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">n</span><span class="o">=</span><span class="mi">257</span><span class="p">,</span><span class="w"> </span><span class="n">out_n</span><span class="o">=</span><span class="mi">257</span><span class="p">;</span>
+<a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a><span class="w"> </span><span class="k">const</span><span class="w"> </span><span class="kt">size_t</span><span class="w"> </span><span class="n">bytes</span><span class="o">=</span><span class="n">n</span><span class="o">*</span><span class="k">sizeof</span><span class="p">(</span><span class="kt">int</span><span class="p">),</span><span class="w"> </span><span class="n">out_bytes</span><span class="o">=</span><span class="n">out_n</span><span class="o">*</span><span class="k">sizeof</span><span class="p">(</span><span class="kt">int</span><span class="p">);</span>
+<a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">*&gt;</span><span class="w"> </span><span class="n">send</span><span class="p">(</span><span class="n">world</span><span class="p">,</span><span class="nb">nullptr</span><span class="p">),</span><span class="n">receive</span><span class="p">(</span><span class="n">world</span><span class="p">,</span><span class="nb">nullptr</span><span class="p">);</span>
+<a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a><span class="w"> </span><span class="k">for</span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">rank</span><span class="o">=</span><span class="mi">0</span><span class="p">;</span><span class="n">rank</span><span class="o">&lt;</span><span class="n">world</span><span class="p">;</span><span class="o">++</span><span class="n">rank</span><span class="p">){</span>
+<a id="__codelineno-0-19" name="__codelineno-0-19" href="#__codelineno-0-19"></a><span class="w">  </span><span class="n">CUDA</span><span class="p">(</span><span class="n">cudaSetDevice</span><span class="p">(</span><span class="n">rank</span><span class="p">));</span><span class="n">CUDA</span><span class="p">(</span><span class="n">cudaMalloc</span><span class="p">(</span><span class="o">&amp;</span><span class="n">send</span><span class="p">[</span><span class="n">rank</span><span class="p">],</span><span class="n">bytes</span><span class="p">));</span><span class="n">CUDA</span><span class="p">(</span><span class="n">cudaMalloc</span><span class="p">(</span><span class="o">&amp;</span><span class="n">receive</span><span class="p">[</span><span class="n">rank</span><span class="p">],</span><span class="n">out_bytes</span><span class="p">));</span>
+<a id="__codelineno-0-20" name="__codelineno-0-20" href="#__codelineno-0-20"></a><span class="w">  </span><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span><span class="w"> </span><span class="n">input</span><span class="p">(</span><span class="n">n</span><span class="p">);</span><span class="k">for</span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">i</span><span class="o">=</span><span class="mi">0</span><span class="p">;</span><span class="n">i</span><span class="o">&lt;</span><span class="n">n</span><span class="p">;</span><span class="o">++</span><span class="n">i</span><span class="p">)</span><span class="n">input</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">=</span><span class="n">pattern</span><span class="p">(</span><span class="n">rank</span><span class="p">,</span><span class="n">i</span><span class="p">);</span>
+<a id="__codelineno-0-21" name="__codelineno-0-21" href="#__codelineno-0-21"></a><span class="w">  </span><span class="n">CUDA</span><span class="p">(</span><span class="n">cudaMemcpy</span><span class="p">(</span><span class="n">send</span><span class="p">[</span><span class="n">rank</span><span class="p">],</span><span class="n">input</span><span class="p">.</span><span class="n">data</span><span class="p">(),</span><span class="n">bytes</span><span class="p">,</span><span class="n">cudaMemcpyHostToDevice</span><span class="p">));</span><span class="n">CUDA</span><span class="p">(</span><span class="n">cudaMemset</span><span class="p">(</span><span class="n">receive</span><span class="p">[</span><span class="n">rank</span><span class="p">],</span><span class="mh">0xff</span><span class="p">,</span><span class="n">out_bytes</span><span class="p">));</span>
+<a id="__codelineno-0-22" name="__codelineno-0-22" href="#__codelineno-0-22"></a><span class="w"> </span><span class="p">}</span>
+<a id="__codelineno-0-23" name="__codelineno-0-23" href="#__codelineno-0-23"></a><span class="w"> </span><span class="k">for</span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">dst</span><span class="o">=</span><span class="mi">0</span><span class="p">;</span><span class="n">dst</span><span class="o">&lt;</span><span class="n">world</span><span class="p">;</span><span class="o">++</span><span class="n">dst</span><span class="p">){</span><span class="n">CUDA</span><span class="p">(</span><span class="n">cudaSetDevice</span><span class="p">(</span><span class="n">dst</span><span class="p">));</span>
+<a id="__codelineno-0-24" name="__codelineno-0-24" href="#__codelineno-0-24"></a><span class="w"> </span><span class="k">if</span><span class="p">(</span><span class="n">dst</span><span class="o">==</span><span class="mi">0</span><span class="p">)</span><span class="n">CUDA</span><span class="p">(</span><span class="n">cudaMemcpy</span><span class="p">(</span><span class="n">receive</span><span class="p">[</span><span class="n">dst</span><span class="p">],</span><span class="n">send</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span><span class="n">bytes</span><span class="p">,</span><span class="n">cudaMemcpyDeviceToDevice</span><span class="p">));</span>
+<a id="__codelineno-0-25" name="__codelineno-0-25" href="#__codelineno-0-25"></a><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="n">CUDA</span><span class="p">(</span><span class="n">cudaMemcpyPeer</span><span class="p">(</span><span class="n">receive</span><span class="p">[</span><span class="n">dst</span><span class="p">],</span><span class="n">dst</span><span class="p">,</span><span class="n">send</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span><span class="mi">0</span><span class="p">,</span><span class="n">bytes</span><span class="p">));}</span>
+<a id="__codelineno-0-26" name="__codelineno-0-26" href="#__codelineno-0-26"></a><span class="w"> </span><span class="k">for</span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">rank</span><span class="o">=</span><span class="mi">0</span><span class="p">;</span><span class="n">rank</span><span class="o">&lt;</span><span class="n">world</span><span class="p">;</span><span class="o">++</span><span class="n">rank</span><span class="p">){</span><span class="n">CUDA</span><span class="p">(</span><span class="n">cudaSetDevice</span><span class="p">(</span><span class="n">rank</span><span class="p">));</span><span class="n">CUDA</span><span class="p">(</span><span class="n">cudaDeviceSynchronize</span><span class="p">());}</span>
+<a id="__codelineno-0-27" name="__codelineno-0-27" href="#__codelineno-0-27"></a><span class="w"> </span><span class="k">for</span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">rank</span><span class="o">=</span><span class="mi">0</span><span class="p">;</span><span class="n">rank</span><span class="o">&lt;</span><span class="n">world</span><span class="p">;</span><span class="o">++</span><span class="n">rank</span><span class="p">){</span><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span><span class="w"> </span><span class="n">output</span><span class="p">(</span><span class="n">out_n</span><span class="p">);</span><span class="n">CUDA</span><span class="p">(</span><span class="n">cudaSetDevice</span><span class="p">(</span><span class="n">rank</span><span class="p">));</span><span class="n">CUDA</span><span class="p">(</span><span class="n">cudaMemcpy</span><span class="p">(</span><span class="n">output</span><span class="p">.</span><span class="n">data</span><span class="p">(),</span><span class="n">receive</span><span class="p">[</span><span class="n">rank</span><span class="p">],</span><span class="n">out_bytes</span><span class="p">,</span><span class="n">cudaMemcpyDeviceToHost</span><span class="p">));</span><span class="k">for</span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">i</span><span class="o">=</span><span class="mi">0</span><span class="p">;</span><span class="n">i</span><span class="o">&lt;</span><span class="n">out_n</span><span class="p">;</span><span class="o">++</span><span class="n">i</span><span class="p">){</span><span class="kt">int</span><span class="w"> </span><span class="n">expected</span><span class="o">=</span><span class="n">pattern</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="n">i</span><span class="p">);</span><span class="k">if</span><span class="p">(</span><span class="n">output</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">!=</span><span class="n">expected</span><span class="p">){</span><span class="n">fprintf</span><span class="p">(</span><span class="n">stderr</span><span class="p">,</span><span class="s">"FAIL rank %d output[%d]: %d expected %d</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span><span class="n">rank</span><span class="p">,</span><span class="n">i</span><span class="p">,</span><span class="n">output</span><span class="p">[</span><span class="n">i</span><span class="p">],</span><span class="n">expected</span><span class="p">);</span><span class="k">return</span><span class="w"> </span><span class="mi">1</span><span class="p">;}}}</span>
+<a id="__codelineno-0-28" name="__codelineno-0-28" href="#__codelineno-0-28"></a><span class="w"> </span><span class="k">for</span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">rank</span><span class="o">=</span><span class="mi">0</span><span class="p">;</span><span class="n">rank</span><span class="o">&lt;</span><span class="n">world</span><span class="p">;</span><span class="o">++</span><span class="n">rank</span><span class="p">){</span><span class="n">CUDA</span><span class="p">(</span><span class="n">cudaSetDevice</span><span class="p">(</span><span class="n">rank</span><span class="p">));</span><span class="n">CUDA</span><span class="p">(</span><span class="n">cudaFree</span><span class="p">(</span><span class="n">send</span><span class="p">[</span><span class="n">rank</span><span class="p">]));</span><span class="n">CUDA</span><span class="p">(</span><span class="n">cudaFree</span><span class="p">(</span><span class="n">receive</span><span class="p">[</span><span class="n">rank</span><span class="p">]));}</span>
+<a id="__codelineno-0-29" name="__codelineno-0-29" href="#__codelineno-0-29"></a><span class="w"> </span><span class="n">printf</span><span class="p">(</span><span class="s">"PASS: broadcast on %d GPUs, all nonuniform output values checked.</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span><span class="n">world</span><span class="p">);</span>
+<a id="__codelineno-0-30" name="__codelineno-0-30" href="#__codelineno-0-30"></a><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
+<a id="__codelineno-0-31" name="__codelineno-0-31" href="#__codelineno-0-31"></a><span class="p">}</span>
 </code></pre></div>
-<p>Genuinely compiled with a real <code>nvcc</code> and genuinely run. Locked output, deterministic across repeated runs:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>cudaGetDeviceCount(): 0 device(s).
-<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>cudaSetDevice(root=0): no CUDA-capable device is detected (code 100)
-<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>cudaMalloc(root&#39;s data): no CUDA-capable device is detected (code 100)
-<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>Broadcast reached 0 of 0 non-root device(s). On real hardware
-<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>this same loop -- one cudaMemcpyPeer per non-root device, all from
-<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>the same unchanging root pointer -- delivers an identical copy of
-<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>the root&#39;s data to every other device.
+<!-- execution:start:a100:20_broadcast_by_hand.cu -->
+<blockquote>
+<p><strong>Current execution — 2026-11-17-a100: Numerical/transport validation (recorded scope).</strong> UTC (program start): <code>2026-11-18T00:01:09.174909+00:00</code>. Source SHA-256: <code>b4f21489e3581a967b24259f6387068c0b98a38ac1ac98ae519b622d4f065433</code>.</p>
+</blockquote>
+<p><a href="../../validation/2026-11-17-a100/20_broadcast_by_hand/20_broadcast_by_hand.cu">Exact tested source</a> · <a href="../../validation/2026-11-17-a100/20_broadcast_by_hand/compile.log">Compiler log</a> · <a href="../../validation/2026-11-17-a100/20_broadcast_by_hand/run.log">Execution log</a>. Compile exit: <code>0</code>; run exit: <code>0</code>.</p>
+<p>Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>nvcc<span class="w"> </span>-std<span class="o">=</span>c++17<span class="w"> </span>-O2<span class="w"> </span>-arch<span class="o">=</span>sm_80<span class="w"> </span>20_broadcast_by_hand.cu<span class="w"> </span>-o<span class="w"> </span>./example
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>./example
 </code></pre></div>
-<p>With zero reported devices, the broadcast loop has nothing to iterate over, and the two setup calls fail with the same honest <code>cudaErrorNoDevice</code> this book has reported since Chapter 1. What this section verifies genuinely is the real call sequence -- correctly compiled, correctly structured as a loop over every non-root device -- that a real broadcast implementation uses; Section 8.3 is where this book can actually check the <em>result</em> is correct, using its simulation technique.</p>
+<details>
+<summary>Captured current-source output</summary>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>PASS: broadcast on 4 GPUs, all nonuniform output values checked.
+</code></pre></div>
+</details>
+<!-- execution:end:a100:20_broadcast_by_hand.cu -->
+
+<!-- execution:start:h100:20_broadcast_by_hand.cu -->
+<blockquote>
+<p><strong>Current execution — 2026-11-17-h100: Numerical/transport validation (recorded scope).</strong> UTC (run-batch start; per-program time unrecorded): <code>2026-11-17T23:48:18.967387+00:00</code>. Source SHA-256: <code>b4f21489e3581a967b24259f6387068c0b98a38ac1ac98ae519b622d4f065433</code>.</p>
+</blockquote>
+<p><a href="../../validation/2026-11-17-h100/20_broadcast_by_hand/20_broadcast_by_hand.cu">Exact tested source</a> · <a href="../../validation/2026-11-17-h100/20_broadcast_by_hand/compile.log">Compiler log</a> · <a href="../../validation/2026-11-17-h100/20_broadcast_by_hand/run.log">Execution log</a>. Compile exit: <code>0</code>; run exit: <code>0</code>.</p>
+<p>Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>nvcc<span class="w"> </span>-std<span class="o">=</span>c++17<span class="w"> </span>-O2<span class="w"> </span>-arch<span class="o">=</span>sm_90<span class="w"> </span>20_broadcast_by_hand.cu<span class="w"> </span>-o<span class="w"> </span>./example
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>./example
+</code></pre></div>
+<details>
+<summary>Captured current-source output</summary>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>PASS: broadcast on 2 GPUs, all nonuniform output values checked.
+</code></pre></div>
+</details>
+<!-- execution:end:h100:20_broadcast_by_hand.cu -->
+
+<p><strong>Current-source scope:</strong> Real device buffers implement broadcast; integer reference checks every output. Host-staged reductions deliberately use CPU arithmetic and are not GPU reduction kernels. The current source was compiled and executed in the dated H100 suite; use the linked record for its numerical, API-probe or other-execution scope. The output below is retained from the earlier authoring diagnostic and is not evidence for this replacement source.</p>
+<p>The <a href="../../validation-h100/">2026-11-17 H100 execution record</a> covers two GPUs connected by local NV18. It distinguishes numerical checks, API probes and other executions; a successful exit alone does not establish GPU algorithm correctness.</p>
+<details>
+<summary>Historical authoring output — superseded by the current execution above</summary>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>cudaGetDeviceCount(): 0 device(s).
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>cudaSetDevice(root=0): no CUDA-capable device is detected (code 100)
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>cudaMalloc(root's data): no CUDA-capable device is detected (code 100)
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>Broadcast reached 0 of 0 non-root device(s). On real hardware
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>this same loop -- one cudaMemcpyPeer per non-root device, all from
+<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>the same unchanging root pointer -- delivers an identical copy of
+<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a>the root's data to every other device.
+</code></pre></div>
+</details>
+<p>File 20 initializes nonuniform data, broadcasts over real GPU transport and checks destination values in the H100 run. The simulation below independently checks the modeled broadcast logic for its stated cases.</p>
+<p>The <a href="../../validation-h100/">2026-11-17 H100 execution record</a> covers two GPUs connected by local NV18. It distinguishes numerical checks, API probes and other executions; a successful exit alone does not establish GPU algorithm correctness.</p>
 <div class="admonition warning">
 <p class="admonition-title">[COMMON TRAP] Reading the root's data fresh inside the loop, 'just to be safe'</p>
 <p>Because the root's buffer never changes during a broadcast, re-reading or re-validating it on each loop iteration adds nothing -- every iteration is copying from the exact same source state as every other. The risk runs the other direction: if something <em>were</em> allowed to modify the root's buffer partway through the loop (another stream writing to it concurrently, say), different non-root devices could end up with different versions of "the root's data," silently breaking the one guarantee a broadcast exists to provide. The fix isn't re-reading defensively inside the loop -- it's making sure nothing else can write to the root's buffer for the duration of the broadcast in the first place.</p>
 </div>
 <h2 id="82-reduce-by-hand-many-to-one-order-independent-by-design">8.2 Reduce, By Hand: Many-to-One, Order-Independent by Design<a class="headerlink" href="#82-reduce-by-hand-many-to-one-order-independent-by-design" title="Permanent link">&para;</a></h2>
+<!-- mgpu:figure-2:start -->
+<p><a href="../../images/technical/ch08/2-reduce.svg"><img alt="Reduce combines at one root" src="../../images/technical/ch08/2-reduce.svg" /></a></p>
+<!-- mgpu:figure-2:end -->
+
 <h3 id="intuition_1">Intuition<a class="headerlink" href="#intuition_1" title="Permanent link">&para;</a></h3>
 <p>Reduce is broadcast's mirror image: instead of one device's data reaching everyone, every device's data has to be combined into one result. Without a device-side kernel to do the combining on-GPU, the most direct way to build this by hand is to bring each device's data to the host, one at a time, and accumulate it there -- exactly the staged-transfer pattern Chapter 5 already introduced, just called once per device in a loop, with an accumulator standing in for the collective's combining operation.</p>
 <h3 id="background_1">Background<a class="headerlink" href="#background_1" title="Permanent link">&para;</a></h3>
-<p>The loop stages each device's buffer to the host with an ordinary <code>cudaMemcpy(..., cudaMemcpyDeviceToHost)</code>, then adds it, element by element, into a running host-side accumulator. Nothing here needs a device kernel: the accumulation itself is plain host arithmetic, run once per device, and the combining operation -- sum, in this section's code -- is entirely a property of what the accumulator does with each staged buffer, not of the transfer mechanism itself. A different combining operation (max, say, or a bitwise AND) would only change one line of host code; the transfer loop around it stays identical.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="c1">// Chapter 8: Broadcast and Reduce -- The First Two Collectives, By Hand</span>
-<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="c1">// 21_reduce_by_hand.cu</span>
-<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="c1">//</span>
-<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="c1">// A reduce, written by hand: stage each device&#39;s buffer to the host</span>
-<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="c1">// and accumulate there, one device at a time. Genuinely compiled with</span>
-<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a><span class="c1">// a real nvcc and genuinely run.</span>
-<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;cstdio&gt;</span>
-<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;cuda_runtime.h&gt;</span>
-<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a>
-<a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a><span class="kt">int</span><span class="w"> </span><span class="nf">main</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
-<a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a><span class="w">    </span><span class="kt">int</span><span class="w"> </span><span class="n">deviceCount</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
-<a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a><span class="w">    </span><span class="n">cudaGetDeviceCount</span><span class="p">(</span><span class="o">&amp;</span><span class="n">deviceCount</span><span class="p">);</span>
-<a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;cudaGetDeviceCount(): %d device(s).</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">deviceCount</span><span class="p">);</span>
-<a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a>
-<a id="__codelineno-2-15" name="__codelineno-2-15" href="#__codelineno-2-15"></a><span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="kt">size_t</span><span class="w"> </span><span class="n">N_INTS</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">4</span><span class="p">;</span>
-<a id="__codelineno-2-16" name="__codelineno-2-16" href="#__codelineno-2-16"></a><span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="kt">size_t</span><span class="w"> </span><span class="n">BYTES</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">N_INTS</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="k">sizeof</span><span class="p">(</span><span class="kt">int</span><span class="p">);</span>
-<a id="__codelineno-2-17" name="__codelineno-2-17" href="#__codelineno-2-17"></a>
-<a id="__codelineno-2-18" name="__codelineno-2-18" href="#__codelineno-2-18"></a><span class="w">    </span><span class="kt">long</span><span class="w"> </span><span class="kt">long</span><span class="w"> </span><span class="n">accumulator</span><span class="p">[</span><span class="n">N_INTS</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">};</span>
-<a id="__codelineno-2-19" name="__codelineno-2-19" href="#__codelineno-2-19"></a><span class="w">    </span><span class="kt">int</span><span class="w"> </span><span class="n">hostStaging</span><span class="p">[</span><span class="n">N_INTS</span><span class="p">];</span>
-<a id="__codelineno-2-20" name="__codelineno-2-20" href="#__codelineno-2-20"></a>
-<a id="__codelineno-2-21" name="__codelineno-2-21" href="#__codelineno-2-21"></a><span class="w">    </span><span class="kt">int</span><span class="w"> </span><span class="n">devicesReduced</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
-<a id="__codelineno-2-22" name="__codelineno-2-22" href="#__codelineno-2-22"></a><span class="w">    </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">src</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span><span class="w"> </span><span class="n">src</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="n">deviceCount</span><span class="p">;</span><span class="w"> </span><span class="o">++</span><span class="n">src</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
-<a id="__codelineno-2-23" name="__codelineno-2-23" href="#__codelineno-2-23"></a><span class="w">        </span><span class="kt">void</span><span class="o">*</span><span class="w"> </span><span class="n">devPtr</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nb">nullptr</span><span class="p">;</span>
-<a id="__codelineno-2-24" name="__codelineno-2-24" href="#__codelineno-2-24"></a><span class="w">        </span><span class="n">cudaError_t</span><span class="w"> </span><span class="n">eAlloc</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">cudaMalloc</span><span class="p">(</span><span class="o">&amp;</span><span class="n">devPtr</span><span class="p">,</span><span class="w"> </span><span class="n">BYTES</span><span class="p">);</span>
-<a id="__codelineno-2-25" name="__codelineno-2-25" href="#__codelineno-2-25"></a><span class="w">        </span><span class="n">cudaError_t</span><span class="w"> </span><span class="n">eCopy</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">cudaMemcpy</span><span class="p">(</span><span class="n">hostStaging</span><span class="p">,</span><span class="w"> </span><span class="n">devPtr</span><span class="p">,</span><span class="w"> </span><span class="n">BYTES</span><span class="p">,</span><span class="w"> </span><span class="n">cudaMemcpyDeviceToHost</span><span class="p">);</span>
-<a id="__codelineno-2-26" name="__codelineno-2-26" href="#__codelineno-2-26"></a><span class="w">        </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;cudaMemcpy(device %d -&gt; host staging, for accumulation): %s (code %d)</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span>
-<a id="__codelineno-2-27" name="__codelineno-2-27" href="#__codelineno-2-27"></a><span class="w">               </span><span class="n">src</span><span class="p">,</span><span class="w"> </span><span class="n">cudaGetErrorString</span><span class="p">(</span><span class="n">eCopy</span><span class="p">),</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="p">)</span><span class="n">eCopy</span><span class="p">);</span>
-<a id="__codelineno-2-28" name="__codelineno-2-28" href="#__codelineno-2-28"></a><span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">eCopy</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="n">cudaSuccess</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
-<a id="__codelineno-2-29" name="__codelineno-2-29" href="#__codelineno-2-29"></a><span class="w">            </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="kt">size_t</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="n">N_INTS</span><span class="p">;</span><span class="w"> </span><span class="o">++</span><span class="n">i</span><span class="p">)</span><span class="w"> </span><span class="n">accumulator</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="w"> </span><span class="o">+=</span><span class="w"> </span><span class="n">hostStaging</span><span class="p">[</span><span class="n">i</span><span class="p">];</span>
-<a id="__codelineno-2-30" name="__codelineno-2-30" href="#__codelineno-2-30"></a><span class="w">            </span><span class="o">++</span><span class="n">devicesReduced</span><span class="p">;</span>
-<a id="__codelineno-2-31" name="__codelineno-2-31" href="#__codelineno-2-31"></a><span class="w">        </span><span class="p">}</span>
-<a id="__codelineno-2-32" name="__codelineno-2-32" href="#__codelineno-2-32"></a><span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">eAlloc</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="n">cudaSuccess</span><span class="p">)</span><span class="w"> </span><span class="n">cudaFree</span><span class="p">(</span><span class="n">devPtr</span><span class="p">);</span>
-<a id="__codelineno-2-33" name="__codelineno-2-33" href="#__codelineno-2-33"></a><span class="w">    </span><span class="p">}</span>
-<a id="__codelineno-2-34" name="__codelineno-2-34" href="#__codelineno-2-34"></a>
-<a id="__codelineno-2-35" name="__codelineno-2-35" href="#__codelineno-2-35"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;Reduced %d of %d device(s) into the host accumulator. On real</span><span class="se">\n</span><span class="s">&quot;</span>
-<a id="__codelineno-2-36" name="__codelineno-2-36" href="#__codelineno-2-36"></a><span class="w">           </span><span class="s">&quot;hardware this same per-device stage-then-accumulate loop produces</span><span class="se">\n</span><span class="s">&quot;</span>
-<a id="__codelineno-2-37" name="__codelineno-2-37" href="#__codelineno-2-37"></a><span class="w">           </span><span class="s">&quot;the elementwise sum across every device&#39;s buffer -- the reduce</span><span class="se">\n</span><span class="s">&quot;</span>
-<a id="__codelineno-2-38" name="__codelineno-2-38" href="#__codelineno-2-38"></a><span class="w">           </span><span class="s">&quot;collective&#39;s defining result, computed here entirely on the host</span><span class="se">\n</span><span class="s">&quot;</span>
-<a id="__codelineno-2-39" name="__codelineno-2-39" href="#__codelineno-2-39"></a><span class="w">           </span><span class="s">&quot;since no device kernel is needed for the accumulation step.</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span>
-<a id="__codelineno-2-40" name="__codelineno-2-40" href="#__codelineno-2-40"></a><span class="w">           </span><span class="n">devicesReduced</span><span class="p">,</span><span class="w"> </span><span class="n">deviceCount</span><span class="p">);</span>
-<a id="__codelineno-2-41" name="__codelineno-2-41" href="#__codelineno-2-41"></a>
-<a id="__codelineno-2-42" name="__codelineno-2-42" href="#__codelineno-2-42"></a><span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
-<a id="__codelineno-2-43" name="__codelineno-2-43" href="#__codelineno-2-43"></a><span class="p">}</span>
+<p>The loop first makes the source device current with <code>cudaSetDevice(src)</code> (Chapter 3's rule -- without it, every iteration would allocate and read on device 0), then stages that device's buffer to the host with an ordinary <code>cudaMemcpy(..., cudaMemcpyDeviceToHost)</code>, and adds it, element by element, into a running host-side accumulator. Nothing here needs a device kernel: the accumulation itself is plain host arithmetic, run once per device, and the combining operation -- sum, in this section's code -- is entirely a property of what the accumulator does with each staged buffer, not of the transfer mechanism itself. A different combining operation (max, say, or a bitwise AND) would only change one line of host code; the transfer loop around it stays identical.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="c1">// 21_reduce_by_hand.cu</span>
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="c1">// Checked teaching implementation; serial host scheduling favors clarity, not speed.</span>
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;cstdio&gt;</span>
+<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;vector&gt;</span>
+<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;algorithm&gt;</span>
+<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;cuda_runtime.h&gt;</span>
+<a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a><span class="cp">#define CUDA(call) do { cudaError_t status = (call); if (status != cudaSuccess) { \</span>
+<a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a><span class="cp"> fprintf(stderr,"%s: %s\n",#call,cudaGetErrorString(status)); \</span>
+<a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a><span class="cp"> return status==cudaErrorNoDevice || status==cudaErrorInsufficientDriver ? 2 : 1; } } while(0)</span>
+<a id="__codelineno-6-10" name="__codelineno-6-10" href="#__codelineno-6-10"></a><span class="k">static</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="nf">pattern</span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">rank</span><span class="p">,</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">i</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="n">rank</span><span class="o">*</span><span class="mi">1000</span><span class="o">+</span><span class="n">i</span><span class="o">*</span><span class="mi">3</span><span class="o">+</span><span class="n">i</span><span class="o">%</span><span class="mi">7</span><span class="p">;</span><span class="w"> </span><span class="p">}</span>
+<a id="__codelineno-6-11" name="__codelineno-6-11" href="#__codelineno-6-11"></a><span class="kt">int</span><span class="w"> </span><span class="nf">main</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-6-12" name="__codelineno-6-12" href="#__codelineno-6-12"></a><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">count</span><span class="o">=</span><span class="mi">0</span><span class="p">;</span><span class="w"> </span><span class="n">CUDA</span><span class="p">(</span><span class="n">cudaGetDeviceCount</span><span class="p">(</span><span class="o">&amp;</span><span class="n">count</span><span class="p">));</span>
+<a id="__codelineno-6-13" name="__codelineno-6-13" href="#__codelineno-6-13"></a><span class="w"> </span><span class="k">if</span><span class="p">(</span><span class="n">count</span><span class="o">&lt;</span><span class="mi">2</span><span class="p">){</span><span class="n">printf</span><span class="p">(</span><span class="s">"BLOCKED: requires 2 GPUs; found %d.</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span><span class="n">count</span><span class="p">);</span><span class="k">return</span><span class="w"> </span><span class="mi">2</span><span class="p">;}</span>
+<a id="__codelineno-6-14" name="__codelineno-6-14" href="#__codelineno-6-14"></a><span class="w"> </span><span class="k">const</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">world</span><span class="o">=</span><span class="n">std</span><span class="o">::</span><span class="n">min</span><span class="p">(</span><span class="n">count</span><span class="p">,</span><span class="mi">4</span><span class="p">),</span><span class="w"> </span><span class="n">CHUNK</span><span class="o">=</span><span class="mi">33</span><span class="p">;</span>
+<a id="__codelineno-6-15" name="__codelineno-6-15" href="#__codelineno-6-15"></a><span class="w"> </span><span class="k">const</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">n</span><span class="o">=</span><span class="mi">257</span><span class="p">,</span><span class="w"> </span><span class="n">out_n</span><span class="o">=</span><span class="mi">257</span><span class="p">;</span>
+<a id="__codelineno-6-16" name="__codelineno-6-16" href="#__codelineno-6-16"></a><span class="w"> </span><span class="k">const</span><span class="w"> </span><span class="kt">size_t</span><span class="w"> </span><span class="n">bytes</span><span class="o">=</span><span class="n">n</span><span class="o">*</span><span class="k">sizeof</span><span class="p">(</span><span class="kt">int</span><span class="p">),</span><span class="w"> </span><span class="n">out_bytes</span><span class="o">=</span><span class="n">out_n</span><span class="o">*</span><span class="k">sizeof</span><span class="p">(</span><span class="kt">int</span><span class="p">);</span>
+<a id="__codelineno-6-17" name="__codelineno-6-17" href="#__codelineno-6-17"></a><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">*&gt;</span><span class="w"> </span><span class="n">send</span><span class="p">(</span><span class="n">world</span><span class="p">,</span><span class="nb">nullptr</span><span class="p">),</span><span class="n">receive</span><span class="p">(</span><span class="n">world</span><span class="p">,</span><span class="nb">nullptr</span><span class="p">);</span>
+<a id="__codelineno-6-18" name="__codelineno-6-18" href="#__codelineno-6-18"></a><span class="w"> </span><span class="k">for</span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">rank</span><span class="o">=</span><span class="mi">0</span><span class="p">;</span><span class="n">rank</span><span class="o">&lt;</span><span class="n">world</span><span class="p">;</span><span class="o">++</span><span class="n">rank</span><span class="p">){</span>
+<a id="__codelineno-6-19" name="__codelineno-6-19" href="#__codelineno-6-19"></a><span class="w">  </span><span class="n">CUDA</span><span class="p">(</span><span class="n">cudaSetDevice</span><span class="p">(</span><span class="n">rank</span><span class="p">));</span><span class="n">CUDA</span><span class="p">(</span><span class="n">cudaMalloc</span><span class="p">(</span><span class="o">&amp;</span><span class="n">send</span><span class="p">[</span><span class="n">rank</span><span class="p">],</span><span class="n">bytes</span><span class="p">));</span><span class="n">CUDA</span><span class="p">(</span><span class="n">cudaMalloc</span><span class="p">(</span><span class="o">&amp;</span><span class="n">receive</span><span class="p">[</span><span class="n">rank</span><span class="p">],</span><span class="n">out_bytes</span><span class="p">));</span>
+<a id="__codelineno-6-20" name="__codelineno-6-20" href="#__codelineno-6-20"></a><span class="w">  </span><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span><span class="w"> </span><span class="n">input</span><span class="p">(</span><span class="n">n</span><span class="p">);</span><span class="k">for</span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">i</span><span class="o">=</span><span class="mi">0</span><span class="p">;</span><span class="n">i</span><span class="o">&lt;</span><span class="n">n</span><span class="p">;</span><span class="o">++</span><span class="n">i</span><span class="p">)</span><span class="n">input</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">=</span><span class="n">pattern</span><span class="p">(</span><span class="n">rank</span><span class="p">,</span><span class="n">i</span><span class="p">);</span>
+<a id="__codelineno-6-21" name="__codelineno-6-21" href="#__codelineno-6-21"></a><span class="w">  </span><span class="n">CUDA</span><span class="p">(</span><span class="n">cudaMemcpy</span><span class="p">(</span><span class="n">send</span><span class="p">[</span><span class="n">rank</span><span class="p">],</span><span class="n">input</span><span class="p">.</span><span class="n">data</span><span class="p">(),</span><span class="n">bytes</span><span class="p">,</span><span class="n">cudaMemcpyHostToDevice</span><span class="p">));</span><span class="n">CUDA</span><span class="p">(</span><span class="n">cudaMemset</span><span class="p">(</span><span class="n">receive</span><span class="p">[</span><span class="n">rank</span><span class="p">],</span><span class="mh">0xff</span><span class="p">,</span><span class="n">out_bytes</span><span class="p">));</span>
+<a id="__codelineno-6-22" name="__codelineno-6-22" href="#__codelineno-6-22"></a><span class="w"> </span><span class="p">}</span>
+<a id="__codelineno-6-23" name="__codelineno-6-23" href="#__codelineno-6-23"></a><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span><span class="w"> </span><span class="n">sum</span><span class="p">(</span><span class="n">n</span><span class="p">,</span><span class="mi">0</span><span class="p">),</span><span class="w"> </span><span class="n">staging</span><span class="p">(</span><span class="n">n</span><span class="p">);</span>
+<a id="__codelineno-6-24" name="__codelineno-6-24" href="#__codelineno-6-24"></a><span class="w"> </span><span class="k">for</span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">rank</span><span class="o">=</span><span class="mi">0</span><span class="p">;</span><span class="n">rank</span><span class="o">&lt;</span><span class="n">world</span><span class="p">;</span><span class="o">++</span><span class="n">rank</span><span class="p">){</span><span class="n">CUDA</span><span class="p">(</span><span class="n">cudaSetDevice</span><span class="p">(</span><span class="n">rank</span><span class="p">));</span><span class="n">CUDA</span><span class="p">(</span><span class="n">cudaMemcpy</span><span class="p">(</span><span class="n">staging</span><span class="p">.</span><span class="n">data</span><span class="p">(),</span><span class="n">send</span><span class="p">[</span><span class="n">rank</span><span class="p">],</span><span class="n">bytes</span><span class="p">,</span><span class="n">cudaMemcpyDeviceToHost</span><span class="p">));</span><span class="k">for</span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">i</span><span class="o">=</span><span class="mi">0</span><span class="p">;</span><span class="n">i</span><span class="o">&lt;</span><span class="n">n</span><span class="p">;</span><span class="o">++</span><span class="n">i</span><span class="p">)</span><span class="n">sum</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">+=</span><span class="n">staging</span><span class="p">[</span><span class="n">i</span><span class="p">];}</span>
+<a id="__codelineno-6-25" name="__codelineno-6-25" href="#__codelineno-6-25"></a><span class="w"> </span><span class="n">CUDA</span><span class="p">(</span><span class="n">cudaSetDevice</span><span class="p">(</span><span class="mi">0</span><span class="p">));</span><span class="n">CUDA</span><span class="p">(</span><span class="n">cudaMemcpy</span><span class="p">(</span><span class="n">receive</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span><span class="n">sum</span><span class="p">.</span><span class="n">data</span><span class="p">(),</span><span class="n">out_bytes</span><span class="p">,</span><span class="n">cudaMemcpyHostToDevice</span><span class="p">));</span>
+<a id="__codelineno-6-26" name="__codelineno-6-26" href="#__codelineno-6-26"></a><span class="w"> </span><span class="k">for</span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">rank</span><span class="o">=</span><span class="mi">0</span><span class="p">;</span><span class="n">rank</span><span class="o">&lt;</span><span class="n">world</span><span class="p">;</span><span class="o">++</span><span class="n">rank</span><span class="p">){</span><span class="n">CUDA</span><span class="p">(</span><span class="n">cudaSetDevice</span><span class="p">(</span><span class="n">rank</span><span class="p">));</span><span class="n">CUDA</span><span class="p">(</span><span class="n">cudaDeviceSynchronize</span><span class="p">());}</span>
+<a id="__codelineno-6-27" name="__codelineno-6-27" href="#__codelineno-6-27"></a><span class="w"> </span><span class="k">for</span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">rank</span><span class="o">=</span><span class="mi">0</span><span class="p">;</span><span class="n">rank</span><span class="o">&lt;</span><span class="mi">1</span><span class="p">;</span><span class="o">++</span><span class="n">rank</span><span class="p">){</span><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span><span class="w"> </span><span class="n">output</span><span class="p">(</span><span class="n">out_n</span><span class="p">);</span><span class="n">CUDA</span><span class="p">(</span><span class="n">cudaSetDevice</span><span class="p">(</span><span class="n">rank</span><span class="p">));</span><span class="n">CUDA</span><span class="p">(</span><span class="n">cudaMemcpy</span><span class="p">(</span><span class="n">output</span><span class="p">.</span><span class="n">data</span><span class="p">(),</span><span class="n">receive</span><span class="p">[</span><span class="n">rank</span><span class="p">],</span><span class="n">out_bytes</span><span class="p">,</span><span class="n">cudaMemcpyDeviceToHost</span><span class="p">));</span><span class="k">for</span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">i</span><span class="o">=</span><span class="mi">0</span><span class="p">;</span><span class="n">i</span><span class="o">&lt;</span><span class="n">out_n</span><span class="p">;</span><span class="o">++</span><span class="n">i</span><span class="p">){</span><span class="kt">int</span><span class="w"> </span><span class="n">expected</span><span class="o">=</span><span class="mi">1000</span><span class="o">*</span><span class="n">world</span><span class="o">*</span><span class="p">(</span><span class="n">world</span><span class="mi">-1</span><span class="p">)</span><span class="o">/</span><span class="mi">2</span><span class="o">+</span><span class="n">world</span><span class="o">*</span><span class="p">(</span><span class="n">i</span><span class="o">*</span><span class="mi">3</span><span class="o">+</span><span class="n">i</span><span class="o">%</span><span class="mi">7</span><span class="p">);</span><span class="k">if</span><span class="p">(</span><span class="n">output</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">!=</span><span class="n">expected</span><span class="p">){</span><span class="n">fprintf</span><span class="p">(</span><span class="n">stderr</span><span class="p">,</span><span class="s">"FAIL rank %d output[%d]: %d expected %d</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span><span class="n">rank</span><span class="p">,</span><span class="n">i</span><span class="p">,</span><span class="n">output</span><span class="p">[</span><span class="n">i</span><span class="p">],</span><span class="n">expected</span><span class="p">);</span><span class="k">return</span><span class="w"> </span><span class="mi">1</span><span class="p">;}}}</span>
+<a id="__codelineno-6-28" name="__codelineno-6-28" href="#__codelineno-6-28"></a><span class="w"> </span><span class="k">for</span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">rank</span><span class="o">=</span><span class="mi">0</span><span class="p">;</span><span class="n">rank</span><span class="o">&lt;</span><span class="n">world</span><span class="p">;</span><span class="o">++</span><span class="n">rank</span><span class="p">){</span><span class="n">CUDA</span><span class="p">(</span><span class="n">cudaSetDevice</span><span class="p">(</span><span class="n">rank</span><span class="p">));</span><span class="n">CUDA</span><span class="p">(</span><span class="n">cudaFree</span><span class="p">(</span><span class="n">send</span><span class="p">[</span><span class="n">rank</span><span class="p">]));</span><span class="n">CUDA</span><span class="p">(</span><span class="n">cudaFree</span><span class="p">(</span><span class="n">receive</span><span class="p">[</span><span class="n">rank</span><span class="p">]));}</span>
+<a id="__codelineno-6-29" name="__codelineno-6-29" href="#__codelineno-6-29"></a><span class="w"> </span><span class="n">printf</span><span class="p">(</span><span class="s">"PASS: host-staged reduce to root on %d GPUs, all nonuniform output values checked.</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span><span class="n">world</span><span class="p">);</span>
+<a id="__codelineno-6-30" name="__codelineno-6-30" href="#__codelineno-6-30"></a><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
+<a id="__codelineno-6-31" name="__codelineno-6-31" href="#__codelineno-6-31"></a><span class="p">}</span>
 </code></pre></div>
-<p>Genuinely compiled with a real <code>nvcc</code> and genuinely run. Locked output, deterministic across repeated runs:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>cudaGetDeviceCount(): 0 device(s).
-<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>Reduced 0 of 0 device(s) into the host accumulator. On real
-<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>hardware this same per-device stage-then-accumulate loop produces
-<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>the elementwise sum across every device&#39;s buffer -- the reduce
-<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>collective&#39;s defining result, computed here entirely on the host
-<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>since no device kernel is needed for the accumulation step.
+<!-- execution:start:a100:21_reduce_by_hand.cu -->
+<blockquote>
+<p><strong>Current execution — 2026-11-17-a100: Numerical/transport validation (recorded scope).</strong> UTC (program start): <code>2026-11-18T00:01:14.588057+00:00</code>. Source SHA-256: <code>31af26d63bb08f04ea9be7f5ff0c894aebeda6eb77b8a8462d4e33ee843fe5a9</code>.</p>
+</blockquote>
+<p><a href="../../validation/2026-11-17-a100/21_reduce_by_hand/21_reduce_by_hand.cu">Exact tested source</a> · <a href="../../validation/2026-11-17-a100/21_reduce_by_hand/compile.log">Compiler log</a> · <a href="../../validation/2026-11-17-a100/21_reduce_by_hand/run.log">Execution log</a>. Compile exit: <code>0</code>; run exit: <code>0</code>.</p>
+<p>Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>nvcc<span class="w"> </span>-std<span class="o">=</span>c++17<span class="w"> </span>-O2<span class="w"> </span>-arch<span class="o">=</span>sm_80<span class="w"> </span>21_reduce_by_hand.cu<span class="w"> </span>-o<span class="w"> </span>./example
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>./example
 </code></pre></div>
-<p>With zero devices reported, the loop body never runs, and the accumulator stays at its initial zero -- an honest, correct result for genuinely zero inputs, not a crash or a special case. What this section verifies is the real, compiled call sequence a host-accumulated reduce actually uses; Section 8.3 checks the arithmetic itself, including the one property real floating-point reductions can't rely on that this section's integer accumulator can.</p>
+<details>
+<summary>Captured current-source output</summary>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>PASS: host-staged reduce to root on 4 GPUs, all nonuniform output values checked.
+</code></pre></div>
+</details>
+<!-- execution:end:a100:21_reduce_by_hand.cu -->
+
+<!-- execution:start:h100:21_reduce_by_hand.cu -->
+<blockquote>
+<p><strong>Current execution — 2026-11-17-h100: Numerical/transport validation (recorded scope).</strong> UTC (run-batch start; per-program time unrecorded): <code>2026-11-17T23:48:18.967387+00:00</code>. Source SHA-256: <code>31af26d63bb08f04ea9be7f5ff0c894aebeda6eb77b8a8462d4e33ee843fe5a9</code>.</p>
+</blockquote>
+<p><a href="../../validation/2026-11-17-h100/21_reduce_by_hand/21_reduce_by_hand.cu">Exact tested source</a> · <a href="../../validation/2026-11-17-h100/21_reduce_by_hand/compile.log">Compiler log</a> · <a href="../../validation/2026-11-17-h100/21_reduce_by_hand/run.log">Execution log</a>. Compile exit: <code>0</code>; run exit: <code>0</code>.</p>
+<p>Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>nvcc<span class="w"> </span>-std<span class="o">=</span>c++17<span class="w"> </span>-O2<span class="w"> </span>-arch<span class="o">=</span>sm_90<span class="w"> </span>21_reduce_by_hand.cu<span class="w"> </span>-o<span class="w"> </span>./example
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>./example
+</code></pre></div>
+<details>
+<summary>Captured current-source output</summary>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>PASS: host-staged reduce to root on 2 GPUs, all nonuniform output values checked.
+</code></pre></div>
+</details>
+<!-- execution:end:h100:21_reduce_by_hand.cu -->
+
+<p><strong>Current-source scope:</strong> Real device buffers implement host-staged reduce to root; integer reference checks every output. Host-staged reductions deliberately use CPU arithmetic and are not GPU reduction kernels. The current source was compiled and executed in the dated H100 suite; use the linked record for its numerical, API-probe or other-execution scope. The output below is retained from the earlier authoring diagnostic and is not evidence for this replacement source.</p>
+<p>The <a href="../../validation-h100/">2026-11-17 H100 execution record</a> covers two GPUs connected by local NV18. It distinguishes numerical checks, API probes and other executions; a successful exit alone does not establish GPU algorithm correctness.</p>
+<details>
+<summary>Historical authoring output — superseded by the current execution above</summary>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>cudaGetDeviceCount(): 0 device(s).
+<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>Reduced 0 of 0 device(s) into the host accumulator. On real
+<a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a>hardware this same per-device stage-then-accumulate loop produces
+<a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a>the elementwise sum across every device's buffer -- the reduce
+<a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a>collective's defining result, computed here entirely on the host
+<a id="__codelineno-11-6" name="__codelineno-11-6" href="#__codelineno-11-6"></a>since no device kernel is needed for the accumulation step.
+</code></pre></div>
+</details>
+<p>File 21 checks GPU transport and host reduction arithmetic against a reference in the H100 run. Its combining arithmetic is on the host; this is not a GPU reduction-kernel benchmark.</p>
+<p>The <a href="../../validation-h100/">2026-11-17 H100 execution record</a> covers two GPUs connected by local NV18. It distinguishes numerical checks, API probes and other executions; a successful exit alone does not establish GPU algorithm correctness.</p>
 <div class="admonition warning">
 <p class="admonition-title">[COMMON TRAP] Assuming the accumulation order in this loop doesn't matter, for any data type</p>
 <p>For the <code>int</code> (widened to <code>long long</code> during accumulation) data this section's code uses, addition is exactly associative and commutative -- summing device 0 then device 1 then device 2 gives the bit-for-bit identical result as summing device 2 then device 0 then device 1. That guarantee is specific to integer arithmetic. It does <strong>not</strong> carry over to floating-point data, where, per NVIDIA's own Floating Point and IEEE 754 documentation, "the results corresponding to the sum <code>rn(rn(A + B) + C)</code> and the sum <code>rn(A + rn(B + C))</code> are different from each other" -- meaning a real floating-point reduce's <em>exact</em> result can depend on the order devices are visited in, even though every individual addition is performed correctly. Section 8.3 verifies this distinction directly rather than asserting it.</p>
 </div>
 <h2 id="83-verifying-broadcast-and-reduce-at-n-devices-and-why-order-matters-for-one-but-not-the-other">8.3 Verifying Broadcast and Reduce at N Devices, and Why Order Matters for One But Not the Other<a class="headerlink" href="#83-verifying-broadcast-and-reduce-at-n-devices-and-why-order-matters-for-one-but-not-the-other" title="Permanent link">&para;</a></h2>
 <h3 id="intuition_2">Intuition<a class="headerlink" href="#intuition_2" title="Permanent link">&para;</a></h3>
-<p>Neither Section 8.1 nor 8.2 could verify a <em>result</em> on this machine -- both ran down to zero devices and stopped there honestly. But the actual claims this chapter makes -- "broadcast produces identical copies everywhere," "reduce produces the correct sum regardless of device order, for integers" -- are checkable claims about an algorithm's logic, independent of whether a real GPU is attached. This is exactly the situation Chapter 4's host-side simulation technique was built for, and from this chapter forward it becomes this book's primary tool: N real in-memory buffers standing in for N real device memories, running the real message pattern, checked against a reference computed independently of the algorithm under test.</p>
+<p>The preceding broadcast and reduce examples now have numerical H100 checks. This host simulation supplements them with independent arithmetic checks at modeled rank counts. It does not establish asynchronous visibility, physical transport performance or correctness on untested GPU topologies.</p>
+<p>The <a href="../../validation-h100/">2026-11-17 H100 execution record</a> covers two GPUs connected by local NV18. It distinguishes numerical checks, API probes and other executions; a successful exit alone does not establish GPU algorithm correctness.</p>
 <h3 id="background_2">Background<a class="headerlink" href="#background_2" title="Permanent link">&para;</a></h3>
 <p>The simulation below implements both collectives directly: <code>broadcast()</code> copies the root buffer into every other slot, exactly mirroring Section 8.1's loop; <code>reduceSumInOrder()</code> sums every device's buffer elementwise in device order 0 through N-1, mirroring Section 8.2's accumulator. A second function, <code>reduceSumReverseOrder()</code>, computes the identical reduction but visits the devices in the opposite order -- deliberately, to test this chapter's own claim about integer accumulation being order-independent. Both reduce results are checked against a <code>reference</code> buffer computed by hand, completely independently of either function, so the check can't pass merely because both functions share a common bug.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="c1">// Chapter 8: Broadcast and Reduce -- The First Two Collectives, By Hand</span>
-<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="c1">// 22_collectives_simulation.cpp</span>
-<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="c1">//</span>
-<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="c1">// Plain host C++ -- this book&#39;s own honesty-discipline technique,</span>
-<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a><span class="c1">// used here for the first time to verify a genuinely multi-device</span>
-<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a><span class="c1">// ALGORITHM (not just a single API call&#39;s honest failure): N real</span>
-<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a><span class="c1">// in-memory buffers stand in for N real device memories, and we run</span>
-<a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a><span class="c1">// the exact real message pattern -- one root, N-1 recipients for</span>
-<a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a><span class="c1">// broadcast; N sources, one accumulator for reduce -- checked against</span>
-<a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a><span class="c1">// an independently-computed reference.</span>
-<a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;cstdio&gt;</span>
-<a id="__codelineno-4-12" name="__codelineno-4-12" href="#__codelineno-4-12"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;vector&gt;</span>
-<a id="__codelineno-4-13" name="__codelineno-4-13" href="#__codelineno-4-13"></a>
-<a id="__codelineno-4-14" name="__codelineno-4-14" href="#__codelineno-4-14"></a><span class="k">using</span><span class="w"> </span><span class="n">Buffer</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span><span class="p">;</span>
-<a id="__codelineno-4-15" name="__codelineno-4-15" href="#__codelineno-4-15"></a>
-<a id="__codelineno-4-16" name="__codelineno-4-16" href="#__codelineno-4-16"></a><span class="c1">// Broadcast: every non-root device ends up holding an exact copy of</span>
-<a id="__codelineno-4-17" name="__codelineno-4-17" href="#__codelineno-4-17"></a><span class="c1">// the root&#39;s data. This is the simulated equivalent of Section 8.1&#39;s</span>
-<a id="__codelineno-4-18" name="__codelineno-4-18" href="#__codelineno-4-18"></a><span class="c1">// per-device cudaMemcpyPeer loop.</span>
-<a id="__codelineno-4-19" name="__codelineno-4-19" href="#__codelineno-4-19"></a><span class="kt">void</span><span class="w"> </span><span class="nf">broadcast</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">Buffer</span><span class="o">&gt;&amp;</span><span class="w"> </span><span class="n">devices</span><span class="p">,</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">root</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
-<a id="__codelineno-4-20" name="__codelineno-4-20" href="#__codelineno-4-20"></a><span class="w">    </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="kt">size_t</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="n">devices</span><span class="p">.</span><span class="n">size</span><span class="p">();</span><span class="w"> </span><span class="o">++</span><span class="n">i</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
-<a id="__codelineno-4-21" name="__codelineno-4-21" href="#__codelineno-4-21"></a><span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="p">((</span><span class="kt">int</span><span class="p">)</span><span class="n">i</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="n">root</span><span class="p">)</span><span class="w"> </span><span class="k">continue</span><span class="p">;</span>
-<a id="__codelineno-4-22" name="__codelineno-4-22" href="#__codelineno-4-22"></a><span class="w">        </span><span class="n">devices</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">devices</span><span class="p">[</span><span class="n">root</span><span class="p">];</span>
-<a id="__codelineno-4-23" name="__codelineno-4-23" href="#__codelineno-4-23"></a><span class="w">    </span><span class="p">}</span>
-<a id="__codelineno-4-24" name="__codelineno-4-24" href="#__codelineno-4-24"></a><span class="p">}</span>
-<a id="__codelineno-4-25" name="__codelineno-4-25" href="#__codelineno-4-25"></a>
-<a id="__codelineno-4-26" name="__codelineno-4-26" href="#__codelineno-4-26"></a><span class="c1">// Reduce: sum every device&#39;s buffer, elementwise, into a single</span>
-<a id="__codelineno-4-27" name="__codelineno-4-27" href="#__codelineno-4-27"></a><span class="c1">// result. This is the simulated equivalent of Section 8.2&#39;s</span>
-<a id="__codelineno-4-28" name="__codelineno-4-28" href="#__codelineno-4-28"></a><span class="c1">// per-device stage-then-accumulate loop -- summed here in device</span>
-<a id="__codelineno-4-29" name="__codelineno-4-29" href="#__codelineno-4-29"></a><span class="c1">// order 0, 1, 2, ... N-1.</span>
-<a id="__codelineno-4-30" name="__codelineno-4-30" href="#__codelineno-4-30"></a><span class="n">Buffer</span><span class="w"> </span><span class="nf">reduceSumInOrder</span><span class="p">(</span><span class="k">const</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">Buffer</span><span class="o">&gt;&amp;</span><span class="w"> </span><span class="n">devices</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
-<a id="__codelineno-4-31" name="__codelineno-4-31" href="#__codelineno-4-31"></a><span class="w">    </span><span class="n">Buffer</span><span class="w"> </span><span class="n">result</span><span class="p">(</span><span class="n">devices</span><span class="p">[</span><span class="mi">0</span><span class="p">].</span><span class="n">size</span><span class="p">(),</span><span class="w"> </span><span class="mi">0</span><span class="p">);</span>
-<a id="__codelineno-4-32" name="__codelineno-4-32" href="#__codelineno-4-32"></a><span class="w">    </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="k">const</span><span class="w"> </span><span class="n">Buffer</span><span class="o">&amp;</span><span class="w"> </span><span class="n">d</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="n">devices</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
-<a id="__codelineno-4-33" name="__codelineno-4-33" href="#__codelineno-4-33"></a><span class="w">        </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="kt">size_t</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="n">result</span><span class="p">.</span><span class="n">size</span><span class="p">();</span><span class="w"> </span><span class="o">++</span><span class="n">i</span><span class="p">)</span><span class="w"> </span><span class="n">result</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="w"> </span><span class="o">+=</span><span class="w"> </span><span class="n">d</span><span class="p">[</span><span class="n">i</span><span class="p">];</span>
-<a id="__codelineno-4-34" name="__codelineno-4-34" href="#__codelineno-4-34"></a><span class="w">    </span><span class="p">}</span>
-<a id="__codelineno-4-35" name="__codelineno-4-35" href="#__codelineno-4-35"></a><span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="n">result</span><span class="p">;</span>
-<a id="__codelineno-4-36" name="__codelineno-4-36" href="#__codelineno-4-36"></a><span class="p">}</span>
-<a id="__codelineno-4-37" name="__codelineno-4-37" href="#__codelineno-4-37"></a>
-<a id="__codelineno-4-38" name="__codelineno-4-38" href="#__codelineno-4-38"></a><span class="c1">// The same reduction, summed in the REVERSE device order. For</span>
-<a id="__codelineno-4-39" name="__codelineno-4-39" href="#__codelineno-4-39"></a><span class="c1">// integers, exactly like this section&#39;s own accumulator, addition is</span>
-<a id="__codelineno-4-40" name="__codelineno-4-40" href="#__codelineno-4-40"></a><span class="c1">// associative and commutative, so this must produce an identical</span>
-<a id="__codelineno-4-41" name="__codelineno-4-41" href="#__codelineno-4-41"></a><span class="c1">// result to reduceSumInOrder -- a guarantee that would NOT hold if</span>
-<a id="__codelineno-4-42" name="__codelineno-4-42" href="#__codelineno-4-42"></a><span class="c1">// these were floating-point values (see this chapter&#39;s Common Trap).</span>
-<a id="__codelineno-4-43" name="__codelineno-4-43" href="#__codelineno-4-43"></a><span class="n">Buffer</span><span class="w"> </span><span class="nf">reduceSumReverseOrder</span><span class="p">(</span><span class="k">const</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">Buffer</span><span class="o">&gt;&amp;</span><span class="w"> </span><span class="n">devices</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
-<a id="__codelineno-4-44" name="__codelineno-4-44" href="#__codelineno-4-44"></a><span class="w">    </span><span class="n">Buffer</span><span class="w"> </span><span class="n">result</span><span class="p">(</span><span class="n">devices</span><span class="p">[</span><span class="mi">0</span><span class="p">].</span><span class="n">size</span><span class="p">(),</span><span class="w"> </span><span class="mi">0</span><span class="p">);</span>
-<a id="__codelineno-4-45" name="__codelineno-4-45" href="#__codelineno-4-45"></a><span class="w">    </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="kt">size_t</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="n">result</span><span class="p">.</span><span class="n">size</span><span class="p">();</span><span class="w"> </span><span class="o">++</span><span class="n">i</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
-<a id="__codelineno-4-46" name="__codelineno-4-46" href="#__codelineno-4-46"></a><span class="w">        </span><span class="kt">long</span><span class="w"> </span><span class="kt">long</span><span class="w"> </span><span class="n">sum</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
-<a id="__codelineno-4-47" name="__codelineno-4-47" href="#__codelineno-4-47"></a><span class="w">        </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">d</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="p">)</span><span class="n">devices</span><span class="p">.</span><span class="n">size</span><span class="p">()</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="mi">1</span><span class="p">;</span><span class="w"> </span><span class="n">d</span><span class="w"> </span><span class="o">&gt;=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span><span class="w"> </span><span class="o">--</span><span class="n">d</span><span class="p">)</span><span class="w"> </span><span class="n">sum</span><span class="w"> </span><span class="o">+=</span><span class="w"> </span><span class="n">devices</span><span class="p">[</span><span class="n">d</span><span class="p">][</span><span class="n">i</span><span class="p">];</span>
-<a id="__codelineno-4-48" name="__codelineno-4-48" href="#__codelineno-4-48"></a><span class="w">        </span><span class="n">result</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="p">)</span><span class="n">sum</span><span class="p">;</span>
-<a id="__codelineno-4-49" name="__codelineno-4-49" href="#__codelineno-4-49"></a><span class="w">    </span><span class="p">}</span>
-<a id="__codelineno-4-50" name="__codelineno-4-50" href="#__codelineno-4-50"></a><span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="n">result</span><span class="p">;</span>
-<a id="__codelineno-4-51" name="__codelineno-4-51" href="#__codelineno-4-51"></a><span class="p">}</span>
-<a id="__codelineno-4-52" name="__codelineno-4-52" href="#__codelineno-4-52"></a>
-<a id="__codelineno-4-53" name="__codelineno-4-53" href="#__codelineno-4-53"></a><span class="kt">int</span><span class="w"> </span><span class="nf">main</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
-<a id="__codelineno-4-54" name="__codelineno-4-54" href="#__codelineno-4-54"></a><span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">NUM_DEVICES</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">4</span><span class="p">;</span>
-<a id="__codelineno-4-55" name="__codelineno-4-55" href="#__codelineno-4-55"></a><span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">N</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">4</span><span class="p">;</span>
-<a id="__codelineno-4-56" name="__codelineno-4-56" href="#__codelineno-4-56"></a>
-<a id="__codelineno-4-57" name="__codelineno-4-57" href="#__codelineno-4-57"></a><span class="w">    </span><span class="c1">// Broadcast check.</span>
-<a id="__codelineno-4-58" name="__codelineno-4-58" href="#__codelineno-4-58"></a><span class="w">    </span><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">Buffer</span><span class="o">&gt;</span><span class="w"> </span><span class="n">broadcastDevices</span><span class="p">(</span><span class="n">NUM_DEVICES</span><span class="p">,</span><span class="w"> </span><span class="n">Buffer</span><span class="p">(</span><span class="n">N</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">));</span>
-<a id="__codelineno-4-59" name="__codelineno-4-59" href="#__codelineno-4-59"></a><span class="w">    </span><span class="n">Buffer</span><span class="w"> </span><span class="n">rootData</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span><span class="mi">7</span><span class="p">,</span><span class="w"> </span><span class="mi">14</span><span class="p">,</span><span class="w"> </span><span class="mi">21</span><span class="p">,</span><span class="w"> </span><span class="mi">28</span><span class="p">};</span>
-<a id="__codelineno-4-60" name="__codelineno-4-60" href="#__codelineno-4-60"></a><span class="w">    </span><span class="n">broadcastDevices</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">rootData</span><span class="p">;</span>
-<a id="__codelineno-4-61" name="__codelineno-4-61" href="#__codelineno-4-61"></a><span class="w">    </span><span class="n">broadcast</span><span class="p">(</span><span class="n">broadcastDevices</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">);</span>
-<a id="__codelineno-4-62" name="__codelineno-4-62" href="#__codelineno-4-62"></a>
-<a id="__codelineno-4-63" name="__codelineno-4-63" href="#__codelineno-4-63"></a><span class="w">    </span><span class="kt">bool</span><span class="w"> </span><span class="n">broadcastPass</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nb">true</span><span class="p">;</span>
-<a id="__codelineno-4-64" name="__codelineno-4-64" href="#__codelineno-4-64"></a><span class="w">    </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="n">NUM_DEVICES</span><span class="p">;</span><span class="w"> </span><span class="o">++</span><span class="n">i</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
-<a id="__codelineno-4-65" name="__codelineno-4-65" href="#__codelineno-4-65"></a><span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">broadcastDevices</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="n">rootData</span><span class="p">)</span><span class="w"> </span><span class="n">broadcastPass</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nb">false</span><span class="p">;</span>
-<a id="__codelineno-4-66" name="__codelineno-4-66" href="#__codelineno-4-66"></a><span class="w">    </span><span class="p">}</span>
-<a id="__codelineno-4-67" name="__codelineno-4-67" href="#__codelineno-4-67"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;Broadcast: all %d devices hold an identical copy of the root&#39;s &quot;</span>
-<a id="__codelineno-4-68" name="__codelineno-4-68" href="#__codelineno-4-68"></a><span class="w">           </span><span class="s">&quot;data: %s</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">NUM_DEVICES</span><span class="p">,</span><span class="w"> </span><span class="n">broadcastPass</span><span class="w"> </span><span class="o">?</span><span class="w"> </span><span class="s">&quot;PASS&quot;</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="s">&quot;FAIL&quot;</span><span class="p">);</span>
-<a id="__codelineno-4-69" name="__codelineno-4-69" href="#__codelineno-4-69"></a>
-<a id="__codelineno-4-70" name="__codelineno-4-70" href="#__codelineno-4-70"></a><span class="w">    </span><span class="c1">// Reduce check.</span>
-<a id="__codelineno-4-71" name="__codelineno-4-71" href="#__codelineno-4-71"></a><span class="w">    </span><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">Buffer</span><span class="o">&gt;</span><span class="w"> </span><span class="n">reduceDevices</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span>
-<a id="__codelineno-4-72" name="__codelineno-4-72" href="#__codelineno-4-72"></a><span class="w">        </span><span class="p">{</span><span class="mi">1</span><span class="p">,</span><span class="w"> </span><span class="mi">2</span><span class="p">,</span><span class="w"> </span><span class="mi">3</span><span class="p">,</span><span class="w"> </span><span class="mi">4</span><span class="p">},</span>
-<a id="__codelineno-4-73" name="__codelineno-4-73" href="#__codelineno-4-73"></a><span class="w">        </span><span class="p">{</span><span class="mi">10</span><span class="p">,</span><span class="w"> </span><span class="mi">20</span><span class="p">,</span><span class="w"> </span><span class="mi">30</span><span class="p">,</span><span class="w"> </span><span class="mi">40</span><span class="p">},</span>
-<a id="__codelineno-4-74" name="__codelineno-4-74" href="#__codelineno-4-74"></a><span class="w">        </span><span class="p">{</span><span class="mi">100</span><span class="p">,</span><span class="w"> </span><span class="mi">200</span><span class="p">,</span><span class="w"> </span><span class="mi">300</span><span class="p">,</span><span class="w"> </span><span class="mi">400</span><span class="p">},</span>
-<a id="__codelineno-4-75" name="__codelineno-4-75" href="#__codelineno-4-75"></a><span class="w">        </span><span class="p">{</span><span class="mi">1000</span><span class="p">,</span><span class="w"> </span><span class="mi">2000</span><span class="p">,</span><span class="w"> </span><span class="mi">3000</span><span class="p">,</span><span class="w"> </span><span class="mi">4000</span><span class="p">},</span>
-<a id="__codelineno-4-76" name="__codelineno-4-76" href="#__codelineno-4-76"></a><span class="w">    </span><span class="p">};</span>
-<a id="__codelineno-4-77" name="__codelineno-4-77" href="#__codelineno-4-77"></a><span class="w">    </span><span class="n">Buffer</span><span class="w"> </span><span class="n">reference</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span><span class="mi">1111</span><span class="p">,</span><span class="w"> </span><span class="mi">2222</span><span class="p">,</span><span class="w"> </span><span class="mi">3333</span><span class="p">,</span><span class="w"> </span><span class="mi">4444</span><span class="p">};</span><span class="w"> </span><span class="c1">// computed independently, by hand</span>
-<a id="__codelineno-4-78" name="__codelineno-4-78" href="#__codelineno-4-78"></a>
-<a id="__codelineno-4-79" name="__codelineno-4-79" href="#__codelineno-4-79"></a><span class="w">    </span><span class="n">Buffer</span><span class="w"> </span><span class="n">sumInOrder</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">reduceSumInOrder</span><span class="p">(</span><span class="n">reduceDevices</span><span class="p">);</span>
-<a id="__codelineno-4-80" name="__codelineno-4-80" href="#__codelineno-4-80"></a><span class="w">    </span><span class="n">Buffer</span><span class="w"> </span><span class="n">sumReverse</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">reduceSumReverseOrder</span><span class="p">(</span><span class="n">reduceDevices</span><span class="p">);</span>
-<a id="__codelineno-4-81" name="__codelineno-4-81" href="#__codelineno-4-81"></a>
-<a id="__codelineno-4-82" name="__codelineno-4-82" href="#__codelineno-4-82"></a><span class="w">    </span><span class="kt">bool</span><span class="w"> </span><span class="n">reduceInOrderPass</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="n">sumInOrder</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="n">reference</span><span class="p">);</span>
-<a id="__codelineno-4-83" name="__codelineno-4-83" href="#__codelineno-4-83"></a><span class="w">    </span><span class="kt">bool</span><span class="w"> </span><span class="n">reduceReversePass</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="n">sumReverse</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="n">reference</span><span class="p">);</span>
-<a id="__codelineno-4-84" name="__codelineno-4-84" href="#__codelineno-4-84"></a><span class="w">    </span><span class="kt">bool</span><span class="w"> </span><span class="n">orderIndependent</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="n">sumInOrder</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="n">sumReverse</span><span class="p">);</span>
-<a id="__codelineno-4-85" name="__codelineno-4-85" href="#__codelineno-4-85"></a>
-<a id="__codelineno-4-86" name="__codelineno-4-86" href="#__codelineno-4-86"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;Reduce (device order 0..3): result matches independent &quot;</span>
-<a id="__codelineno-4-87" name="__codelineno-4-87" href="#__codelineno-4-87"></a><span class="w">           </span><span class="s">&quot;reference: %s</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">reduceInOrderPass</span><span class="w"> </span><span class="o">?</span><span class="w"> </span><span class="s">&quot;PASS&quot;</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="s">&quot;FAIL&quot;</span><span class="p">);</span>
-<a id="__codelineno-4-88" name="__codelineno-4-88" href="#__codelineno-4-88"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;Reduce (device order 3..0): result matches independent &quot;</span>
-<a id="__codelineno-4-89" name="__codelineno-4-89" href="#__codelineno-4-89"></a><span class="w">           </span><span class="s">&quot;reference: %s</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">reduceReversePass</span><span class="w"> </span><span class="o">?</span><span class="w"> </span><span class="s">&quot;PASS&quot;</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="s">&quot;FAIL&quot;</span><span class="p">);</span>
-<a id="__codelineno-4-90" name="__codelineno-4-90" href="#__codelineno-4-90"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;Both accumulation orders produce the IDENTICAL result &quot;</span>
-<a id="__codelineno-4-91" name="__codelineno-4-91" href="#__codelineno-4-91"></a><span class="w">           </span><span class="s">&quot;(true for integers; NOT guaranteed for floating point): %s</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span>
-<a id="__codelineno-4-92" name="__codelineno-4-92" href="#__codelineno-4-92"></a><span class="w">           </span><span class="n">orderIndependent</span><span class="w"> </span><span class="o">?</span><span class="w"> </span><span class="s">&quot;PASS&quot;</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="s">&quot;FAIL&quot;</span><span class="p">);</span>
-<a id="__codelineno-4-93" name="__codelineno-4-93" href="#__codelineno-4-93"></a>
-<a id="__codelineno-4-94" name="__codelineno-4-94" href="#__codelineno-4-94"></a><span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="p">(</span><span class="n">broadcastPass</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="n">reduceInOrderPass</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="n">reduceReversePass</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="n">orderIndependent</span><span class="p">)</span><span class="w"> </span><span class="o">?</span><span class="w"> </span><span class="mi">0</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="mi">1</span><span class="p">;</span>
-<a id="__codelineno-4-95" name="__codelineno-4-95" href="#__codelineno-4-95"></a><span class="p">}</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a><span class="c1">// Chapter 8: Broadcast and Reduce -- The First Two Collectives, By Hand</span>
+<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a><span class="c1">// 22_collectives_simulation.cpp</span>
+<a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a><span class="c1">//</span>
+<a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a><span class="c1">// Plain host C++ -- this book's own honesty-discipline technique,</span>
+<a id="__codelineno-12-5" name="__codelineno-12-5" href="#__codelineno-12-5"></a><span class="c1">// used here for the first time to verify a genuinely multi-device</span>
+<a id="__codelineno-12-6" name="__codelineno-12-6" href="#__codelineno-12-6"></a><span class="c1">// ALGORITHM (not just a single API call's honest failure): N real</span>
+<a id="__codelineno-12-7" name="__codelineno-12-7" href="#__codelineno-12-7"></a><span class="c1">// in-memory buffers stand in for N real device memories, and we run</span>
+<a id="__codelineno-12-8" name="__codelineno-12-8" href="#__codelineno-12-8"></a><span class="c1">// the exact real message pattern -- one root, N-1 recipients for</span>
+<a id="__codelineno-12-9" name="__codelineno-12-9" href="#__codelineno-12-9"></a><span class="c1">// broadcast; N sources, one accumulator for reduce -- checked against</span>
+<a id="__codelineno-12-10" name="__codelineno-12-10" href="#__codelineno-12-10"></a><span class="c1">// an independently-computed reference.</span>
+<a id="__codelineno-12-11" name="__codelineno-12-11" href="#__codelineno-12-11"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;cstdio&gt;</span>
+<a id="__codelineno-12-12" name="__codelineno-12-12" href="#__codelineno-12-12"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;vector&gt;</span>
+<a id="__codelineno-12-13" name="__codelineno-12-13" href="#__codelineno-12-13"></a>
+<a id="__codelineno-12-14" name="__codelineno-12-14" href="#__codelineno-12-14"></a><span class="k">using</span><span class="w"> </span><span class="n">Buffer</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span><span class="p">;</span>
+<a id="__codelineno-12-15" name="__codelineno-12-15" href="#__codelineno-12-15"></a>
+<a id="__codelineno-12-16" name="__codelineno-12-16" href="#__codelineno-12-16"></a><span class="c1">// Broadcast: every non-root device ends up holding an exact copy of</span>
+<a id="__codelineno-12-17" name="__codelineno-12-17" href="#__codelineno-12-17"></a><span class="c1">// the root's data. This is the simulated equivalent of Section 8.1's</span>
+<a id="__codelineno-12-18" name="__codelineno-12-18" href="#__codelineno-12-18"></a><span class="c1">// per-device cudaMemcpyPeer loop.</span>
+<a id="__codelineno-12-19" name="__codelineno-12-19" href="#__codelineno-12-19"></a><span class="kt">void</span><span class="w"> </span><span class="nf">broadcast</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">Buffer</span><span class="o">&gt;&amp;</span><span class="w"> </span><span class="n">devices</span><span class="p">,</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">root</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-12-20" name="__codelineno-12-20" href="#__codelineno-12-20"></a><span class="w">    </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="kt">size_t</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="n">devices</span><span class="p">.</span><span class="n">size</span><span class="p">();</span><span class="w"> </span><span class="o">++</span><span class="n">i</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-12-21" name="__codelineno-12-21" href="#__codelineno-12-21"></a><span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="p">((</span><span class="kt">int</span><span class="p">)</span><span class="n">i</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="n">root</span><span class="p">)</span><span class="w"> </span><span class="k">continue</span><span class="p">;</span>
+<a id="__codelineno-12-22" name="__codelineno-12-22" href="#__codelineno-12-22"></a><span class="w">        </span><span class="n">devices</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">devices</span><span class="p">[</span><span class="n">root</span><span class="p">];</span>
+<a id="__codelineno-12-23" name="__codelineno-12-23" href="#__codelineno-12-23"></a><span class="w">    </span><span class="p">}</span>
+<a id="__codelineno-12-24" name="__codelineno-12-24" href="#__codelineno-12-24"></a><span class="p">}</span>
+<a id="__codelineno-12-25" name="__codelineno-12-25" href="#__codelineno-12-25"></a>
+<a id="__codelineno-12-26" name="__codelineno-12-26" href="#__codelineno-12-26"></a><span class="c1">// Reduce: sum every device's buffer, elementwise, into a single</span>
+<a id="__codelineno-12-27" name="__codelineno-12-27" href="#__codelineno-12-27"></a><span class="c1">// result. This is the simulated equivalent of Section 8.2's</span>
+<a id="__codelineno-12-28" name="__codelineno-12-28" href="#__codelineno-12-28"></a><span class="c1">// per-device stage-then-accumulate loop -- summed here in device</span>
+<a id="__codelineno-12-29" name="__codelineno-12-29" href="#__codelineno-12-29"></a><span class="c1">// order 0, 1, 2, ... N-1. Unlike Section 8.2's accumulator, this one</span>
+<a id="__codelineno-12-30" name="__codelineno-12-30" href="#__codelineno-12-30"></a><span class="c1">// stays plain int (no widening to long long): the test values here sum</span>
+<a id="__codelineno-12-31" name="__codelineno-12-31" href="#__codelineno-12-31"></a><span class="c1">// to at most 4444, far below int's range, so overflow cannot arise.</span>
+<a id="__codelineno-12-32" name="__codelineno-12-32" href="#__codelineno-12-32"></a><span class="n">Buffer</span><span class="w"> </span><span class="nf">reduceSumInOrder</span><span class="p">(</span><span class="k">const</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">Buffer</span><span class="o">&gt;&amp;</span><span class="w"> </span><span class="n">devices</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-12-33" name="__codelineno-12-33" href="#__codelineno-12-33"></a><span class="w">    </span><span class="n">Buffer</span><span class="w"> </span><span class="n">result</span><span class="p">(</span><span class="n">devices</span><span class="p">[</span><span class="mi">0</span><span class="p">].</span><span class="n">size</span><span class="p">(),</span><span class="w"> </span><span class="mi">0</span><span class="p">);</span>
+<a id="__codelineno-12-34" name="__codelineno-12-34" href="#__codelineno-12-34"></a><span class="w">    </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="k">const</span><span class="w"> </span><span class="n">Buffer</span><span class="o">&amp;</span><span class="w"> </span><span class="n">d</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="n">devices</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-12-35" name="__codelineno-12-35" href="#__codelineno-12-35"></a><span class="w">        </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="kt">size_t</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="n">result</span><span class="p">.</span><span class="n">size</span><span class="p">();</span><span class="w"> </span><span class="o">++</span><span class="n">i</span><span class="p">)</span><span class="w"> </span><span class="n">result</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="w"> </span><span class="o">+=</span><span class="w"> </span><span class="n">d</span><span class="p">[</span><span class="n">i</span><span class="p">];</span>
+<a id="__codelineno-12-36" name="__codelineno-12-36" href="#__codelineno-12-36"></a><span class="w">    </span><span class="p">}</span>
+<a id="__codelineno-12-37" name="__codelineno-12-37" href="#__codelineno-12-37"></a><span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="n">result</span><span class="p">;</span>
+<a id="__codelineno-12-38" name="__codelineno-12-38" href="#__codelineno-12-38"></a><span class="p">}</span>
+<a id="__codelineno-12-39" name="__codelineno-12-39" href="#__codelineno-12-39"></a>
+<a id="__codelineno-12-40" name="__codelineno-12-40" href="#__codelineno-12-40"></a><span class="c1">// The same reduction, summed in the REVERSE device order. For</span>
+<a id="__codelineno-12-41" name="__codelineno-12-41" href="#__codelineno-12-41"></a><span class="c1">// integers, addition is associative and commutative, so (absent</span>
+<a id="__codelineno-12-42" name="__codelineno-12-42" href="#__codelineno-12-42"></a><span class="c1">// overflow) this must produce an identical</span>
+<a id="__codelineno-12-43" name="__codelineno-12-43" href="#__codelineno-12-43"></a><span class="c1">// result to reduceSumInOrder -- a guarantee that would NOT hold if</span>
+<a id="__codelineno-12-44" name="__codelineno-12-44" href="#__codelineno-12-44"></a><span class="c1">// these were floating-point values (see this chapter's Common Trap).</span>
+<a id="__codelineno-12-45" name="__codelineno-12-45" href="#__codelineno-12-45"></a><span class="n">Buffer</span><span class="w"> </span><span class="nf">reduceSumReverseOrder</span><span class="p">(</span><span class="k">const</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">Buffer</span><span class="o">&gt;&amp;</span><span class="w"> </span><span class="n">devices</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-12-46" name="__codelineno-12-46" href="#__codelineno-12-46"></a><span class="w">    </span><span class="n">Buffer</span><span class="w"> </span><span class="n">result</span><span class="p">(</span><span class="n">devices</span><span class="p">[</span><span class="mi">0</span><span class="p">].</span><span class="n">size</span><span class="p">(),</span><span class="w"> </span><span class="mi">0</span><span class="p">);</span>
+<a id="__codelineno-12-47" name="__codelineno-12-47" href="#__codelineno-12-47"></a><span class="w">    </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="kt">size_t</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="n">result</span><span class="p">.</span><span class="n">size</span><span class="p">();</span><span class="w"> </span><span class="o">++</span><span class="n">i</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-12-48" name="__codelineno-12-48" href="#__codelineno-12-48"></a><span class="w">        </span><span class="kt">long</span><span class="w"> </span><span class="kt">long</span><span class="w"> </span><span class="n">sum</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
+<a id="__codelineno-12-49" name="__codelineno-12-49" href="#__codelineno-12-49"></a><span class="w">        </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">d</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="p">)</span><span class="n">devices</span><span class="p">.</span><span class="n">size</span><span class="p">()</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="mi">1</span><span class="p">;</span><span class="w"> </span><span class="n">d</span><span class="w"> </span><span class="o">&gt;=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span><span class="w"> </span><span class="o">--</span><span class="n">d</span><span class="p">)</span><span class="w"> </span><span class="n">sum</span><span class="w"> </span><span class="o">+=</span><span class="w"> </span><span class="n">devices</span><span class="p">[</span><span class="n">d</span><span class="p">][</span><span class="n">i</span><span class="p">];</span>
+<a id="__codelineno-12-50" name="__codelineno-12-50" href="#__codelineno-12-50"></a><span class="w">        </span><span class="n">result</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="p">)</span><span class="n">sum</span><span class="p">;</span>
+<a id="__codelineno-12-51" name="__codelineno-12-51" href="#__codelineno-12-51"></a><span class="w">    </span><span class="p">}</span>
+<a id="__codelineno-12-52" name="__codelineno-12-52" href="#__codelineno-12-52"></a><span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="n">result</span><span class="p">;</span>
+<a id="__codelineno-12-53" name="__codelineno-12-53" href="#__codelineno-12-53"></a><span class="p">}</span>
+<a id="__codelineno-12-54" name="__codelineno-12-54" href="#__codelineno-12-54"></a>
+<a id="__codelineno-12-55" name="__codelineno-12-55" href="#__codelineno-12-55"></a><span class="kt">int</span><span class="w"> </span><span class="nf">main</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-12-56" name="__codelineno-12-56" href="#__codelineno-12-56"></a><span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">NUM_DEVICES</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">4</span><span class="p">;</span>
+<a id="__codelineno-12-57" name="__codelineno-12-57" href="#__codelineno-12-57"></a><span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">N</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">4</span><span class="p">;</span>
+<a id="__codelineno-12-58" name="__codelineno-12-58" href="#__codelineno-12-58"></a>
+<a id="__codelineno-12-59" name="__codelineno-12-59" href="#__codelineno-12-59"></a><span class="w">    </span><span class="c1">// Broadcast check.</span>
+<a id="__codelineno-12-60" name="__codelineno-12-60" href="#__codelineno-12-60"></a><span class="w">    </span><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">Buffer</span><span class="o">&gt;</span><span class="w"> </span><span class="n">broadcastDevices</span><span class="p">(</span><span class="n">NUM_DEVICES</span><span class="p">,</span><span class="w"> </span><span class="n">Buffer</span><span class="p">(</span><span class="n">N</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">));</span>
+<a id="__codelineno-12-61" name="__codelineno-12-61" href="#__codelineno-12-61"></a><span class="w">    </span><span class="n">Buffer</span><span class="w"> </span><span class="n">rootData</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span><span class="mi">7</span><span class="p">,</span><span class="w"> </span><span class="mi">14</span><span class="p">,</span><span class="w"> </span><span class="mi">21</span><span class="p">,</span><span class="w"> </span><span class="mi">28</span><span class="p">};</span>
+<a id="__codelineno-12-62" name="__codelineno-12-62" href="#__codelineno-12-62"></a><span class="w">    </span><span class="n">broadcastDevices</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">rootData</span><span class="p">;</span>
+<a id="__codelineno-12-63" name="__codelineno-12-63" href="#__codelineno-12-63"></a><span class="w">    </span><span class="n">broadcast</span><span class="p">(</span><span class="n">broadcastDevices</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">);</span>
+<a id="__codelineno-12-64" name="__codelineno-12-64" href="#__codelineno-12-64"></a>
+<a id="__codelineno-12-65" name="__codelineno-12-65" href="#__codelineno-12-65"></a><span class="w">    </span><span class="kt">bool</span><span class="w"> </span><span class="n">broadcastPass</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nb">true</span><span class="p">;</span>
+<a id="__codelineno-12-66" name="__codelineno-12-66" href="#__codelineno-12-66"></a><span class="w">    </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="n">NUM_DEVICES</span><span class="p">;</span><span class="w"> </span><span class="o">++</span><span class="n">i</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-12-67" name="__codelineno-12-67" href="#__codelineno-12-67"></a><span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">broadcastDevices</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="n">rootData</span><span class="p">)</span><span class="w"> </span><span class="n">broadcastPass</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nb">false</span><span class="p">;</span>
+<a id="__codelineno-12-68" name="__codelineno-12-68" href="#__codelineno-12-68"></a><span class="w">    </span><span class="p">}</span>
+<a id="__codelineno-12-69" name="__codelineno-12-69" href="#__codelineno-12-69"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">"Broadcast: all %d devices hold an identical copy of the root's "</span>
+<a id="__codelineno-12-70" name="__codelineno-12-70" href="#__codelineno-12-70"></a><span class="w">           </span><span class="s">"data: %s</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span><span class="w"> </span><span class="n">NUM_DEVICES</span><span class="p">,</span><span class="w"> </span><span class="n">broadcastPass</span><span class="w"> </span><span class="o">?</span><span class="w"> </span><span class="s">"PASS"</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="s">"FAIL"</span><span class="p">);</span>
+<a id="__codelineno-12-71" name="__codelineno-12-71" href="#__codelineno-12-71"></a>
+<a id="__codelineno-12-72" name="__codelineno-12-72" href="#__codelineno-12-72"></a><span class="w">    </span><span class="c1">// Reduce check.</span>
+<a id="__codelineno-12-73" name="__codelineno-12-73" href="#__codelineno-12-73"></a><span class="w">    </span><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">Buffer</span><span class="o">&gt;</span><span class="w"> </span><span class="n">reduceDevices</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-12-74" name="__codelineno-12-74" href="#__codelineno-12-74"></a><span class="w">        </span><span class="p">{</span><span class="mi">1</span><span class="p">,</span><span class="w"> </span><span class="mi">2</span><span class="p">,</span><span class="w"> </span><span class="mi">3</span><span class="p">,</span><span class="w"> </span><span class="mi">4</span><span class="p">},</span>
+<a id="__codelineno-12-75" name="__codelineno-12-75" href="#__codelineno-12-75"></a><span class="w">        </span><span class="p">{</span><span class="mi">10</span><span class="p">,</span><span class="w"> </span><span class="mi">20</span><span class="p">,</span><span class="w"> </span><span class="mi">30</span><span class="p">,</span><span class="w"> </span><span class="mi">40</span><span class="p">},</span>
+<a id="__codelineno-12-76" name="__codelineno-12-76" href="#__codelineno-12-76"></a><span class="w">        </span><span class="p">{</span><span class="mi">100</span><span class="p">,</span><span class="w"> </span><span class="mi">200</span><span class="p">,</span><span class="w"> </span><span class="mi">300</span><span class="p">,</span><span class="w"> </span><span class="mi">400</span><span class="p">},</span>
+<a id="__codelineno-12-77" name="__codelineno-12-77" href="#__codelineno-12-77"></a><span class="w">        </span><span class="p">{</span><span class="mi">1000</span><span class="p">,</span><span class="w"> </span><span class="mi">2000</span><span class="p">,</span><span class="w"> </span><span class="mi">3000</span><span class="p">,</span><span class="w"> </span><span class="mi">4000</span><span class="p">},</span>
+<a id="__codelineno-12-78" name="__codelineno-12-78" href="#__codelineno-12-78"></a><span class="w">    </span><span class="p">};</span>
+<a id="__codelineno-12-79" name="__codelineno-12-79" href="#__codelineno-12-79"></a><span class="w">    </span><span class="n">Buffer</span><span class="w"> </span><span class="n">reference</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span><span class="mi">1111</span><span class="p">,</span><span class="w"> </span><span class="mi">2222</span><span class="p">,</span><span class="w"> </span><span class="mi">3333</span><span class="p">,</span><span class="w"> </span><span class="mi">4444</span><span class="p">};</span><span class="w"> </span><span class="c1">// computed independently, by hand</span>
+<a id="__codelineno-12-80" name="__codelineno-12-80" href="#__codelineno-12-80"></a>
+<a id="__codelineno-12-81" name="__codelineno-12-81" href="#__codelineno-12-81"></a><span class="w">    </span><span class="n">Buffer</span><span class="w"> </span><span class="n">sumInOrder</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">reduceSumInOrder</span><span class="p">(</span><span class="n">reduceDevices</span><span class="p">);</span>
+<a id="__codelineno-12-82" name="__codelineno-12-82" href="#__codelineno-12-82"></a><span class="w">    </span><span class="n">Buffer</span><span class="w"> </span><span class="n">sumReverse</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">reduceSumReverseOrder</span><span class="p">(</span><span class="n">reduceDevices</span><span class="p">);</span>
+<a id="__codelineno-12-83" name="__codelineno-12-83" href="#__codelineno-12-83"></a>
+<a id="__codelineno-12-84" name="__codelineno-12-84" href="#__codelineno-12-84"></a><span class="w">    </span><span class="kt">bool</span><span class="w"> </span><span class="n">reduceInOrderPass</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="n">sumInOrder</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="n">reference</span><span class="p">);</span>
+<a id="__codelineno-12-85" name="__codelineno-12-85" href="#__codelineno-12-85"></a><span class="w">    </span><span class="kt">bool</span><span class="w"> </span><span class="n">reduceReversePass</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="n">sumReverse</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="n">reference</span><span class="p">);</span>
+<a id="__codelineno-12-86" name="__codelineno-12-86" href="#__codelineno-12-86"></a><span class="w">    </span><span class="kt">bool</span><span class="w"> </span><span class="n">orderIndependent</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="n">sumInOrder</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="n">sumReverse</span><span class="p">);</span>
+<a id="__codelineno-12-87" name="__codelineno-12-87" href="#__codelineno-12-87"></a>
+<a id="__codelineno-12-88" name="__codelineno-12-88" href="#__codelineno-12-88"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">"Reduce (device order 0..3): result matches independent "</span>
+<a id="__codelineno-12-89" name="__codelineno-12-89" href="#__codelineno-12-89"></a><span class="w">           </span><span class="s">"reference: %s</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span><span class="w"> </span><span class="n">reduceInOrderPass</span><span class="w"> </span><span class="o">?</span><span class="w"> </span><span class="s">"PASS"</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="s">"FAIL"</span><span class="p">);</span>
+<a id="__codelineno-12-90" name="__codelineno-12-90" href="#__codelineno-12-90"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">"Reduce (device order 3..0): result matches independent "</span>
+<a id="__codelineno-12-91" name="__codelineno-12-91" href="#__codelineno-12-91"></a><span class="w">           </span><span class="s">"reference: %s</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span><span class="w"> </span><span class="n">reduceReversePass</span><span class="w"> </span><span class="o">?</span><span class="w"> </span><span class="s">"PASS"</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="s">"FAIL"</span><span class="p">);</span>
+<a id="__codelineno-12-92" name="__codelineno-12-92" href="#__codelineno-12-92"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">"Both accumulation orders produce the IDENTICAL result "</span>
+<a id="__codelineno-12-93" name="__codelineno-12-93" href="#__codelineno-12-93"></a><span class="w">           </span><span class="s">"(true for integers; NOT guaranteed for floating point): %s</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span>
+<a id="__codelineno-12-94" name="__codelineno-12-94" href="#__codelineno-12-94"></a><span class="w">           </span><span class="n">orderIndependent</span><span class="w"> </span><span class="o">?</span><span class="w"> </span><span class="s">"PASS"</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="s">"FAIL"</span><span class="p">);</span>
+<a id="__codelineno-12-95" name="__codelineno-12-95" href="#__codelineno-12-95"></a>
+<a id="__codelineno-12-96" name="__codelineno-12-96" href="#__codelineno-12-96"></a><span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="p">(</span><span class="n">broadcastPass</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="n">reduceInOrderPass</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="n">reduceReversePass</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="n">orderIndependent</span><span class="p">)</span><span class="w"> </span><span class="o">?</span><span class="w"> </span><span class="mi">0</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="mi">1</span><span class="p">;</span>
+<a id="__codelineno-12-97" name="__codelineno-12-97" href="#__codelineno-12-97"></a><span class="p">}</span>
 </code></pre></div>
+<!-- execution:start:a100:22_collectives_simulation.cpp -->
+<blockquote>
+<p><strong>Current execution — 2026-11-17-a100: Host program/model (exit-only).</strong> UTC (program start): <code>2026-11-18T00:01:19.932180+00:00</code>. Source SHA-256: <code>d4ae2885d106db3e9db093ebcad90a1438c83d898eb8f87062a7c9dfc0a8acbb</code>.</p>
+</blockquote>
+<p><a href="../../validation/2026-11-17-a100/22_collectives_simulation/22_collectives_simulation.cpp">Exact tested source</a> · <a href="../../validation/2026-11-17-a100/22_collectives_simulation/compile.log">Compiler log</a> · <a href="../../validation/2026-11-17-a100/22_collectives_simulation/run.log">Execution log</a>. Compile exit: <code>0</code>; run exit: <code>0</code>.</p>
+<p>Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a>g++<span class="w"> </span>-std<span class="o">=</span>c++17<span class="w"> </span>-O2<span class="w"> </span>22_collectives_simulation.cpp<span class="w"> </span>-o<span class="w"> </span>./example
+<a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a>./example
+</code></pre></div>
+<details>
+<summary>Captured current-source output</summary>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a>Broadcast: all 4 devices hold an identical copy of the root's data: PASS
+<a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a>Reduce (device order 0..3): result matches independent reference: PASS
+<a id="__codelineno-14-3" name="__codelineno-14-3" href="#__codelineno-14-3"></a>Reduce (device order 3..0): result matches independent reference: PASS
+<a id="__codelineno-14-4" name="__codelineno-14-4" href="#__codelineno-14-4"></a>Both accumulation orders produce the IDENTICAL result (true for integers; NOT guaranteed for floating point): PASS
+</code></pre></div>
+</details>
+<!-- execution:end:a100:22_collectives_simulation.cpp -->
+
+<!-- execution:start:h100:22_collectives_simulation.cpp -->
+<blockquote>
+<p><strong>Current execution — 2026-11-17-h100: Host program/model (exit-only).</strong> UTC (run-batch start; per-program time unrecorded): <code>2026-11-17T23:48:18.967387+00:00</code>. Source SHA-256: <code>d4ae2885d106db3e9db093ebcad90a1438c83d898eb8f87062a7c9dfc0a8acbb</code>.</p>
+</blockquote>
+<p><a href="../../validation/2026-11-17-h100/22_collectives_simulation/22_collectives_simulation.cpp">Exact tested source</a> · <a href="../../validation/2026-11-17-h100/22_collectives_simulation/compile.log">Compiler log</a> · <a href="../../validation/2026-11-17-h100/22_collectives_simulation/run.log">Execution log</a>. Compile exit: <code>0</code>; run exit: <code>0</code>.</p>
+<p>Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a>g++<span class="w"> </span>-std<span class="o">=</span>c++17<span class="w"> </span>-O2<span class="w"> </span>22_collectives_simulation.cpp<span class="w"> </span>-o<span class="w"> </span>./example
+<a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a>./example
+</code></pre></div>
+<details>
+<summary>Captured current-source output</summary>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a>Broadcast: all 4 devices hold an identical copy of the root's data: PASS
+<a id="__codelineno-16-2" name="__codelineno-16-2" href="#__codelineno-16-2"></a>Reduce (device order 0..3): result matches independent reference: PASS
+<a id="__codelineno-16-3" name="__codelineno-16-3" href="#__codelineno-16-3"></a>Reduce (device order 3..0): result matches independent reference: PASS
+<a id="__codelineno-16-4" name="__codelineno-16-4" href="#__codelineno-16-4"></a>Both accumulation orders produce the IDENTICAL result (true for integers; NOT guaranteed for floating point): PASS
+</code></pre></div>
+</details>
+<!-- execution:end:h100:22_collectives_simulation.cpp -->
+
 <p>Genuinely compiled with <code>g++</code> and genuinely run. Locked output, deterministic across repeated runs:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>Broadcast: all 4 devices hold an identical copy of the root&#39;s data: PASS
-<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>Reduce (device order 0..3): result matches independent reference: PASS
-<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>Reduce (device order 3..0): result matches independent reference: PASS
-<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>Both accumulation orders produce the IDENTICAL result (true for integers; NOT guaranteed for floating point): PASS
+<details>
+<summary>Historical authoring output — superseded by the current execution above</summary>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a>Broadcast: all 4 devices hold an identical copy of the root's data: PASS
+<a id="__codelineno-17-2" name="__codelineno-17-2" href="#__codelineno-17-2"></a>Reduce (device order 0..3): result matches independent reference: PASS
+<a id="__codelineno-17-3" name="__codelineno-17-3" href="#__codelineno-17-3"></a>Reduce (device order 3..0): result matches independent reference: PASS
+<a id="__codelineno-17-4" name="__codelineno-17-4" href="#__codelineno-17-4"></a>Both accumulation orders produce the IDENTICAL result (true for integers; NOT guaranteed for floating point): PASS
 </code></pre></div>
+</details>
 <p>All four checks pass. The broadcast check confirms Section 8.1's algorithm actually produces identical copies at every device, for real, checkable data -- not just a correctly compiled loop with nothing to verify it against. The two reduce checks confirm the sum is correct regardless of device order, and the fourth check confirms both orderings agree with each other exactly -- the specific property Section 8.2's Common Trap named as true for integers and explicitly not guaranteed for floating point.</p>
 <div class="admonition warning">
 <p class="admonition-title">[COMMON TRAP] Concluding from this section's PASS results that reduce order never matters</p>
 <p>This section's four PASS results are honest and correct -- for <code>int</code> data. They say nothing about floating-point data, and this chapter does not claim otherwise: NVIDIA's own Floating Point and IEEE 754 documentation states directly that "the final values computed using IEEE 754 arithmetic can depend on implementation choices such as whether... additions are organized in series or parallel," and that changing a parallel reduction's structure "rearranges parentheses in the long string of additions." A future chapter's reduce over floating-point gradients (Part 3 onward, once real training workloads appear) would need to treat accumulation order as a genuine correctness-adjacent decision, not something this chapter's integer result has already settled for good.</p>
 </div>
 <h2 id="chapter-summary">Chapter Summary<a class="headerlink" href="#chapter-summary" title="Permanent link">&para;</a></h2>
-<p>Broadcast and reduce are collectives -- communication patterns involving an entire group of devices, not just one pair -- built here directly from Part 1's own primitives: broadcast as a loop of <code>cudaMemcpyPeer()</code> calls all reading from the same unchanging root buffer (Section 8.1), and reduce as a loop of staged host transfers accumulated on the host, with the combining operation living entirely in host arithmetic rather than the transfer mechanism (Section 8.2). Neither section could verify a <em>result</em> on this machine, since both correctly ran down to zero real devices -- so Section 8.3 used this book's host-side simulation technique, now established as Part 2's primary verification tool, to confirm both algorithms are genuinely correct: broadcast produces byte-identical copies at every simulated device, and reduce produces the correct sum regardless of accumulation order, a guarantee this section traced specifically to integer arithmetic's associativity and explicitly did not extend to floating point, citing NVIDIA's own documentation on IEEE 754 non-associativity. Chapter 9 builds the next, more bandwidth-efficient collective on top of these same ideas: ring all-reduce, the algorithm behind essentially every real multi-GPU training job's gradient synchronization.</p>
+<p>Broadcast replicates root data; reduce combines rank inputs into a root result. Files 20 and 21 check actual two-H100 data transport, with reduction arithmetic on the host. The host simulation separately checks additional modeled cases. Integer equality in these bounded tests does not extend to arbitrary overflowing integers or regrouped floating-point reductions. Chapter 9 develops ring all-reduce.</p>
+<p>The <a href="../../validation-h100/">2026-11-17 H100 execution record</a> covers two GPUs connected by local NV18. It distinguishes numerical checks, API probes and other executions; a successful exit alone does not establish GPU algorithm correctness.</p>
 <h2 id="self-check-questions">Self-Check Questions<a class="headerlink" href="#self-check-questions" title="Permanent link">&para;</a></h2>
 <ol>
 <li>Section 8.1's Common Trap warns against re-reading the root's buffer defensively inside the broadcast loop. Explain why doing so would add nothing, assuming nothing else modifies the root's buffer during the broadcast.</li>
@@ -2833,12 +3028,12 @@
 <h2 id="worked-solutions">Worked Solutions<a class="headerlink" href="#worked-solutions" title="Permanent link">&para;</a></h2>
 <p><strong>1.</strong> The root's buffer is never written to by the broadcast loop itself -- every iteration only reads from it. Since nothing in the loop changes that buffer's contents, every iteration sees the identical data whether it re-reads defensively or not; re-reading would simply retrieve the same bytes again, at the cost of extra work, without changing the algorithm's correctness in any way.</p>
 <p><strong>2.</strong> Only the single line inside the accumulation loop that combines the staged buffer into the running result would change -- <code>accumulator[i] += hostStaging[i];</code> would become something like <code>accumulator[i] = std::max(accumulator[i], (long long)hostStaging[i]);</code>. The transfer loop around it -- the <code>cudaMalloc</code>, <code>cudaMemcpy(..., cudaMemcpyDeviceToHost)</code>, and the per-device iteration itself -- stays completely identical, because the combining operation and the transfer mechanism are genuinely independent, exactly as Section 8.2's Background states.</p>
-<p><strong>3.</strong> Checking each ordering against the independent <code>reference</code> separately only proves each individual ordering computes the mathematically correct sum -- it says nothing about whether the two orderings agree with <em>each other</em>. In principle (though not for integers, as this chapter shows), two different accumulation orders could each happen to be "close to" a reference value without being identical to each other -- the direct <code>sumInOrder == sumReverse</code> comparison is what specifically verifies order-independence, a distinct claim from "each order is individually correct."</p>
+<p><strong>3.</strong> Logically, nothing: the checks use exact <code>==</code>, so if <code>sumInOrder == reference</code> and <code>sumReverse == reference</code> both hold, then <code>sumInOrder == sumReverse</code> follows necessarily -- the fourth check is redundant once the first two pass. What it adds is <em>explicitness and diagnosis</em>, not extra logical coverage. It states the order-independence claim as its own named PASS line rather than leaving it implicit, and it stays meaningful in the case where the first two checks <em>fail</em>: if both orderings missed the reference but agreed with each other, that points to a shared bug (or a wrong reference), whereas if they disagree, accumulation order itself is implicated. The comparison would only become logically independent if the reference checks were relaxed to a tolerance (as floating-point checks often are) -- two results can each be within tolerance of a reference without being identical to each other.</p>
 <p><strong>4.</strong> "The final values computed using IEEE 754 arithmetic can depend on implementation choices such as whether to use fused multiply-add or whether additions are organized in series or parallel." This is the specific sentence this chapter cites to establish that Section 8.3's integer-specific order-independence result does not carry over to floating-point accumulation.</p>
 <p><strong>5.</strong> This breaks the broadcast's fundamental guarantee: device 1 would end up with the <em>original</em> root data, while device 2 would end up with the <em>modified</em> root data -- two devices that were supposed to receive an identical broadcast now hold genuinely different values. The Common Trap's point is exactly this: broadcast's correctness assumes the root's buffer is stable for the whole operation; allowing it to change mid-broadcast produces devices that received "a broadcast" in name only, without ever holding identical data.</p>
 <p><strong>6.</strong> A second function using a different loop structure but the <em>same</em> device order would only test whether two pieces of code compute the same thing when fed data in the identical sequence -- it would not test the actual claim this chapter makes, which is about accumulation <em>order</em> specifically. <code>reduceSumReverseOrder()</code> deliberately changes the order data is combined in, which is the one specific variable this chapter's order-independence claim is actually about; a same-order alternative implementation could agree perfectly while never exercising the property being tested at all.</p>
 <p><strong>7.</strong> This widening guards against integer overflow, not accumulation order. Summing several <code>int</code>-typed device values could exceed the range a 32-bit <code>int</code> can represent, producing a wrapped-around, silently wrong result even though the <em>order</em> of accumulation was never in question. Using <code>long long</code> for the running accumulator (while the per-device staged values remain <code>int</code>, matching what a real device buffer of that type would hold) keeps the intermediate sum correct regardless of how large it grows, which is a separate concern from the order-independence question Section 8.3's simulation focuses on.</p>
-<p><strong>8.</strong> Chapters 1-7's claims were almost entirely about what a <em>single</em> real API call honestly does on this machine -- and <code>cudaErrorNoDevice</code>, reported correctly and deterministically, was itself a complete, verifiable answer to "what does this call do here." This chapter's claims are different in kind: "broadcast produces identical copies at every device" and "reduce's result doesn't depend on device order" are statements about the <em>relationship</em> between multiple devices' data after a multi-step algorithm runs -- a claim no single API call, honestly failing or otherwise, can confirm or deny on its own. Verifying a relationship between several participants' data is exactly what required promoting the simulation technique from an occasional tool (used once, in Chapter 4) to this book's primary verification method going forward.</p>
+<p><strong>8.</strong> Numerical collective checks must compare the data relationship across participating ranks after completion. A successful API return, capability query or historical no-device diagnostic cannot establish that relationship. The current H100 checks exercise actual two-GPU data; the simulation independently checks additional modeled cases.</p>
 <hr />
 <p><strong>Sources cited in this chapter:</strong></p>
 <ul>
@@ -2943,10 +3138,10 @@
     
       
       
-      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.instant", "navigation.tracking", "navigation.sections", "navigation.expand", "navigation.top", "navigation.footer", "toc.follow", "search.suggest", "search.highlight", "content.code.copy", "content.code.annotate"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.instant", "navigation.tracking", "navigation.sections", "navigation.expand", "navigation.top", "navigation.footer", "toc.follow", "search.suggest", "search.highlight", "content.code.copy", "content.code.annotate"], "search": "../../assets/javascripts/workers/search.a7633da7.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
-      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      <script src="../../assets/javascripts/bundle.a5f9d56c.min.js"></script>
       
     
   </body>

@@ -68,6 +68,12 @@ int main() {
         printf(" | reference=%.4f\n", reference);
     }
 
+    // Replica-vs-replica equality is guaranteed: every replica applies
+    // the one avgGrad computed above. Replica-vs-reference equality is
+    // only ALGEBRAICALLY guaranteed: in floating point, averaging
+    // (w - t_i) is not always bit-identical to w - mean(t). It holds
+    // bit-for-bit for THESE targets; e.g. targets {0.1, 0.7, 1.3, 2.9}
+    // first differ in the last bit at step 19 (see Section 12.3).
     bool allSyncedEqual = true;
     bool allMatchReference = true;
     for (int i = 0; i < N; ++i) {
