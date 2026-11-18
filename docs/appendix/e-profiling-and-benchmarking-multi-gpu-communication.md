@@ -1,11 +1,5 @@
 # Appendix E: Profiling and Benchmarking Multi-GPU Communication
 
-<!-- execution:provenance -->
-!!! info "Execution provenance"
-
-    Current execution blocks identify the tested source hash, hardware dataset, commands and captured output. References elsewhere on this page to a device-less environment describe the original authoring context. Historical output is superseded by the current record. Displayed output omits the runner command header and trims trailing line whitespace; raw logs remain exact. A host simulation or API validation has its stated scope; neither alone establishes a numerical multi-GPU workload or measured performance.
-
-
 <!-- mgpu:opener:start -->
 [![Appendix E: Profiling and Benchmarking Multi-GPU Communication](../images/chapter-openers/appendix-e.svg)](../images/chapter-openers/appendix-e.svg)
 <!-- mgpu:opener:end -->
@@ -111,7 +105,9 @@ int main() {
 ```
 
 <!-- execution:start:a100:132_round_count_vs_timing.cpp -->
-> **Current execution — 2026-11-17-a100: Host program/model (exit-only).** UTC (program start): `2026-11-17T23:59:26.371814+00:00`. Source SHA-256: `4220a8cc3a93130070541cc7b0f3faaafe31ef2215617c2028aed722521abc68`.
+> **Compiled and executed — 2026-11-17-a100: Host program/model (exit-only).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-17T23:59:26.587447+00:00`.
+
+<!-- execution:metadata Source SHA-256: 4220a8cc3a93130070541cc7b0f3faaafe31ef2215617c2028aed722521abc68; recorded UTC (program start): 2026-11-17T23:59:26.371814+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-a100/132_round_count_vs_timing/132_round_count_vs_timing.cpp) · [Compiler log](../validation/2026-11-17-a100/132_round_count_vs_timing/compile.log) · [Execution log](../validation/2026-11-17-a100/132_round_count_vs_timing/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -122,7 +118,7 @@ g++ -std=c++17 -O2 132_round_count_vs_timing.cpp -o ./example
 ./example
 ```
 
-<details markdown="1"><summary>Captured current-source output</summary>
+**Sample output**
 
 ```text
 === Section E.1: comparing two all-reduce strategies by DATA VOLUME MOVED, not wall-clock time ===
@@ -152,12 +148,14 @@ grows large -- 1.9688 at N=64, vs naive's 63x K at the same N); N=2 is the one
 honest exception, where both strategies reduce to the same single transfer: confirmed
 ```
 
-</details>
+
 <!-- execution:end:a100:132_round_count_vs_timing.cpp -->
 
 
 <!-- execution:start:h100:132_round_count_vs_timing.cpp -->
-> **Current execution — 2026-11-17-h100: Host program/model (exit-only).** UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`. Source SHA-256: `4220a8cc3a93130070541cc7b0f3faaafe31ef2215617c2028aed722521abc68`.
+> **Compiled and executed — 2026-11-17-h100: Host program/model (exit-only).** Hardware: 2 H100 GPUs. Execution record UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`.
+
+<!-- execution:metadata Source SHA-256: 4220a8cc3a93130070541cc7b0f3faaafe31ef2215617c2028aed722521abc68; recorded UTC (run-batch start; per-program time unrecorded): 2026-11-17T23:48:18.967387+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-h100/132_round_count_vs_timing/132_round_count_vs_timing.cpp) · [Compiler log](../validation/2026-11-17-h100/132_round_count_vs_timing/compile.log) · [Execution log](../validation/2026-11-17-h100/132_round_count_vs_timing/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -211,39 +209,6 @@ g++ -std=c++17 -Wall -Wextra -O2 132_round_count_vs_timing.cpp -o 132_round_coun
 
 **Sample input:** none -- the six GPU counts `{2, 4, 8, 16, 32, 64}` are fixed constants; every volume figure is computed from Chapter 9's own closed-form formulas.
 
-**Sample output:**
-
-<details markdown="1"><summary>Historical authoring output — superseded by the current execution above</summary>
-
-```text
-=== Section E.1: comparing two all-reduce strategies by DATA VOLUME MOVED, not wall-clock time ===
-
-Chapter 9's own real formulas, reused here directly with no clock involved:
-  naive (direct-send) all-reduce: each of N GPUs sends its own buffer to
-    every other GPU -- (N-1) sends per GPU, each of the FULL buffer size K
-  ring all-reduce:                two phases (reduce-scatter + all-gather),
-    2(N-1) total steps, but each step moves only K/N of the buffer
-
-N      naive: volume/GPU (x K)      ring: volume/GPU (x K)       ring/naive
-2      1.0000                       1.0000                       1.0000    
-4      3.0000                       1.5000                       0.5000    
-8      7.0000                       1.7500                       0.2500    
-16     15.0000                      1.8750                       0.1250    
-32     31.0000                      1.9375                       0.0625    
-64     63.0000                      1.9688                       0.0312    
-
-none of the numbers above came from running anything -- they are all read
-directly off Chapter 9's own closed-form formulas, computed identically and
-reproducibly on ANY machine, ANY run, ANY compiler, unlike a wall-clock
-measurement of an actual NCCL call would be.
-
-self-check: ring's own volume-per-GPU never exceeds naive's at any tested N,
-and is strictly less for every N > 2 (approaching but never reaching 2x K as N
-grows large -- 1.9688 at N=64, vs naive's 63x K at the same N); N=2 is the one
-honest exception, where both strategies reduce to the same single transfer: confirmed
-```
-
-</details>
 
 ## E.2 Timing a Multi-Device Collective Correctly
 
@@ -309,7 +274,9 @@ int main(){
 ```
 
 <!-- execution:start:a100:133_multi_device_timing.cu -->
-> **Current execution — 2026-11-17-a100: Numerical/transport validation (recorded scope).** UTC (program start): `2026-11-17T23:59:26.592804+00:00`. Source SHA-256: `da98b4a2287bda14c04e113592f02ec19d29dbf9c31ec3e8f53f6bd40ed4c90d`.
+> **Compiled and executed — 2026-11-17-a100: Numerical/transport validation (recorded scope).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-17T23:59:28.362034+00:00`.
+
+<!-- execution:metadata Source SHA-256: da98b4a2287bda14c04e113592f02ec19d29dbf9c31ec3e8f53f6bd40ed4c90d; recorded UTC (program start): 2026-11-17T23:59:26.592804+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-a100/133_multi_device_timing/133_multi_device_timing.cu) · [Compiler log](../validation/2026-11-17-a100/133_multi_device_timing/compile.log) · [Execution log](../validation/2026-11-17-a100/133_multi_device_timing/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -320,7 +287,7 @@ nvcc -std=c++17 -O2 -arch=sm_80 133_multi_device_timing.cu -o ./example
 ./example
 ```
 
-<details markdown="1"><summary>Captured current-source output</summary>
+**Sample output**
 
 ```text
 GPU 0 local stream duration: 0.102400 ms
@@ -337,12 +304,14 @@ Independent kernels only; this is not a collective bandwidth benchmark.
 VALIDATION PASS: errors=0
 ```
 
-</details>
+
 <!-- execution:end:a100:133_multi_device_timing.cu -->
 
 
 <!-- execution:start:h100:133_multi_device_timing.cu -->
-> **Current execution — 2026-11-17-h100: Numerical/transport validation (recorded scope).** UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`. Source SHA-256: `da98b4a2287bda14c04e113592f02ec19d29dbf9c31ec3e8f53f6bd40ed4c90d`.
+> **Compiled and executed — 2026-11-17-h100: Numerical/transport validation (recorded scope).** Hardware: 2 H100 GPUs. Execution record UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`.
+
+<!-- execution:metadata Source SHA-256: da98b4a2287bda14c04e113592f02ec19d29dbf9c31ec3e8f53f6bd40ed4c90d; recorded UTC (run-batch start; per-program time unrecorded): 2026-11-17T23:48:18.967387+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-h100/133_multi_device_timing/133_multi_device_timing.cu) · [Compiler log](../validation/2026-11-17-h100/133_multi_device_timing/compile.log) · [Execution log](../validation/2026-11-17-h100/133_multi_device_timing/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -377,58 +346,12 @@ nvcc -arch=sm_80 133_multi_device_timing.cu -o 133_multi_device_timing
 
 **Sample input:** none -- this file targets 4 illustrative device indices (0-3); the point under test is the per-device timing loop's own structure, not any particular data.
 
-**Sample output:**
-
-<details markdown="1"><summary>Historical authoring output — superseded by the current execution above</summary>
-
-```text
-=== Section E.2: timing a MULTI-DEVICE collective correctly ===
-
-  cudaGetDeviceCount               -> cudaErrorNoDevice            (no CUDA-capable device is detected)
-  deviceCount = 0
-
-=== the WRONG way: one event pair, on one device's own stream ===
-
-cudaSetDevice(0); cudaEventRecord(start); ncclAllReduce(...); cudaEventRecord(stop);
-cudaEventSynchronize(stop); cudaEventElapsedTime(&ms, start, stop);
-
-this measures ONLY how long device 0's own stream took to reach the second
-event -- NCCL enqueues an all-reduce's own work on every participating
-device's stream, and device 0's stream can genuinely reach its own "done"
-marker before a slower device (different clock speed, different PCIe link,
-or simply more queued work) has finished its own share of the collective at
-all. A single device's own elapsed time UNDER-reports the real, whole-
-collective completion time whenever devices are not perfectly synchronized.
-
-=== the CORRECT way: one event pair PER device, take the MAXIMUM ===
-
-  dev    cudaSetDevice        cudaEventCreate(start) cudaEventCreate(stop)
-  0      cudaErrorNoDevice    cudaErrorNoDevice    cudaErrorNoDevice   
-  1      cudaErrorNoDevice    cudaErrorNoDevice    cudaErrorNoDevice   
-  2      cudaErrorNoDevice    cudaErrorNoDevice    cudaErrorNoDevice   
-  3      cudaErrorNoDevice    cudaErrorNoDevice    cudaErrorNoDevice   
-
-  (every cudaEventCreate() above reports the same honest cudaErrorNoDevice
-   this environment reports for every device-touching call since Chapter 2 --
-   no per-device elapsed time can actually be measured here, but the CORRECT
-   pattern -- one event pair per device, cudaEventSynchronize EACH one, take
-   the MAXIMUM across all of them -- is the real, genuinely different-from-
-   single-device correction this section exists to make, and it is what a
-   reader with real multi-GPU hardware should actually run.)
-
-self-check: every cudaSetDevice() call across all 4 simulated devices reports
-the SAME error (cudaErrorNoDevice), confirming the per-device loop was genuinely run to
-completion for every device rather than short-circuited after the first one:
-confirmed
-```
-
-</details>
 
 ## E.3 NCCL_DEBUG and Nsight Systems: Real Multi-GPU Diagnostics
 
 ### Intuition
 
-Appendix C File 126's own locked output already showed one real line this section now takes literally: a failed `ncclCommInitRank()` reports "unhandled cuda error (run with NCCL_DEBUG=INFO for details)." Unlike the DSA sibling's own Appendix E.3, which could only describe Nsight Systems and Nsight Compute from the outside (neither tool is installed in that environment), this environment genuinely HAS NCCL itself installed, and `NCCL_DEBUG=INFO` is nothing more exotic than an environment variable NCCL's own library reads at startup -- so this section can run it for real, on the identical communicator-init attempt already established, and lock the genuinely richer output that comes back.
+`NCCL_DEBUG=INFO` adds initialization and transport diagnostics to the same program execution. Use it to inspect the library’s selected paths and explain errors; the amount and ordering of diagnostic output depend on the NCCL version and runtime configuration.
 
 ### The Concept, In Detail
 
@@ -472,7 +395,9 @@ int main(){
 ```
 
 <!-- execution:start:a100:134_nccl_debug_and_nsys.cu -->
-> **Current execution — 2026-11-17-a100: API validation (recorded scope).** UTC (program start): `2026-11-17T23:59:32.185126+00:00`. Source SHA-256: `6da46382d3ee32e45342d2e6e612e242132881e5684c6f1d61ff20880ebfa01f`.
+> **Compiled and executed — 2026-11-17-a100: API validation (recorded scope).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-17T23:59:33.953891+00:00`.
+
+<!-- execution:metadata Source SHA-256: 6da46382d3ee32e45342d2e6e612e242132881e5684c6f1d61ff20880ebfa01f; recorded UTC (program start): 2026-11-17T23:59:32.185126+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-a100/134_nccl_debug_and_nsys/134_nccl_debug_and_nsys.cu) · [Compiler log](../validation/2026-11-17-a100/134_nccl_debug_and_nsys/compile.log) · [Execution log](../validation/2026-11-17-a100/134_nccl_debug_and_nsys/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -483,19 +408,21 @@ nvcc -std=c++17 -O2 -arch=sm_80 134_nccl_debug_and_nsys.cu -o ./example -lnccl
 ./example
 ```
 
-<details markdown="1"><summary>Captured current-source output</summary>
+**Sample output**
 
 ```text
 API PROBE PASS: errors=0; one-rank initialization and cleanup, no collective throughput measured.
 Set NCCL_DEBUG=INFO before starting the process; library logging is separate from application output.
 ```
 
-</details>
+
 <!-- execution:end:a100:134_nccl_debug_and_nsys.cu -->
 
 
 <!-- execution:start:h100:134_nccl_debug_and_nsys.cu -->
-> **Current execution — 2026-11-17-h100: API validation (recorded scope).** UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`. Source SHA-256: `6da46382d3ee32e45342d2e6e612e242132881e5684c6f1d61ff20880ebfa01f`.
+> **Compiled and executed — 2026-11-17-h100: API validation (recorded scope).** Hardware: 2 H100 GPUs. Execution record UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`.
+
+<!-- execution:metadata Source SHA-256: 6da46382d3ee32e45342d2e6e612e242132881e5684c6f1d61ff20880ebfa01f; recorded UTC (run-batch start; per-program time unrecorded): 2026-11-17T23:48:18.967387+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-h100/134_nccl_debug_and_nsys/134_nccl_debug_and_nsys.cu) · [Compiler log](../validation/2026-11-17-h100/134_nccl_debug_and_nsys/compile.log) · [Execution log](../validation/2026-11-17-h100/134_nccl_debug_and_nsys/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -527,43 +454,6 @@ NCCL_DEBUG=INFO ./134_nccl_debug_and_nsys  # verbose -- NCCL's own real bootstra
 
 **Sample input:** none -- the same fixed `ncclCommInitRank(&comm, 1, id, 0)` call runs both times; only the `NCCL_DEBUG` environment variable differs between the two runs.
 
-**Sample output (default, `NCCL_DEBUG` unset):**
-
-<details markdown="1"><summary>Historical authoring output — superseded by the current execution above</summary>
-
-```text
-=== Section E.3: NCCL_DEBUG=INFO, run against a genuine ncclCommInitRank() ===
-
-ncclCommInitRank() -> unhandled cuda error (run with NCCL_DEBUG=INFO for details)
-(the stderr lines above main's own single printf, if any, are NCCL's OWN
-real internal logging -- emitted only when NCCL_DEBUG is set; with NCCL's
-default, silent logging level, this program's ENTIRE output is the one line
-above)
-```
-
-</details>
-
-**Sample output (`NCCL_DEBUG=INFO`, genuinely richer):**
-
-```text
-=== Section E.3: NCCL_DEBUG=INFO, run against a genuine ncclCommInitRank() ===
-
-vm:549:549 [22016] NCCL INFO Bootstrap : Using eth0:192.0.2.2<0>
-vm:549:549 [32765] NCCL INFO NET/Plugin : Plugin load (libnccl-net.so) returned 2 : libnccl-net.so: cannot open shared object file: No such file or directory
-vm:549:549 [32765] NCCL INFO NET/Plugin : No plugin found, using internal implementation
-vm:549:549 [32696] NCCL INFO cudaDriverVersion 13000
-
-vm:549:549 [0] misc/cudawrap.cc:31 NCCL WARN Cuda failure 'no CUDA-capable device is detected'
-
-vm:549:549 [32696] init.cc:1631 NCCL WARN Cuda failure 'no CUDA-capable device is detected'
-ncclCommInitRank() -> unhandled cuda error (run with NCCL_DEBUG=INFO for details)
-(the stderr lines above main's own single printf, if any, are NCCL's OWN
-real internal logging -- emitted only when NCCL_DEBUG is set; with NCCL's
-default, silent logging level, this program's ENTIRE output is the one line
-above)
-```
-
-(The preceding transcript is historical. Diagnostic line counts and transport choices depend on NCCL version, environment and hardware; INFO does not promise a fixed number of extra messages.)
 
 On real multi-GPU hardware, the same two tools are used together rather than as alternatives: `NCCL_DEBUG=INFO` set as an environment variable for a suspicious run to see what NCCL itself chose and reported, and Nsight Systems run across every rank at once to see where the wall-clock time actually went:
 

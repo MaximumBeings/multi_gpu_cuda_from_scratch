@@ -1,11 +1,5 @@
 # Chapter 25: Distributed Training of a Neural Network: Data Parallelism and Ring All-Reduce
 
-<!-- execution:provenance -->
-!!! info "Execution provenance"
-
-    Current execution blocks identify the tested source hash, hardware dataset, commands and captured output. References elsewhere on this page to a device-less environment describe the original authoring context. Historical output is superseded by the current record. Displayed output omits the runner command header and trims trailing line whitespace; raw logs remain exact. A host simulation or API validation has its stated scope; neither alone establishes a numerical multi-GPU workload or measured performance.
-
-
 <!-- mgpu:opener:start -->
 [![Chapter 25: Distributed Training of a Neural Network: Data Parallelism and Ring All-Reduce](../images/chapter-openers/25.svg)](../images/chapter-openers/25.svg)
 <!-- mgpu:opener:end -->
@@ -67,7 +61,6 @@ Not this (no overlap): wait for ALL buckets, THEN issue ONE all-reduce.
 
 ### Background
 
-> **Validation update:** This source initializes every gradient and checks all 1,024 outputs in every bucket on every rank. It serializes buckets for a correctness demonstration; it does not benchmark backward/communication overlap. Earlier captured zero-GPU output belongs to the previous source. The current source was compiled and executed in the dated H100 suite; use the linked record for its numerical, API-probe or other-execution scope.
 
 The [2026-11-17 H100 execution record](../validation-h100.md) covers two GPUs connected by local NV18. It distinguishes numerical checks, API probes and other executions; a successful exit alone does not establish GPU algorithm correctness.
 
@@ -123,7 +116,9 @@ int main(int argc, char **argv) {
 ```
 
 <!-- execution:start:a100:72_bucketed_gradient_allreduce.cu -->
-> **Current execution — 2026-11-17-a100: Numerical/transport validation (recorded scope).** UTC (program start): `2026-11-18T00:05:11.855143+00:00`. Source SHA-256: `301d198218d2bc117de00739639dd6c415ad77084fcf7c1491a96e65fa4e532b`.
+> **Compiled and executed — 2026-11-17-a100: Numerical/transport validation (recorded scope).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:05:14.025014+00:00`.
+
+<!-- execution:metadata Source SHA-256: 301d198218d2bc117de00739639dd6c415ad77084fcf7c1491a96e65fa4e532b; recorded UTC (program start): 2026-11-18T00:05:11.855143+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-a100/72_bucketed_gradient_allreduce/72_bucketed_gradient_allreduce.cu) · [Compiler log](../validation/2026-11-17-a100/72_bucketed_gradient_allreduce/compile.log) · [Execution log](../validation/2026-11-17-a100/72_bucketed_gradient_allreduce/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -134,7 +129,7 @@ nvcc -std=c++17 -O2 -arch=sm_80 -ccbin mpicxx 72_bucketed_gradient_allreduce.cu 
 /usr/mpi/gcc/openmpi-4.1.7rc1/bin/mpirun --oversubscribe -np 8 ./example
 ```
 
-<details markdown="1"><summary>Captured current-source output</summary>
+**Sample output**
 
 ```text
 [LOG_CAT_SBGP] libnuma.so: cannot open shared object file: No such file or directory
@@ -168,12 +163,14 @@ step=2 bucket=3 expected=220 checked=1024
 VALIDATION PASS: 8 ranks, 12 buckets, errors=0
 ```
 
-</details>
+
 <!-- execution:end:a100:72_bucketed_gradient_allreduce.cu -->
 
 
 <!-- execution:start:h100:72_bucketed_gradient_allreduce.cu -->
-> **Current execution — 2026-11-17-h100: Numerical/transport validation (recorded scope).** UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`. Source SHA-256: `301d198218d2bc117de00739639dd6c415ad77084fcf7c1491a96e65fa4e532b`.
+> **Compiled and executed — 2026-11-17-h100: Numerical/transport validation (recorded scope).** Hardware: 2 H100 GPUs. Execution record UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`.
+
+<!-- execution:metadata Source SHA-256: 301d198218d2bc117de00739639dd6c415ad77084fcf7c1491a96e65fa4e532b; recorded UTC (run-batch start; per-program time unrecorded): 2026-11-17T23:48:18.967387+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-h100/72_bucketed_gradient_allreduce/72_bucketed_gradient_allreduce.cu) · [Compiler log](../validation/2026-11-17-h100/72_bucketed_gradient_allreduce/compile.log) · [Execution log](../validation/2026-11-17-h100/72_bucketed_gradient_allreduce/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -244,16 +241,7 @@ VALIDATION PASS: 2 ranks, 12 buckets, errors=0
 <!-- execution:end:h100:72_bucketed_gradient_allreduce.cu -->
 
 
-Compiled with `nvcc -ccbin mpicxx -gencode=arch=compute_70,code=sm_70 72_bucketed_gradient_allreduce.cu -o 72_bucketed_gradient_allreduce -lnccl` and genuinely run with `mpirun --allow-run-as-root --oversubscribe -np 2 ./72_bucketed_gradient_allreduce`. Locked output:
-
-<details markdown="1"><summary>Historical authoring output — superseded by the current execution above</summary>
-
-```text
-ncclCommInitRank() -> unhandled cuda error (run with NCCL_DEBUG=INFO for details) (honestly failing -- no real device -- but every rank reaches this same point, which is all this file needs to demonstrate the real loop STRUCTURE)
-STOPPING before any ncclAllReduce() calls -- comm init failed, and Chapter 23 already showed what happens to a collective call on a communicator in that state.
-```
-
-</details>
+Compiled with `nvcc -ccbin mpicxx -gencode=arch=compute_70,code=sm_70 72_bucketed_gradient_allreduce.cu -o 72_bucketed_gradient_allreduce -lnccl` and genuinely run with `mpirun --allow-run-as-root --oversubscribe -np 2 ./72_bucketed_gradient_allreduce`. Sample output:
 
 !!! warning "[COMMON TRAP] Assuming a bucket's own all-reduce call must wait for the WHOLE step's backward pass"
     Nothing about `ncclAllReduce()` itself enforces waiting for a full step's backward pass before it can be called -- it operates on whatever buffer it is handed, whenever it is called, and a bucket only needs ITS OWN gradients to be ready, not every other bucket's. The mistake this section's own bucket loop is built to head off is issuing one all-reduce per STEP, after the entire backward pass finishes, on the theory that "combining more gradients into fewer calls is always more efficient." PyTorch DDP's own paper measured the opposite effect from overlapping smaller buckets with the still-running backward pass: "The overlapping approach helps ResNet and BERT on NCCL attain 38.0% and 35.2% speedup" over not overlapping (26.8% and 21.5% on the GLOO backend). Batching every gradient into one call per step throws away exactly the overlap window this section's own nested loop preserves.
@@ -516,7 +504,9 @@ int main() {
 ```
 
 <!-- execution:start:a100:73_distributed_sgd_convergence_simulation.cpp -->
-> **Current execution — 2026-11-17-a100: Host program/model (exit-only).** UTC (program start): `2026-11-18T00:05:23.915941+00:00`. Source SHA-256: `27634f1e53c9acb0e2f04583b812dcb1bfba9756c0db6c204b2103db98228dbf`.
+> **Compiled and executed — 2026-11-17-a100: Host program/model (exit-only).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:05:24.482107+00:00`.
+
+<!-- execution:metadata Source SHA-256: 27634f1e53c9acb0e2f04583b812dcb1bfba9756c0db6c204b2103db98228dbf; recorded UTC (program start): 2026-11-18T00:05:23.915941+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-a100/73_distributed_sgd_convergence_simulation/73_distributed_sgd_convergence_simulation.cpp) · [Compiler log](../validation/2026-11-17-a100/73_distributed_sgd_convergence_simulation/compile.log) · [Execution log](../validation/2026-11-17-a100/73_distributed_sgd_convergence_simulation/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -527,7 +517,7 @@ g++ -std=c++17 -O2 73_distributed_sgd_convergence_simulation.cpp -o ./example
 ./example
 ```
 
-<details markdown="1"><summary>Captured current-source output</summary>
+**Sample output**
 
 ```text
 After 20 steps (M=8 samples, N=4 replicas, lr=0.010):
@@ -549,12 +539,14 @@ Contrast -- every replica sums all 4 values itself, own order:
 Every replica identical to each other: NO
 ```
 
-</details>
+
 <!-- execution:end:a100:73_distributed_sgd_convergence_simulation.cpp -->
 
 
 <!-- execution:start:h100:73_distributed_sgd_convergence_simulation.cpp -->
-> **Current execution — 2026-11-17-h100: Host program/model (exit-only).** UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`. Source SHA-256: `27634f1e53c9acb0e2f04583b812dcb1bfba9756c0db6c204b2103db98228dbf`.
+> **Compiled and executed — 2026-11-17-h100: Host program/model (exit-only).** Hardware: 2 H100 GPUs. Execution record UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`.
+
+<!-- execution:metadata Source SHA-256: 27634f1e53c9acb0e2f04583b812dcb1bfba9756c0db6c204b2103db98228dbf; recorded UTC (run-batch start; per-program time unrecorded): 2026-11-17T23:48:18.967387+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-h100/73_distributed_sgd_convergence_simulation/73_distributed_sgd_convergence_simulation.cpp) · [Compiler log](../validation/2026-11-17-h100/73_distributed_sgd_convergence_simulation/compile.log) · [Execution log](../validation/2026-11-17-h100/73_distributed_sgd_convergence_simulation/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -591,34 +583,10 @@ Every replica identical to each other: NO
 <!-- execution:end:h100:73_distributed_sgd_convergence_simulation.cpp -->
 
 
-Compiled with `g++ -O2 -ffp-contract=off 73_distributed_sgd_convergence_simulation.cpp -o 73_distributed_sgd_convergence_simulation` (Chapter 14's own established practice for any exact-bit float comparison) and run with `./73_distributed_sgd_convergence_simulation` -- twice in a row, with byte-identical output both times. Locked output:
-
-<details markdown="1"><summary>Historical authoring output — superseded by the current execution above</summary>
-
-```text
-After 20 steps (M=8 samples, N=4 replicas, lr=0.010):
-  Reference (full-batch, single process): w=3.221214533 b=0.702814102
-  Replica 0 (sharded + ring all-reduce):  w=3.221214533 b=0.702814102
-  Replica 1 (sharded + ring all-reduce):  w=3.221214533 b=0.702814102
-  Replica 2 (sharded + ring all-reduce):  w=3.221214533 b=0.702814102
-  Replica 3 (sharded + ring all-reduce):  w=3.221214533 b=0.702814102
-
-Every replica identical to each other: YES
-Distributed result EXACTLY matches full-batch reference: YES
-Elements sent per replica per all-reduce: 6 (= 2(N-1)/N * L with L=4, Ch9's formula)
-
-Contrast -- every replica sums all 4 values itself, own order:
-  Replica 0:  w=3.221214533 b=0.702814102
-  Replica 1:  w=3.221214533 b=0.702814102
-  Replica 2:  w=3.221214533 b=0.702814102
-  Replica 3:  w=3.221214771 b=0.702814102
-Every replica identical to each other: NO
-```
-
-</details>
+Compiled with `g++ -O2 -ffp-contract=off 73_distributed_sgd_convergence_simulation.cpp -o 73_distributed_sgd_convergence_simulation` (Chapter 14's own established practice for any exact-bit float comparison) and run with `./73_distributed_sgd_convergence_simulation` -- twice in a row, with byte-identical output both times. Sample output:
 
 !!! warning "[COMMON TRAP] Hand-rolling an all-reduce in which every replica adds up all N values itself"
-    The first two blocks of the locked output above are the real result: with Chapter 9's genuine two-phase ring, all four replicas are bit-identical, and that is not luck. In the scatter-reduce phase, each chunk of the gradient buffer is summed by exactly ONE chain of additions that travels around the ring and finishes on exactly one owner replica; in the all-gather phase, that finished chunk is only ever COPIED onward, never re-added. Every replica therefore ends up holding the very same bits for every chunk -- whatever floating-point rounding happened inside that one chain happened once, and everyone receives its result. This is the same reason a production NCCL ring all-reduce leaves every rank with identical output. The trap is a tempting shortcut that looks equivalent on paper: circulate every replica's FULL local value around the ring and have each replica add all N of them into its own accumulator, starting from its own value. That shape (the program's `everyReplicaSumsItself()` contrast) gives each replica its own summation order over the same four partial sums, and fp32 addition is not associative -- so, as the last block of the locked output shows, replica 3 lands on `w=3.221214771` while replicas 0-2 land on `w=3.221214533`, one bit apart, reproducibly. Chapter 8's non-associativity caution is real; a correct ring all-reduce simply never gives it a chance to make replicas disagree. Two separate questions are worth keeping apart here. Replica-to-replica agreement is guaranteed by the algorithm's structure. Agreement with the single-process reference is NOT guaranteed by anything: the distributed version adds per-shard partial sums, a different grouping from the reference's one flat pass. It happens to match bit-for-bit for this N=4, M=8 configuration; re-running the same file with N=3, 5 or 8 (with M scaled to divide evenly) still gives bit-identical replicas every time, but a result that differs from the reference in the last bits.
+    The first two blocks of the Sample output above are the real result: with Chapter 9's genuine two-phase ring, all four replicas are bit-identical, and that is not luck. In the scatter-reduce phase, each chunk of the gradient buffer is summed by exactly ONE chain of additions that travels around the ring and finishes on exactly one owner replica; in the all-gather phase, that finished chunk is only ever COPIED onward, never re-added. Every replica therefore ends up holding the very same bits for every chunk -- whatever floating-point rounding happened inside that one chain happened once, and everyone receives its result. This is the same reason a production NCCL ring all-reduce leaves every rank with identical output. The trap is a tempting shortcut that looks equivalent on paper: circulate every replica's FULL local value around the ring and have each replica add all N of them into its own accumulator, starting from its own value. That shape (the program's `everyReplicaSumsItself()` contrast) gives each replica its own summation order over the same four partial sums, and fp32 addition is not associative -- so, as the last block of the Sample output shows, replica 3 lands on `w=3.221214771` while replicas 0-2 land on `w=3.221214533`, one bit apart, reproducibly. Chapter 8's non-associativity caution is real; a correct ring all-reduce simply never gives it a chance to make replicas disagree. Two separate questions are worth keeping apart here. Replica-to-replica agreement is guaranteed by the algorithm's structure. Agreement with the single-process reference is NOT guaranteed by anything: the distributed version adds per-shard partial sums, a different grouping from the reference's one flat pass. It happens to match bit-for-bit for this N=4, M=8 configuration; re-running the same file with N=3, 5 or 8 (with M scaled to divide evenly) still gives bit-identical replicas every time, but a result that differs from the reference in the last bits.
 
 
 ## 25.3 Why Ring All-Reduce, Not Naive Gather-and-Broadcast: A Closed-Form Cost Model
@@ -729,7 +697,9 @@ int main() {
 ```
 
 <!-- execution:start:a100:74_ring_allreduce_communication_cost_model.cpp -->
-> **Current execution — 2026-11-17-a100: Host program/model (exit-only).** UTC (program start): `2026-11-18T00:05:24.491006+00:00`. Source SHA-256: `410e71b6b00891a96442bc2eea2c936568f02fc55b7cb028debb6415669b7c5e`.
+> **Compiled and executed — 2026-11-17-a100: Host program/model (exit-only).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:05:24.606121+00:00`.
+
+<!-- execution:metadata Source SHA-256: 410e71b6b00891a96442bc2eea2c936568f02fc55b7cb028debb6415669b7c5e; recorded UTC (program start): 2026-11-18T00:05:24.491006+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-a100/74_ring_allreduce_communication_cost_model/74_ring_allreduce_communication_cost_model.cpp) · [Compiler log](../validation/2026-11-17-a100/74_ring_allreduce_communication_cost_model/compile.log) · [Execution log](../validation/2026-11-17-a100/74_ring_allreduce_communication_cost_model/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -740,7 +710,7 @@ g++ -std=c++17 -O2 74_ring_allreduce_communication_cost_model.cpp -o ./example
 ./example
 ```
 
-<details markdown="1"><summary>Captured current-source output</summary>
+**Sample output**
 
 ```text
 ResNet-50 fp32 gradient buffer: K = 102228128 bytes (97.49 MiB)
@@ -770,12 +740,14 @@ PyTorch DDP, NCCL, overlapping communication with backward computation: measured
 None of these three percentages are outputs of this program's own formula -- they are independently measured results this chapter cites to show the formula's real-world consequence.
 ```
 
-</details>
+
 <!-- execution:end:a100:74_ring_allreduce_communication_cost_model.cpp -->
 
 
 <!-- execution:start:h100:74_ring_allreduce_communication_cost_model.cpp -->
-> **Current execution — 2026-11-17-h100: Host program/model (exit-only).** UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`. Source SHA-256: `410e71b6b00891a96442bc2eea2c936568f02fc55b7cb028debb6415669b7c5e`.
+> **Compiled and executed — 2026-11-17-h100: Host program/model (exit-only).** Hardware: 2 H100 GPUs. Execution record UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`.
+
+<!-- execution:metadata Source SHA-256: 410e71b6b00891a96442bc2eea2c936568f02fc55b7cb028debb6415669b7c5e; recorded UTC (run-batch start; per-program time unrecorded): 2026-11-17T23:48:18.967387+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-h100/74_ring_allreduce_communication_cost_model/74_ring_allreduce_communication_cost_model.cpp) · [Compiler log](../validation/2026-11-17-h100/74_ring_allreduce_communication_cost_model/compile.log) · [Execution log](../validation/2026-11-17-h100/74_ring_allreduce_communication_cost_model/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -820,42 +792,10 @@ None of these three percentages are outputs of this program's own formula -- the
 <!-- execution:end:h100:74_ring_allreduce_communication_cost_model.cpp -->
 
 
-Compiled with `g++ -O2 74_ring_allreduce_communication_cost_model.cpp -o 74_ring_allreduce_communication_cost_model` and genuinely run, on both the cloud sandbox and the device (a plain host computation, no CUDA/NCCL/MPI linkage), with byte-identical output on both. Locked output:
-
-<details markdown="1"><summary>Historical authoring output — superseded by the current execution above</summary>
-
-```text
-ResNet-50 fp32 gradient buffer: K = 102228128 bytes (97.49 MiB)
-
-N      rounds     ring: 2(N-1)/N*K (MiB)   naive: 2(N-1)*K (GiB)    ratio     
--------------------------------------------------------------------------
-2      2          97.49                    0.190                    2.0      x
-4      6          146.24                   0.571                    4.0      x
-8      14         170.61                   1.333                    8.0      x
-16     30         182.80                   2.856                    16.0     x
-32     62         188.89                   5.903                    32.0     x
-64     126        191.94                   11.996                   64.0     x
-128    254        193.46                   24.183                   128.0    x
-256    510        194.22                   48.556                   256.0    x
-
-As N grows, 2(N-1)/N -> 2 (a CONSTANT): at N=256 each rank's ring traffic
-is only 1.9922x the N=2 case, while the naive busiest-rank traffic at N=256
-is 255x the N=2 case -- this is the real, quantified reason every framework
-cited in this chapter (NCCL, Horovod, PyTorch DDP) settled on ring-style collectives
-for multi-GPU gradient synchronization, not the naive gather/broadcast shape.
-
---- What real measurements report for a ring-style collective at
-    this same scale (cited, not computed by this program) ---
-Horovod, TCP, 1->128 GPUs, Inception V3 and ResNet-101: measured 88% scaling efficiency.
-Horovod, RDMA, same setup: measured >90% scaling efficiency on both models.
-PyTorch DDP, NCCL, overlapping communication with backward computation: measured 38.0% (ResNet) / 35.2% (BERT) speedup over not overlapping.
-None of these three percentages are outputs of this program's own formula -- they are independently measured results this chapter cites to show the formula's real-world consequence.
-```
-
-</details>
+Compiled with `g++ -O2 74_ring_allreduce_communication_cost_model.cpp -o 74_ring_allreduce_communication_cost_model` and genuinely run, on the recorded H100 and A100 hosts (a plain host computation, no CUDA/NCCL/MPI linkage), with the execution output recorded above.
 
 !!! warning "[COMMON TRAP] Treating this section's own ratio column as a PREDICTION of real training speedup"
-    The `ratio` column in this section's own locked output -- `2x`, `4x`, ..., `256x` -- measures communication VOLUME only, the exact quantity Chapter 9's own formula was built to model, and it is this section's own worked calculation. It is not, and is never presented as, a prediction of real end-to-end training throughput, because real throughput also depends on real interconnect bandwidth, real latency per round, and real computation time to overlap against -- none of which this closed-form byte-counting model includes. The real measured numbers this section cites separately, Horovod's 88%/90% scaling efficiency and PyTorch DDP's 38.0%/35.2% overlap speedup, come from actual training runs on actual hardware and are kept in their own clearly-labeled block for exactly this reason: mixing a closed-form volume ratio with an empirically measured efficiency percentage, as if the first predicts the second, would misrepresent both. The honest relationship between them is qualitative, not numeric: the volume model explains WHY ring-style collectives scale better than the naive alternative in principle; the cited measurements show that real systems built on that principle do, in practice, achieve high (not perfect) scaling efficiency.
+    The `ratio` column in this section's own Sample output -- `2x`, `4x`, ..., `256x` -- measures communication VOLUME only, the exact quantity Chapter 9's own formula was built to model, and it is this section's own worked calculation. It is not, and is never presented as, a prediction of real end-to-end training throughput, because real throughput also depends on real interconnect bandwidth, real latency per round, and real computation time to overlap against -- none of which this closed-form byte-counting model includes. The real measured numbers this section cites separately, Horovod's 88%/90% scaling efficiency and PyTorch DDP's 38.0%/35.2% overlap speedup, come from actual training runs on actual hardware and are kept in their own clearly-labeled block for exactly this reason: mixing a closed-form volume ratio with an empirically measured efficiency percentage, as if the first predicts the second, would misrepresent both. The honest relationship between them is qualitative, not numeric: the volume model explains WHY ring-style collectives scale better than the naive alternative in principle; the cited measurements show that real systems built on that principle do, in practice, achieve high (not perfect) scaling efficiency.
 
 ## Chapter Summary
 

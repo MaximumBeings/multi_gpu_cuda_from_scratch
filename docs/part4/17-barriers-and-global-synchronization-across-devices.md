@@ -1,11 +1,5 @@
 # Chapter 17: Barriers and Global Synchronization Across Devices
 
-<!-- execution:provenance -->
-!!! info "Execution provenance"
-
-    Current execution blocks identify the tested source hash, hardware dataset, commands and captured output. References elsewhere on this page to a device-less environment describe the original authoring context. Historical output is superseded by the current record. Displayed output omits the runner command header and trims trailing line whitespace; raw logs remain exact. A host simulation or API validation has its stated scope; neither alone establishes a numerical multi-GPU workload or measured performance.
-
-
 <!-- mgpu:opener:start -->
 [![Chapter 17: Barriers and Global Synchronization Across Devices](../images/chapter-openers/17.svg)](../images/chapter-openers/17.svg)
 <!-- mgpu:opener:end -->
@@ -123,7 +117,9 @@ int main() {
 ```
 
 <!-- execution:start:a100:48_per_device_sync_is_not_a_barrier.cu -->
-> **Current execution — 2026-11-17-a100: API/host demonstration (exit-only).** UTC (program start): `2026-11-18T00:02:46.421425+00:00`. Source SHA-256: `e8c4c448dfbe5d9af39364bbe4232aec22cdb020b218ac67464d8fa894f74aaf`.
+> **Compiled and executed — 2026-11-17-a100: API/host demonstration (exit-only).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:02:47.488438+00:00`.
+
+<!-- execution:metadata Source SHA-256: e8c4c448dfbe5d9af39364bbe4232aec22cdb020b218ac67464d8fa894f74aaf; recorded UTC (program start): 2026-11-18T00:02:46.421425+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-a100/48_per_device_sync_is_not_a_barrier/48_per_device_sync_is_not_a_barrier.cu) · [Compiler log](../validation/2026-11-17-a100/48_per_device_sync_is_not_a_barrier/compile.log) · [Execution log](../validation/2026-11-17-a100/48_per_device_sync_is_not_a_barrier/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -134,7 +130,7 @@ nvcc -std=c++17 -O2 -arch=sm_80 48_per_device_sync_is_not_a_barrier.cu -o ./exam
 ./example
 ```
 
-<details markdown="1"><summary>Captured current-source output</summary>
+**Sample output**
 
 ```text
 cudaGetDeviceCount(): 8 device(s).
@@ -158,12 +154,14 @@ OTHER device. A real global barrier needs every rank to wait
 for every OTHER rank, not just for its own queue to drain.
 ```
 
-</details>
+
 <!-- execution:end:a100:48_per_device_sync_is_not_a_barrier.cu -->
 
 
 <!-- execution:start:h100:48_per_device_sync_is_not_a_barrier.cu -->
-> **Current execution — 2026-11-17-h100: API/host demonstration (exit-only).** UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`. Source SHA-256: `e8c4c448dfbe5d9af39364bbe4232aec22cdb020b218ac67464d8fa894f74aaf`.
+> **Compiled and executed — 2026-11-17-h100: API/host demonstration (exit-only).** Hardware: 2 H100 GPUs. Execution record UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`.
+
+<!-- execution:metadata Source SHA-256: e8c4c448dfbe5d9af39364bbe4232aec22cdb020b218ac67464d8fa894f74aaf; recorded UTC (run-batch start; per-program time unrecorded): 2026-11-17T23:48:18.967387+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-h100/48_per_device_sync_is_not_a_barrier/48_per_device_sync_is_not_a_barrier.cu) · [Compiler log](../validation/2026-11-17-h100/48_per_device_sync_is_not_a_barrier/compile.log) · [Execution log](../validation/2026-11-17-h100/48_per_device_sync_is_not_a_barrier/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -201,34 +199,6 @@ for every OTHER rank, not just for its own queue to drain.
 </details>
 <!-- execution:end:h100:48_per_device_sync_is_not_a_barrier.cu -->
 
-
-Genuinely compiled with a real `nvcc` and genuinely run. Locked output, deterministic across repeated runs:
-
-<details markdown="1"><summary>Historical authoring output — superseded by the current execution above</summary>
-
-```
-cudaGetDeviceCount(): 0 device(s).
-
-Synchronizing 4 devices the way every device loop since Chapter 3 has -- one at a time, on this one CPU thread:
-  rank 0: cudaSetDevice(): no CUDA-capable device is detected (code 100)   cudaDeviceSynchronize(): no CUDA-capable device is detected (code 100)
-  rank 1: cudaSetDevice(): no CUDA-capable device is detected (code 100)   cudaDeviceSynchronize(): no CUDA-capable device is detected (code 100)
-  rank 2: cudaSetDevice(): no CUDA-capable device is detected (code 100)   cudaDeviceSynchronize(): no CUDA-capable device is detected (code 100)
-  rank 3: cudaSetDevice(): no CUDA-capable device is detected (code 100)   cudaDeviceSynchronize(): no CUDA-capable device is detected (code 100)
-
-Notice what this loop actually guarantees, and what it does
-NOT: by the time it returns, this CPU thread knows every
-device's queue, AS OF THE MOMENT EACH ONE WAS CHECKED, was
-empty. It says nothing about whether rank 0 and rank 3 were
-AT THE SAME POINT in their own work relative to each other.
-Rank 0 could have already raced ten iterations ahead of rank
-3 by the time rank 3's own kernels are even launched -- this
-loop only checks each device's queue in turn, sequentially,
-on one CPU thread; it never makes any device wait for any
-OTHER device. A real global barrier needs every rank to wait
-for every OTHER rank, not just for its own queue to drain.
-```
-
-</details>
 
 A host-controlled loop can wait for work on each selected device, provided it coordinates all relevant submitters. Each `cudaDeviceSynchronize()` has a per-device scope; independent host submitters need an additional coordination protocol. This is not a device-side cross-GPU barrier.
 
@@ -297,7 +267,9 @@ int main(){
 ```
 
 <!-- execution:start:a100:49_nccl_allreduce_as_barrier.cu -->
-> **Current execution — 2026-11-17-a100: Numerical/transport validation (recorded scope).** UTC (program start): `2026-11-18T00:02:51.364146+00:00`. Source SHA-256: `f17393f034b526cf66dfd5b538f6c7c32557526981fe0e0139028b40fd17cb70`.
+> **Compiled and executed — 2026-11-17-a100: Numerical/transport validation (recorded scope).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:02:53.633692+00:00`.
+
+<!-- execution:metadata Source SHA-256: f17393f034b526cf66dfd5b538f6c7c32557526981fe0e0139028b40fd17cb70; recorded UTC (program start): 2026-11-18T00:02:51.364146+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-a100/49_nccl_allreduce_as_barrier/49_nccl_allreduce_as_barrier.cu) · [Compiler log](../validation/2026-11-17-a100/49_nccl_allreduce_as_barrier/compile.log) · [Execution log](../validation/2026-11-17-a100/49_nccl_allreduce_as_barrier/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -308,18 +280,20 @@ nvcc -std=c++17 -O2 -arch=sm_80 49_nccl_allreduce_as_barrier.cu -o ./example -ln
 ./example
 ```
 
-<details markdown="1"><summary>Captured current-source output</summary>
+**Sample output**
 
 ```text
 PASS: dummy-element AllReduce plus host completion wait on 4 GPUs; all reference values checked.
 ```
 
-</details>
+
 <!-- execution:end:a100:49_nccl_allreduce_as_barrier.cu -->
 
 
 <!-- execution:start:h100:49_nccl_allreduce_as_barrier.cu -->
-> **Current execution — 2026-11-17-h100: Numerical/transport validation (recorded scope).** UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`. Source SHA-256: `f17393f034b526cf66dfd5b538f6c7c32557526981fe0e0139028b40fd17cb70`.
+> **Compiled and executed — 2026-11-17-h100: Numerical/transport validation (recorded scope).** Hardware: 2 H100 GPUs. Execution record UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`.
+
+<!-- execution:metadata Source SHA-256: f17393f034b526cf66dfd5b538f6c7c32557526981fe0e0139028b40fd17cb70; recorded UTC (run-batch start; per-program time unrecorded): 2026-11-17T23:48:18.967387+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-h100/49_nccl_allreduce_as_barrier/49_nccl_allreduce_as_barrier.cu) · [Compiler log](../validation/2026-11-17-h100/49_nccl_allreduce_as_barrier/compile.log) · [Execution log](../validation/2026-11-17-h100/49_nccl_allreduce_as_barrier/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -340,25 +314,8 @@ PASS: dummy-element AllReduce plus host completion wait on 2 GPUs; all reference
 <!-- execution:end:h100:49_nccl_allreduce_as_barrier.cu -->
 
 
-**Current-source scope:** dummy-element AllReduce plus host completion wait uses real NCCL communicators, grouped rank participation, device buffers and checked stream completion. All output values are checked against a CPU formula; this is not a throughput benchmark. The current source was compiled and executed in the dated H100 suite; use the linked record for its numerical, API-probe or other-execution scope. The output below is retained from the earlier authoring diagnostic and is not evidence for this replacement source.
-
 The [2026-11-17 H100 execution record](../validation-h100.md) covers two GPUs connected by local NV18. It distinguishes numerical checks, API probes and other executions; a successful exit alone does not establish GPU algorithm correctness.
 
-Genuinely compiled with a real `nvcc` against the real installed `libnccl` and genuinely run. Locked output, deterministic across repeated runs:
-
-<details markdown="1"><summary>Historical authoring output — superseded by the current execution above</summary>
-
-```
-cudaGetDeviceCount(): 0 device(s).
-
-ncclCommInitAll(worldSize=4): unhandled cuda error (run with NCCL_DEBUG=INFO for details) (code 1)
-ncclAllReduce(1-element dummy buffer, ncclSum) as a barrier: invalid argument (run with NCCL_DEBUG=WARN for details) (code 4)
-cudaStreamSynchronize(): no CUDA-capable device is detected (code 100)  <-- THIS is what actually makes the CPU thread wait; the NCCL call alone does not.
-
-Every call above reports an honest failure -- ncclCommInitAll() on a communicator that was never successfully created, and no CUDA stream was ever real -- but the sequence itself is the real pattern this book's own cited GitHub issue observed: a dummy AllReduce for the synchronization side effect, followed by a real stream/device sync to actually block the host. Section 17.3 checks what a barrier used this way is actually FOR: keeping every rank's view of shared state consistent.
-```
-
-</details>
 
 File 49 checks a real collective and waits for its stream before inspecting results. The numerical H100 check exercises the selected two-rank case. The completion wait matters: returning from collective enqueue alone is not a host barrier and does not prove other ranks have completed their work.
 
@@ -544,7 +501,9 @@ int main() {
 ```
 
 <!-- execution:start:a100:50_barrier_consistency_simulation.cpp -->
-> **Current execution — 2026-11-17-a100: Host program/model (exit-only).** UTC (program start): `2026-11-18T00:02:58.862435+00:00`. Source SHA-256: `5443cc0bbf8d2cd18346f7aa258f35c85df35f61613b0af99fd6c225596d2295`.
+> **Compiled and executed — 2026-11-17-a100: Host program/model (exit-only).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:02:59.228212+00:00`.
+
+<!-- execution:metadata Source SHA-256: 5443cc0bbf8d2cd18346f7aa258f35c85df35f61613b0af99fd6c225596d2295; recorded UTC (program start): 2026-11-18T00:02:58.862435+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-a100/50_barrier_consistency_simulation/50_barrier_consistency_simulation.cpp) · [Compiler log](../validation/2026-11-17-a100/50_barrier_consistency_simulation/compile.log) · [Execution log](../validation/2026-11-17-a100/50_barrier_consistency_simulation/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -555,7 +514,7 @@ g++ -std=c++17 -O2 50_barrier_consistency_simulation.cpp -o ./example
 ./example
 ```
 
-<details markdown="1"><summary>Captured current-source output</summary>
+**Sample output**
 
 ```text
 Part A: 4 ranks, heterogeneous arrival times 3/7/2/5 (rank 2 arrives first, rank 1 arrives last), each contributing to a shared checkpoint total. Independently computed reference total: 100.
@@ -586,12 +545,14 @@ N          ring rounds        tree rounds
 A barrier's payload is the smallest possible -- one element, not a real gradient tensor or activation -- but the ROUND COUNT above doesn't depend on payload size at all; it depends only on N, the number of ranks. A barrier is exactly as latency-expensive, per call, as any other AllReduce with the same N -- it is cheap in bytes moved, never in synchronization rounds paid. Calling one every iteration, for every one of Part 3's parallelization strategies, is a real, recurring cost, not a free correctness guarantee.
 ```
 
-</details>
+
 <!-- execution:end:a100:50_barrier_consistency_simulation.cpp -->
 
 
 <!-- execution:start:h100:50_barrier_consistency_simulation.cpp -->
-> **Current execution — 2026-11-17-h100: Host program/model (exit-only).** UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`. Source SHA-256: `5443cc0bbf8d2cd18346f7aa258f35c85df35f61613b0af99fd6c225596d2295`.
+> **Compiled and executed — 2026-11-17-h100: Host program/model (exit-only).** Hardware: 2 H100 GPUs. Execution record UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`.
+
+<!-- execution:metadata Source SHA-256: 5443cc0bbf8d2cd18346f7aa258f35c85df35f61613b0af99fd6c225596d2295; recorded UTC (run-batch start; per-program time unrecorded): 2026-11-17T23:48:18.967387+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-h100/50_barrier_consistency_simulation/50_barrier_consistency_simulation.cpp) · [Compiler log](../validation/2026-11-17-h100/50_barrier_consistency_simulation/compile.log) · [Execution log](../validation/2026-11-17-h100/50_barrier_consistency_simulation/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -637,41 +598,6 @@ A barrier's payload is the smallest possible -- one element, not a real gradient
 <!-- execution:end:h100:50_barrier_consistency_simulation.cpp -->
 
 
-Genuinely compiled with a real `g++` and genuinely run, re-verified identical on both this book's real toolchains. Locked output, deterministic across repeated runs:
-
-<details markdown="1"><summary>Historical authoring output — superseded by the current execution above</summary>
-
-```
-Part A: 4 ranks, heterogeneous arrival times 3/7/2/5 (rank 2 arrives first, rank 1 arrives last), each contributing to a shared checkpoint total. Independently computed reference total: 100.
-
-WITHOUT a barrier -- each rank reads immediately after its own write:
-  rank 0 (arrived at t=3): observed total = 40    STALE -- missing later contributions
-  rank 1 (arrived at t=7): observed total = 100   matches reference
-  rank 2 (arrived at t=2): observed total = 30    STALE -- missing later contributions
-  rank 3 (arrived at t=5): observed total = 80    STALE -- missing later contributions
-  1 of 4 ranks saw the correct, complete total.
-
-WITH a barrier -- every write finishes before any read:
-  rank 0: observed total = 100   matches reference
-  rank 1: observed total = 100   matches reference
-  rank 2: observed total = 100   matches reference
-  rank 3: observed total = 100   matches reference
-  4 of 4 ranks saw the correct, complete total: PASS
-
-Only the LAST rank to arrive (rank 1, at t=7) happened to see the correct total without a barrier -- purely because every other rank had already written by the time it read. That's not a guarantee, it's an accident of this particular arrival order; change which rank arrives LAST and a DIFFERENT rank would be the lucky one, while every other rank would see a stale value, silently, with no error raised anywhere. This is exactly the failure mode Chapter 16's own halo exchange had to guard against every iteration, generalized to any shared checkpoint, not just a grid's neighboring rows.
-
-Part B: a barrier's real communication cost, in rounds -- reusing Chapter 9's ring formula 2*(N-1) and Chapter 11's tree formula 2*ceil(log2(N)).
-
-N          ring rounds        tree rounds       
-4          6                  4                 
-8          14                 6                 
-35         68                 12                
-
-A barrier's payload is the smallest possible -- one element, not a real gradient tensor or activation -- but the ROUND COUNT above doesn't depend on payload size at all; it depends only on N, the number of ranks. A barrier is exactly as latency-expensive, per call, as any other AllReduce with the same N -- it is cheap in bytes moved, never in synchronization rounds paid. Calling one every iteration, for every one of Part 3's parallelization strategies, is a real, recurring cost, not a free correctness guarantee.
-```
-
-</details>
-
 Without a barrier, only rank 1 -- the *last* to arrive, purely by the accident of this particular arrival-time assignment -- happens to see the correct, complete total; the other three each read a partial sum missing whichever ranks hadn't written yet. With a barrier separating every write from every read, all four ranks see the identical, correct total, regardless of arrival order. That's the whole guarantee, and it's not free: Part B's round counts, reused directly from Chapter 9 and Chapter 11 rather than invented for this chapter, show a barrier costs exactly as many communication rounds as a full collective of the same rank count -- 6 ring rounds or 4 tree rounds for 4 ranks, scaling up to 68 or 12 for the 35-way split Chapter 13 introduced. Calling a barrier is not a lightweight courtesy; it is a real collective operation, with a real per-call latency cost that scales with the number of ranks, wearing a payload of just one element.
 
 !!! warning "[COMMON TRAP] Treating a barrier as free because its payload is tiny"
@@ -679,7 +605,7 @@ Without a barrier, only rank 1 -- the *last* to arrive, purely by the accident o
 
 ## Chapter Summary
 
-This chapter opened Part 4 by addressing a concern that cuts across every parallelization strategy Part 3 built, rather than introducing a new one. Section 17.1 distinguishes a valid single-controller phase boundary from independently progressing ranks, which require a coordinated protocol. Section 17.2 closed that gap the way real distributed training code actually does, since NCCL itself has no dedicated barrier call (confirmed against NCCL's own Collective Operations documentation and the installed 2.18.3 `nccl.h`, and contrasted with MPI's real, dedicated `MPI_Barrier()`): a throwaway `ncclAllReduce()` on a one-element buffer, exploiting the fact that no rank's call can complete until every rank has issued it, followed by a real `cudaStreamSynchronize()` to actually block the CPU thread -- both calls are required, since the collective alone only enqueues work asynchronously. Section 17.3 verified what that combination buys: with heterogeneous per-rank arrival times, only a barrier guarantees every rank observes the same, complete shared state, rather than some ranks silently reading a stale, partial view -- and quantified what it costs, reusing Chapter 9's and Chapter 11's own round-count formulas to show a barrier's latency cost scales with the number of ranks exactly like any other collective, regardless of its tiny payload. Chapter 18 picks up directly where this chapter's heterogeneous-arrival-time simulation left off: why devices make progress at different speeds in the first place, and what to do about it besides just waiting for the slowest one.
+This chapter opened Part 4 by addressing a concern that cuts across every parallelization strategy Part 3 built, rather than introducing a new one. Section 17.1 distinguishes a valid single-controller phase boundary from independently progressing ranks, which require a coordinated protocol. Section 17.2 closed that gap the way real distributed training code actually does, since NCCL itself has no dedicated barrier call (confirmed against NCCL's own Collective Operations documentation and the tested 2.26.2 `nccl.h`, and contrasted with MPI's real, dedicated `MPI_Barrier()`): a throwaway `ncclAllReduce()` on a one-element buffer, exploiting the fact that no rank's call can complete until every rank has issued it, followed by a real `cudaStreamSynchronize()` to actually block the CPU thread -- both calls are required, since the collective alone only enqueues work asynchronously. Section 17.3 verified what that combination buys: with heterogeneous per-rank arrival times, only a barrier guarantees every rank observes the same, complete shared state, rather than some ranks silently reading a stale, partial view -- and quantified what it costs, reusing Chapter 9's and Chapter 11's own round-count formulas to show a barrier's latency cost scales with the number of ranks exactly like any other collective, regardless of its tiny payload. Chapter 18 picks up directly where this chapter's heterogeneous-arrival-time simulation left off: why devices make progress at different speeds in the first place, and what to do about it besides just waiting for the slowest one.
 
 ## Self-Check Questions
 
@@ -700,7 +626,7 @@ Chapter 18 addresses directly what this chapter's own Part A simulation only mod
 
 **1.** If one host controls all submissions, enqueue-all/wait-all/launch-next provides a valid phase boundary. If independent submitters can advance, a loop in one thread alone does not coordinate them. `cudaDeviceSynchronize()`'s guarantee is scoped to exactly one device: it confirms that device's queue is empty at the moment it's called. The host-controlled case is safe because that controller does not enqueue the next phase until every wait returns. The limitation concerns independent submitters that are not part of that protocol.
 
-**2.** Section 17.2 lists AllReduce, Broadcast, Reduce, AllGather, ReduceScatter, AlltoAll, Gather, and Scatter, cited from NCCL's current (2.31.2) Collective Operations documentation. AlltoAll, Gather, and Scatter were only added in NCCL 2.28.3, so the installed 2.18.3 has none of them (grep its `nccl.h` and you'll find `ncclSend`/`ncclRecv` but no `ncclAlltoAll`). Barrier is absent from every version. The workaround is calling `ncclAllReduce()` on a single throwaway element purely for its synchronization side effect -- exploiting that the call cannot complete on any rank until every rank in the communicator has issued it, without caring what value comes back.
+**2.** Section 17.2 lists AllReduce, Broadcast, Reduce, AllGather, ReduceScatter, AlltoAll, Gather, and Scatter, cited from NCCL's current (2.31.2) Collective Operations documentation. AlltoAll, Gather, and Scatter were only added in NCCL 2.28.3, so the tested 2.26.2 has none of them (grep its `nccl.h` and you'll find `ncclSend`/`ncclRecv` but no `ncclAlltoAll`). Barrier is absent from every version. The workaround is calling `ncclAllReduce()` on a single throwaway element purely for its synchronization side effect -- exploiting that the call cannot complete on any rank until every rank in the communicator has issued it, without caring what value comes back.
 
 **3.** Open MPI describes `MPI_Barrier()` as providing "synchronization between MPI processes in a group," completing "after all group members have entered the barrier." The structural difference is that MPI's version is a single, dedicated, purpose-built primitive, while this chapter's NCCL-based version repurposes a collective (`ncclAllReduce()`) that was designed to move and combine real data, using only its side effect and discarding the result entirely.
 
@@ -718,7 +644,7 @@ Chapter 18 addresses directly what this chapter's own Part A simulation only mod
 
 **Sources cited in this chapter:**
 
-- [Overview of NCCL, Collective Operations -- NCCL 2.31.2 documentation](https://docs.nvidia.com/deeplearning/nccl/user-guide/docs/usage/collectives.html) -- the current list of NCCL's named collectives (AllReduce, Broadcast, Reduce, AllGather, ReduceScatter, AlltoAll, Gather, Scatter; the last three added in NCCL 2.28.3 and absent from the installed 2.18.3), confirming Barrier's absence, and each collective's own definition, already cited in earlier chapters and reused here for completeness.
+- [Overview of NCCL, Collective Operations -- NCCL 2.31.2 documentation](https://docs.nvidia.com/deeplearning/nccl/user-guide/docs/usage/collectives.html) -- the current list of NCCL's named collectives (AllReduce, Broadcast, Reduce, AllGather, ReduceScatter, AlltoAll, Gather, Scatter; the last three added in NCCL 2.28.3 and absent from the tested 2.26.2), confirming Barrier's absence, and each collective's own definition, already cited in earlier chapters and reused here for completeness.
 - [MPI_Barrier(3) -- Open MPI v4.1.8 documentation](https://www.open-mpi.org/doc/current/man3/MPI_Barrier.3.php) -- the exact quotes "synchronization between MPI processes in a group" and "an MPI barrier completes after all group members have entered the barrier," used as a contrast to this chapter's NCCL workaround (MPI itself is introduced in Part 5, which does not revisit `MPI_Barrier()`).
 - [Understanding Barriers, Issue #808, NVIDIA/nccl (GitHub)](https://github.com/NVIDIA/nccl/issues/808) -- a real, publicly filed issue in which a user building shared buffers coordinated by a barrier reports observing that a "barrier action show[s] up as a ringreduce kernel," independent confirmation of Section 17.2's own throwaway-AllReduce technique.
 - This book's own Chapter 3 (the per-device loop pattern and asynchronous kernel-launch semantics), Chapter 6 (`cudaDeviceSynchronize()`, `cudaStreamSynchronize()`), Chapter 9 (the ring round-count formula `2*(N-1)`, reused unchanged in Section 17.3's Part B), Chapter 11 (the real installed NCCL communicator, its honest failure codes, and the tree round-count formula `2*ceil(log2(N))`), Chapter 13 (the 35-way GPT-3 shard count reused as a `N` value in Section 17.3), and Chapter 16 (the halo-exchange consistency argument Section 17.3 generalizes).

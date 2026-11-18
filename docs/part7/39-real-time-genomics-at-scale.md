@@ -1,11 +1,5 @@
 # Chapter 39: Real-Time Genomics at Scale
 
-<!-- execution:provenance -->
-!!! info "Execution provenance"
-
-    Current execution blocks identify the tested source hash, hardware dataset, commands and captured output. References elsewhere on this page to a device-less environment describe the original authoring context. Historical output is superseded by the current record. Displayed output omits the runner command header and trims trailing line whitespace; raw logs remain exact. A host simulation or API validation has its stated scope; neither alone establishes a numerical multi-GPU workload or measured performance.
-
-
 <!-- mgpu:opener:start -->
 [![Chapter 39: Real-Time Genomics at Scale](../images/chapter-openers/39.svg)](../images/chapter-openers/39.svg)
 <!-- mgpu:opener:end -->
@@ -132,7 +126,9 @@ int main() {
 ```
 
 <!-- execution:start:a100:114_wgs_multi_gpu_motivation_model.cpp -->
-> **Current execution — 2026-11-17-a100: Host program/model (exit-only).** UTC (program start): `2026-11-18T00:05:32.812068+00:00`. Source SHA-256: `c9fa60c81c7d4b25eaa33cdc292d4d0e2a9170ce47c22a26660167b87d66e800`.
+> **Compiled and executed — 2026-11-17-a100: Host program/model (exit-only).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:05:32.876697+00:00`.
+
+<!-- execution:metadata Source SHA-256: c9fa60c81c7d4b25eaa33cdc292d4d0e2a9170ce47c22a26660167b87d66e800; recorded UTC (program start): 2026-11-18T00:05:32.812068+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-a100/114_wgs_multi_gpu_motivation_model/114_wgs_multi_gpu_motivation_model.cpp) · [Compiler log](../validation/2026-11-17-a100/114_wgs_multi_gpu_motivation_model/compile.log) · [Execution log](../validation/2026-11-17-a100/114_wgs_multi_gpu_motivation_model/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -143,7 +139,7 @@ g++ -std=c++17 -O2 114_wgs_multi_gpu_motivation_model.cpp -o ./example
 ./example
 ```
 
-<details markdown="1"><summary>Captured current-source output</summary>
+**Sample output**
 
 ```text
 Real cited NVIDIA Clara Parabricks headline result:
@@ -162,12 +158,14 @@ Cross-check against the separately cited ">100x" headline figure: a 96x minimum 
 This is the real, cited motivation for everything the rest of this chapter examines: genomics analysis at this real cited scale is not merely faster on a GPU, it is reorganized from an overnight batch job into something that can return a result inside a single clinical visit. Section 39.2 asks the real structural question this raises: what property of whole-genome analysis lets it reach that speedup using MULTIPLE GPUs at all, the same question this book asked of Chapter 16's stencil and Chapter 30's rendering, with a genuinely different real answer each time?
 ```
 
-</details>
+
 <!-- execution:end:a100:114_wgs_multi_gpu_motivation_model.cpp -->
 
 
 <!-- execution:start:h100:114_wgs_multi_gpu_motivation_model.cpp -->
-> **Current execution — 2026-11-17-h100: Host program/model (exit-only).** UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`. Source SHA-256: `c9fa60c81c7d4b25eaa33cdc292d4d0e2a9170ce47c22a26660167b87d66e800`.
+> **Compiled and executed — 2026-11-17-h100: Host program/model (exit-only).** Hardware: 2 H100 GPUs. Execution record UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`.
+
+<!-- execution:metadata Source SHA-256: c9fa60c81c7d4b25eaa33cdc292d4d0e2a9170ce47c22a26660167b87d66e800; recorded UTC (run-batch start; per-program time unrecorded): 2026-11-17T23:48:18.967387+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-h100/114_wgs_multi_gpu_motivation_model/114_wgs_multi_gpu_motivation_model.cpp) · [Compiler log](../validation/2026-11-17-h100/114_wgs_multi_gpu_motivation_model/compile.log) · [Execution log](../validation/2026-11-17-h100/114_wgs_multi_gpu_motivation_model/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -201,36 +199,13 @@ This is the real, cited motivation for everything the rest of this chapter exami
 <!-- execution:end:h100:114_wgs_multi_gpu_motivation_model.cpp -->
 
 
-Compile and run (a plain host `.cpp` file with no CUDA/NCCL/MPI/NVSHMEM linkage, cross-verified on both the cloud sandbox and the device):
+Compile and run (a plain host `.cpp` file with no CUDA/NCCL/MPI/NVSHMEM linkage, executed on the recorded H100 and A100 hosts):
 
 ```bash
 g++ -O2 -ffp-contract=off -o 114_wgs_multi_gpu_motivation_model \
     114_wgs_multi_gpu_motivation_model.cpp
 ./114_wgs_multi_gpu_motivation_model
 ```
-
-Locked output:
-
-<details markdown="1"><summary>Historical authoring output — superseded by the current execution above</summary>
-
-```
-Real cited NVIDIA Clara Parabricks headline result:
-- "over 100x faster analysis of whole-genome sequencing (WGS) compared to CPU-only solutions"
-
-Real cited specific example (same source, a separate, more specific claim):
-- "Reduce germline analysis from ~16 hours to under 10 minutes on 4 NVIDIA RTX PRO 6000 Server Edition GPUs"
-
-Real cited CPU-only baseline: ~16 hours = 960 minutes.
-Real cited GPU-accelerated upper bound: under 10 minutes on 4 RTX PRO 6000 GPUs.
-
-Honest arithmetic on those two real cited numbers alone: since the real GPU-accelerated time is stated only as an upper bound ("under 10 minutes", not an exact figure), the MINIMUM speedup this specific real example implies is 96x (16 hours divided by exactly 10 minutes) -- the true real speedup could be higher if the actual run finished in under 10 minutes, but not lower.
-
-Cross-check against the separately cited ">100x" headline figure: a 96x minimum implied speedup is CONSISTENT (same order of magnitude) with a real headline claim of "over 100x" -- both cited numbers describe the same real order of magnitude, not two disconnected claims, which is what this cross-check is actually checking for (exact numeric agreement was never expected, since one figure is a general WGS-wide claim and the other is one specific germline pipeline example on specific hardware).
-
-This is the real, cited motivation for everything the rest of this chapter examines: genomics analysis at this real cited scale is not merely faster on a GPU, it is reorganized from an overnight batch job into something that can return a result inside a single clinical visit. Section 39.2 asks the real structural question this raises: what property of whole-genome analysis lets it reach that speedup using MULTIPLE GPUs at all, the same question this book asked of Chapter 16's stencil and Chapter 30's rendering, with a genuinely different real answer each time?
-```
-
-</details>
 
 ## 39.2 Reads and Regions: Parallelism Without Any Communication At All
 
@@ -390,7 +365,9 @@ int main() {
 ```
 
 <!-- execution:start:a100:115_embarrassingly_parallel_genomics_correctness_simulation.cpp -->
-> **Current execution — 2026-11-17-a100: Host program/model (exit-only).** UTC (program start): `2026-11-18T00:05:32.884289+00:00`. Source SHA-256: `81883ce375339182813d7e41af3c51c2c977b058371673f45cb6498e5bdf4bc3`.
+> **Compiled and executed — 2026-11-17-a100: Host program/model (exit-only).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:05:33.149599+00:00`.
+
+<!-- execution:metadata Source SHA-256: 81883ce375339182813d7e41af3c51c2c977b058371673f45cb6498e5bdf4bc3; recorded UTC (program start): 2026-11-18T00:05:32.884289+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-a100/115_embarrassingly_parallel_genomics_correctness_simulation/115_embarrassingly_parallel_genomics_correctness_simulation.cpp) · [Compiler log](../validation/2026-11-17-a100/115_embarrassingly_parallel_genomics_correctness_simulation/compile.log) · [Execution log](../validation/2026-11-17-a100/115_embarrassingly_parallel_genomics_correctness_simulation/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -401,7 +378,7 @@ g++ -std=c++17 -O2 115_embarrassingly_parallel_genomics_correctness_simulation.c
 ./example
 ```
 
-<details markdown="1"><summary>Captured current-source output</summary>
+**Sample output**
 
 ```text
 Reference (single-process): 10007 independent units processed, first 3 results: 655503 892643 662023
@@ -421,12 +398,14 @@ P      all match  max slice size (load imbalance)
 Every P reproduces the exact same 10007 results as the single-process reference, at every tested P from 1 to 64. This is not the same correctness-by-construction reasoning Chapter 30's ray tracing used (zero communication during rendering because each ray's OWNERSHIP is decided by a fixed spatial partition of one shared scene) -- here, zero communication is possible because the real cited scientific fact is that unit i's own result never depends on unit j's data AT ALL, for any i != j, not merely that a chosen scheduling policy happens to avoid asking for it. The only imperfection visible above is the small max-min slice-size difference at P values that do not evenly divide 10007 -- ordinary integer remainder handling, the same real load-imbalance category Chapter 18 built an entire chapter around, but bounded here by at most 1 unit per worker (this file's own contiguous-slice split), never the large, data-dependent imbalance Chapter 18's own heterogeneous-GPU story required.
 ```
 
-</details>
+
 <!-- execution:end:a100:115_embarrassingly_parallel_genomics_correctness_simulation.cpp -->
 
 
 <!-- execution:start:h100:115_embarrassingly_parallel_genomics_correctness_simulation.cpp -->
-> **Current execution — 2026-11-17-h100: Host program/model (exit-only).** UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`. Source SHA-256: `81883ce375339182813d7e41af3c51c2c977b058371673f45cb6498e5bdf4bc3`.
+> **Compiled and executed — 2026-11-17-h100: Host program/model (exit-only).** Hardware: 2 H100 GPUs. Execution record UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`.
+
+<!-- execution:metadata Source SHA-256: 81883ce375339182813d7e41af3c51c2c977b058371673f45cb6498e5bdf4bc3; recorded UTC (run-batch start; per-program time unrecorded): 2026-11-17T23:48:18.967387+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-h100/115_embarrassingly_parallel_genomics_correctness_simulation/115_embarrassingly_parallel_genomics_correctness_simulation.cpp) · [Compiler log](../validation/2026-11-17-h100/115_embarrassingly_parallel_genomics_correctness_simulation/compile.log) · [Execution log](../validation/2026-11-17-h100/115_embarrassingly_parallel_genomics_correctness_simulation/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -461,37 +440,13 @@ Every P reproduces the exact same 10007 results as the single-process reference,
 <!-- execution:end:h100:115_embarrassingly_parallel_genomics_correctness_simulation.cpp -->
 
 
-Compile and run (plain host `.cpp`, cross-verified on both the cloud sandbox and the device):
+Compile and run (plain host `.cpp`, executed on the recorded H100 and A100 hosts):
 
 ```bash
 g++ -O2 -ffp-contract=off -o 115_embarrassingly_parallel_genomics_correctness_simulation \
     115_embarrassingly_parallel_genomics_correctness_simulation.cpp
 ./115_embarrassingly_parallel_genomics_correctness_simulation
 ```
-
-Locked output:
-
-<details markdown="1"><summary>Historical authoring output — superseded by the current execution above</summary>
-
-```
-Reference (single-process): 10007 independent units processed, first 3 results: 655503 892643 662023
-
-P      all match  max slice size (load imbalance)
-1      YES        max=10007  min=10007  (diff=0)
-2      YES        max=5004   min=5003   (diff=1)
-3      YES        max=3336   min=3335   (diff=1)
-4      YES        max=2502   min=2501   (diff=1)
-5      YES        max=2002   min=2001   (diff=1)
-7      YES        max=1430   min=1429   (diff=1)
-8      YES        max=1251   min=1250   (diff=1)
-16     YES        max=626    min=625    (diff=1)
-32     YES        max=313    min=312    (diff=1)
-64     YES        max=157    min=156    (diff=1)
-
-Every P reproduces the exact same 10007 results as the single-process reference, at every tested P from 1 to 64. This is not the same correctness-by-construction reasoning Chapter 30's ray tracing used (zero communication during rendering because each ray's OWNERSHIP is decided by a fixed spatial partition of one shared scene) -- here, zero communication is possible because the real cited scientific fact is that unit i's own result never depends on unit j's data AT ALL, for any i != j, not merely that a chosen scheduling policy happens to avoid asking for it. The only imperfection visible above is the small max-min slice-size difference at P values that do not evenly divide 10007 -- ordinary integer remainder handling, the same real load-imbalance category Chapter 18 built an entire chapter around, but bounded here by at most 1 unit per worker (this file's own contiguous-slice split), never the large, data-dependent imbalance Chapter 18's own heterogeneous-GPU story required.
-```
-
-</details>
 
 ## 39.3 Real Published Numbers: Algorithmic Parallelism Is Not the Whole Story
 
@@ -629,7 +584,9 @@ int main() {
 ```
 
 <!-- execution:start:a100:116_real_benchmark_scaling_efficiency_analysis.cpp -->
-> **Current execution — 2026-11-17-a100: Host program/model (exit-only).** UTC (program start): `2026-11-18T00:05:33.158468+00:00`. Source SHA-256: `da0be1ceee5e7e81d273f91eaffdb8983612ee2b6f0062856f9da85589c53112`.
+> **Compiled and executed — 2026-11-17-a100: Host program/model (exit-only).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:05:33.273224+00:00`.
+
+<!-- execution:metadata Source SHA-256: da0be1ceee5e7e81d273f91eaffdb8983612ee2b6f0062856f9da85589c53112; recorded UTC (program start): 2026-11-18T00:05:33.158468+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-a100/116_real_benchmark_scaling_efficiency_analysis/116_real_benchmark_scaling_efficiency_analysis.cpp) · [Compiler log](../validation/2026-11-17-a100/116_real_benchmark_scaling_efficiency_analysis/compile.log) · [Execution log](../validation/2026-11-17-a100/116_real_benchmark_scaling_efficiency_analysis/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -640,7 +597,7 @@ g++ -std=c++17 -O2 116_real_benchmark_scaling_efficiency_analysis.cpp -o ./examp
 ./example
 ```
 
-<details markdown="1"><summary>Captured current-source output</summary>
+**Sample output**
 
 ```text
 Real cited NVIDIA Clara Parabricks v4.7.0 benchmark table (RTX PRO 6000 Server Edition, minutes, lower=faster):
@@ -658,12 +615,14 @@ Across these 7 real cited tools, going from 2 to 4 GPUs (doubling the GPU count)
 NVIDIA's own real caveat on this exact table: "Speeds may vary depending on the data set, GPU instance, host CPU, memory availability, and other factors." This file's own honest reading of that real published spread: Section 39.2's real algorithmic finding (independent reads, independent genomic regions, zero required cross-worker communication) is NECESSARY for good multi-GPU scaling, but this real published data shows it is not SUFFICIENT on its own -- FQ2BAM_Meth (BWA-Meth) comes within 84.4% of the algorithm's own theoretical ceiling of ideal linear scaling, while Minimap2 manages only 50.3%, despite both resting on the exact same real embarrassingly-parallel foundation Section 39.2 verified. The real difference must lie outside the algorithm itself -- in real engineering factors such as fixed per-run setup cost, file I/O, or host-side bottlenecks that do not shrink just because the GPU count doubled -- the same real lesson Chapter 16 and Chapter 34 each found in their own different form ("more ranks is not free"), now confirmed directly from NVIDIA's own published real numbers rather than from a host-side simulation, a first for this book's own Part 7 case studies.
 ```
 
-</details>
+
 <!-- execution:end:a100:116_real_benchmark_scaling_efficiency_analysis.cpp -->
 
 
 <!-- execution:start:h100:116_real_benchmark_scaling_efficiency_analysis.cpp -->
-> **Current execution — 2026-11-17-h100: Host program/model (exit-only).** UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`. Source SHA-256: `da0be1ceee5e7e81d273f91eaffdb8983612ee2b6f0062856f9da85589c53112`.
+> **Compiled and executed — 2026-11-17-h100: Host program/model (exit-only).** Hardware: 2 H100 GPUs. Execution record UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`.
+
+<!-- execution:metadata Source SHA-256: da0be1ceee5e7e81d273f91eaffdb8983612ee2b6f0062856f9da85589c53112; recorded UTC (run-batch start; per-program time unrecorded): 2026-11-17T23:48:18.967387+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-h100/116_real_benchmark_scaling_efficiency_analysis/116_real_benchmark_scaling_efficiency_analysis.cpp) · [Compiler log](../validation/2026-11-17-h100/116_real_benchmark_scaling_efficiency_analysis/compile.log) · [Execution log](../validation/2026-11-17-h100/116_real_benchmark_scaling_efficiency_analysis/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -696,35 +655,13 @@ NVIDIA's own real caveat on this exact table: "Speeds may vary depending on the 
 <!-- execution:end:h100:116_real_benchmark_scaling_efficiency_analysis.cpp -->
 
 
-Compile and run (plain host `.cpp`, cross-verified on both the cloud sandbox and the device):
+Compile and run (plain host `.cpp`, executed on the recorded H100 and A100 hosts):
 
 ```bash
 g++ -O2 -ffp-contract=off -o 116_real_benchmark_scaling_efficiency_analysis \
     116_real_benchmark_scaling_efficiency_analysis.cpp
 ./116_real_benchmark_scaling_efficiency_analysis
 ```
-
-Locked output:
-
-<details markdown="1"><summary>Historical authoring output — superseded by the current execution above</summary>
-
-```
-Real cited NVIDIA Clara Parabricks v4.7.0 benchmark table (RTX PRO 6000 Server Edition, minutes, lower=faster):
-Tool                                 2 GPUs     4 GPUs      Speedup Pct of ideal 2x
-FQ2BAM (BWA-MEM, Paired End)           6.93       4.68       1.481x          74.0%
-Giraffe (Single End)                  13.60      11.30       1.204x          60.2%
-Giraffe (Paired End)                  43.90      30.62       1.434x          71.7%
-DeepVariant (Short-Read)               7.12       4.80       1.483x          74.2%
-Minimap2                              15.68      15.60       1.005x          50.3%
-FQ2BAM_Meth (BWA-Meth)                24.77      14.68       1.687x          84.4%
-RNA_fq2bam (STAR, Melanoma)            6.05       5.88       1.029x          51.4%
-
-Across these 7 real cited tools, going from 2 to 4 GPUs (doubling the GPU count) achieved a MEAN 66.6% of the ideal 2x speedup -- ranging from a low of 50.3% (Minimap2) to a high of 84.4% (FQ2BAM_Meth (BWA-Meth)).
-
-NVIDIA's own real caveat on this exact table: "Speeds may vary depending on the data set, GPU instance, host CPU, memory availability, and other factors." This file's own honest reading of that real published spread: Section 39.2's real algorithmic finding (independent reads, independent genomic regions, zero required cross-worker communication) is NECESSARY for good multi-GPU scaling, but this real published data shows it is not SUFFICIENT on its own -- FQ2BAM_Meth (BWA-Meth) comes within 84.4% of the algorithm's own theoretical ceiling of ideal linear scaling, while Minimap2 manages only 50.3%, despite both resting on the exact same real embarrassingly-parallel foundation Section 39.2 verified. The real difference must lie outside the algorithm itself -- in real engineering factors such as fixed per-run setup cost, file I/O, or host-side bottlenecks that do not shrink just because the GPU count doubled -- the same real lesson Chapter 16 and Chapter 34 each found in their own different form ("more ranks is not free"), now confirmed directly from NVIDIA's own published real numbers rather than from a host-side simulation, a first for this book's own Part 7 case studies.
-```
-
-</details>
 
 ## Chapter Summary
 
@@ -733,12 +670,12 @@ NVIDIA's own real Clara Parabricks platform reports GPU-accelerating whole-genom
 ## Self-Check Questions
 
 1. What two real cited numbers does File 114 cross-check against each other, and what is the honest reason they are not expected to match exactly?
-2. According to File 114's own locked output, what is the minimum speedup implied by the real cited "~16 hours to under 10 minutes on 4 GPUs" example, and is it consistent with the separately cited ">100x" headline?
+2. According to File 114's own Sample output, what is the minimum speedup implied by the real cited "~16 hours to under 10 minutes on 4 GPUs" example, and is it consistent with the separately cited ">100x" headline?
 3. What real, specific quote from Google's own DeepVariant documentation does Section 39.2 use to establish that variant calling is embarrassingly parallel?
 4. Why does read alignment (the first real stage of the germline pipeline) also require zero cross-worker communication, even though NVIDIA's own documentation does not spell out the mechanism in as much detail as DeepVariant's own docs do?
 5. How does Section 39.2's own zero-communication reasoning differ in KIND from Chapter 30's own zero-communication-during-rendering finding, even though both chapters report no communication at all during computation?
 6. What is the only imperfection File 115 finds across every tested P, and why is it bounded to at most one unit per worker?
-7. According to File 116's own locked output, what real published tool achieves the lowest percentage of ideal 2x scaling, and what real percentage does it achieve?
+7. According to File 116's own Sample output, what real published tool achieves the lowest percentage of ideal 2x scaling, and what real percentage does it achieve?
 8. What is the honest relationship File 116 draws between Section 39.2's own algorithmic finding and Section 39.3's own real observed scaling numbers -- is one a guarantee of the other?
 9. NVIDIA's own real benchmark table carries its own caveat, "Speeds may vary depending on the data set, GPU instance, host CPU, memory availability, and other factors." How does File 116 use that real caveat rather than ignoring it?
 
@@ -749,12 +686,12 @@ Chapter 40 closes Part 7 with the second of this book's own two healthcare/medic
 ## Worked Solutions
 
 1. File 114 cross-checks NVIDIA's own real general headline, "over 100x faster... compared to CPU-only solutions," against its own real specific germline-pipeline example, "~16 hours to under 10 minutes on 4 NVIDIA RTX PRO 6000 Server Edition GPUs." They are not expected to match exactly because the headline is a general claim about WGS analysis broadly, while the germline example is one specific pipeline on specific hardware -- different real measurements of a related, but not identical, real quantity.
-2. File 114's own locked output computes a minimum implied speedup of 96x (960 minutes / 10 minutes), and finds this consistent with the separately cited ">100x" headline -- both describe the same real order of magnitude.
+2. File 114's own Sample output computes a minimum implied speedup of 96x (960 minutes / 10 minutes), and finds this consistent with the separately cited ">100x" headline -- both describe the same real order of magnitude.
 3. Google's own real DeepVariant documentation states: "Since the process of generating examples is embarrassingly parallel across the genome, `make_examples` supports sharding of its input and output via the `--task` argument."
 4. Basic sequence-alignment theory establishes that each sequencing read is matched to the reference independently of every other read -- alignment asks only where one read best fits, never how two reads relate to each other -- so read i's own result never depends on read j's data, the same real independence property DeepVariant's own docs state explicitly for genomic regions.
 5. Chapter 30's own zero-communication finding held because a CHOSEN spatial partition of one shared scene made every ray's ownership decidable in advance -- a scheduling-level guarantee layered onto an otherwise-dependent rendering process. Section 39.2's own zero-communication finding holds because the real SCIENTIFIC content of the data makes unit i's own result independent of unit j's, for any i != j -- a property of the computation itself, not of how it happens to be scheduled.
 6. File 115 finds only a small max-min slice-size difference (at most 1 unit) at P values that do not evenly divide the total unit count -- ordinary integer-remainder handling from a contiguous-slice split, bounded to at most one extra unit for whichever workers get the remainder.
-7. File 116's own locked output shows Minimap2 achieving the lowest real percentage of ideal 2x scaling, at 50.3%.
+7. File 116's own Sample output shows Minimap2 achieving the lowest real percentage of ideal 2x scaling, at 50.3%.
 8. File 116 draws the honest relationship that Section 39.2's algorithmic finding (zero required communication) is NECESSARY but not SUFFICIENT for near-ideal real-world scaling -- real tools sharing that exact same algorithmic foundation still show real observed efficiency ranging from 50.3% to 84.4%, so the algorithm alone does not guarantee the real-world outcome.
 9. File 116 uses NVIDIA's own real caveat as the honest explanation for why real observed efficiency varies so widely across tools that are all, per Section 39.2, equally free of required communication: real engineering factors named in that caveat (the data set, GPU instance, host CPU, memory availability, and other factors) can still cap real-world scaling well below the algorithm's own theoretical ceiling, rather than being dismissed as noise around a single expected number.
 

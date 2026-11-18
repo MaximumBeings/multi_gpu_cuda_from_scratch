@@ -1,11 +1,5 @@
 # Chapter 4: Peer-to-Peer Memory Access and Unified Virtual Addressing
 
-<!-- execution:provenance -->
-!!! info "Execution provenance"
-
-    Current execution blocks identify the tested source hash, hardware dataset, commands and captured output. References elsewhere on this page to a device-less environment describe the original authoring context. Historical output is superseded by the current record. Displayed output omits the runner command header and trims trailing line whitespace; raw logs remain exact. A host simulation or API validation has its stated scope; neither alone establishes a numerical multi-GPU workload or measured performance.
-
-
 <!-- mgpu:opener:start -->
 [![Chapter 4: Peer-to-Peer Memory Access and Unified Virtual Addressing](../images/chapter-openers/04.svg)](../images/chapter-openers/04.svg)
 <!-- mgpu:opener:end -->
@@ -24,7 +18,7 @@
 
 ---
 
-Part 0 established *where* the devices are and *whose problem* it is to pick one (a host thread's current-device state) and *when* work runs concurrently (streams bound to whichever device was current at creation time). None of that, so far, has let one GPU touch another GPU's memory. This chapter is where that changes. Unified Virtual Addressing is the feature that makes "one GPU's pointer" and "another GPU's pointer" comparable at all — they live in the same address space — and peer-to-peer access is the specific, opt-in permission that lets a kernel or a copy actually dereference across that boundary. Both are real, queryable pieces of CUDA Runtime API state, and both are things this environment's `cudaErrorNoDevice` machine can genuinely ask about and honestly report on, even with zero real devices attached.
+Part 0 established device selection, contexts and stream ownership. This chapter adds Unified Virtual Addressing and ordered-pair peer permissions, then checks how pointers and transfers cross device boundaries.
 
 ## 4.1 Unified Virtual Addressing: One Address Space, Many Memories
 
@@ -80,7 +74,9 @@ int main() {
 ```
 
 <!-- execution:start:a100:08_pointer_attributes.cu -->
-> **Current execution — 2026-11-17-a100: API/host demonstration (exit-only).** UTC (program start): `2026-11-18T00:00:26.201079+00:00`. Source SHA-256: `41c5abf56f01114560b72e04c1db7a3056be50dfe7fc6d9905fbf9998a553e58`.
+> **Compiled and executed — 2026-11-17-a100: API/host demonstration (exit-only).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:00:27.268130+00:00`.
+
+<!-- execution:metadata Source SHA-256: 41c5abf56f01114560b72e04c1db7a3056be50dfe7fc6d9905fbf9998a553e58; recorded UTC (program start): 2026-11-18T00:00:26.201079+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-a100/08_pointer_attributes/08_pointer_attributes.cu) · [Compiler log](../validation/2026-11-17-a100/08_pointer_attributes/compile.log) · [Execution log](../validation/2026-11-17-a100/08_pointer_attributes/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -91,7 +87,7 @@ nvcc -std=c++17 -O2 -arch=sm_80 08_pointer_attributes.cu -o ./example
 ./example
 ```
 
-<details markdown="1"><summary>Captured current-source output</summary>
+**Sample output**
 
 ```text
 cudaPointerGetAttributes(ordinary stack array): no error (code 0)
@@ -100,12 +96,14 @@ cudaMalloc: no error (code 0)
 cudaPointerGetAttributes(device ptr): no error
 ```
 
-</details>
+
 <!-- execution:end:a100:08_pointer_attributes.cu -->
 
 
 <!-- execution:start:h100:08_pointer_attributes.cu -->
-> **Current execution — 2026-11-17-h100: API/host demonstration (exit-only).** UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`. Source SHA-256: `41c5abf56f01114560b72e04c1db7a3056be50dfe7fc6d9905fbf9998a553e58`.
+> **Compiled and executed — 2026-11-17-h100: API/host demonstration (exit-only).** Hardware: 2 H100 GPUs. Execution record UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`.
+
+<!-- execution:metadata Source SHA-256: 41c5abf56f01114560b72e04c1db7a3056be50dfe7fc6d9905fbf9998a553e58; recorded UTC (run-batch start; per-program time unrecorded): 2026-11-17T23:48:18.967387+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-h100/08_pointer_attributes/08_pointer_attributes.cu) · [Compiler log](../validation/2026-11-17-h100/08_pointer_attributes/compile.log) · [Execution log](../validation/2026-11-17-h100/08_pointer_attributes/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -128,17 +126,6 @@ cudaPointerGetAttributes(device ptr): no error
 </details>
 <!-- execution:end:h100:08_pointer_attributes.cu -->
 
-
-Genuinely compiled with a real `nvcc` and genuinely run. Locked output, deterministic across repeated runs on this machine:
-
-<details markdown="1"><summary>Historical authoring output — superseded by the current execution above</summary>
-
-```
-cudaPointerGetAttributes(ordinary stack array): no CUDA-capable device is detected (code 100)
-cudaMalloc: no CUDA-capable device is detected (code 100)
-```
-
-</details>
 
 A query about an ordinary host pointer must be interpreted using its returned allocation type. Do not infer that such a query always fails or requires ownership by a GPU. The old no-driver error was an environment-specific diagnostic; use the current H100 query log for the executed probe.
 
@@ -205,7 +192,9 @@ int main() {
 ```
 
 <!-- execution:start:a100:09_peer_access_setup.cu -->
-> **Current execution — 2026-11-17-a100: API/host demonstration (exit-only).** UTC (program start): `2026-11-18T00:00:30.292363+00:00`. Source SHA-256: `740c8c5876f47659619e118e3c553087839f81fc4ec57913b61dcb4654881bf5`.
+> **Compiled and executed — 2026-11-17-a100: API/host demonstration (exit-only).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:00:31.360263+00:00`.
+
+<!-- execution:metadata Source SHA-256: 740c8c5876f47659619e118e3c553087839f81fc4ec57913b61dcb4654881bf5; recorded UTC (program start): 2026-11-18T00:00:30.292363+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-a100/09_peer_access_setup/09_peer_access_setup.cu) · [Compiler log](../validation/2026-11-17-a100/09_peer_access_setup/compile.log) · [Execution log](../validation/2026-11-17-a100/09_peer_access_setup/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -216,7 +205,7 @@ nvcc -std=c++17 -O2 -arch=sm_80 09_peer_access_setup.cu -o ./example
 ./example
 ```
 
-<details markdown="1"><summary>Captured current-source output</summary>
+**Sample output**
 
 ```text
 cudaGetDeviceCount(): 8 device(s).
@@ -279,12 +268,14 @@ Enabled i=7 -> j=6: no error
 Peer access enabled for 56 ordered pair(s) out of 8 device(s) checked. On real multi-GPU hardware this same loop enables every accessible ordered pair exactly once, each direction independently, per the API's own unidirectional-access note.
 ```
 
-</details>
+
 <!-- execution:end:a100:09_peer_access_setup.cu -->
 
 
 <!-- execution:start:h100:09_peer_access_setup.cu -->
-> **Current execution — 2026-11-17-h100: API/host demonstration (exit-only).** UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`. Source SHA-256: `740c8c5876f47659619e118e3c553087839f81fc4ec57913b61dcb4654881bf5`.
+> **Compiled and executed — 2026-11-17-h100: API/host demonstration (exit-only).** Hardware: 2 H100 GPUs. Execution record UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`.
+
+<!-- execution:metadata Source SHA-256: 740c8c5876f47659619e118e3c553087839f81fc4ec57913b61dcb4654881bf5; recorded UTC (run-batch start; per-program time unrecorded): 2026-11-17T23:48:18.967387+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-h100/09_peer_access_setup/09_peer_access_setup.cu) · [Compiler log](../validation/2026-11-17-h100/09_peer_access_setup/compile.log) · [Execution log](../validation/2026-11-17-h100/09_peer_access_setup/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -307,17 +298,6 @@ Peer access enabled for 2 ordered pair(s) out of 2 device(s) checked. On real mu
 </details>
 <!-- execution:end:h100:09_peer_access_setup.cu -->
 
-
-Genuinely compiled with a real `nvcc` and genuinely run. Locked output, deterministic across repeated runs:
-
-<details markdown="1"><summary>Historical authoring output — superseded by the current execution above</summary>
-
-```
-cudaGetDeviceCount(): 0 device(s).
-Peer access enabled for 0 ordered pair(s) out of 0 device(s) checked. On real multi-GPU hardware this same loop enables every accessible ordered pair exactly once, each direction independently, per the API's own unidirectional-access note.
-```
-
-</details>
 
 The current ordered-pair loop queries the actual H100 pair and enables supported peer routes with checked API results. Access is directional; enabling one direction does not grant the reverse direction. Capability queries establish permission, not achieved bandwidth.
 
@@ -439,7 +419,9 @@ int main() {
 ```
 
 <!-- execution:start:a100:10_p2p_simulation.cpp -->
-> **Current execution — 2026-11-17-a100: Host program/model (exit-only).** UTC (program start): `2026-11-18T00:00:36.337372+00:00`. Source SHA-256: `8ef2739bea00136f3e1810c7e4d9bb37b7eb346f1d0876f53c99c58ee044aac4`.
+> **Compiled and executed — 2026-11-17-a100: Host program/model (exit-only).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:00:36.653174+00:00`.
+
+<!-- execution:metadata Source SHA-256: 8ef2739bea00136f3e1810c7e4d9bb37b7eb346f1d0876f53c99c58ee044aac4; recorded UTC (program start): 2026-11-18T00:00:36.337372+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-a100/10_p2p_simulation/10_p2p_simulation.cpp) · [Compiler log](../validation/2026-11-17-a100/10_p2p_simulation/compile.log) · [Execution log](../validation/2026-11-17-a100/10_p2p_simulation/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -450,7 +432,7 @@ g++ -std=c++17 -O2 10_p2p_simulation.cpp -o ./example
 ./example
 ```
 
-<details markdown="1"><summary>Captured current-source output</summary>
+**Sample output**
 
 ```text
 Device 0 initialized. Attempting device 0 -> device 1 (peer-accessible per the simulated topology) and device 0 -> device 2 (NOT peer-accessible).
@@ -464,12 +446,14 @@ Correctness check, device 2 contents vs. independent reference: PASS
 Both destinations hold identical, correct data despite using two different transfer mechanisms -- exactly the property real P2P code depends on: the *method* changes with topology, the *result* must not.
 ```
 
-</details>
+
 <!-- execution:end:a100:10_p2p_simulation.cpp -->
 
 
 <!-- execution:start:h100:10_p2p_simulation.cpp -->
-> **Current execution — 2026-11-17-h100: Host program/model (exit-only).** UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`. Source SHA-256: `8ef2739bea00136f3e1810c7e4d9bb37b7eb346f1d0876f53c99c58ee044aac4`.
+> **Compiled and executed — 2026-11-17-h100: Host program/model (exit-only).** Hardware: 2 H100 GPUs. Execution record UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`.
+
+<!-- execution:metadata Source SHA-256: 8ef2739bea00136f3e1810c7e4d9bb37b7eb346f1d0876f53c99c58ee044aac4; recorded UTC (run-batch start; per-program time unrecorded): 2026-11-17T23:48:18.967387+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-h100/10_p2p_simulation/10_p2p_simulation.cpp) · [Compiler log](../validation/2026-11-17-h100/10_p2p_simulation/compile.log) · [Execution log](../validation/2026-11-17-h100/10_p2p_simulation/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -497,24 +481,6 @@ Both destinations hold identical, correct data despite using two different trans
 </details>
 <!-- execution:end:h100:10_p2p_simulation.cpp -->
 
-
-Genuinely compiled with `g++` and genuinely run. Locked output, deterministic across repeated runs:
-
-<details markdown="1"><summary>Historical authoring output — superseded by the current execution above</summary>
-
-```
-Device 0 initialized. Attempting device 0 -> device 1 (peer-accessible per the simulated topology) and device 0 -> device 2 (NOT peer-accessible).
-
-Transfer 0->1: direct P2P write (peer access exists)
-Transfer 0->2: direct P2P refused (no peer access, correctly) -- falling back to host-staged copy.
-
-Correctness check, device 1 contents vs. independent reference: PASS
-Correctness check, device 2 contents vs. independent reference: PASS
-
-Both destinations hold identical, correct data despite using two different transfer mechanisms -- exactly the property real P2P code depends on: the *method* changes with topology, the *result* must not.
-```
-
-</details>
 
 Both destinations end up holding the identical, correct reference data — device 1 via the direct-write path, device 2 via the host-staged fallback — which is exactly the property real multi-device code depends on: which mechanism a transfer uses is a topology decision, but the *result* it produces must never depend on which mechanism was chosen. This is what this simulation verifies honestly, without needing a second real GPU: not the real transfer's bandwidth or latency (Chapter 2 already handled those questions, honestly, as separate cost models), but the correctness of the routing logic itself.
 
@@ -545,7 +511,7 @@ Chapter 5 picks up exactly where Section 4.3's simulation left off — the actua
 
 ## Worked Solutions
 
-**1.** Inspect the query result and allocation type before reading ownership fields. An unregistered host pointer has no meaningful GPU owner. A no-driver/no-device error in an earlier transcript is an environment-specific result, not a general rule that every host-pointer attribute query fails.
+**1.** Inspect the query result and allocation type before reading ownership fields. An unregistered host pointer has no meaningful GPU owner.
 
 The [2026-11-17 H100 execution record](../validation-h100.md) covers two GPUs connected by local NV18. It distinguishes numerical checks, API probes and other executions; a successful exit alone does not establish GPU algorithm correctness.
 

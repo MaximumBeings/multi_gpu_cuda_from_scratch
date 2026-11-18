@@ -149,6 +149,13 @@ def supplements(root, public, label=None):
     return lines
 
 
+def execution_time(row):
+    started = row.get('run_started_utc') or row.get('run', {}).get('started_utc')
+    if started:
+        return f'Executed UTC: `{started}`'
+    return f'Execution record UTC ({row["timestamp_scope"]}): `{row["captured_utc"]}`'
+
+
 def capture_block(row, dataset, label, relative):
     name = Path(row['source']).name
     output = row['_output'].rstrip('\n')
@@ -157,13 +164,18 @@ def capture_block(row, dataset, label, relative):
     scope = category(row)
     return '\n\n' + '\n'.join([
         f'<!-- execution:start:{label}:{name} -->',
-        f'> **Current execution — {dataset}: {scope}.** UTC ({row["timestamp_scope"]}): `{row["captured_utc"]}`. Source SHA-256: `{row["sha256"]}`.', '',
+        f'> **Compiled and executed — {dataset}: {scope}.** Hardware: {row["evidence_system"].get("visible_gpu_count", "recorded")} {label.upper()} GPUs. {execution_time(row)}.', '',
+        f'<!-- execution:metadata Source SHA-256: {row["sha256"]}; recorded UTC ({row["timestamp_scope"]}): {row["captured_utc"]} -->', '',
         f'[Exact tested source]({relative}/{name}) · [Compiler log]({relative}/compile.log) · [Execution log]({relative}/run.log). Compile exit: `{row["compile"]["exit_code"]}`; run exit: `{row["run"]["exit_code"]}`.', '',
         'Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.', '',
         '```bash', commands, '```', '',
-        '<details markdown="1"><summary>Captured current-source output</summary>', '',
-        fence + 'text', output, fence, '', '</details>',
+        '**Sample output**', '', fence + 'text', output, fence, '',
         f'<!-- execution:end:{label}:{name} -->', ''])
+
+
+def retire_obsolete_output(text):
+    text = re.sub(r'\n*<!-- execution:provenance -->\n!!! info "Execution provenance"\n\n(?:    [^\n]*\n)+\n*', '\n\n', text)
+    return re.sub(r'\n*<details\b[^>]*>\s*<summary>Historical[^<]*</summary>.*?</details>\s*', '\n\n', text, flags=re.S | re.I)
 
 
 def locate(text, name, body):
@@ -248,7 +260,7 @@ def prepare(inputs, dataset, label, root, temporary):
         name, body = source.name, source.read_text()
         options = []
         for page in source.parent.parent.glob('*.md'):
-            text = docs.get(page, page.read_text())
+            text = retire_obsolete_output(docs.get(page, page.read_text()))
             if name in text or any(m[3].strip() == body.strip() for m in FENCES.finditer(text)):
                 try:
                     match = locate(text, name, body)
@@ -264,36 +276,19 @@ def prepare(inputs, dataset, label, root, temporary):
         match = locate(text, name, body)
         canonical = match[1] + match[2] + '\n' + body.rstrip('\n') + '\n' + match[1]
         after = text[match.end():]
-        # Only collapse prior output/code transcript; leave current prose visible.
+        # Current captured output replaces obsolete sample output. Source fences,
+        # other architecture records and explanatory prose are retained.
         boundary = re.search(r'^#{2,6} |^!!!|^```(?:cpp|cuda|c\+\+|c)\s*$', after, re.M)
         limit = boundary.start() if boundary else len(after)
         old = next((m for m in FENCES.finditer(after[:limit]) if m[2].strip() in {'', 'text', 'console'}), None)
-        if old and not after[:old.start()].count('<!-- execution:start:'):
-            collapsed = '<details markdown="1"><summary>Historical authoring output — superseded by the current execution above</summary>\n\n' + old[0] + '\n\n</details>'
-            after = after[:old.start()] + collapsed + after[old.end():]
+        if old and '<!-- execution:start:' not in after[:old.start()]:
+            after = after[:old.start()] + after[old.end():]
+            after = re.sub(r'^\s*(?:Genuinely compiled[^\n]*|Locked output[^\n]*|Sample output[^\n]*)\n', '\n', after)
         relative = Path(os.path.relpath(root / 'docs/validation' / dataset / Path(rel).stem, page.parent)).as_posix()
         text = text[:match.start()] + canonical + capture_block(row, dataset, label, relative) + after
         docs[page] = text
         row['page'] = str(page.relative_to(root))
         del row['_output']
-    for page, text in docs.items():
-        # Historical diagnostic prose is retained as authoring context. Only old
-        # output fences are collapsed; current didactic explanations stay visible.
-        text = text.replace('Fresh GPU validation is pending.', 'The current execution record appears above.')
-        text = text.replace('Fresh validation is pending.', 'The current execution record appears above.')
-        text = text.replace('pending fresh GPU execution', 'documented by the current execution record above')
-        text = text.replace('Fresh GPU execution is pending;', 'Current execution is recorded above;')
-        provenance = ('<!-- execution:provenance -->\n'
-            '!!! info "Execution provenance"\n\n'
-            '    Current execution blocks identify the tested source hash, hardware dataset, commands and captured output. '
-            'References elsewhere on this page to a device-less environment describe the original authoring context. '
-            'Historical output is superseded by the current record. Displayed output omits the runner command header and trims trailing line whitespace; raw logs remain exact. A host simulation or API validation has its stated scope; '
-            'neither alone establishes a numerical multi-GPU workload or measured performance.\n\n')
-        if '<!-- execution:provenance -->' not in text:
-            heading = re.search(r'^# .+\n', text, re.M)
-            if heading:
-                text = text[:heading.end()] + '\n' + provenance + text[heading.end():]
-        docs[page] = text
     (public / 'results.json').write_text(json.dumps(records, indent=2) + '\n')
     counts = collections.Counter(category(row) for row in records)
     summary = ['# ' + label.upper() + ' execution validation', '',

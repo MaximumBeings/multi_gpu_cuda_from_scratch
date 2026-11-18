@@ -1,11 +1,5 @@
 # Appendix F: From PyTorch Distributed and DeepSpeed to C++: A Rosetta Stone
 
-<!-- execution:provenance -->
-!!! info "Execution provenance"
-
-    Current execution blocks identify the tested source hash, hardware dataset, commands and captured output. References elsewhere on this page to a device-less environment describe the original authoring context. Historical output is superseded by the current record. Displayed output omits the runner command header and trims trailing line whitespace; raw logs remain exact. A host simulation or API validation has its stated scope; neither alone establishes a numerical multi-GPU workload or measured performance.
-
-
 <!-- mgpu:opener:start -->
 [![Appendix F: From PyTorch Distributed and DeepSpeed to C++: A Rosetta Stone](../images/chapter-openers/appendix-f.svg)](../images/chapter-openers/appendix-f.svg)
 <!-- mgpu:opener:end -->
@@ -74,7 +68,9 @@ int main(){
 ```
 
 <!-- execution:start:a100:135_torch_distributed_collectives_mapped.cu -->
-> **Current execution — 2026-11-17-a100: API validation (recorded scope).** UTC (program start): `2026-11-17T23:59:37.677169+00:00`. Source SHA-256: `10e70990c1fdffe0d5c5bbb8e29dbd0bd152c283c4b8359c336f03f462620d51`.
+> **Compiled and executed — 2026-11-17-a100: API validation (recorded scope).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-17T23:59:39.446489+00:00`.
+
+<!-- execution:metadata Source SHA-256: 10e70990c1fdffe0d5c5bbb8e29dbd0bd152c283c4b8359c336f03f462620d51; recorded UTC (program start): 2026-11-17T23:59:37.677169+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-a100/135_torch_distributed_collectives_mapped/135_torch_distributed_collectives_mapped.cu) · [Compiler log](../validation/2026-11-17-a100/135_torch_distributed_collectives_mapped/compile.log) · [Execution log](../validation/2026-11-17-a100/135_torch_distributed_collectives_mapped/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -85,7 +81,7 @@ nvcc -std=c++17 -O2 -arch=sm_80 135_torch_distributed_collectives_mapped.cu -o .
 ./example
 ```
 
-<details markdown="1"><summary>Captured current-source output</summary>
+**Sample output**
 
 ```text
 dist.broadcast           -> ncclBroadcast (CUDA/NCCL backend)
@@ -98,12 +94,14 @@ C++ linked NCCL: 2.26.2. A PyTorch installation may load a different NCCL build.
 API PROBE PASS: errors=0; semantic mapping and one-rank C++ setup, not a PyTorch execution test.
 ```
 
-</details>
+
 <!-- execution:end:a100:135_torch_distributed_collectives_mapped.cu -->
 
 
 <!-- execution:start:h100:135_torch_distributed_collectives_mapped.cu -->
-> **Current execution — 2026-11-17-h100: API validation (recorded scope).** UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`. Source SHA-256: `10e70990c1fdffe0d5c5bbb8e29dbd0bd152c283c4b8359c336f03f462620d51`.
+> **Compiled and executed — 2026-11-17-h100: API validation (recorded scope).** Hardware: 2 H100 GPUs. Execution record UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`.
+
+<!-- execution:metadata Source SHA-256: 10e70990c1fdffe0d5c5bbb8e29dbd0bd152c283c4b8359c336f03f462620d51; recorded UTC (run-batch start; per-program time unrecorded): 2026-11-17T23:48:18.967387+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-h100/135_torch_distributed_collectives_mapped/135_torch_distributed_collectives_mapped.cu) · [Compiler log](../validation/2026-11-17-h100/135_torch_distributed_collectives_mapped/compile.log) · [Execution log](../validation/2026-11-17-h100/135_torch_distributed_collectives_mapped/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -140,63 +138,6 @@ nvcc -arch=sm_80 135_torch_distributed_collectives_mapped.cu -o 135_torch_distri
 
 **Sample input:** none -- the program takes no arguments; every value it prints is either a compile-time string constant (including the quoted PyTorch documentation text, verified via `docs.pytorch.org` before writing this file) or a real return value read back from the installed NCCL library.
 
-**Sample output:**
-
-<details markdown="1"><summary>Historical authoring output — superseded by the current execution above</summary>
-
-```text
-=== Section F.1: torch.distributed's collectives, matched to this book's
-    own hand-built chapter AND to the real NCCL call underneath ===
-
-real installed NCCL version: 2.18.3 (the same library backend="nccl"
-would dispatch into from Python)
-
-torch.distributed call   real NCCL call       hand-built in        PyTorch's own description
-dist.broadcast(t,src)    ncclBroadcast        Ch8 8.1              "Copies tensor from src to all other processes"
-dist.reduce(t,dst,op)    ncclReduce           Ch8 8.2              "Applies op to every tensor and stores the result in dst"
-dist.all_reduce(t,op)    ncclAllReduce        Ch9 (ring)           "Reduces the tensor data across all machines...all get the final result"
-dist.all_gather(l,t)     ncclAllGather        Ch10 10.1            "Gathers tensors from the whole group in a list"
-dist.reduce_scatter(o,l,op) ncclReduceScatter    Ch10 10.2            "Reduces, then scatters a list of tensors to all processes"
-dist.all_to_all(o,i)     ncclSend/ncclRecv    Ch10 10.3            (no NCCL primitive either -- Ch11's own fused-group pattern)
-dist.barrier()           ncclAllReduce        Ch17                 "Blocks all processes in group until each one has entered"
-
-point-to-point (Appendix C.2's own ncclSend()/ncclRecv() section):
-dist.send(t,dst)  [blocking] ncclSend             "Send a tensor synchronously"
-dist.recv(t,src)  [blocking] ncclRecv             "Receives a tensor synchronously"
-dist.isend(t,dst) [async] ncclSend (grouped)   "Send a tensor asynchronously"
-dist.irecv(t,src) [async] ncclRecv (grouped)   "Receives a tensor asynchronously"
-
-real quote, PyTorch's own tutorial: writing to a tensor after isend(), or
-reading from one after irecv(), "will result in undefined behaviour" until
-the returned Work object's own req.wait() has completed -- the identical
-real hazard this book's own async cudaMemcpyAsync()/cudaStreamSynchronize()
-discipline has guarded against in every chapter since Chapter 6.
-
-=== real init_process_group() backends, PyTorch's own documented use for each ===
-
-nccl     "Use the NCCL backend for distributed training with CUDA GPU"
-gloo     "Use the Gloo backend for distributed training with CPU"
-mpi      optional backend, requires PyTorch built from source with MPI support
-
-backend="mpi" is the one row in this table this book already built the
-OTHER side of directly: Chapter 20's own real MPI_Init()/MPI_Sendrecv() code
-is genuinely the same MPI library PyTorch's own optional MPI backend would
-link against, not an analogy.
-
-=== confirming the underlying dispatch target genuinely exists here ===
-
-ncclGetUniqueId() -> no error
-ncclCommInitRank(&comm, nranks=1, id, rank=0) -> unhandled cuda error (run with NCCL_DEBUG=INFO for details)
-(the same honest zero-physical-GPU failure Appendix C.1's own File 126
-already reported -- torch.distributed's backend="nccl" would fail exactly
-the same way in this environment, for the identical reason)
-
-self-check: ncclGetUniqueId() succeeds with no device (confirming the real
-library this file links against is genuinely present and callable, the same
-library backend="nccl" would use): confirmed
-```
-
-</details>
 
 ## F.2 DistributedDataParallel Is Chapter 12's Averaging, Automated and Bucketed
 
@@ -361,7 +302,9 @@ int main() {
 ```
 
 <!-- execution:start:a100:136_ddp_bucketed_allreduce.cu -->
-> **Current execution — 2026-11-17-a100: Numerical/transport validation (recorded scope).** UTC (program start): `2026-11-17T23:59:42.017428+00:00`. Source SHA-256: `0405ad49912c9511aff376fffee8b52c7efdc2420bc4de073509e34ac7956feb`.
+> **Compiled and executed — 2026-11-17-a100: Numerical/transport validation (recorded scope).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-17T23:59:44.337668+00:00`.
+
+<!-- execution:metadata Source SHA-256: 0405ad49912c9511aff376fffee8b52c7efdc2420bc4de073509e34ac7956feb; recorded UTC (program start): 2026-11-17T23:59:42.017428+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-a100/136_ddp_bucketed_allreduce/136_ddp_bucketed_allreduce.cu) · [Compiler log](../validation/2026-11-17-a100/136_ddp_bucketed_allreduce/compile.log) · [Execution log](../validation/2026-11-17-a100/136_ddp_bucketed_allreduce/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -372,7 +315,7 @@ nvcc -std=c++17 -O2 -arch=sm_80 136_ddp_bucketed_allreduce.cu -o ./example -lncc
 ./example
 ```
 
-<details markdown="1"><summary>Captured current-source output</summary>
+**Sample output**
 
 ```text
 === Section F.2: DistributedDataParallel's bucketed all-reduce, built on
@@ -402,12 +345,14 @@ Readiness is a host model; actual two-GPU averages follow bucket index order. No
 VALIDATION PASS: errors=0
 ```
 
-</details>
+
 <!-- execution:end:a100:136_ddp_bucketed_allreduce.cu -->
 
 
 <!-- execution:start:h100:136_ddp_bucketed_allreduce.cu -->
-> **Current execution — 2026-11-17-h100: Numerical/transport validation (recorded scope).** UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`. Source SHA-256: `0405ad49912c9511aff376fffee8b52c7efdc2420bc4de073509e34ac7956feb`.
+> **Compiled and executed — 2026-11-17-h100: Numerical/transport validation (recorded scope).** Hardware: 2 H100 GPUs. Execution record UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`.
+
+<!-- execution:metadata Source SHA-256: 0405ad49912c9511aff376fffee8b52c7efdc2420bc4de073509e34ac7956feb; recorded UTC (run-batch start; per-program time unrecorded): 2026-11-17T23:48:18.967387+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-h100/136_ddp_bucketed_allreduce/136_ddp_bucketed_allreduce.cu) · [Compiler log](../validation/2026-11-17-h100/136_ddp_bucketed_allreduce/compile.log) · [Execution log](../validation/2026-11-17-h100/136_ddp_bucketed_allreduce/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -461,48 +406,6 @@ nvcc -arch=sm_80 136_ddp_bucketed_allreduce.cu -o 136_ddp_bucketed_allreduce -ln
 
 **Sample input:** none -- 6 simulated parameters, their bucket assignment, and their hook-firing ticks are all fixed constants in the source, chosen specifically to force an out-of-order readiness sequence.
 
-**Sample output:**
-
-<details markdown="1"><summary>Historical authoring output — superseded by the current execution above</summary>
-
-```text
-=== Section F.2: DistributedDataParallel's bucketed all-reduce, built on
-    Chapter 12's own ncclAllReduce(..., ncclAvg, ...) call ===
-
-bucket assignment (reverse of Model.parameters() order 0..5):
-param#     bucket#   
-0          2         
-1          2         
-2          1         
-3          1         
-4          0         
-5          0         
-
-simulated backward-pass hook firing order produces this bucket READY order:
-  bucket 0 (tick 1) -> bucket 2 (tick 3) -> bucket 1 (tick 5)
-
-real DDP rule (PyTorch's own docs, quoted directly): allreduce is always
-issued in BUCKET INDEX order, never actual ready order -- so despite bucket
-2 becoming ready before bucket 1 above, the real issue order is:
-  bucket 0 -> bucket 1 -> bucket 2
-
-=== one real ncclAllReduce(..., ncclAvg, ...) per bucket, index order ===
-
-bucket 0 (2 params): ncclAllReduce(..., ncclAvg, ...) -> invalid argument (run with NCCL_DEBUG=WARN for details)
-bucket 1 (2 params): ncclAllReduce(..., ncclAvg, ...) -> invalid argument (run with NCCL_DEBUG=WARN for details)
-bucket 2 (2 params): ncclAllReduce(..., ncclAvg, ...) -> invalid argument (run with NCCL_DEBUG=WARN for details)
-
-(the same honest ncclInvalidArgument Chapter 12's own File 34 already
-reported for its single flat call -- a never-created communicator fails the
-identical way whether it's asked to reduce one buffer or three)
-
-self-check: the simulated ready order was genuinely scrambled relative to
-bucket-index order (confirmed scrambled), yet the real issue order sent to ncclAllReduce
-stayed strictly ascending bucket-index order (confirmed), AND every real NCCL call
-reports the same honest failure (confirmed): confirmed
-```
-
-</details>
 
 ## F.3 DeepSpeed's ZeRO Stages Are Chapter 13's Own Memory Arithmetic, Staged
 
@@ -647,7 +550,9 @@ int main() {
 ```
 
 <!-- execution:start:a100:137_zero_stage_memory_model.cpp -->
-> **Current execution — 2026-11-17-a100: Host program/model (exit-only).** UTC (program start): `2026-11-17T23:59:46.407825+00:00`. Source SHA-256: `b502e695c6f4cbce805c540c253e71b7aa78992cfbef3558aba2e1aa85f28bf7`.
+> **Compiled and executed — 2026-11-17-a100: Host program/model (exit-only).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-17T23:59:46.623671+00:00`.
+
+<!-- execution:metadata Source SHA-256: b502e695c6f4cbce805c540c253e71b7aa78992cfbef3558aba2e1aa85f28bf7; recorded UTC (program start): 2026-11-17T23:59:46.407825+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-a100/137_zero_stage_memory_model/137_zero_stage_memory_model.cpp) · [Compiler log](../validation/2026-11-17-a100/137_zero_stage_memory_model/compile.log) · [Execution log](../validation/2026-11-17-a100/137_zero_stage_memory_model/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -658,7 +563,7 @@ g++ -std=c++17 -O2 137_zero_stage_memory_model.cpp -o ./example
 ./example
 ```
 
-<details markdown="1"><summary>Captured current-source output</summary>
+**Sample output**
 
 ```text
 === Section F.3: DeepSpeed's ZeRO stages, derived from Chapter 13's own
@@ -710,12 +615,14 @@ exactly why DeepSpeed documents ZeRO stage 3 alongside, not instead of,
 model-parallel/tensor-parallel splitting.
 ```
 
-</details>
+
 <!-- execution:end:a100:137_zero_stage_memory_model.cpp -->
 
 
 <!-- execution:start:h100:137_zero_stage_memory_model.cpp -->
-> **Current execution — 2026-11-17-h100: Host program/model (exit-only).** UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`. Source SHA-256: `b502e695c6f4cbce805c540c253e71b7aa78992cfbef3558aba2e1aa85f28bf7`.
+> **Compiled and executed — 2026-11-17-h100: Host program/model (exit-only).** Hardware: 2 H100 GPUs. Execution record UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`.
+
+<!-- execution:metadata Source SHA-256: b502e695c6f4cbce805c540c253e71b7aa78992cfbef3558aba2e1aa85f28bf7; recorded UTC (run-batch start; per-program time unrecorded): 2026-11-17T23:48:18.967387+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-h100/137_zero_stage_memory_model/137_zero_stage_memory_model.cpp) · [Compiler log](../validation/2026-11-17-h100/137_zero_stage_memory_model/compile.log) · [Execution log](../validation/2026-11-17-h100/137_zero_stage_memory_model/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -791,61 +698,6 @@ g++ -std=c++17 -Wall -Wextra -O2 137_zero_stage_memory_model.cpp -o 137_zero_sta
 
 **Sample input:** none -- every figure is either Chapter 13's own already-locked constant, the ZeRO paper's own independently-published worked example, or arithmetic derived from both.
 
-**Sample output:**
-
-<details markdown="1"><summary>Historical authoring output — superseded by the current execution above</summary>
-
-```text
-=== Section F.3: DeepSpeed's ZeRO stages, derived from Chapter 13's own
-    16-bytes-per-parameter breakdown, not a new formula ===
-
-Chapter 13's own real per-parameter breakdown (mixed-precision Adam):
-  2 bytes fp16 parameter   + 2 bytes fp16 gradient   = 4 bytes  (unsharded by Pos/Pos+g)
-  4 bytes fp32 parameter + 4 bytes momentum + 4 bytes variance = 12 bytes  (DeepSpeed's own "optimizer states")
-  total: 16 bytes/parameter, exactly Chapter 13's own already-locked figure
-
-DeepSpeed's own real documented stages (deepspeed.readthedocs.io, quoted):
-  stage 1 (Pos):     "optimizer states...are partitioned across the
-                      processes, so that each process updates only its
-                      partition"
-  stage 2 (Pos+g):   "the reduced 16-bit gradients...are also partitioned
-                      such that each process retains only the gradients
-                      corresponding to its portion of the optimizer states"
-  stage 3 (Pos+g+p): "the 16-bit model parameters are partitioned across
-                      the processes. ZeRO-3 will automatically collect and
-                      partition them during the forward and backward
-                      passes"
-  config: DeepSpeedZeroConfig's own "stage" field, 1/2/3, inside the
-  zero_optimization dict -- a real, documented config key, not renamed here.
-
-self-consistency check against the ZeRO paper's own published 7.5B-param,
-Nd=64 worked example (31.4 / 16.6 / 1.9 GB):
-  Pos     = 31.4 GB
-  Pos+g   = 16.6 GB
-  Pos+g+p = 1.9 GB
-  matches published figures: PASS
-
-applying the SAME validated formula to Chapter 13's own GPT-3 figure,
-sharded across Chapter 12's own REPLICAS=8 data-parallel group:
-
-configuration                GB/replica
-no ZeRO (Ch13 baseline)          2800.0
-ZeRO stage 1 (Pos)                962.5
-ZeRO stage 2 (Pos+g)              656.2
-ZeRO stage 3 (Pos+g+p)            350.0
-
-note what ZeRO does NOT change: Chapter 13's own model-parallel shard
-count (35 H100 SXM GPUs, from its own File 36) answers a different question
--- how many devices must COOPERATE to hold one copy at all -- and ZeRO stage
-3's own 350.0 GB/replica figure above is still larger than one H100 SXM's 80
-GB, meaning GPT-3 at this size needs BOTH: Chapter 13's model parallelism to
-split the model itself, and ZeRO-style sharding within each data-parallel
-replica group -- exactly the combination real large-model training uses, and
-exactly why DeepSpeed documents ZeRO stage 3 alongside, not instead of,
-model-parallel/tensor-parallel splitting.
-```
-
-</details>
 
 ## F.4 The Rosetta Stone: A Full Reference Table
 

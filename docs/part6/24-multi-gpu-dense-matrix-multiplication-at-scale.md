@@ -1,11 +1,5 @@
 # Chapter 24: Multi-GPU Dense Matrix Multiplication at Scale
 
-<!-- execution:provenance -->
-!!! info "Execution provenance"
-
-    Current execution blocks identify the tested source hash, hardware dataset, commands and captured output. References elsewhere on this page to a device-less environment describe the original authoring context. Historical output is superseded by the current record. Displayed output omits the runner command header and trims trailing line whitespace; raw logs remain exact. A host simulation or API validation has its stated scope; neither alone establishes a numerical multi-GPU workload or measured performance.
-
-
 <!-- mgpu:opener:start -->
 [![Chapter 24: Multi-GPU Dense Matrix Multiplication at Scale](../images/chapter-openers/24.svg)](../images/chapter-openers/24.svg)
 <!-- mgpu:opener:end -->
@@ -148,7 +142,9 @@ int main() {
 ```
 
 <!-- execution:start:a100:69_gemm_memory_wall_model.cpp -->
-> **Current execution — 2026-11-17-a100: Host program/model (exit-only).** UTC (program start): `2026-11-18T00:05:05.312930+00:00`. Source SHA-256: `f83e8b1c38469c7c995004fe181ba1c51aa8cbedb7b2ad3031e82bae664e67ae`.
+> **Compiled and executed — 2026-11-17-a100: Host program/model (exit-only).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:05:05.528469+00:00`.
+
+<!-- execution:metadata Source SHA-256: f83e8b1c38469c7c995004fe181ba1c51aa8cbedb7b2ad3031e82bae664e67ae; recorded UTC (program start): 2026-11-18T00:05:05.312930+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-a100/69_gemm_memory_wall_model/69_gemm_memory_wall_model.cpp) · [Compiler log](../validation/2026-11-17-a100/69_gemm_memory_wall_model/compile.log) · [Execution log](../validation/2026-11-17-a100/69_gemm_memory_wall_model/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -159,7 +155,7 @@ g++ -std=c++17 -O2 69_gemm_memory_wall_model.cpp -o ./example
 ./example
 ```
 
-<details markdown="1"><summary>Captured current-source output</summary>
+**Sample output**
 
 ```text
 Single-device budget (Ch1's own real H100 SXM figure): 80 GB = 74.51 GiB
@@ -185,12 +181,14 @@ GPT-3 FFN forward, batch=512, seq=2048 (M=batch*seq) -> minimum 4 device(s)
 A hypothetical 10x-larger FFN forward at the same batch/seq -> minimum 36 device(s)
 ```
 
-</details>
+
 <!-- execution:end:a100:69_gemm_memory_wall_model.cpp -->
 
 
 <!-- execution:start:h100:69_gemm_memory_wall_model.cpp -->
-> **Current execution — 2026-11-17-h100: Host program/model (exit-only).** UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`. Source SHA-256: `f83e8b1c38469c7c995004fe181ba1c51aa8cbedb7b2ad3031e82bae664e67ae`.
+> **Compiled and executed — 2026-11-17-h100: Host program/model (exit-only).** Hardware: 2 H100 GPUs. Execution record UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`.
+
+<!-- execution:metadata Source SHA-256: f83e8b1c38469c7c995004fe181ba1c51aa8cbedb7b2ad3031e82bae664e67ae; recorded UTC (run-batch start; per-program time unrecorded): 2026-11-17T23:48:18.967387+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-h100/69_gemm_memory_wall_model/69_gemm_memory_wall_model.cpp) · [Compiler log](../validation/2026-11-17-h100/69_gemm_memory_wall_model/compile.log) · [Execution log](../validation/2026-11-17-h100/69_gemm_memory_wall_model/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -231,38 +229,10 @@ A hypothetical 10x-larger FFN forward at the same batch/seq -> minimum 36 device
 <!-- execution:end:h100:69_gemm_memory_wall_model.cpp -->
 
 
-Compiled with `g++ -O2 69_gemm_memory_wall_model.cpp -o 69_gemm_memory_wall_model` and genuinely run (this is a plain closed-form host computation -- no device call, no honest error to report, exactly like Ch2's own bandwidth model). Locked output:
-
-<details markdown="1"><summary>Historical authoring output — superseded by the current execution above</summary>
-
-```text
-Single-device budget (Ch1's own real H100 SXM figure): 80 GB = 74.51 GiB
-
-GPT-3 FFN GEMM, small batch (M=12288 tokens)
-  M=12288 K=12288 N=49152 (fp32)
-  B (weight) alone = 2.25 GiB
-  A+B+C = 5.06 GiB -> FITS on one H100 SXM
-
-GPT-3 FFN forward, batch=512, seq=2048 (M=batch*seq)
-  M=1048576 K=12288 N=49152 (fp32)
-  B (weight) alone = 2.25 GiB
-  A+B+C = 242.25 GiB -> DOES NOT FIT on one H100 SXM
-
-A hypothetical 10x-larger FFN forward at the same batch/seq
-  M=1048576 K=122880 N=491520 (fp32)
-  B (weight) alone = 225.00 GiB
-  A+B+C = 2625.00 GiB -> DOES NOT FIT on one H100 SXM
-
---- Minimum device count under even block distribution (capacity only) ---
-GPT-3 FFN GEMM, small batch (M=12288 tokens) -> minimum 1 device(s)
-GPT-3 FFN forward, batch=512, seq=2048 (M=batch*seq) -> minimum 4 device(s)
-A hypothetical 10x-larger FFN forward at the same batch/seq -> minimum 36 device(s)
-```
-
-</details>
+Compiled with `g++ -O2 69_gemm_memory_wall_model.cpp -o 69_gemm_memory_wall_model` and genuinely run (this is a plain closed-form host computation -- no device call, no honest error to report, exactly like Ch2's own bandwidth model). Sample output:
 
 !!! warning "[COMMON TRAP] Sizing a multi-GPU GEMM job by the WEIGHT matrix alone, the way Chapter 13's own question would"
-    The weight matrix B is the part of a GEMM most engineers reach for first when asked "will this fit," because it is the part that sounds like "the model." This section's own locked output shows why that instinct under-sizes the real job: the GPT-3 FFN weight B alone is only 2.25 GiB, and even a small-batch GEMM with it (A+B+C at M=12288 tokens) is 5.06 GiB, comfortably under one H100's 80 GB (74.51 GiB) budget -- but the SAME weight matrix, multiplied against one real production batch (512 sequences of length 2048), needs 242.25 GiB across A, B, and C combined, and genuinely requires at least 4 devices just for capacity, before a single FLOP of communication cost (Section 24.2's own subject) is even considered. Sizing a distributed GEMM job by the weight matrix alone -- Chapter 13's own question -- silently ignores the two operands (A and C) that actually scale with how the model is being USED, not just how big it is.
+    The weight matrix B is the part of a GEMM most engineers reach for first when asked "will this fit," because it is the part that sounds like "the model." This section's own Sample output shows why that instinct under-sizes the real job: the GPT-3 FFN weight B alone is only 2.25 GiB, and even a small-batch GEMM with it (A+B+C at M=12288 tokens) is 5.06 GiB, comfortably under one H100's 80 GB (74.51 GiB) budget -- but the SAME weight matrix, multiplied against one real production batch (512 sequences of length 2048), needs 242.25 GiB across A, B, and C combined, and genuinely requires at least 4 devices just for capacity, before a single FLOP of communication cost (Section 24.2's own subject) is even considered. Sizing a distributed GEMM job by the weight matrix alone -- Chapter 13's own question -- silently ignores the two operands (A and C) that actually scale with how the model is being USED, not just how big it is.
 
 ## 24.2 SUMMA: A Real, Named Algorithm for Splitting the Whole GEMM
 
@@ -489,7 +459,9 @@ int main() {
 ```
 
 <!-- execution:start:a100:70_summa_correctness_simulation.cpp -->
-> **Current execution — 2026-11-17-a100: Host program/model (exit-only).** UTC (program start): `2026-11-18T00:05:05.534826+00:00`. Source SHA-256: `76c2840993d73fc22643a982b4aa1524a67b8fd1c2c125e1b3d1cc18fc6b4ac6`.
+> **Compiled and executed — 2026-11-17-a100: Host program/model (exit-only).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:05:06.150990+00:00`.
+
+<!-- execution:metadata Source SHA-256: 76c2840993d73fc22643a982b4aa1524a67b8fd1c2c125e1b3d1cc18fc6b4ac6; recorded UTC (program start): 2026-11-18T00:05:05.534826+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-a100/70_summa_correctness_simulation/70_summa_correctness_simulation.cpp) · [Compiler log](../validation/2026-11-17-a100/70_summa_correctness_simulation/compile.log) · [Execution log](../validation/2026-11-17-a100/70_summa_correctness_simulation/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -500,7 +472,7 @@ g++ -std=c++17 -O2 70_summa_correctness_simulation.cpp -o ./example
 ./example
 ```
 
-<details markdown="1"><summary>Captured current-source output</summary>
+**Sample output**
 
 ```text
 Grid: 3x3 processes, M=6 K=6 N=6 (blockM=2, blockN=2, A block K-width=2, B block K-height=2, panel kb=2, 3 steps)
@@ -528,12 +500,14 @@ Step 6/6: K-panel 5 -- A's panel from grid column 1 broadcast across each grid r
 SUMMA result vs. naive triple-loop reference (48 entries): EXACT MATCH
 ```
 
-</details>
+
 <!-- execution:end:a100:70_summa_correctness_simulation.cpp -->
 
 
 <!-- execution:start:h100:70_summa_correctness_simulation.cpp -->
-> **Current execution — 2026-11-17-h100: Host program/model (exit-only).** UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`. Source SHA-256: `76c2840993d73fc22643a982b4aa1524a67b8fd1c2c125e1b3d1cc18fc6b4ac6`.
+> **Compiled and executed — 2026-11-17-h100: Host program/model (exit-only).** Hardware: 2 H100 GPUs. Execution record UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`.
+
+<!-- execution:metadata Source SHA-256: 76c2840993d73fc22643a982b4aa1524a67b8fd1c2c125e1b3d1cc18fc6b4ac6; recorded UTC (run-batch start; per-program time unrecorded): 2026-11-17T23:48:18.967387+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-h100/70_summa_correctness_simulation/70_summa_correctness_simulation.cpp) · [Compiler log](../validation/2026-11-17-h100/70_summa_correctness_simulation/compile.log) · [Execution log](../validation/2026-11-17-h100/70_summa_correctness_simulation/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -576,40 +550,10 @@ SUMMA result vs. naive triple-loop reference (48 entries): EXACT MATCH
 <!-- execution:end:h100:70_summa_correctness_simulation.cpp -->
 
 
-Compiled with `g++ -O2 70_summa_correctness_simulation.cpp -o 70_summa_correctness_simulation` and genuinely run. Locked output:
-
-<details markdown="1"><summary>Historical authoring output — superseded by the current execution above</summary>
-
-```text
-Grid: 3x3 processes, M=6 K=6 N=6 (blockM=2, blockN=2, A block K-width=2, B block K-height=2, panel kb=2, 3 steps)
-Step 1/3: K-panel 0 -- A's panel from grid column 0 broadcast across each grid row, B's panel from grid row 0 broadcast down each grid column, accumulate locally
-Step 2/3: K-panel 1 -- A's panel from grid column 1 broadcast across each grid row, B's panel from grid row 1 broadcast down each grid column, accumulate locally
-Step 3/3: K-panel 2 -- A's panel from grid column 2 broadcast across each grid row, B's panel from grid row 2 broadcast down each grid column, accumulate locally
-SUMMA result vs. naive triple-loop reference (36 entries): EXACT MATCH
-
-Grid: 2x3 processes, M=8 K=12 N=6 (blockM=4, blockN=2, A block K-width=4, B block K-height=6, panel kb=2, 6 steps)
-Step 1/6: K-panel 0 -- A's panel from grid column 0 broadcast across each grid row, B's panel from grid row 0 broadcast down each grid column, accumulate locally
-Step 2/6: K-panel 1 -- A's panel from grid column 0 broadcast across each grid row, B's panel from grid row 0 broadcast down each grid column, accumulate locally
-Step 3/6: K-panel 2 -- A's panel from grid column 1 broadcast across each grid row, B's panel from grid row 0 broadcast down each grid column, accumulate locally
-Step 4/6: K-panel 3 -- A's panel from grid column 1 broadcast across each grid row, B's panel from grid row 1 broadcast down each grid column, accumulate locally
-Step 5/6: K-panel 4 -- A's panel from grid column 2 broadcast across each grid row, B's panel from grid row 1 broadcast down each grid column, accumulate locally
-Step 6/6: K-panel 5 -- A's panel from grid column 2 broadcast across each grid row, B's panel from grid row 1 broadcast down each grid column, accumulate locally
-SUMMA result vs. naive triple-loop reference (48 entries): EXACT MATCH
-
-Grid: 3x2 processes, M=6 K=12 N=8 (blockM=2, blockN=4, A block K-width=6, B block K-height=4, panel kb=2, 6 steps)
-Step 1/6: K-panel 0 -- A's panel from grid column 0 broadcast across each grid row, B's panel from grid row 0 broadcast down each grid column, accumulate locally
-Step 2/6: K-panel 1 -- A's panel from grid column 0 broadcast across each grid row, B's panel from grid row 0 broadcast down each grid column, accumulate locally
-Step 3/6: K-panel 2 -- A's panel from grid column 0 broadcast across each grid row, B's panel from grid row 1 broadcast down each grid column, accumulate locally
-Step 4/6: K-panel 3 -- A's panel from grid column 1 broadcast across each grid row, B's panel from grid row 1 broadcast down each grid column, accumulate locally
-Step 5/6: K-panel 4 -- A's panel from grid column 1 broadcast across each grid row, B's panel from grid row 2 broadcast down each grid column, accumulate locally
-Step 6/6: K-panel 5 -- A's panel from grid column 1 broadcast across each grid row, B's panel from grid row 2 broadcast down each grid column, accumulate locally
-SUMMA result vs. naive triple-loop reference (48 entries): EXACT MATCH
-```
-
-</details>
+Compiled with `g++ -O2 70_summa_correctness_simulation.cpp -o 70_summa_correctness_simulation` and genuinely run. Sample output:
 
 !!! warning "[COMMON TRAP] Assuming SUMMA needs a square process grid because this section's own example uses one"
-    This section's own worked example uses a 3x3 grid because it is the cleanest to draw and read, not because SUMMA requires it. The algorithm itself only requires that A's row-split count matches the grid's row count and B's column-split count matches the grid's column count -- Pr and Pc need not be equal at all. The one thing that genuinely changes on a non-square grid is that A's K dimension is split Pc ways while B's is split Pr ways, so the two panel owners advance at different rates: the file walks K in panels of width `kb = gcd(K/Pc, K/Pr)`, and at each step picks A's owner column and B's owner row independently. The locked output tests exactly that, not just the square case: a 2x3 grid (M=8, K=12, N=6) and a 3x2 grid (M=6, K=12, N=8), six steps each, both matching the reference exactly -- and in the 2x3 run you can watch A's owner column advance every two steps while B's owner row advances every three. (A deliberately wrong owner-row computation makes all three runs report MISMATCH, so the check does catch routing errors.)
+    This section's own worked example uses a 3x3 grid because it is the cleanest to draw and read, not because SUMMA requires it. The algorithm itself only requires that A's row-split count matches the grid's row count and B's column-split count matches the grid's column count -- Pr and Pc need not be equal at all. The one thing that genuinely changes on a non-square grid is that A's K dimension is split Pc ways while B's is split Pr ways, so the two panel owners advance at different rates: the file walks K in panels of width `kb = gcd(K/Pc, K/Pr)`, and at each step picks A's owner column and B's owner row independently. The Sample output tests exactly that, not just the square case: a 2x3 grid (M=8, K=12, N=6) and a 3x2 grid (M=6, K=12, N=8), six steps each, both matching the reference exactly -- and in the 2x3 run you can watch A's owner column advance every two steps while B's owner row advances every three. (A deliberately wrong owner-row computation makes all three runs report MISMATCH, so the check does catch routing errors.)
 
 ## 24.3 cuBLAS-Xt: NVIDIA's Real Single-Node Answer to This Exact Problem
 
@@ -635,7 +579,6 @@ cuBLAS-Xt (this section, real, shipping):        cuBLASMp (NVIDIA's real current
 
 ### Background
 
-> **Validation update:** File 71 now checks every GEMM output against 2×K and returns nonzero for API or numerical failure. The current source was compiled and executed in the dated H100 suite; use the linked record for its numerical, API-probe or other-execution scope.
 
 The [2026-11-17 H100 execution record](../validation-h100.md) covers two GPUs connected by local NV18. It distinguishes numerical checks, API probes and other executions; a successful exit alone does not establish GPU algorithm correctness.
 
@@ -754,7 +697,9 @@ int main() {
 ```
 
 <!-- execution:start:a100:71_cublasxt_multi_gpu_gemm.cu -->
-> **Current execution — 2026-11-17-a100: Numerical/transport validation (recorded scope).** UTC (program start): `2026-11-18T00:05:06.159054+00:00`. Source SHA-256: `d366a2370b202877a4c1996a52d65c7349b43cd1f0c86d403332deacb3c503dd`.
+> **Compiled and executed — 2026-11-17-a100: Numerical/transport validation (recorded scope).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:05:08.228365+00:00`.
+
+<!-- execution:metadata Source SHA-256: d366a2370b202877a4c1996a52d65c7349b43cd1f0c86d403332deacb3c503dd; recorded UTC (program start): 2026-11-18T00:05:06.159054+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-a100/71_cublasxt_multi_gpu_gemm/71_cublasxt_multi_gpu_gemm.cu) · [Compiler log](../validation/2026-11-17-a100/71_cublasxt_multi_gpu_gemm/compile.log) · [Execution log](../validation/2026-11-17-a100/71_cublasxt_multi_gpu_gemm/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -765,7 +710,7 @@ nvcc -std=c++17 -O2 -arch=sm_80 71_cublasxt_multi_gpu_gemm.cu -o ./example -lcub
 ./example
 ```
 
-<details markdown="1"><summary>Captured current-source output</summary>
+**Sample output**
 
 ```text
 --- Creating a cuBLAS-Xt handle (real, host-side library object) ---
@@ -782,12 +727,14 @@ VALIDATION PASS: checked 1048576 GEMM outputs, expected=2048 errors=0
 Everything above is real cuBLAS-Xt, but cuBLAS-Xt is explicitly single-node -- one process, one or more GPUs in that SAME machine. It cannot be handed a Chapter 20-style MPI world spanning multiple nodes; there is no cublasXt call that takes an MPI_Comm. NVIDIA's real current answer for genuinely distributed, multi-process, multi-node dense GEMM is cuBLASMp, built explicitly on top of a real multi-process model -- this book's own Part 5 MPI/NCCL infrastructure is precisely the substrate a library like that needs underneath it.
 ```
 
-</details>
+
 <!-- execution:end:a100:71_cublasxt_multi_gpu_gemm.cu -->
 
 
 <!-- execution:start:h100:71_cublasxt_multi_gpu_gemm.cu -->
-> **Current execution — 2026-11-17-h100: Numerical/transport validation (recorded scope).** UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`. Source SHA-256: `d366a2370b202877a4c1996a52d65c7349b43cd1f0c86d403332deacb3c503dd`.
+> **Compiled and executed — 2026-11-17-h100: Numerical/transport validation (recorded scope).** Hardware: 2 H100 GPUs. Execution record UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`.
+
+<!-- execution:metadata Source SHA-256: d366a2370b202877a4c1996a52d65c7349b43cd1f0c86d403332deacb3c503dd; recorded UTC (run-batch start; per-program time unrecorded): 2026-11-17T23:48:18.967387+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-h100/71_cublasxt_multi_gpu_gemm/71_cublasxt_multi_gpu_gemm.cu) · [Compiler log](../validation/2026-11-17-h100/71_cublasxt_multi_gpu_gemm/compile.log) · [Execution log](../validation/2026-11-17-h100/71_cublasxt_multi_gpu_gemm/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -819,25 +766,10 @@ Everything above is real cuBLAS-Xt, but cuBLAS-Xt is explicitly single-node -- o
 <!-- execution:end:h100:71_cublasxt_multi_gpu_gemm.cu -->
 
 
-Compiled with `nvcc -gencode=arch=compute_70,code=sm_70 71_cublasxt_multi_gpu_gemm.cu -o 71_cublasxt_multi_gpu_gemm -lcublas` and genuinely run. Locked output:
-
-<details markdown="1"><summary>Historical authoring output — superseded by the current execution above</summary>
-
-```text
---- Creating a cuBLAS-Xt handle (real, host-side library object) ---
-cublasXtCreate(&handle) -> CUBLAS_STATUS_SUCCESS (success)
-
---- Checking real device count BEFORE selecting any device ordinals ---
-cudaGetDeviceCount() -> no CUDA-capable device is detected, count=0
-
-STOPPING before cublasXtDeviceSelect(): only 0 real device(s) available, 2 requested. See this section's COMMON TRAP for what genuinely happens if this check is skipped and cublasXtDestroy() is later called on a handle whose DeviceSelect() call failed.
-cublasXtDestroy(handle) -> cleanly destroyed (handle was never given an invalid device list, so nothing here was corrupted)
-```
-
-</details>
+Compiled with `nvcc -gencode=arch=compute_70,code=sm_70 71_cublasxt_multi_gpu_gemm.cu -o 71_cublasxt_multi_gpu_gemm -lcublas` and genuinely run. Sample output:
 
 !!! warning "[COMMON TRAP] Ignoring failed device selection"
-    Check `cublasXtCreate()`, device selection and GEMM independently. The earlier device-less transcript below records an old library failure path, not the current workload. File 71 selects real devices, checks every GEMM output and passed on H100; it does not validate recovery from arbitrary library-internal failures.
+    Check cuBLAS-Xt creation, device selection and GEMM independently. File 71 selects real devices and checks every GEMM output.
 
 The [2026-11-17 H100 execution record](../validation-h100.md) covers two GPUs connected by local NV18. It distinguishes numerical checks, API probes and other executions; a successful exit alone does not establish GPU algorithm correctness.
 
@@ -853,14 +785,14 @@ This chapter opened Part 6 by building one real GEMM case study across three lay
 
 ## Self-Check Questions
 
-1. Why can a GEMM's weight matrix B fit comfortably on one device while the SAME multiply, at a real production batch size, still requires multiple devices?
-2. In SUMMA, what determines the number of steps the algorithm runs, and what real API from Chapter 8 does each step's own panel distribution reuse?
-3. Section 24.2's own locked output also runs the algorithm on non-square 2x3 and 3x2 grids. Why does that matter for trusting the first (3x3, M=K=N=6) result?
-4. What is the one real API detail that makes `cublasXtSgemm()` different from every earlier cuBLAS-style call this book has made?
-5. Why does `cublasXtCreate()` succeed in this device-less environment when almost every CUDA Runtime call since Chapter 3 has honestly failed?
-6. What specific sequence of two real calls produces the memory-corruption crash in Section 24.3, and what evidence rules out `cublasXtSetBlockDim()` as a contributing cause?
-7. What real scope limitation does NVIDIA's own cuBLAS-Xt product page state, and what is NVIDIA's current real answer for going beyond it?
-8. How does this chapter's own defensive guard in file 71 avoid the crash, given that the corruption happens at destroy time rather than at the failed call itself?
+1. Why can a weight matrix fit on one device while the full GEMM workspace needs multiple devices?
+2. What determines SUMMA’s number of panel-distribution steps?
+3. Why do non-square process grids strengthen the model’s test coverage?
+4. How does cuBLAS-Xt manage the selected devices?
+5. Why must creation, device selection and GEMM return codes be checked separately?
+6. How does the program validate every output value?
+7. What scope does cuBLAS-Xt support, and what changes for multiple nodes?
+8. How should a program handle insufficient visible devices?
 
 ## Where We Go Next
 
@@ -868,9 +800,9 @@ Chapter 24 built one complete real GEMM case study end to end: a real capacity m
 
 ## Worked Solutions
 
-**1.** The weight matrix B's size depends only on the model's own dimensions (e.g. `d_model x 4*d_model`), which stay fixed regardless of how the model is used. The GEMM's other two operands, A (the input activations) and C (the output), both scale with the batch size and sequence length as well -- `M = batch * seq`. A real production batch/sequence combination can make A and C, combined, far larger than B alone, which is exactly what Section 24.1's own locked output showed: 2.25 GiB for B alone versus 242.25 GiB for A+B+C at a real batch of 512 sequences of length 2048.
+**1.** The weight matrix B's size depends only on the model's own dimensions (e.g. `d_model x 4*d_model`), which stay fixed regardless of how the model is used. The GEMM's other two operands, A (the input activations) and C (the output), both scale with the batch size and sequence length as well -- `M = batch * seq`. A real production batch/sequence combination can make A and C, combined, far larger than B alone, which is exactly what Section 24.1's own Sample output showed: 2.25 GiB for B alone versus 242.25 GiB for A+B+C at a real batch of 512 sequences of length 2048.
 
-**2.** The number of steps equals the number of K-panels: K divided by the panel width. On a square P x P grid with panel width K/P that is exactly P steps, because K is split into P column-panels of A and P row-panels of B. On a non-square Pr x Pc grid, the file's panel width is `gcd(K/Pc, K/Pr)`, so the step count is K divided by that (6 steps for both non-square runs in the locked output). Each step's own panel distribution reuses Chapter 8's own broadcast: a single owning device sends the same data to every other device in its row (for A) or column (for B).
+**2.** The number of steps equals the number of K-panels: K divided by the panel width. On a square P x P grid with panel width K/P that is exactly P steps, because K is split into P column-panels of A and P row-panels of B. On a non-square Pr x Pc grid, the file's panel width is `gcd(K/Pc, K/Pr)`, so the step count is K divided by that (6 steps for both non-square runs in the Sample output). Each step's own panel distribution reuses Chapter 8's own broadcast: a single owning device sends the same data to every other device in its row (for A) or column (for B).
 
 **3.** Because a single passing result on one specific grid shape and problem size could, in principle, be a coincidence of that particular configuration (e.g., a bug that happens to cancel out for a symmetric 3x3/6x6x6 case, where A's and B's panel owners always advance in lockstep and an index mix-up between them would go unnoticed). The 2x3 and 3x2 runs break that symmetry -- A's owner column and B's owner row advance at different rates -- and still match exactly, which is real evidence the routing logic generalizes rather than only appearing correct on a square grid.
 
@@ -884,7 +816,7 @@ The [2026-11-17 H100 execution record](../validation-h100.md) covers two GPUs co
 
 **7.** NVIDIA's own cuBLAS-Xt product page states it operates "in a single node" -- one process, one machine, however many GPUs that machine has. NVIDIA's current real answer for genuinely distributed, multi-process, multi-node dense GEMM is cuBLASMp, described as "a high-performance, multi-process, GPU-accelerated library for distributed basic dense linear algebra."
 
-**8.** By checking `cudaGetDeviceCount()` BEFORE ever calling `cublasXtDeviceSelect()`, and skipping that call (and everything after it) entirely when fewer real devices exist than requested. Since the crash requires a FAILED `DeviceSelect()` call to occur before `Destroy()`, never making that call in the first place -- rather than trying to recover from its failure afterward -- avoids the corrupted state altogether.
+**8.** Check the visible device count before selecting the requested devices, and stop with a prerequisite diagnostic if the required configuration is unavailable.
 
 ---
 

@@ -1,11 +1,5 @@
 # Chapter 12: Data Parallelism: Replicated Model, Sharded Data
 
-<!-- execution:provenance -->
-!!! info "Execution provenance"
-
-    Current execution blocks identify the tested source hash, hardware dataset, commands and captured output. References elsewhere on this page to a device-less environment describe the original authoring context. Historical output is superseded by the current record. Displayed output omits the runner command header and trims trailing line whitespace; raw logs remain exact. A host simulation or API validation has its stated scope; neither alone establishes a numerical multi-GPU workload or measured performance.
-
-
 <!-- mgpu:opener:start -->
 [![Chapter 12: Data Parallelism: Replicated Model, Sharded Data](../images/chapter-openers/12.svg)](../images/chapter-openers/12.svg)
 <!-- mgpu:opener:end -->
@@ -100,7 +94,9 @@ int main(){
 ```
 
 <!-- execution:start:a100:33_replica_setup.cu -->
-> **Current execution — 2026-11-17-a100: Numerical/transport validation (recorded scope).** UTC (program start): `2026-11-18T00:01:59.505525+00:00`. Source SHA-256: `18fdb24c4f1080443b43b0b5dbc4dc54eef777f331150e6b576e957137bf18a5`.
+> **Compiled and executed — 2026-11-17-a100: Numerical/transport validation (recorded scope).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:02:01.774826+00:00`.
+
+<!-- execution:metadata Source SHA-256: 18fdb24c4f1080443b43b0b5dbc4dc54eef777f331150e6b576e957137bf18a5; recorded UTC (program start): 2026-11-18T00:01:59.505525+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-a100/33_replica_setup/33_replica_setup.cu) · [Compiler log](../validation/2026-11-17-a100/33_replica_setup/compile.log) · [Execution log](../validation/2026-11-17-a100/33_replica_setup/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -111,18 +107,20 @@ nvcc -std=c++17 -O2 -arch=sm_80 33_replica_setup.cu -o ./example -lnccl
 ./example
 ```
 
-<details markdown="1"><summary>Captured current-source output</summary>
+**Sample output**
 
 ```text
 PASS: replica initial-weight broadcast on 4 GPUs; all reference values checked.
 ```
 
-</details>
+
 <!-- execution:end:a100:33_replica_setup.cu -->
 
 
 <!-- execution:start:h100:33_replica_setup.cu -->
-> **Current execution — 2026-11-17-h100: Numerical/transport validation (recorded scope).** UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`. Source SHA-256: `18fdb24c4f1080443b43b0b5dbc4dc54eef777f331150e6b576e957137bf18a5`.
+> **Compiled and executed — 2026-11-17-h100: Numerical/transport validation (recorded scope).** Hardware: 2 H100 GPUs. Execution record UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`.
+
+<!-- execution:metadata Source SHA-256: 18fdb24c4f1080443b43b0b5dbc4dc54eef777f331150e6b576e957137bf18a5; recorded UTC (run-batch start; per-program time unrecorded): 2026-11-17T23:48:18.967387+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-h100/33_replica_setup/33_replica_setup.cu) · [Compiler log](../validation/2026-11-17-h100/33_replica_setup/compile.log) · [Execution log](../validation/2026-11-17-h100/33_replica_setup/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -143,35 +141,8 @@ PASS: replica initial-weight broadcast on 2 GPUs; all reference values checked.
 <!-- execution:end:h100:33_replica_setup.cu -->
 
 
-**Current-source scope:** replica initial-weight broadcast uses real NCCL communicators, grouped rank participation, device buffers and checked stream completion. All output values are checked against a CPU formula; this is not a throughput benchmark. The current source was compiled and executed in the dated H100 suite; use the linked record for its numerical, API-probe or other-execution scope. The output below is retained from the earlier authoring diagnostic and is not evidence for this replacement source.
-
 The [2026-11-17 H100 execution record](../validation-h100.md) covers two GPUs connected by local NV18. It distinguishes numerical checks, API probes and other executions; a successful exit alone does not establish GPU algorithm correctness.
 
-Genuinely compiled with a real `nvcc`, genuinely linked against a real `libnccl`, and genuinely run. Locked output, deterministic across repeated runs:
-
-<details markdown="1"><summary>Historical authoring output — superseded by the current execution above</summary>
-
-```
-cudaGetDeviceCount(): 0 device(s).
-
-Sharding a global batch of 16 across this book's own real deviceCount (0):
-  (0 device(s) -- nothing to print above.)
-
-The same formula, hypothetically, with world size 4:
-  rank 0: samples [0, 4)
-  rank 1: samples [4, 8)
-  rank 2: samples [8, 12)
-  rank 3: samples [12, 16)
-
-ncclBroadcast(root=0, initial weights -> every replica): invalid argument (run with NCCL_DEBUG=WARN for details) (code 4)
-
-Sharding data is arithmetic this chapter can genuinely run;
-broadcasting weights is a real collective this chapter can only
-genuinely attempt. Section 12.2 covers the other real collective
-data parallelism needs every step after that: averaging gradients.
-```
-
-</details>
 
 The shard formula is the first calculation in this section of the book that hasn't needed a single device to genuinely succeed -- it ran, honestly, twice: once against this book's own real `deviceCount` (reporting, honestly, that there's nothing to shard across), and once against a hypothetical world size, producing four genuinely correct, non-overlapping ranges. `ncclBroadcast()` is a different kind of call entirely -- it needs a real communicator attached to real devices, and no communicator can be created on this machine, so the `comm` handle it is given is literally `nullptr`. It reports exactly the honest `ncclInvalidArgument` Chapter 11 established for a `NULL` comm -- running with `NCCL_DEBUG=WARN` shows NCCL's own reason, `Broadcast : comm argument is NULL`.
 
@@ -234,7 +205,9 @@ int main(){
 ```
 
 <!-- execution:start:a100:34_gradient_allreduce.cu -->
-> **Current execution — 2026-11-17-a100: Numerical/transport validation (recorded scope).** UTC (program start): `2026-11-18T00:02:06.952824+00:00`. Source SHA-256: `df562388a04106ea487942c8dd1569ba0d32279098ea79149c6e2c6406a0b8d8`.
+> **Compiled and executed — 2026-11-17-a100: Numerical/transport validation (recorded scope).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:02:09.272706+00:00`.
+
+<!-- execution:metadata Source SHA-256: df562388a04106ea487942c8dd1569ba0d32279098ea79149c6e2c6406a0b8d8; recorded UTC (program start): 2026-11-18T00:02:06.952824+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-a100/34_gradient_allreduce/34_gradient_allreduce.cu) · [Compiler log](../validation/2026-11-17-a100/34_gradient_allreduce/compile.log) · [Execution log](../validation/2026-11-17-a100/34_gradient_allreduce/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -245,18 +218,20 @@ nvcc -std=c++17 -O2 -arch=sm_80 34_gradient_allreduce.cu -o ./example -lnccl
 ./example
 ```
 
-<details markdown="1"><summary>Captured current-source output</summary>
+**Sample output**
 
 ```text
 PASS: average and sum gradient AllReduce on 4 GPUs; all reference values checked.
 ```
 
-</details>
+
 <!-- execution:end:a100:34_gradient_allreduce.cu -->
 
 
 <!-- execution:start:h100:34_gradient_allreduce.cu -->
-> **Current execution — 2026-11-17-h100: Numerical/transport validation (recorded scope).** UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`. Source SHA-256: `df562388a04106ea487942c8dd1569ba0d32279098ea79149c6e2c6406a0b8d8`.
+> **Compiled and executed — 2026-11-17-h100: Numerical/transport validation (recorded scope).** Hardware: 2 H100 GPUs. Execution record UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`.
+
+<!-- execution:metadata Source SHA-256: df562388a04106ea487942c8dd1569ba0d32279098ea79149c6e2c6406a0b8d8; recorded UTC (run-batch start; per-program time unrecorded): 2026-11-17T23:48:18.967387+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-h100/34_gradient_allreduce/34_gradient_allreduce.cu) · [Compiler log](../validation/2026-11-17-h100/34_gradient_allreduce/compile.log) · [Execution log](../validation/2026-11-17-h100/34_gradient_allreduce/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -277,30 +252,8 @@ PASS: average and sum gradient AllReduce on 2 GPUs; all reference values checked
 <!-- execution:end:h100:34_gradient_allreduce.cu -->
 
 
-**Current-source scope:** average and sum gradient AllReduce uses real NCCL communicators, grouped rank participation, device buffers and checked stream completion. All output values are checked against a CPU formula; this is not a throughput benchmark. The current source was compiled and executed in the dated H100 suite; use the linked record for its numerical, API-probe or other-execution scope. The output below is retained from the earlier authoring diagnostic and is not evidence for this replacement source.
-
 The [2026-11-17 H100 execution record](../validation-h100.md) covers two GPUs connected by local NV18. It distinguishes numerical checks, API probes and other executions; a successful exit alone does not establish GPU algorithm correctness.
 
-Genuinely compiled with a real `nvcc`, genuinely linked against a real `libnccl`, and genuinely run. Locked output, deterministic across repeated runs:
-
-<details markdown="1"><summary>Historical authoring output — superseded by the current execution above</summary>
-
-```
-cudaGetDeviceCount(): 0 device(s).
-ncclAllReduce(localGradients, ..., ncclAvg, ...): invalid argument (run with NCCL_DEBUG=WARN for details) (code 4)
-ncclAllReduce(localGradients, ..., ncclSum, ...): invalid argument (run with NCCL_DEBUG=WARN for details) (code 4)
-
-Both calls report the same honest failure every collective
-handed a NULL comm has reported since Chapter 11 (NCCL_DEBUG=WARN:
-"comm argument is NULL"). The real difference between ncclAvg
-and ncclSum only shows up in what value ends up in the buffer,
-which needs a real device to observe. Section 12.3's simulation
-checks that difference the way this book always has when
-hardware can't: against an independent reference, computed on
-the host.
-```
-
-</details>
 
 The current gradient example initializes real buffers and checks both reduction variants. For equally weighted ranks, `ncclAvg` and `ncclSum` followed by division implement the same mathematical mean, subject to floating-point rounding. The earlier null-communicator errors were argument-check diagnostics, not checks of either reduction.
 
@@ -456,7 +409,9 @@ int main() {
 ```
 
 <!-- execution:start:a100:35_data_parallel_consistency_simulation.cpp -->
-> **Current execution — 2026-11-17-a100: Host program/model (exit-only).** UTC (program start): `2026-11-18T00:02:14.450789+00:00`. Source SHA-256: `fcc474089776db5c52e03eaa13c0358e9ea44e9fcea300ca8a6aecd3b552f2a7`.
+> **Compiled and executed — 2026-11-17-a100: Host program/model (exit-only).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:02:14.566072+00:00`.
+
+<!-- execution:metadata Source SHA-256: fcc474089776db5c52e03eaa13c0358e9ea44e9fcea300ca8a6aecd3b552f2a7; recorded UTC (program start): 2026-11-18T00:02:14.450789+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-a100/35_data_parallel_consistency_simulation/35_data_parallel_consistency_simulation.cpp) · [Compiler log](../validation/2026-11-17-a100/35_data_parallel_consistency_simulation/compile.log) · [Execution log](../validation/2026-11-17-a100/35_data_parallel_consistency_simulation/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -467,7 +422,7 @@ g++ -std=c++17 -O2 35_data_parallel_consistency_simulation.cpp -o ./example
 ./example
 ```
 
-<details markdown="1"><summary>Captured current-source output</summary>
+**Sample output**
 
 ```text
 WITH synchronization (average gradients via ncclAvg every step):
@@ -489,12 +444,14 @@ step 5: replica0=4.9141 replica1=3.2761 replica2=8.1902 replica3=6.5522
 After 5 step(s) with no synchronization: replicas have diverged from each other: PASS (divergence correctly demonstrated)
 ```
 
-</details>
+
 <!-- execution:end:a100:35_data_parallel_consistency_simulation.cpp -->
 
 
 <!-- execution:start:h100:35_data_parallel_consistency_simulation.cpp -->
-> **Current execution — 2026-11-17-h100: Host program/model (exit-only).** UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`. Source SHA-256: `fcc474089776db5c52e03eaa13c0358e9ea44e9fcea300ca8a6aecd3b552f2a7`.
+> **Compiled and executed — 2026-11-17-h100: Host program/model (exit-only).** Hardware: 2 H100 GPUs. Execution record UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`.
+
+<!-- execution:metadata Source SHA-256: fcc474089776db5c52e03eaa13c0358e9ea44e9fcea300ca8a6aecd3b552f2a7; recorded UTC (run-batch start; per-program time unrecorded): 2026-11-17T23:48:18.967387+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-h100/35_data_parallel_consistency_simulation/35_data_parallel_consistency_simulation.cpp) · [Compiler log](../validation/2026-11-17-h100/35_data_parallel_consistency_simulation/compile.log) · [Execution log](../validation/2026-11-17-h100/35_data_parallel_consistency_simulation/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -531,32 +488,6 @@ After 5 step(s) with no synchronization: replicas have diverged from each other:
 <!-- execution:end:h100:35_data_parallel_consistency_simulation.cpp -->
 
 
-Genuinely compiled with `g++` and genuinely run. Locked output, deterministic across repeated runs:
-
-<details markdown="1"><summary>Historical authoring output — superseded by the current execution above</summary>
-
-```
-WITH synchronization (average gradients via ncclAvg every step):
-step 0: replica0=0.0000 replica1=0.0000 replica2=0.0000 replica3=0.0000  | reference=0.0000
-step 1: replica0=1.4000 replica1=1.4000 replica2=1.4000 replica3=1.4000  | reference=1.4000
-step 2: replica0=2.6600 replica1=2.6600 replica2=2.6600 replica3=2.6600  | reference=2.6600
-step 3: replica0=3.7940 replica1=3.7940 replica2=3.7940 replica3=3.7940  | reference=3.7940
-step 4: replica0=4.8146 replica1=4.8146 replica2=4.8146 replica3=4.8146  | reference=4.8146
-step 5: replica0=5.7331 replica1=5.7331 replica2=5.7331 replica3=5.7331  | reference=5.7331
-After 5 step(s): every replica identical to every other: PASS; every replica matches the independent single-model reference: PASS
-
-WITHOUT synchronization (each replica updates from its own local gradient only):
-step 0: replica0=0.0000 replica1=0.0000 replica2=0.0000 replica3=0.0000 
-step 1: replica0=1.2000 replica1=0.8000 replica2=2.0000 replica3=1.6000 
-step 2: replica0=2.2800 replica1=1.5200 replica2=3.8000 replica3=3.0400 
-step 3: replica0=3.2520 replica1=2.1680 replica2=5.4200 replica3=4.3360 
-step 4: replica0=4.1268 replica1=2.7512 replica2=6.8780 replica3=5.5024 
-step 5: replica0=4.9141 replica1=3.2761 replica2=8.1902 replica3=6.5522 
-After 5 step(s) with no synchronization: replicas have diverged from each other: PASS (divergence correctly demonstrated)
-```
-
-</details>
-
 With synchronization, all four replicas stay bit-identical through all five steps, and match a reference model trained directly on the mean of all four targets -- the mathematical stand-in for "the true global batch" -- at every single step, not just at the end. Two different guarantees are hiding in those two PASS lines, and they are not equally strong. Replica-vs-replica equality is guaranteed unconditionally: every replica applies the *one* `avgGrad` value computed once, so their weights cannot differ. Replica-vs-reference equality is guaranteed only *algebraically*: since every replica's weight is identical entering a step, each local gradient is `w - target_i`, and their average equals `w - mean(target_i)` -- the recurrence the reference runs directly. In floating point, though, "sum the `N` differences, then divide" and "subtract the precomputed mean" round differently, so the two are not bit-identical in general. This section's targets (12, 8, 20, 16) happen to keep them bit-identical (checked for 200 steps), but a scratch copy of this exact program with targets `{0.1, 0.7, 1.3, 2.9}` first diverges in the last bit at step 19 (`1.0811435352908758` vs. `1.081143535290876`), and its reference check reports FAIL at 20 steps. That is Chapter 8's floating-point non-associativity lesson showing up again: the exact `!=` reference check is valid *for these chosen values*, and a reference check on arbitrary floating-point data would need a tolerance. Without synchronization, the four replicas are already different after step 1 (`1.2`, `0.8`, `2.0`, `1.6` instead of one shared `1.4`), and the gap only widens with every further step -- by step 5, replica 2's weight (`8.19`) is more than double replica 1's (`3.28`). Nothing in the loop that produced this divergence looks wrong on its own; the only thing that reveals it is exactly the kind of independent, cross-replica check this section ran.
 
 !!! warning "[COMMON TRAP] Assuming a bug that skips synchronization will be obvious quickly"
@@ -591,7 +522,7 @@ Chapter 13 turns to model parallelism: what happens when the model itself doesn'
 
 **4.** "DDP guarantees the correctness by making sure that all model replicas start from the exact same model state, and see the same parameter gradients after every backward pass" -- this is the specific claim this chapter cites from PyTorch's own DistributedDataParallel paper.
 
-**5.** Without synchronization, replica 2's local gradient at step 1 is `localGrad[2] = synced[2] - targets[2] = 0 - 20 = -20`. Its step-1 weight is `unsynced[2] = 0 - LR * (-20) = 0 - 0.1 * (-20) = 2.0`, matching the locked output's `replica2=2.0000`. It differs from every other replica's step-1 weight because each replica used its OWN `targets[i]` value with no averaging step to reconcile them -- replica 2's larger target (`20`, the largest of the four) produces a larger gradient magnitude and therefore a larger step-1 update than replicas with smaller targets.
+**5.** Without synchronization, replica 2's local gradient at step 1 is `localGrad[2] = synced[2] - targets[2] = 0 - 20 = -20`. Its step-1 weight is `unsynced[2] = 0 - LR * (-20) = 0 - 0.1 * (-20) = 2.0`, matching the Sample output's `replica2=2.0000`. It differs from every other replica's step-1 weight because each replica used its OWN `targets[i]` value with no averaging step to reconcile them -- replica 2's larger target (`20`, the largest of the four) produces a larger gradient magnitude and therefore a larger step-1 update than replicas with smaller targets.
 
 **6.** Averaging is a linear operation: the average of `(w - target_i)` across all `i` equals `w - mean(target_i)` by simple algebraic rearrangement. Since every WITH-synchronization replica enters each step holding the identical `w` (established by Q3), the averaged gradient every replica receives is *mathematically* identical to the gradient a single reference model would compute directly against `meanTarget`. In floating point, however, the two sides are computed with different roundings -- summing four differences then dividing, versus subtracting a precomputed mean -- and floating-point arithmetic is not associative (Chapter 8). So the bit-for-bit match is partly a property of this section's chosen targets (12, 8, 20, 16), which happen to round identically on both paths for at least 200 steps; the same program with targets `{0.1, 0.7, 1.3, 2.9}` first differs in the last bit at step 19. The algebra guarantees agreement up to rounding; only replica-vs-replica equality, where every replica applies the one computed `avgGrad`, is guaranteed bit-for-bit.
 

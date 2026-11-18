@@ -1,11 +1,5 @@
 # Chapter 23: CUDA Graphs Across Multiple GPUs and Multiple Nodes
 
-<!-- execution:provenance -->
-!!! info "Execution provenance"
-
-    Current execution blocks identify the tested source hash, hardware dataset, commands and captured output. References elsewhere on this page to a device-less environment describe the original authoring context. Historical output is superseded by the current record. Displayed output omits the runner command header and trims trailing line whitespace; raw logs remain exact. A host simulation or API validation has its stated scope; neither alone establishes a numerical multi-GPU workload or measured performance.
-
-
 <!-- mgpu:opener:start -->
 [![Chapter 23: CUDA Graphs Across Multiple GPUs and Multiple Nodes](../images/chapter-openers/23.svg)](../images/chapter-openers/23.svg)
 <!-- mgpu:opener:end -->
@@ -25,7 +19,7 @@
 
 ---
 
-Every earlier chapter's device work was issued one call, or one collective, at a time: the CPU calls an API, that API enqueues (or blocks on) real work, and the CPU decides when to issue the next one. CUDA Graphs change what gets issued, not who issues it -- a whole sequence of operations, captured once, is handed to the driver as a single object that can be launched repeatedly without the CPU re-issuing each individual call. NVIDIA's own introduction to the feature states the scope of that sequence plainly: "graphs may also span multiple GPUs." This chapter builds that claim for real, in three steps: 23.1 captures real work issued on two different devices' streams into one graph, joined by a real cross-device event dependency; 23.2 captures a real NCCL collective inside a graph, reusing Chapter 21's own MPI+NCCL bootstrap, and reports a new, sharper real failure this book has not yet produced; 23.3 asks the multi-NODE version of the same question directly and shows, using a real CUDA graph host node, exactly why the honest answer is architectural rather than a missing API call.
+CUDA Graphs capture a sequence once for repeated launch. This chapter checks a graph spanning two devices, a graph-captured NCCL reduction and host-node callback behavior. Explicit stream joins close cross-device capture; MPI remains the coordination mechanism between processes.
 
 ```text
 Every earlier chapter's device work:               This chapter's own graphs:
@@ -82,7 +76,6 @@ even though device 1's stream also contributed real nodes.
 
 ### Background
 
-> **Validation update:** This repaired graph example initializes its operands, checks every result after replay, and returns nonzero on an API or numerical failure. File 66 explicitly rejoins the secondary stream to the capture origin. Its device-1 kernel reads initialized device-0 memory through enabled UVA peer access, preserving a real data dependency without capturing cudaMemcpyPeerAsync, which this tested runtime rejects during capture. The current source was compiled and executed in the dated H100 suite; use the linked record for its numerical, API-probe or other-execution scope.
 
 The [2026-11-17 H100 execution record](../validation-h100.md) covers two GPUs connected by local NV18. It distinguishes numerical checks, API probes and other executions; a successful exit alone does not establish GPU algorithm correctness.
 
@@ -143,7 +136,9 @@ int main() {
 ```
 
 <!-- execution:start:a100:66_cross_device_graph_capture.cu -->
-> **Current execution — 2026-11-17-a100: Numerical/transport validation (recorded scope).** UTC (program start): `2026-11-18T00:04:44.516606+00:00`. Source SHA-256: `15c5b1df7eab956645fdf841f40ca8a923706bcb746e8e83dc200231e4587e16`.
+> **Compiled and executed — 2026-11-17-a100: Numerical/transport validation (recorded scope).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:04:45.684173+00:00`.
+
+<!-- execution:metadata Source SHA-256: 15c5b1df7eab956645fdf841f40ca8a923706bcb746e8e83dc200231e4587e16; recorded UTC (program start): 2026-11-18T00:04:44.516606+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-a100/66_cross_device_graph_capture/66_cross_device_graph_capture.cu) · [Compiler log](../validation/2026-11-17-a100/66_cross_device_graph_capture/compile.log) · [Execution log](../validation/2026-11-17-a100/66_cross_device_graph_capture/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -154,18 +149,20 @@ nvcc -std=c++17 -O2 -arch=sm_80 66_cross_device_graph_capture.cu -o ./example
 ./example
 ```
 
-<details markdown="1"><summary>Captured current-source output</summary>
+**Sample output**
 
 ```text
 VALIDATION PASS: 3 replays, 512 checked values, errors=0
 ```
 
-</details>
+
 <!-- execution:end:a100:66_cross_device_graph_capture.cu -->
 
 
 <!-- execution:start:h100:66_cross_device_graph_capture.cu -->
-> **Current execution — 2026-11-17-h100: Numerical/transport validation (recorded scope).** UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`. Source SHA-256: `15c5b1df7eab956645fdf841f40ca8a923706bcb746e8e83dc200231e4587e16`.
+> **Compiled and executed — 2026-11-17-h100: Numerical/transport validation (recorded scope).** Hardware: 2 H100 GPUs. Execution record UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`.
+
+<!-- execution:metadata Source SHA-256: 15c5b1df7eab956645fdf841f40ca8a923706bcb746e8e83dc200231e4587e16; recorded UTC (run-batch start; per-program time unrecorded): 2026-11-17T23:48:18.967387+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-h100/66_cross_device_graph_capture/66_cross_device_graph_capture.cu) · [Compiler log](../validation/2026-11-17-h100/66_cross_device_graph_capture/compile.log) · [Execution log](../validation/2026-11-17-h100/66_cross_device_graph_capture/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -186,51 +183,10 @@ VALIDATION PASS: 3 replays, 512 checked values, errors=0
 <!-- execution:end:h100:66_cross_device_graph_capture.cu -->
 
 
-Compiled with `nvcc -gencode=arch=compute_70,code=sm_70 66_cross_device_graph_capture.cu -o 66_cross_device_graph_capture` (real dynamic linking against this environment's own installed CUDA 12.0 runtime) and genuinely run. Locked output:
-
-<details markdown="1"><summary>Historical authoring output — superseded by the current execution above</summary>
-
-```text
-cudaGetDeviceCount() -> no CUDA-capable device is detected, count=0
-
---- Building device 0's stream and event ---
-cudaSetDevice(0) -> no CUDA-capable device is detected
-cudaStreamCreate(&streamDev0) -> no CUDA-capable device is detected
-cudaEventCreate(&dev0Done) -> no CUDA-capable device is detected
-
---- Building device 1's stream ---
-cudaSetDevice(1) -> no CUDA-capable device is detected
-cudaStreamCreate(&streamDev1) -> no CUDA-capable device is detected
-
---- Beginning capture on device 0's stream (the origin stream) ---
-cudaSetDevice(0) -> no CUDA-capable device is detected
-cudaStreamBeginCapture(streamDev0, Global) -> no CUDA-capable device is detected
-cudaMallocAsync(devBuf0, streamDev0) -> no CUDA-capable device is detected
-incrementKernel<<<...,streamDev0>>>() enqueued (device 0's own work)
-cudaEventRecord(dev0Done, streamDev0) -> no CUDA-capable device is detected
-cudaSetDevice(1) -> no CUDA-capable device is detected
-cudaStreamWaitEvent(streamDev1, dev0Done) -> no CUDA-capable device is detected (this is the actual cross-device graph edge)
-cudaMallocAsync(devBuf1, streamDev1) -> no CUDA-capable device is detected
-cudaMemcpyPeerAsync(devBuf1<-devBuf0, streamDev1) -> no CUDA-capable device is detected
-incrementKernel<<<...,streamDev1>>>() enqueued (device 1's own work)
-
---- Ending capture on the origin stream (streamDev0) ---
-cudaSetDevice(0) -> no CUDA-capable device is detected
-cudaStreamEndCapture(streamDev0, &graph) -> no CUDA-capable device is detected
-
---- Instantiating and launching the graph ---
-cudaGraphInstantiate(&graphExec, graph) -> no CUDA-capable device is detected
-cudaGraphLaunch(graphExec, streamDev0) -> no CUDA-capable device is detected
-cudaStreamSynchronize(streamDev0) -> no CUDA-capable device is detected
-
---- Relaunching the SAME instantiated graph a second time ---
-cudaGraphLaunch(graphExec, streamDev0) [2nd launch, no re-capture] -> no CUDA-capable device is detected
-```
-
-</details>
+Compiled with `nvcc -gencode=arch=compute_70,code=sm_70 66_cross_device_graph_capture.cu -o 66_cross_device_graph_capture` (real dynamic linking against this environment's own installed CUDA 12.0 runtime) and genuinely run. Sample output:
 
 !!! warning "[COMMON TRAP] Continuing after failed graph setup"
-    A failed stream, event, capture or instantiation call leaves later operations without their required valid handles. Check failures and stop that path. File 66 now checks setup and numerical replay results; the old device-less error transcript did not validate a graph.
+    Check stream, event, capture and instantiation results before using the returned handles. File 66 checks the joined capture and replayed numerical result.
 
 The [2026-11-17 H100 execution record](../validation-h100.md) covers two GPUs connected by local NV18. It distinguishes numerical checks, API probes and other executions; a successful exit alone does not establish GPU algorithm correctness.
 
@@ -265,7 +221,6 @@ Chapter 21's own hybrid bootstrap:                This chapter's own addition:
 
 ### Background
 
-> **Validation update:** This repaired graph example initializes its operands, checks every result after replay, and returns nonzero on an API or numerical failure. File 66 explicitly rejoins the secondary stream to the capture origin. Its device-1 kernel reads initialized device-0 memory through enabled UVA peer access, preserving a real data dependency without capturing cudaMemcpyPeerAsync, which this tested runtime rejects during capture. The current source was compiled and executed in the dated H100 suite; use the linked record for its numerical, API-probe or other-execution scope.
 
 The [2026-11-17 H100 execution record](../validation-h100.md) covers two GPUs connected by local NV18. It distinguishes numerical checks, API probes and other executions; a successful exit alone does not establish GPU algorithm correctness.
 
@@ -327,7 +282,9 @@ int main(int argc, char **argv) {
 ```
 
 <!-- execution:start:a100:67_nccl_captured_in_graph.cu -->
-> **Current execution — 2026-11-17-a100: Numerical/transport validation (recorded scope).** UTC (program start): `2026-11-18T00:04:49.060020+00:00`. Source SHA-256: `1b95a0066781d7efbe953afc74ce9b98f79100a3657b814ad59cc34e4008172a`.
+> **Compiled and executed — 2026-11-17-a100: Numerical/transport validation (recorded scope).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:04:51.229630+00:00`.
+
+<!-- execution:metadata Source SHA-256: 1b95a0066781d7efbe953afc74ce9b98f79100a3657b814ad59cc34e4008172a; recorded UTC (program start): 2026-11-18T00:04:49.060020+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-a100/67_nccl_captured_in_graph/67_nccl_captured_in_graph.cu) · [Compiler log](../validation/2026-11-17-a100/67_nccl_captured_in_graph/compile.log) · [Execution log](../validation/2026-11-17-a100/67_nccl_captured_in_graph/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -338,7 +295,7 @@ nvcc -std=c++17 -O2 -arch=sm_80 -ccbin mpicxx 67_nccl_captured_in_graph.cu -o ./
 /usr/mpi/gcc/openmpi-4.1.7rc1/bin/mpirun --oversubscribe -np 8 ./example
 ```
 
-<details markdown="1"><summary>Captured current-source output</summary>
+**Sample output**
 
 ```text
 [LOG_CAT_SBGP] libnuma.so: cannot open shared object file: No such file or directory
@@ -360,12 +317,14 @@ nvcc -std=c++17 -O2 -arch=sm_80 -ccbin mpicxx 67_nccl_captured_in_graph.cu -o ./
 VALIDATION PASS: 8 ranks, 3 graph replays, errors=0
 ```
 
-</details>
+
 <!-- execution:end:a100:67_nccl_captured_in_graph.cu -->
 
 
 <!-- execution:start:h100:67_nccl_captured_in_graph.cu -->
-> **Current execution — 2026-11-17-h100: Numerical/transport validation (recorded scope).** UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`. Source SHA-256: `1b95a0066781d7efbe953afc74ce9b98f79100a3657b814ad59cc34e4008172a`.
+> **Compiled and executed — 2026-11-17-h100: Numerical/transport validation (recorded scope).** Hardware: 2 H100 GPUs. Execution record UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`.
+
+<!-- execution:metadata Source SHA-256: 1b95a0066781d7efbe953afc74ce9b98f79100a3657b814ad59cc34e4008172a; recorded UTC (run-batch start; per-program time unrecorded): 2026-11-17T23:48:18.967387+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-h100/67_nccl_captured_in_graph/67_nccl_captured_in_graph.cu) · [Compiler log](../validation/2026-11-17-h100/67_nccl_captured_in_graph/compile.log) · [Execution log](../validation/2026-11-17-h100/67_nccl_captured_in_graph/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -424,26 +383,10 @@ VALIDATION PASS: 2 ranks, 3 graph replays, errors=0
 <!-- execution:end:h100:67_nccl_captured_in_graph.cu -->
 
 
-Compiled with `nvcc -ccbin mpicxx -gencode=arch=compute_70,code=sm_70 67_nccl_captured_in_graph.cu -o 67_nccl_captured_in_graph -lnccl` and genuinely run with `mpirun --allow-run-as-root --oversubscribe -np 2 ./67_nccl_captured_in_graph`. Locked output:
+Compiled with `nvcc -ccbin mpicxx -gencode=arch=compute_70,code=sm_70 67_nccl_captured_in_graph.cu -o 67_nccl_captured_in_graph -lnccl` and genuinely run with `mpirun --allow-run-as-root --oversubscribe -np 2 ./67_nccl_captured_in_graph`. Sample output:
 
-<details markdown="1"><summary>Historical authoring output — superseded by the current execution above</summary>
-
-```text
-Rank 0: ncclGetUniqueId() -> no error
-Rank 0: MPI_Bcast(id) done -- every rank now holds the SAME id (Chapter 21's own bootstrap, reused unchanged)
-Rank 1: MPI_Bcast(id) done -- every rank now holds the SAME id (Chapter 21's own bootstrap, reused unchanged)
-Rank 0: cudaSetDevice(0) -> no CUDA-capable device is detected
-Rank 1: cudaSetDevice(1) -> no CUDA-capable device is detected
-Rank 0: ncclCommInitRank() -> unhandled cuda error (run with NCCL_DEBUG=INFO for details)
-Rank 0: STOPPING before touching this communicator again -- ncclCommInitRank() did not return ncclSuccess, so nothing else on `comm` is safe to call, capture included.
-Rank 1: ncclCommInitRank() -> unhandled cuda error (run with NCCL_DEBUG=INFO for details)
-Rank 1: STOPPING before touching this communicator again -- ncclCommInitRank() did not return ncclSuccess, so nothing else on `comm` is safe to call, capture included.
-```
-
-</details>
-
-!!! warning "[COMMON TRAP] Assuming a failed ncclCommInitRank() is as safe to keep using as Chapter 11/17's own failed communicators"
-    Chapter 11 and Chapter 17 both called `ncclAllReduce()` (or a throwaway one-element version of it, for Chapter 17's barrier) on a communicator whose own initialization had already failed, and both got back a clean, honest NCCL error code every time -- `ncclUnhandledCudaError` or `ncclInvalidArgument`, never a crash. This file's own guard exists because that is NOT what happens with `ncclCommInitRank()`'s own failed handle once a real collective call on it is attempted: removing the guard above and calling `ncclAllReduce(sendBuf, recvBuf, 1024, ncclFloat, ncclSum, comm, stream)` directly on this exact environment's failed `comm` genuinely segfaults inside `libnccl.so.2` itself --
+!!! warning "[COMMON TRAP] Continuing after failed communicator creation"
+    Stop when communicator creation fails. A valid communicator is a prerequisite for submitting the collective and capturing its work in a graph.
 
     ```text
     Signal: Segmentation fault (11)
@@ -489,7 +432,6 @@ Real multi-node scaling with graphs, as actually built:
 
 ### Background
 
-> **Validation update:** This source now checks the actual API operation instead of interpreting a zero-GPU path as a successful workload. File 68 synchronizes before checking host callback counts; File 128 performs real NVSHMEM get/atomic-add/team/barrier checks on initialized symmetric device memory. The current source was compiled and executed in the dated H100 suite; use the linked record for its numerical, API-probe or other-execution scope.
 
 The [2026-11-17 H100 execution record](../validation-h100.md) covers two GPUs connected by local NV18. It distinguishes numerical checks, API probes and other executions; a successful exit alone does not establish GPU algorithm correctness.
 
@@ -520,7 +462,9 @@ int main() {
 ```
 
 <!-- execution:start:a100:68_host_node_and_multi_process_graphs.cu -->
-> **Current execution — 2026-11-17-a100: API validation (recorded scope).** UTC (program start): `2026-11-18T00:05:01.117374+00:00`. Source SHA-256: `3b74456e01300c377b645c44256f853350cf0bd0449b36da5ba13c4c5266fbdb`.
+> **Compiled and executed — 2026-11-17-a100: API validation (recorded scope).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:05:02.186670+00:00`.
+
+<!-- execution:metadata Source SHA-256: 3b74456e01300c377b645c44256f853350cf0bd0449b36da5ba13c4c5266fbdb; recorded UTC (program start): 2026-11-18T00:05:01.117374+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-a100/68_host_node_and_multi_process_graphs/68_host_node_and_multi_process_graphs.cu) · [Compiler log](../validation/2026-11-17-a100/68_host_node_and_multi_process_graphs/compile.log) · [Execution log](../validation/2026-11-17-a100/68_host_node_and_multi_process_graphs/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -531,18 +475,20 @@ nvcc -std=c++17 -O2 -arch=sm_80 68_host_node_and_multi_process_graphs.cu -o ./ex
 ./example
 ```
 
-<details markdown="1"><summary>Captured current-source output</summary>
+**Sample output**
 
 ```text
 API PROBE PASS: local graph host callbacks=3 expected=3, errors=0
 ```
 
-</details>
+
 <!-- execution:end:a100:68_host_node_and_multi_process_graphs.cu -->
 
 
 <!-- execution:start:h100:68_host_node_and_multi_process_graphs.cu -->
-> **Current execution — 2026-11-17-h100: API validation (recorded scope).** UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`. Source SHA-256: `3b74456e01300c377b645c44256f853350cf0bd0449b36da5ba13c4c5266fbdb`.
+> **Compiled and executed — 2026-11-17-h100: API validation (recorded scope).** Hardware: 2 H100 GPUs. Execution record UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`.
+
+<!-- execution:metadata Source SHA-256: 3b74456e01300c377b645c44256f853350cf0bd0449b36da5ba13c4c5266fbdb; recorded UTC (run-batch start; per-program time unrecorded): 2026-11-17T23:48:18.967387+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-h100/68_host_node_and_multi_process_graphs/68_host_node_and_multi_process_graphs.cu) · [Compiler log](../validation/2026-11-17-h100/68_host_node_and_multi_process_graphs/compile.log) · [Execution log](../validation/2026-11-17-h100/68_host_node_and_multi_process_graphs/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -563,47 +509,27 @@ API PROBE PASS: local graph host callbacks=3 expected=3, errors=0
 <!-- execution:end:h100:68_host_node_and_multi_process_graphs.cu -->
 
 
-Compiled with `nvcc -gencode=arch=compute_70,code=sm_70 68_host_node_and_multi_process_graphs.cu -o 68_host_node_and_multi_process_graphs` and genuinely run. Locked output:
-
-<details markdown="1"><summary>Historical authoring output — superseded by the current execution above</summary>
-
-```text
---- Building a graph object and a host node (no device touched yet) ---
-cudaGraphCreate(&graph, 0) -> no CUDA-capable device is detected
-cudaGraphAddHostNode(&hostNode, graph, ...) -> no CUDA-capable device is detected
-Both calls above look like pure host-side bookkeeping -- a graph object and a CPU-only callback node, nothing GPU-shaped at all -- but they honestly fail the SAME way file 66's device-touching calls did. The CUDA Runtime API implicitly initializes its driver context on the first real runtime call from a thread, exactly as it has since Chapter 3, and with zero devices present that implicit initialization fails before cudaGraphCreate() ever gets to do its own host-side work.
-
---- Instantiating and launching: this DOES need a device ---
-cudaGraphInstantiate(&graphExec, graph) -> no CUDA-capable device is detected
-cudaStreamCreate(&stream) -> no CUDA-capable device is detected
-cudaGraphLaunch(graphExec, stream) -> no CUDA-capable device is detected
-hostNodeCallCount = 0 (the host node never actually fired -- launch itself never reached a real device to run the graph on)
-
---- What this means for MULTI-NODE scaling with CUDA graphs ---
-A host node could run a real MPI call when a graph reaches it, but every real per-rank graph in a genuine multi-node job (Chapter 20's own MPI ranks, Chapter 21's own hybrid MPI+NCCL bootstrap) is still built, instantiated, and launched entirely LOCALLY, inside that one rank's own process -- the graph object itself never crosses a rank boundary. What DOES cross ranks, exactly as files 66-67 showed for devices, is coordination through already-existing primitives: an NCCL collective captured INSIDE each rank's own local graph (file 67), whose communicator was bootstrapped across ranks by real MPI (Chapter 20/21) before any graph existed at all.
-```
-
-</details>
+Compiled with `nvcc -gencode=arch=compute_70,code=sm_70 68_host_node_and_multi_process_graphs.cu -o 68_host_node_and_multi_process_graphs` and genuinely run. Sample output:
 
 !!! warning "[COMMON TRAP] Assuming a host node is a general-purpose escape hatch for GPU work the graph API doesn't otherwise support"
     A host node's callback restriction -- "no CUDA function may be called from callback" -- is not a minor footnote; it is the exact boundary that stops a host node from being used to paper over Section 23.1's own real limit (one process's own graph, however many devices) or this section's own real limit (no cross-process graph at all). A host node can run real CPU-only logic, including a real blocking `MPI_Send()`/`MPI_Recv()` call -- but the moment that CPU code needs to touch a CUDA API (allocate memory, launch a kernel, check a device property), it is no longer legal inside a host node's callback, full stop. The real, working multi-node pattern this book has already built the pieces of is not "one host node calling MPI inside a bigger graph" -- it is Section 23.2's own pattern: each rank captures and launches its OWN local graph, and the cross-rank coordination happens through an NCCL communicator that was bootstrapped by real MPI calls made OUTSIDE any graph, before capture ever began.
 
 ## Chapter Summary
 
-CUDA graphs can capture cross-device event dependencies within one process when participating streams are properly forked and joined. File 66 checks initialized data across both GPUs and repeated replay; File 67 checks graph-captured NCCL reduction outputs. File 68 is a checked host-callback API probe, not a distributed graph or numerical GPU algorithm. The current H100 records cover these distinct scopes; the older device-less diagnostics did not establish any of them.
+File 66 checks a joined cross-device capture and repeated numerical replay. File 67 checks graph-captured NCCL reductions. File 68 checks host callbacks. These examples separate graph execution, collective results and host callback behavior.
 
 The [2026-11-17 H100 execution record](../validation-h100.md) covers two GPUs connected by local NV18. It distinguishes numerical checks, API probes and other executions; a successful exit alone does not establish GPU algorithm correctness.
 
 ## Self-Check Questions
 
-1. What real API pair creates the cross-device dependency edge that lets one captured graph contain work from two different GPUs, and on which stream must `cudaStreamEndCapture()` ultimately be called?
-2. Section 23.1's locked output shows the identical error on all nineteen real API calls, from `cudaGetDeviceCount()` through the second `cudaGraphLaunch()`. Why does this uniformity indicate every call genuinely executed, rather than the program stopping early?
-3. What NCCL version introduced support for capturing NCCL operations inside CUDA Graphs, and what minimum CUDA version does that support require?
-4. In Section 23.2, what specifically differs about calling `ncclAllReduce()` on a communicator from a failed `ncclCommInitRank()`, compared to Chapter 11 and Chapter 17's own failed communicators?
-5. Was the crash in Section 23.2 caused by graph capture itself? What evidence in this chapter answers that question?
-6. What does the CUDA Runtime API's host node callback restriction ("no CUDA function may be called from callback") rule out as a way to build a multi-node CUDA graph?
-7. Describe the real architecture this chapter concludes is actually used for multi-node CUDA graph scaling, and name which earlier chapter's own API builds the cross-rank coordination piece of it.
-8. Why did `cudaGraphCreate()` and `cudaGraphAddHostNode()` -- calls that never obviously touch a GPU -- still fail with `cudaErrorNoDevice` in this environment?
+1. Which event APIs create a cross-device capture dependency?
+2. Why must a participating stream join the origin stream before capture ends?
+3. Which NCCL and CUDA versions support collective graph capture?
+4. Why must communicator initialization succeed before capture begins?
+5. How does the replay test detect stale output?
+6. Which CUDA calls are disallowed inside a graph host callback?
+7. How does MPI coordinate process-local graphs?
+8. Why must the application synchronize before checking a host callback count?
 
 ## Where We Go Next
 
@@ -613,7 +539,7 @@ Chapter 23 completes Part 5 (Chapters 20 through 23: MPI, GPUDirect RDMA, NVSHME
 
 **1.** `cudaEventRecord()` on the producing device's stream, followed by `cudaStreamWaitEvent()` on the consuming device's stream, creates the cross-device edge -- but only if the event was recorded inside the same capture sequence. `cudaStreamEndCapture()` must be called on the "origin stream," the same stream `cudaStreamBeginCapture()` was originally called on, regardless of how many other streams (on other devices) joined the capture through waited-upon events.
 
-**2.** Because the CUDA Runtime API's implicit initialization fails exactly once, the first time any thread makes a real runtime call, and every subsequent runtime call in that thread then genuinely executes its own logic, checks that same failed initialization state, and returns its own honest error -- it does not throw an exception or terminate the program. Eighteen distinct real calls each independently confirmed the same fact, rather than the program silently stopping after the first one.
+**2.** A capture that forks work into another stream must join that stream back into the origin before `cudaStreamEndCapture()`. The event dependencies express that join explicitly.
 
 **3.** NCCL 2.9 introduced graph-capture support for NCCL operations, and it requires a minimum CUDA version of 11.3.
 

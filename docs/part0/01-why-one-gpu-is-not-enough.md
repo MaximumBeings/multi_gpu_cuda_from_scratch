@@ -1,11 +1,5 @@
 # Chapter 1: Why One GPU Is Not Enough
 
-<!-- execution:provenance -->
-!!! info "Execution provenance"
-
-    Current execution blocks identify the tested source hash, hardware dataset, commands and captured output. References elsewhere on this page to a device-less environment describe the original authoring context. Historical output is superseded by the current record. Displayed output omits the runner command header and trims trailing line whitespace; raw logs remain exact. A host simulation or API validation has its stated scope; neither alone establishes a numerical multi-GPU workload or measured performance.
-
-
 <!-- mgpu:opener:start -->
 [![Chapter 1: Why One GPU Is Not Enough](../images/chapter-openers/01.svg)](../images/chapter-openers/01.svg)
 <!-- mgpu:opener:end -->
@@ -114,7 +108,9 @@ int main() {
 ```
 
 <!-- execution:start:a100:02_memory_wall.cpp -->
-> **Current execution — 2026-11-17-a100: Host program/model (exit-only).** UTC (program start): `2026-11-18T00:00:10.869538+00:00`. Source SHA-256: `a2ff2cb43ab47129401d4d1b916c527da97d8271196a249813fb57e3a3853b1b`.
+> **Compiled and executed — 2026-11-17-a100: Host program/model (exit-only).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:00:11.085308+00:00`.
+
+<!-- execution:metadata Source SHA-256: a2ff2cb43ab47129401d4d1b916c527da97d8271196a249813fb57e3a3853b1b; recorded UTC (program start): 2026-11-18T00:00:10.869538+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-a100/02_memory_wall/02_memory_wall.cpp) · [Compiler log](../validation/2026-11-17-a100/02_memory_wall/compile.log) · [Execution log](../validation/2026-11-17-a100/02_memory_wall/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -125,7 +121,7 @@ g++ -std=c++17 -O2 02_memory_wall.cpp -o ./example
 ./example
 ```
 
-<details markdown="1"><summary>Captured current-source output</summary>
+**Sample output**
 
 ```text
 Model                Params  Inference(fp16) Training(Adam,mp) H100 SXM x H100 NVL x
@@ -135,12 +131,14 @@ GPT-3 (175B)        175.0B         350.0 GB        2800.0 GB         35         
 Minimum H100 SXM (80 GB) GPUs to hold GPT-3's training state (params+grads+Adam state only, no activations): 35
 ```
 
-</details>
+
 <!-- execution:end:a100:02_memory_wall.cpp -->
 
 
 <!-- execution:start:h100:02_memory_wall.cpp -->
-> **Current execution — 2026-11-17-h100: Host program/model (exit-only).** UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`. Source SHA-256: `a2ff2cb43ab47129401d4d1b916c527da97d8271196a249813fb57e3a3853b1b`.
+> **Compiled and executed — 2026-11-17-h100: Host program/model (exit-only).** Hardware: 2 H100 GPUs. Execution record UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`.
+
+<!-- execution:metadata Source SHA-256: a2ff2cb43ab47129401d4d1b916c527da97d8271196a249813fb57e3a3853b1b; recorded UTC (run-batch start; per-program time unrecorded): 2026-11-17T23:48:18.967387+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-h100/02_memory_wall/02_memory_wall.cpp) · [Compiler log](../validation/2026-11-17-h100/02_memory_wall/compile.log) · [Execution log](../validation/2026-11-17-h100/02_memory_wall/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -169,20 +167,6 @@ Minimum H100 SXM (80 GB) GPUs to hold GPT-3's training state (params+grads+Adam 
 g++ -std=c++17 -Wall -Wextra -O2 02_memory_wall.cpp -o memory_wall
 ./memory_wall
 ```
-
-Output (genuinely compiled and run; re-verified by a fresh recompile and rerun before publication, identical both times):
-
-<details markdown="1"><summary>Historical authoring output — superseded by the current execution above</summary>
-
-```text
-Model                Params  Inference(fp16) Training(Adam,mp) H100 SXM x H100 NVL x
-7B-class model        7.0B          14.0 GB         112.0 GB          2          2
-GPT-3 (175B)        175.0B         350.0 GB        2800.0 GB         35         30
-
-Minimum H100 SXM (80 GB) GPUs to hold GPT-3's training state (params+grads+Adam state only, no activations): 35
-```
-
-</details>
 
 A 175-billion-parameter model's weights alone (350 GB at fp16) already exceed a single H100's 80 GB several times over — before a single gradient or optimizer value is added. Once they are, the training state needs **35 H100 SXM GPUs' worth of memory just to exist**, with zero of it left over for the activations that actually let training happen. Even the comparatively modest 7B-class model's *training* footprint (112 GB) doesn't fit in one H100 (80 GB), though its *inference* footprint (14 GB) fits easily.
 
@@ -265,7 +249,9 @@ int main() {
 ```
 
 <!-- execution:start:a100:03_compute_wall.cpp -->
-> **Current execution — 2026-11-17-a100: Host program/model (exit-only).** UTC (program start): `2026-11-18T00:00:11.088863+00:00`. Source SHA-256: `afb0e2461806947cd7f0bc421aac900cd61a586feb494c575609a410e5b492f3`.
+> **Compiled and executed — 2026-11-17-a100: Host program/model (exit-only).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:00:11.153780+00:00`.
+
+<!-- execution:metadata Source SHA-256: afb0e2461806947cd7f0bc421aac900cd61a586feb494c575609a410e5b492f3; recorded UTC (program start): 2026-11-18T00:00:11.088863+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-a100/03_compute_wall/03_compute_wall.cpp) · [Compiler log](../validation/2026-11-17-a100/03_compute_wall/compile.log) · [Execution log](../validation/2026-11-17-a100/03_compute_wall/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -276,7 +262,7 @@ g++ -std=c++17 -O2 03_compute_wall.cpp -o ./example
 ./example
 ```
 
-<details markdown="1"><summary>Captured current-source output</summary>
+**Sample output**
 
 ```text
 Total training compute (C = 6*N*D): 3.150e+23 FLOPs
@@ -289,12 +275,14 @@ GPU-days on a single H100 at an assumed 50% of peak (illustrative MFU, not measu
 Same total compute spread across 1024 such GPUs at the assumed 50% MFU: 7.20 days
 ```
 
-</details>
+
 <!-- execution:end:a100:03_compute_wall.cpp -->
 
 
 <!-- execution:start:h100:03_compute_wall.cpp -->
-> **Current execution — 2026-11-17-h100: Host program/model (exit-only).** UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`. Source SHA-256: `afb0e2461806947cd7f0bc421aac900cd61a586feb494c575609a410e5b492f3`.
+> **Compiled and executed — 2026-11-17-h100: Host program/model (exit-only).** Hardware: 2 H100 GPUs. Execution record UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`.
+
+<!-- execution:metadata Source SHA-256: afb0e2461806947cd7f0bc421aac900cd61a586feb494c575609a410e5b492f3; recorded UTC (run-batch start; per-program time unrecorded): 2026-11-17T23:48:18.967387+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-h100/03_compute_wall/03_compute_wall.cpp) · [Compiler log](../validation/2026-11-17-h100/03_compute_wall/compile.log) · [Execution log](../validation/2026-11-17-h100/03_compute_wall/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -327,23 +315,6 @@ g++ -std=c++17 -Wall -Wextra -O2 03_compute_wall.cpp -o compute_wall
 ./compute_wall
 ```
 
-Output (genuinely compiled and run twice; identical both times, as expected of pure arithmetic with no timing or randomness involved):
-
-<details markdown="1"><summary>Historical authoring output — superseded by the current execution above</summary>
-
-```text
-Total training compute (C = 6*N*D): 3.150e+23 FLOPs
-N (parameters, approx.):            1.750e+11
-D (tokens):                         3.000e+11
-H100 SXM peak dense BF16/FP16:       9.890e+14 FLOP/s
-
-GPU-days on a single H100 at 100% of peak (ideal, unreachable in practice): 3686.4
-GPU-days on a single H100 at an assumed 50% of peak (illustrative MFU, not measured):   7372.8
-Same total compute spread across 1024 such GPUs at the assumed 50% MFU: 7.20 days
-```
-
-</details>
-
 **Model boundary, stated plainly:** the `3686.4` and `7372.8` GPU-day figures are *not* timing measurements — nothing was clocked. They're a deterministic FLOP count (`3.150e+23`, computed exactly from Kaplan's formula) divided by a real, vendor-published peak-FLOPS figure (H100 SXM's 989 TFLOP/s dense Tensor Core throughput, no sparsity). The 50%-of-peak scenario is explicitly labeled as an illustrative assumption about achieved utilization (Model FLOPs Utilization, or MFU), not a measurement of anything — real training runs report MFU figures all over the 30-50% range depending on model, hardware, and how well the implementation overlaps communication with compute, itself a running theme starting in Part 2. Either way the conclusion is the same: **over 10 years on one GPU even at ideal throughput (3686.4 days), over 20 years at the assumed 50% MFU (7372.8 days), or roughly a week on 1,024 of them at that same 50% MFU (7.20 days).**
 
 !!! warning "[COMMON TRAP] Treating a model that "fits in memory" as a model that's actually trainable"
@@ -357,7 +328,7 @@ Before ordering a fleet of trucks, the first thing any reasonable person checks 
 
 ### Background
 
-`cudaGetDeviceCount()` is worth calling for real right here in Chapter 1, on this book's own authoring machine, because how it behaves *matters for the rest of the book*: every later chapter's multi-device logic is built on trusting this call's answer rather than assuming one.
+Call `cudaGetDeviceCount()` before constructing a multi-device workload. Its result determines which ordinals are available to the process.
 
 ```cpp
 // Chapter 1: Why One GPU Is Not Enough
@@ -402,7 +373,9 @@ int main() {
 ```
 
 <!-- execution:start:a100:01_device_query.cu -->
-> **Current execution — 2026-11-17-a100: API/host demonstration (exit-only).** UTC (program start): `2026-11-18T00:00:04.726059+00:00`. Source SHA-256: `4a14f312d6406e432c3bd12214a99f9e37288c7dea955f587460413a11d333cc`.
+> **Compiled and executed — 2026-11-17-a100: API/host demonstration (exit-only).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:00:05.793304+00:00`.
+
+<!-- execution:metadata Source SHA-256: 4a14f312d6406e432c3bd12214a99f9e37288c7dea955f587460413a11d333cc; recorded UTC (program start): 2026-11-18T00:00:04.726059+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-a100/01_device_query/01_device_query.cu) · [Compiler log](../validation/2026-11-17-a100/01_device_query/compile.log) · [Execution log](../validation/2026-11-17-a100/01_device_query/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -413,7 +386,7 @@ nvcc -std=c++17 -O2 -arch=sm_80 01_device_query.cu -o ./example
 ./example
 ```
 
-<details markdown="1"><summary>Captured current-source output</summary>
+**Sample output**
 
 ```text
 cudaGetDeviceCount() returned: no error (code 0)
@@ -428,12 +401,14 @@ Device 6: NVIDIA A100-SXM4-40GB -- 42.41 GB total, 41.96 GB free, compute capabi
 Device 7: NVIDIA A100-SXM4-40GB -- 42.41 GB total, 41.96 GB free, compute capability 8.0
 ```
 
-</details>
+
 <!-- execution:end:a100:01_device_query.cu -->
 
 
 <!-- execution:start:h100:01_device_query.cu -->
-> **Current execution — 2026-11-17-h100: API/host demonstration (exit-only).** UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`. Source SHA-256: `4a14f312d6406e432c3bd12214a99f9e37288c7dea955f587460413a11d333cc`.
+> **Compiled and executed — 2026-11-17-h100: API/host demonstration (exit-only).** Hardware: 2 H100 GPUs. Execution record UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`.
+
+<!-- execution:metadata Source SHA-256: 4a14f312d6406e432c3bd12214a99f9e37288c7dea955f587460413a11d333cc; recorded UTC (run-batch start; per-program time unrecorded): 2026-11-17T23:48:18.967387+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-h100/01_device_query/01_device_query.cu) · [Compiler log](../validation/2026-11-17-h100/01_device_query/compile.log) · [Execution log](../validation/2026-11-17-h100/01_device_query/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -462,25 +437,12 @@ nvcc -arch=sm_80 01_device_query.cu -o device_query
 ./device_query
 ```
 
-Output (genuinely compiled with a real `nvcc` and genuinely run; identical across three consecutive runs):
-
-<details markdown="1"><summary>Historical authoring output — superseded by the current execution above</summary>
-
-```text
-cudaGetDeviceCount() returned: no CUDA-capable device is detected (code 100)
-Reported device count: 0
-No usable CUDA device on this machine.
-This is an honest, unmodified report from the CUDA Runtime API -- not a placeholder.
-```
-
-</details>
-
-The earlier authoring transcript reports a device-less host. The current H100 record executes this query on two visible GPUs. A count query checks discovery only; it is not a numerical workload or topology benchmark.
+The recorded queries discover two H100 devices and eight A100 devices. Discovery is the first setup check; topology and workload results follow in later examples.
 
 The [2026-11-17 H100 execution record](../validation-h100.md) covers two GPUs connected by local NV18. It distinguishes numerical checks, API probes and other executions; a successful exit alone does not establish GPU algorithm correctness.
 
-!!! warning "[COMMON TRAP] Hard-coding a device count instead of asking for one"
-    A program that assumes "there are 2 GPUs" (or 4, or 8) because that's what the machine it was first written on happened to have will crash or misbehave the moment it runs anywhere else — including, honestly, right here. Every device-touching example from Chapter 3 onward loops over whatever `cudaGetDeviceCount()` actually reports, which is what lets this exact, unmodified source run correctly on a machine with zero devices, one device, or a thousand.
+!!! warning "[COMMON TRAP] Hard-coding a device count"
+    Query the devices visible to the process, check the result, and select the participants required by the workload. Report an unmet prerequisite instead of using an unavailable ordinal.
 
 ## Chapter Summary
 

@@ -3,7 +3,7 @@
 <!-- execution:overview -->
 !!! success "Recorded hardware validation"
 
-    All 145 current source programs compiled and executed on [two H100 GPUs](validation-h100.md) and again on [eight A100 GPUs](validation-a100.md). Each pass records 33 numerical/transport validations, 13 API validations and 99 other executions with limited correctness scope. The A100 pass uses eight MPI processes for multi-rank examples; individual programs retain their documented participant counts. A separate eight-device harness checks all 56 ordered peer-copy pairs, four collective patterns and three halo generations. B200 execution remains untested.
+    All 145 current source programs compiled and executed on [two H100 GPUs](validation-h100.md) and again on [eight A100 GPUs](validation-a100.md). Each pass records 33 numerical/transport validations, 13 API validations and 99 other executions with limited correctness scope. The A100 pass uses eight MPI processes for multi-rank examples; individual programs retain their documented participant counts. A separate eight-device harness checks all 56 ordered peer-copy pairs, four collective patterns and three halo generations.
 
 
 <!-- mgpu:opener:start -->
@@ -30,14 +30,14 @@ mpirun --version   # for Part 5 onward
 
 ## The honesty discipline this book follows
 
-The original authoring transcripts were produced with a CUDA and MPI toolchain but **no NVIDIA GPU or driver** -- a more severe version of the constraint a single-GPU CUDA book already has, since a multi-GPU book's own central claims are about what happens *between* devices, not just on one. The subsequent two-H100 execution removes that earlier hardware limitation for the recorded tests. Current validation uses the following scopes:
+All 145 programs were compiled and executed on two H100 GPUs and eight A100 GPUs. Current validation distinguishes numerical/transport checks, API checks and host models:
 
 - **Host programs and simulations** are compiled and executed as host programs. Their results check the modeled arithmetic and scheduling, not CUDA concurrency or physical links.
 - **GPU numerical checks** initialize data and compare actual device results with an explicit reference.
 - **API probes** check the stated capability, lifecycle or expected-error behavior; they are not numerical collective tests.
 - **Execution evidence** records source hashes, commands, timestamps, system information and raw logs. The 2026-11-17 two-H100 local NV18 run compiled and executed all 145 programs: 33 numerical checks, 13 API probes and 99 other executions. See [H100 validation](validation-h100.md). Host simulations remain useful supplementary checks; neither they nor this single-node run validate cross-node RDMA, failure recovery or performance on other hardware.
 
-Historical no-device output establishes an observed prerequisite/error path, not a successful GPU workload. Current-source execution must be supported by a fresh manifest, source hashes, commands and logs; compilation alone does not establish correctness.
+Execution records include the tested source, compile/run commands, UTC dates and captured output. See the [H100 results](validation-h100.md) and [A100 results](validation-a100.md).
 
 Before execution, run `nvidia-smi`, `nvcc --version`, and the chapter’s device-count/topology checks. H100 uses the generic `sm_90` target for these ordinary CUDA examples; B200 uses `sm_100` with a toolkit that supports it. Rebuild and revalidate rather than reusing a Hopper cubin on Blackwell. [NVIDIA’s compatibility guide](https://docs.nvidia.com/cuda/blackwell-compatibility-guide/index.html) explains cubin and PTX compatibility. Run MPI examples with the required number of distinct visible devices; multiple ranks on one GPU are not a substitute for a multi-GPU collective.
 

@@ -1,11 +1,5 @@
 # Chapter 36: Multi-GPU XVA and Portfolio Risk
 
-<!-- execution:provenance -->
-!!! info "Execution provenance"
-
-    Current execution blocks identify the tested source hash, hardware dataset, commands and captured output. References elsewhere on this page to a device-less environment describe the original authoring context. Historical output is superseded by the current record. Displayed output omits the runner command header and trims trailing line whitespace; raw logs remain exact. A host simulation or API validation has its stated scope; neither alone establishes a numerical multi-GPU workload or measured performance.
-
-
 > **Terminology and scope:** The toy profile averages positive exposure across paths at each date, conventionally written EE(t). Basel EPE is a time-weighted average of EE(t); the source's historical “EPE profile” labels should be read as per-date positive-exposure means. A (count, mean, M2) tuple summarizes mean and variance, not an arbitrary empirical VaR/PFE quantile. Quantiles require sample/distribution information or an explicitly justified approximation. See [Basel counterparty-risk definitions](https://www.bis.org/committees/bcbs/basel-framework/standard/cre/50/inforce/2019-12-15/published/2024-07-05).
 
 <!-- mgpu:opener:start -->
@@ -63,7 +57,6 @@ Chapter 31's own Monte Carlo risk simulation asked one question of its paths: wh
 
 File 105 compares issuing one small reduction per date with batching the per-date tuples into a vector reduction. T=360 increases the payload and simulation work, but need not multiply collective startup latency by 360.
 
-> **Source update:** This complete listing matches the downloadable source. Earlier locked transcripts below predate this revision and are retained as historical evidence only; fresh execution records are collected separately.
 
 ```cpp
 // Chapter 36: Multi-GPU XVA and Portfolio Risk
@@ -134,7 +127,9 @@ int main() {
 ```
 
 <!-- execution:start:a100:105_exposure_profile_reduction_cost_model.cpp -->
-> **Current execution — 2026-11-17-a100: Host program/model (exit-only).** UTC (program start): `2026-11-18T00:05:31.068762+00:00`. Source SHA-256: `522f059b035f1a7608c79ee30dec0647868178dc8e74c737e645ff808f33c132`.
+> **Compiled and executed — 2026-11-17-a100: Host program/model (exit-only).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:05:31.183626+00:00`.
+
+<!-- execution:metadata Source SHA-256: 522f059b035f1a7608c79ee30dec0647868178dc8e74c737e645ff808f33c132; recorded UTC (program start): 2026-11-18T00:05:31.068762+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-a100/105_exposure_profile_reduction_cost_model/105_exposure_profile_reduction_cost_model.cpp) · [Compiler log](../validation/2026-11-17-a100/105_exposure_profile_reduction_cost_model/compile.log) · [Execution log](../validation/2026-11-17-a100/105_exposure_profile_reduction_cost_model/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -145,7 +140,7 @@ g++ -std=c++17 -O2 105_exposure_profile_reduction_cost_model.cpp -o ./example
 ./example
 ```
 
-<details markdown="1"><summary>Captured current-source output</summary>
+**Sample output**
 
 ```text
 Real cited exposure-profile structure (Oracle Financial Services Analytics documentation): "30Y:1M" -> one observation date per month for 30 years -> T=360 real future observation dates, each needing its own EPE/PFE reduction across all simulated paths.
@@ -159,12 +154,14 @@ P      Off-rank fraction  Bytes/date on network  Unbatched: T reductions  Batche
 Two things this table shows. First, the bytes on the network per date grow LINEARLY with P (24 x (P-1): 168 B at P=8, 1512 B at P=64), because every additional rank contributes its own tuple. Second, the T dates are independent reductions over the same P ranks, so nothing forces them to be separate collectives: packing all T=360 (count, mean, M2) tuples into one 8640-byte vector per rank turns the profile into ONE reduction. Issued one date at a time, the profile pays the per-collective latency T=360 times; batched, it pays it once, and the extra bytes are still tiny. So a full exposure profile is not "T times Chapter 31's cost" in any implementation that batches the dates -- the real cost of XVA is the T-fold larger SIMULATION work, not the reduction.
 ```
 
-</details>
+
 <!-- execution:end:a100:105_exposure_profile_reduction_cost_model.cpp -->
 
 
 <!-- execution:start:h100:105_exposure_profile_reduction_cost_model.cpp -->
-> **Current execution — 2026-11-17-h100: Host program/model (exit-only).** UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`. Source SHA-256: `522f059b035f1a7608c79ee30dec0647868178dc8e74c737e645ff808f33c132`.
+> **Compiled and executed — 2026-11-17-h100: Host program/model (exit-only).** Hardware: 2 H100 GPUs. Execution record UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`.
+
+<!-- execution:metadata Source SHA-256: 522f059b035f1a7608c79ee30dec0647868178dc8e74c737e645ff808f33c132; recorded UTC (run-batch start; per-program time unrecorded): 2026-11-17T23:48:18.967387+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-h100/105_exposure_profile_reduction_cost_model/105_exposure_profile_reduction_cost_model.cpp) · [Compiler log](../validation/2026-11-17-h100/105_exposure_profile_reduction_cost_model/compile.log) · [Execution log](../validation/2026-11-17-h100/105_exposure_profile_reduction_cost_model/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -193,31 +190,13 @@ Two things this table shows. First, the bytes on the network per date grow LINEA
 <!-- execution:end:h100:105_exposure_profile_reduction_cost_model.cpp -->
 
 
-Compile and run (a plain host `.cpp` file with no CUDA/NCCL/MPI/NVSHMEM linkage, cross-verified on both the cloud sandbox and the device):
+Compile and run (a plain host `.cpp` file with no CUDA/NCCL/MPI/NVSHMEM linkage, executed on the recorded H100 and A100 hosts):
 
 ```bash
 g++ -O2 -ffp-contract=off -o 105_exposure_profile_reduction_cost_model \
     105_exposure_profile_reduction_cost_model.cpp
 ./105_exposure_profile_reduction_cost_model
 ```
-
-Locked output:
-
-<details markdown="1"><summary>Historical authoring output — superseded by the current execution above</summary>
-
-```
-Real cited exposure-profile structure (Oracle Financial Services Analytics documentation): "30Y:1M" -> one observation date per month for 30 years -> T=360 real future observation dates, each needing its own EPE/PFE reduction across all simulated paths.
-
-P      Off-rank frac (Ch9)      Bytes/date crossing network  Total bytes crossing (all T dates)
-8      0.8750                   168.0                        60480.0                     
-16     0.9375                   360.0                        129600.0                    
-32     0.9688                   744.0                        267840.0                    
-64     0.9844                   1512.0                       544320.0                    
-
-The cost depends on payload, participant count, reduction algorithm and batching. A tree reduction of a 24-byte tuple has aggregate minimum tuple traffic proportional to P−1; carrying all T independent dates together scales the payload by T while amortizing startup. These simple byte counts are not measured network time and do not describe a quantile/PFE reduction by themselves.
-```
-
-</details>
 
 ## 36.2 Netting Sets: Why the Order of Aggregation Changes Exposure
 
@@ -249,7 +228,6 @@ Picture a bank and one counterparty holding five separate derivative contracts w
 
 File 106 generates 500 random netting sets of five trades each, computes both the gross (floor-then-sum) and netted (sum-then-floor) exposure for every set, and checks that the positive-part subadditivity inequality never once reverses.
 
-> **Source update:** This complete listing matches the downloadable source. Earlier locked transcripts below predate this revision and are retained as historical evidence only; fresh execution records are collected separately.
 
 ```cpp
 // Chapter 36: Multi-GPU XVA and Portfolio Risk
@@ -363,7 +341,9 @@ int main() {
 ```
 
 <!-- execution:start:a100:106_netting_set_exposure_order_simulation.cpp -->
-> **Current execution — 2026-11-17-a100: Host program/model (exit-only).** UTC (program start): `2026-11-18T00:05:31.189608+00:00`. Source SHA-256: `6a374412e371ab6eb26e59346d910ed0e9d777dc7aee07c07cdd9b626439d964`.
+> **Compiled and executed — 2026-11-17-a100: Host program/model (exit-only).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:05:31.454474+00:00`.
+
+<!-- execution:metadata Source SHA-256: 6a374412e371ab6eb26e59346d910ed0e9d777dc7aee07c07cdd9b626439d964; recorded UTC (program start): 2026-11-18T00:05:31.189608+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-a100/106_netting_set_exposure_order_simulation/106_netting_set_exposure_order_simulation.cpp) · [Compiler log](../validation/2026-11-17-a100/106_netting_set_exposure_order_simulation/compile.log) · [Execution log](../validation/2026-11-17-a100/106_netting_set_exposure_order_simulation/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -374,7 +354,7 @@ g++ -std=c++17 -O2 106_netting_set_exposure_order_simulation.cpp -o ./example
 ./example
 ```
 
-<details markdown="1"><summary>Captured current-source output</summary>
+**Sample output**
 
 ```text
 Real cited rule (Oracle FSA docs): "Positive Netted" exposure = sum of trades WITHIN a netting set, THEN floored at zero -- not each trade floored separately and then summed.
@@ -400,12 +380,14 @@ Cases where netted exposure exceeded gross exposure: 0 (the positive-part subadd
 This confirms, by direct simulation rather than assumption, the real economic claim behind a netting agreement: netting trades BEFORE applying the positive-exposure floor can only ever reduce or match counterparty exposure, never increase it. Unlike every earlier non-associativity finding in this book (Chapter 8/25/29/31/32/35 -- all about floating-point SUMMATION order across ranks or transpose phases), this chapter's own order-sensitivity is about which NONLINEAR operation (the zero-floor) is applied at which STAGE of a single path's own local computation -- a real economic distinction, not a floating-point rounding one, and the entire reason netting sets exist as a real risk-management concept.
 ```
 
-</details>
+
 <!-- execution:end:a100:106_netting_set_exposure_order_simulation.cpp -->
 
 
 <!-- execution:start:h100:106_netting_set_exposure_order_simulation.cpp -->
-> **Current execution — 2026-11-17-h100: Host program/model (exit-only).** UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`. Source SHA-256: `6a374412e371ab6eb26e59346d910ed0e9d777dc7aee07c07cdd9b626439d964`.
+> **Compiled and executed — 2026-11-17-h100: Host program/model (exit-only).** Hardware: 2 H100 GPUs. Execution record UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`.
+
+<!-- execution:metadata Source SHA-256: 6a374412e371ab6eb26e59346d910ed0e9d777dc7aee07c07cdd9b626439d964; recorded UTC (run-batch start; per-program time unrecorded): 2026-11-17T23:48:18.967387+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-h100/106_netting_set_exposure_order_simulation/106_netting_set_exposure_order_simulation.cpp) · [Compiler log](../validation/2026-11-17-h100/106_netting_set_exposure_order_simulation/compile.log) · [Execution log](../validation/2026-11-17-h100/106_netting_set_exposure_order_simulation/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -446,43 +428,13 @@ This confirms, by direct simulation rather than assumption, the real economic cl
 <!-- execution:end:h100:106_netting_set_exposure_order_simulation.cpp -->
 
 
-Compile and run (plain host `.cpp`, cross-verified on both the cloud sandbox and the device):
+Compile and run (plain host `.cpp`, executed on the recorded H100 and A100 hosts):
 
 ```bash
 g++ -O2 -ffp-contract=off -o 106_netting_set_exposure_order_simulation \
     106_netting_set_exposure_order_simulation.cpp
 ./106_netting_set_exposure_order_simulation
 ```
-
-Locked output:
-
-<details markdown="1"><summary>Historical authoring output — superseded by the current execution above</summary>
-
-```
-Real cited rule (Oracle FSA docs): "Positive Netted" exposure = sum of trades WITHIN a netting set, THEN floored at zero -- not each trade floored separately and then summed.
-
-Set #      Gross exposure   Netted exposure  Reduction   
-0          32.8400          0.0000           100.0      %
-1          34.5900          20.9100          39.5       %
-2          38.4400          0.0000           100.0      %
-3          43.2600          0.0000           100.0      %
-4          14.3100          0.0000           100.0      %
-5          42.1800          0.0000           100.0      %
-6          6.6300           0.0000           100.0      %
-7          84.4400          68.4000          19.0       %
-
-(remaining 492 netting sets computed but not printed individually)
-
-Across all 500 randomly generated netting sets (5 trades each):
-Total gross exposure (floor-then-sum):  31101.2000
-Total netted exposure (sum-then-floor): 13026.1900
-Overall reduction from netting: 58.12%
-Cases where netted exposure exceeded gross exposure: 0 (the positive-part subadditivity inequality max(0,a+b) <= max(0,a)+max(0,b) predicts this must always be zero).
-
-This confirms, by direct simulation rather than assumption, the real economic claim behind a netting agreement: netting trades BEFORE applying the positive-exposure floor can only ever reduce or match counterparty exposure, never increase it. Unlike every earlier non-associativity finding in this book (Chapter 8/25/29/31/32/35 -- all about floating-point SUMMATION order across ranks or transpose phases), this chapter's own order-sensitivity is about which NONLINEAR operation (the zero-floor) is applied at which STAGE of a single path's own local computation -- a real economic distinction, not a floating-point rounding one, and the entire reason netting sets exist as a real risk-management concept.
-```
-
-</details>
 
 ## 36.3 Computing an Exposure Profile Across GPUs
 
@@ -510,7 +462,6 @@ Section 36.1 models reductions across observation dates; batching dates can amor
 
 File 107 combines Sections 36.1 and 36.2 into one simulation: 24 paths, 5 trades per netting set, 6 observation dates (illustrative, for a readable printed profile -- Section 36.1's own cost model already exercised the real cited T=360 at scale), split across P in {1, 2, 3, 4, 6, 8, 12, 24}, checked against a P=1 reference built from the exact same real combination formula.
 
-> **Source update:** This complete listing matches the downloadable source. Earlier locked transcripts below predate this revision and are retained as historical evidence only; fresh execution records are collected separately.
 
 ```cpp
 // Chapter 36: Multi-GPU XVA and Portfolio Risk
@@ -710,7 +661,9 @@ int main() {
 ```
 
 <!-- execution:start:a100:107_multi_gpu_exposure_profile_correctness_simulation.cpp -->
-> **Current execution — 2026-11-17-a100: Host program/model (exit-only).** UTC (program start): `2026-11-18T00:05:31.460651+00:00`. Source SHA-256: `e448af5fe6bd6b15d37146412533b08630324d1bf2bac910f0489fc54f3118c1`.
+> **Compiled and executed — 2026-11-17-a100: Host program/model (exit-only).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:05:31.926251+00:00`.
+
+<!-- execution:metadata Source SHA-256: e448af5fe6bd6b15d37146412533b08630324d1bf2bac910f0489fc54f3118c1; recorded UTC (program start): 2026-11-18T00:05:31.460651+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-a100/107_multi_gpu_exposure_profile_correctness_simulation/107_multi_gpu_exposure_profile_correctness_simulation.cpp) · [Compiler log](../validation/2026-11-17-a100/107_multi_gpu_exposure_profile_correctness_simulation/compile.log) · [Execution log](../validation/2026-11-17-a100/107_multi_gpu_exposure_profile_correctness_simulation/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -721,7 +674,7 @@ g++ -std=c++17 -O2 107_multi_gpu_exposure_profile_correctness_simulation.cpp -o 
 ./example
 ```
 
-<details markdown="1"><summary>Captured current-source output</summary>
+**Sample output**
 
 ```text
 EPE vs. the same method's own P=1 result, 24 paths, 6 dates, P in {2,3,4,6,8,12,24} (42 (P, date) pairs per method):
@@ -744,12 +697,14 @@ Date   EPE (P=1)        max |diff|
 Method B rules out continuity as the cause: whole-cent integer exposures still give P-dependent means under the incremental fold, because mean + delta*nb/n rounds at every fold and the folds are grouped differently at each P. Method C is not immune either: its local means and the products na*ma each round, so the weighted combination still depends on grouping in general. Method D carries an exact integer sum, so the grouping across ranks cannot matter, and divides once at the end: the EPE is identical at every P. The cost is one rounding of each path's exposure to 2^-32 -- the same rounding at every P -- and a variance would need its own exact second pass. With T=360 dates per profile (Section 36.1), method D makes every date of the profile reproducible across GPU counts.
 ```
 
-</details>
+
 <!-- execution:end:a100:107_multi_gpu_exposure_profile_correctness_simulation.cpp -->
 
 
 <!-- execution:start:h100:107_multi_gpu_exposure_profile_correctness_simulation.cpp -->
-> **Current execution — 2026-11-17-h100: Host program/model (exit-only).** UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`. Source SHA-256: `e448af5fe6bd6b15d37146412533b08630324d1bf2bac910f0489fc54f3118c1`.
+> **Compiled and executed — 2026-11-17-h100: Host program/model (exit-only).** Hardware: 2 H100 GPUs. Execution record UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`.
+
+<!-- execution:metadata Source SHA-256: e448af5fe6bd6b15d37146412533b08630324d1bf2bac910f0489fc54f3118c1; recorded UTC (run-batch start; per-program time unrecorded): 2026-11-17T23:48:18.967387+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-h100/107_multi_gpu_exposure_profile_correctness_simulation/107_multi_gpu_exposure_profile_correctness_simulation.cpp) · [Compiler log](../validation/2026-11-17-h100/107_multi_gpu_exposure_profile_correctness_simulation/compile.log) · [Execution log](../validation/2026-11-17-h100/107_multi_gpu_exposure_profile_correctness_simulation/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -787,42 +742,13 @@ Method B rules out continuity as the cause: whole-cent integer exposures still g
 <!-- execution:end:h100:107_multi_gpu_exposure_profile_correctness_simulation.cpp -->
 
 
-Compile and run (plain host `.cpp`, cross-verified on both the cloud sandbox and the device):
+Compile and run (plain host `.cpp`, executed on the recorded H100 and A100 hosts):
 
 ```bash
 g++ -O2 -ffp-contract=off -o 107_multi_gpu_exposure_profile_correctness_simulation \
     107_multi_gpu_exposure_profile_correctness_simulation.cpp
 ./107_multi_gpu_exposure_profile_correctness_simulation
 ```
-
-Locked output:
-
-<details markdown="1"><summary>Historical authoring output — superseded by the current execution above</summary>
-
-```
-Reference EPE profile (P=1: one rank folds all 24 paths, in order, via Chapter 31's own real Chan/Golub/LeVeque combination formula):
-Date     Reference EPE 
-0        18.9762500000 
-1        26.7516666667 
-2        29.5337500000 
-3        26.2037500000 
-4        16.2587500000 
-5        38.2633333333 
-
-P      date0   max|diff| date1   max|diff| date2   max|diff| date3   max|diff| date4   max|diff| date5   max|diff|
-1      0                 0                 0                 0                 0                 0                
-2      3.55e-15          3.55e-15          3.55e-15          3.55e-15          3.55e-15          0                
-3      3.55e-15          3.55e-15          0                 0                 0                 7.11e-15         
-4      3.55e-15          3.55e-15          3.55e-15          3.55e-15          0                 0                
-6      0                 0                 0                 0                 0                 7.11e-15         
-8      3.55e-15          3.55e-15          0                 0                 3.55e-15          7.11e-15         
-12     3.55e-15          0                 0                 3.55e-15          0                 0                
-24     0                 0                 0                 0                 0                 0                
-
-The earlier transcript above illustrates one floating-point fold. The revised File 107 compares four aggregation methods and shows that rounding during incremental means, including on integer-valued exposures, is the relevant mechanism. Its bounded fixed-point sum gives a reproducible quantized mean for this workload; it does not prove exact continuous exposure or exact variance.
-```
-
-</details>
 
 ## Chapter Summary
 
@@ -833,7 +759,7 @@ Netting relies on positive-part subadditivity, not a universal inequality for co
 ## Self-Check Questions
 
 1. What real structural extension does Chapter 36 make to Chapter 31's own Monte Carlo risk simulation, and what stays completely unchanged?
-2. According to File 105's own locked output, what real, cited number does T represent, and where does it come from?
+2. According to File 105's own Sample output, what real, cited number does T represent, and where does it come from?
 3. How does batching T observation dates change reduction payload and startup cost?
 4. What is a netting set, according to the real cited Oracle and arXiv sources, and why does the order of summing trades and applying the zero-floor matter?
 5. What real mathematical property of the function max(0, x) guarantees that netted exposure can never exceed gross exposure? State it in your own words.
@@ -849,7 +775,7 @@ Chapter 37 extends Chapter 21's own GPUDirect RDMA to capital markets, where the
 ## Worked Solutions
 
 1. Chapter 36 extends Chapter 31 along a new time axis: instead of computing one terminal-date risk statistic, it computes a full profile of statistics across T future observation dates (a real XVA/PFE exposure profile). What stays completely unchanged is the underlying machinery -- Chapter 12's own path-splitting across GPUs and Chapter 31's own real Chan/Golub/LeVeque pairwise combination formula are both reused without modification; only the number of times that formula is invoked changes.
-2. T represents the number of real future observation dates in an exposure profile, and File 105's own locked output uses the real cited value T=360, taken directly from Oracle Financial Services Analytics documentation's own real example tenor structure "30Y:1M" -- one observation date every month for 30 years.
+2. T represents the number of real future observation dates in an exposure profile, and File 105's own Sample output uses the real cited value T=360, taken directly from Oracle Financial Services Analytics documentation's own real example tenor structure "30Y:1M" -- one observation date every month for 30 years.
 3. Each date has independent statistics over the same participating ranks. Packing T date tuples into one vector increases bytes by T but can amortize the per-collective startup cost across those dates; issuing T separate reductions pays that startup T times.
 4. A netting set is a group of derivative trades with the same counterparty that are jointly collateralized and can be legally offset against one another upon default -- the real cited sources describe it as "the level at which... counterparty risk measures are calculated directly from the results of netting exposures from different trades" and "partitioned into bilateral netting sets... jointly collateralized." The order matters because summing the trades first (netting gains against losses) before applying the zero floor can only produce a smaller or equal result than flooring each trade separately and then summing -- exactly the real economic benefit a netting agreement is designed to provide.
 5. The function max(0, x) is convex, and the positive-part function is subadditive: max(0,a+b) <= max(0,a)+max(0,b). This does not hold for arbitrary convex functions (f(x)=x² with a=b=1 is a counterexample) -- concretely, whichever of a and b is negative can only ever reduce the sum a+b before the floor is applied, whereas flooring each of a and b separately at zero first discards that offsetting effect entirely, so the separately-floored-and-summed version can only be greater than or equal to the netted version.

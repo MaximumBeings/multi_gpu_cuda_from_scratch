@@ -1,11 +1,5 @@
 # Chapter 5: Explicit Transfers -- cudaMemcpyPeer, Staged Host Transfers, and When Each Wins
 
-<!-- execution:provenance -->
-!!! info "Execution provenance"
-
-    Current execution blocks identify the tested source hash, hardware dataset, commands and captured output. References elsewhere on this page to a device-less environment describe the original authoring context. Historical output is superseded by the current record. Displayed output omits the runner command header and trims trailing line whitespace; raw logs remain exact. A host simulation or API validation has its stated scope; neither alone establishes a numerical multi-GPU workload or measured performance.
-
-
 <!-- mgpu:opener:start -->
 [![Chapter 5: Explicit Transfers -- cudaMemcpyPeer, Staged Host Transfers, and When Each Wins](../images/chapter-openers/05.svg)](../images/chapter-openers/05.svg)
 <!-- mgpu:opener:end -->
@@ -92,7 +86,9 @@ int main() {
 ```
 
 <!-- execution:start:a100:11_memcpy_peer.cu -->
-> **Current execution — 2026-11-17-a100: Numerical/transport validation (recorded scope).** UTC (program start): `2026-11-18T00:00:36.659156+00:00`. Source SHA-256: `f8151f3549665a26fc20ba93fea9ba286120e625b4991dc8342e8c3ee030a299`.
+> **Compiled and executed — 2026-11-17-a100: Numerical/transport validation (recorded scope).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:00:38.026827+00:00`.
+
+<!-- execution:metadata Source SHA-256: f8151f3549665a26fc20ba93fea9ba286120e625b4991dc8342e8c3ee030a299; recorded UTC (program start): 2026-11-18T00:00:36.659156+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-a100/11_memcpy_peer/11_memcpy_peer.cu) · [Compiler log](../validation/2026-11-17-a100/11_memcpy_peer/compile.log) · [Execution log](../validation/2026-11-17-a100/11_memcpy_peer/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -103,19 +99,21 @@ nvcc -std=c++17 -O2 -arch=sm_80 11_memcpy_peer.cu -o ./example
 ./example
 ```
 
-<details markdown="1"><summary>Captured current-source output</summary>
+**Sample output**
 
 ```text
 PASS: 4096 nonuniform values verified in both peer-copy directions.
 Copy success does not identify the physical transfer route or bandwidth.
 ```
 
-</details>
+
 <!-- execution:end:a100:11_memcpy_peer.cu -->
 
 
 <!-- execution:start:h100:11_memcpy_peer.cu -->
-> **Current execution — 2026-11-17-h100: Numerical/transport validation (recorded scope).** UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`. Source SHA-256: `f8151f3549665a26fc20ba93fea9ba286120e625b4991dc8342e8c3ee030a299`.
+> **Compiled and executed — 2026-11-17-h100: Numerical/transport validation (recorded scope).** Hardware: 2 H100 GPUs. Execution record UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`.
+
+<!-- execution:metadata Source SHA-256: f8151f3549665a26fc20ba93fea9ba286120e625b4991dc8342e8c3ee030a299; recorded UTC (run-batch start; per-program time unrecorded): 2026-11-17T23:48:18.967387+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-h100/11_memcpy_peer/11_memcpy_peer.cu) · [Compiler log](../validation/2026-11-17-h100/11_memcpy_peer/compile.log) · [Execution log](../validation/2026-11-17-h100/11_memcpy_peer/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -137,21 +135,7 @@ Copy success does not identify the physical transfer route or bandwidth.
 <!-- execution:end:h100:11_memcpy_peer.cu -->
 
 
-**Historical authoring transcript (earlier source).** The current listing fixes device ownership and failed-handle sequencing. The current source was compiled and executed in the dated H100 suite; use the linked record for its numerical, API-probe or other-execution scope.
-
 The [2026-11-17 H100 execution record](../validation-h100.md) covers two GPUs connected by local NV18. It distinguishes numerical checks, API probes and other executions; a successful exit alone does not establish GPU algorithm correctness.
-
-<details markdown="1"><summary>Historical authoring output — superseded by the current execution above</summary>
-
-```
-cudaMalloc(device 0 buffer): no CUDA-capable device is detected (code 100)
-cudaMalloc(device 1 buffer): no CUDA-capable device is detected (code 100)
-cudaMemcpyPeer(dst=dev1, src=dev0, 64 bytes): no CUDA-capable device is detected (code 100)
-cudaStreamCreate: no CUDA-capable device is detected (code 100)
-cudaMemcpyPeerAsync(dst=dev0, src=dev1, 64 bytes, on stream): no CUDA-capable device is detected (code 100)
-```
-
-</details>
 
 The current File 11 initializes data, checks actual peer copies and validates the destination on H100. Earlier no-device diagnostics established neither allocation nor data movement.
 
@@ -199,7 +183,9 @@ int main(){
 ```
 
 <!-- execution:start:a100:12_staged_host_transfer.cu -->
-> **Current execution — 2026-11-17-a100: Numerical/transport validation (recorded scope).** UTC (program start): `2026-11-18T00:00:41.399876+00:00`. Source SHA-256: `e3d7e938f375c28fbb2bffba8013cb7347447bbca26ea1bac4f61207be4683de`.
+> **Compiled and executed — 2026-11-17-a100: Numerical/transport validation (recorded scope).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:00:42.867890+00:00`.
+
+<!-- execution:metadata Source SHA-256: e3d7e938f375c28fbb2bffba8013cb7347447bbca26ea1bac4f61207be4683de; recorded UTC (program start): 2026-11-18T00:00:41.399876+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-a100/12_staged_host_transfer/12_staged_host_transfer.cu) · [Compiler log](../validation/2026-11-17-a100/12_staged_host_transfer/compile.log) · [Execution log](../validation/2026-11-17-a100/12_staged_host_transfer/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -210,18 +196,20 @@ nvcc -std=c++17 -O2 -arch=sm_80 12_staged_host_transfer.cu -o ./example
 ./example
 ```
 
-<details markdown="1"><summary>Captured current-source output</summary>
+**Sample output**
 
 ```text
 PASS: 4096 nonuniform values verified through explicit pinned-host staging.
 ```
 
-</details>
+
 <!-- execution:end:a100:12_staged_host_transfer.cu -->
 
 
 <!-- execution:start:h100:12_staged_host_transfer.cu -->
-> **Current execution — 2026-11-17-h100: Numerical/transport validation (recorded scope).** UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`. Source SHA-256: `e3d7e938f375c28fbb2bffba8013cb7347447bbca26ea1bac4f61207be4683de`.
+> **Compiled and executed — 2026-11-17-h100: Numerical/transport validation (recorded scope).** Hardware: 2 H100 GPUs. Execution record UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`.
+
+<!-- execution:metadata Source SHA-256: e3d7e938f375c28fbb2bffba8013cb7347447bbca26ea1bac4f61207be4683de; recorded UTC (run-batch start; per-program time unrecorded): 2026-11-17T23:48:18.967387+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-h100/12_staged_host_transfer/12_staged_host_transfer.cu) · [Compiler log](../validation/2026-11-17-h100/12_staged_host_transfer/compile.log) · [Execution log](../validation/2026-11-17-h100/12_staged_host_transfer/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -242,21 +230,7 @@ PASS: 4096 nonuniform values verified through explicit pinned-host staging.
 <!-- execution:end:h100:12_staged_host_transfer.cu -->
 
 
-**Current-source scope:** A checked two-device transfer uses a pinned host staging buffer and validates all 4,096 destination values. The current source was compiled and executed in the dated H100 suite; use the linked record for its numerical, API-probe or other-execution scope. The output below is retained from the earlier authoring diagnostic and is not evidence for this replacement source.
-
 The [2026-11-17 H100 execution record](../validation-h100.md) covers two GPUs connected by local NV18. It distinguishes numerical checks, API probes and other executions; a successful exit alone does not establish GPU algorithm correctness.
-
-<details markdown="1"><summary>Historical authoring output — superseded by the current execution above</summary>
-
-```
-cudaMalloc(device 0 buffer): no CUDA-capable device is detected (code 100)
-cudaMalloc(device 1 buffer): no CUDA-capable device is detected (code 100)
-cudaMallocHost(staging buffer): no CUDA-capable device is detected (code 100)
-Step 1, cudaMemcpy(device 0 -> host staging): no CUDA-capable device is detected (code 100)
-Step 2, cudaMemcpy(host staging -> device 1): no CUDA-capable device is detected (code 100)
-```
-
-</details>
 
 File 12 initializes and checks both stages of the actual host-staged H100 transfer. The route requires two full-payload copies and an intermediate host buffer; the cost model below remains distinct from a measured bandwidth benchmark.
 
@@ -334,7 +308,9 @@ int main() {
 ```
 
 <!-- execution:start:a100:13_when_each_wins_model.cpp -->
-> **Current execution — 2026-11-17-a100: Host program/model (exit-only).** UTC (program start): `2026-11-18T00:00:46.260513+00:00`. Source SHA-256: `7cc3ed42964e58119cd17db7fe9a35602c88ab0b87905dba6216d6bdb86f6c46`.
+> **Compiled and executed — 2026-11-17-a100: Host program/model (exit-only).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:00:46.325713+00:00`.
+
+<!-- execution:metadata Source SHA-256: 7cc3ed42964e58119cd17db7fe9a35602c88ab0b87905dba6216d6bdb86f6c46; recorded UTC (program start): 2026-11-18T00:00:46.260513+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-a100/13_when_each_wins_model/13_when_each_wins_model.cpp) · [Compiler log](../validation/2026-11-17-a100/13_when_each_wins_model/compile.log) · [Execution log](../validation/2026-11-17-a100/13_when_each_wins_model/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -345,7 +321,7 @@ g++ -std=c++17 -O2 13_when_each_wins_model.cpp -o ./example
 ./example
 ```
 
-<details markdown="1"><summary>Captured current-source output</summary>
+**Sample output**
 
 ```text
 Transfer size: 1.0 GB
@@ -364,12 +340,14 @@ place (Chapter 4, Section 4.2) -- staging is then not merely faster
 or slower, it is the ONLY route that exists.
 ```
 
-</details>
+
 <!-- execution:end:a100:13_when_each_wins_model.cpp -->
 
 
 <!-- execution:start:h100:13_when_each_wins_model.cpp -->
-> **Current execution — 2026-11-17-h100: Host program/model (exit-only).** UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`. Source SHA-256: `7cc3ed42964e58119cd17db7fe9a35602c88ab0b87905dba6216d6bdb86f6c46`.
+> **Compiled and executed — 2026-11-17-h100: Host program/model (exit-only).** Hardware: 2 H100 GPUs. Execution record UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`.
+
+<!-- execution:metadata Source SHA-256: 7cc3ed42964e58119cd17db7fe9a35602c88ab0b87905dba6216d6bdb86f6c46; recorded UTC (run-batch start; per-program time unrecorded): 2026-11-17T23:48:18.967387+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-h100/13_when_each_wins_model/13_when_each_wins_model.cpp) · [Compiler log](../validation/2026-11-17-h100/13_when_each_wins_model/compile.log) · [Execution log](../validation/2026-11-17-h100/13_when_each_wins_model/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -402,29 +380,6 @@ or slower, it is the ONLY route that exists.
 </details>
 <!-- execution:end:h100:13_when_each_wins_model.cpp -->
 
-
-Genuinely compiled with `g++` and genuinely run. Locked output, deterministic across repeated runs:
-
-<details markdown="1"><summary>Historical authoring output — superseded by the current execution above</summary>
-
-```
-Transfer size: 1.0 GB
-
-Peer-direct route, NVLink-wired pair:   0.020000 s (50.0 GB/s, one hop)
-Peer-direct route, PCIe-only direct pair: 0.031746 s (31.5 GB/s, one hop)
-Staged host route (any pair):            0.063492 s (31.5 GB/s, two hops)
-
-Peer-direct over NVLink is 3.1746x faster than staging, for a wired pair.
-Peer-direct over a direct PCIe link is 2.0000x faster than staging,
-for a pair with a direct PCIe route but no NVLink wire.
-
-When the pair has NO direct link at all (per Chapter 2's partial-mesh
-topology), peer access cannot be enabled between them in the first
-place (Chapter 4, Section 4.2) -- staging is then not merely faster
-or slower, it is the ONLY route that exists.
-```
-
-</details>
 
 In this model, peer-direct wins whenever it's *available* -- by a factor of 2x when the direct link is itself PCIe (the model's staging pays that same rate twice, an upper bound since real staging may overlap the two hops), and by a larger 3.17x when the direct link is a faster NVLink wire. But "when each wins" has a sharper answer than a speed comparison alone: peer-direct is only ever a *choice* to make when Chapter 4's `cudaDeviceCanAccessPeer()` already says the pair has a direct link at all. When it doesn't, there is no decision to make -- staging isn't the slower option, it's the only one.
 

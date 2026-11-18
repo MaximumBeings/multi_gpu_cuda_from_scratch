@@ -1,11 +1,5 @@
 # Chapter 10: All-Gather, Reduce-Scatter, and All-to-All
 
-<!-- execution:provenance -->
-!!! info "Execution provenance"
-
-    Current execution blocks identify the tested source hash, hardware dataset, commands and captured output. References elsewhere on this page to a device-less environment describe the original authoring context. Historical output is superseded by the current record. Displayed output omits the runner command header and trims trailing line whitespace; raw logs remain exact. A host simulation or API validation has its stated scope; neither alone establishes a numerical multi-GPU workload or measured performance.
-
-
 <!-- mgpu:opener:start -->
 [![Chapter 10: All-Gather, Reduce-Scatter, and All-to-All](../images/chapter-openers/10.svg)](../images/chapter-openers/10.svg)
 <!-- mgpu:opener:end -->
@@ -113,7 +107,9 @@ int main() {
 ```
 
 <!-- execution:start:a100:26_allgather_by_hand.cu -->
-> **Current execution — 2026-11-17-a100: Numerical/transport validation (recorded scope).** UTC (program start): `2026-11-18T00:01:31.465743+00:00`. Source SHA-256: `7aebce9afa5c1fae9a892659b95242e60185232d2a90cab7df1f6bb6fc159d90`.
+> **Compiled and executed — 2026-11-17-a100: Numerical/transport validation (recorded scope).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:01:33.020046+00:00`.
+
+<!-- execution:metadata Source SHA-256: 7aebce9afa5c1fae9a892659b95242e60185232d2a90cab7df1f6bb6fc159d90; recorded UTC (program start): 2026-11-18T00:01:31.465743+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-a100/26_allgather_by_hand/26_allgather_by_hand.cu) · [Compiler log](../validation/2026-11-17-a100/26_allgather_by_hand/compile.log) · [Execution log](../validation/2026-11-17-a100/26_allgather_by_hand/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -124,18 +120,20 @@ nvcc -std=c++17 -O2 -arch=sm_80 26_allgather_by_hand.cu -o ./example
 ./example
 ```
 
-<details markdown="1"><summary>Captured current-source output</summary>
+**Sample output**
 
 ```text
 PASS: rank-ordered all-gather on 4 GPUs, all nonuniform output values checked.
 ```
 
-</details>
+
 <!-- execution:end:a100:26_allgather_by_hand.cu -->
 
 
 <!-- execution:start:h100:26_allgather_by_hand.cu -->
-> **Current execution — 2026-11-17-h100: Numerical/transport validation (recorded scope).** UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`. Source SHA-256: `7aebce9afa5c1fae9a892659b95242e60185232d2a90cab7df1f6bb6fc159d90`.
+> **Compiled and executed — 2026-11-17-h100: Numerical/transport validation (recorded scope).** Hardware: 2 H100 GPUs. Execution record UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`.
+
+<!-- execution:metadata Source SHA-256: 7aebce9afa5c1fae9a892659b95242e60185232d2a90cab7df1f6bb6fc159d90; recorded UTC (run-batch start; per-program time unrecorded): 2026-11-17T23:48:18.967387+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-h100/26_allgather_by_hand/26_allgather_by_hand.cu) · [Compiler log](../validation/2026-11-17-h100/26_allgather_by_hand/compile.log) · [Execution log](../validation/2026-11-17-h100/26_allgather_by_hand/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -156,23 +154,7 @@ PASS: rank-ordered all-gather on 2 GPUs, all nonuniform output values checked.
 <!-- execution:end:h100:26_allgather_by_hand.cu -->
 
 
-**Current-source scope:** Real device buffers implement rank-ordered all-gather; integer reference checks every output. Host-staged reductions deliberately use CPU arithmetic and are not GPU reduction kernels. The current source was compiled and executed in the dated H100 suite; use the linked record for its numerical, API-probe or other-execution scope. The output below is retained from the earlier authoring diagnostic and is not evidence for this replacement source.
-
 The [2026-11-17 H100 execution record](../validation-h100.md) covers two GPUs connected by local NV18. It distinguishes numerical checks, API probes and other executions; a successful exit alone does not establish GPU algorithm correctness.
-
-<details markdown="1"><summary>Historical authoring output — superseded by the current execution above</summary>
-
-```
-cudaGetDeviceCount(): 0 device(s).
-
-0 of 0 attempted point-to-point transfers completed. On real
-hardware, every device ends up holding all 0 devices' original
-chunks, side by side, completely UNCHANGED -- all-gather never
-reduces or modifies anything, it only collects. Section 10.2
-shows the mirror-image operation, reduce-scatter.
-```
-
-</details>
 
 File 26 checks the delivered all-gather values over actual two-H100 transport. The simulation below independently checks additional modeled layouts; its rank counts are not additional hardware runs.
 
@@ -244,7 +226,9 @@ int main() {
 ```
 
 <!-- execution:start:a100:27_reducescatter_by_hand.cu -->
-> **Current execution — 2026-11-17-a100: Numerical/transport validation (recorded scope).** UTC (program start): `2026-11-18T00:01:36.896409+00:00`. Source SHA-256: `1e06d82c07020b03e80788e5723e95642c58c6af4343d7e81413c0f0262c7f4a`.
+> **Compiled and executed — 2026-11-17-a100: Numerical/transport validation (recorded scope).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:01:38.414973+00:00`.
+
+<!-- execution:metadata Source SHA-256: 1e06d82c07020b03e80788e5723e95642c58c6af4343d7e81413c0f0262c7f4a; recorded UTC (program start): 2026-11-18T00:01:36.896409+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-a100/27_reducescatter_by_hand/27_reducescatter_by_hand.cu) · [Compiler log](../validation/2026-11-17-a100/27_reducescatter_by_hand/compile.log) · [Execution log](../validation/2026-11-17-a100/27_reducescatter_by_hand/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -255,18 +239,20 @@ nvcc -std=c++17 -O2 -arch=sm_80 27_reducescatter_by_hand.cu -o ./example
 ./example
 ```
 
-<details markdown="1"><summary>Captured current-source output</summary>
+**Sample output**
 
 ```text
 PASS: host-staged rank-ordered reduce-scatter on 4 GPUs, all nonuniform output values checked.
 ```
 
-</details>
+
 <!-- execution:end:a100:27_reducescatter_by_hand.cu -->
 
 
 <!-- execution:start:h100:27_reducescatter_by_hand.cu -->
-> **Current execution — 2026-11-17-h100: Numerical/transport validation (recorded scope).** UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`. Source SHA-256: `1e06d82c07020b03e80788e5723e95642c58c6af4343d7e81413c0f0262c7f4a`.
+> **Compiled and executed — 2026-11-17-h100: Numerical/transport validation (recorded scope).** Hardware: 2 H100 GPUs. Execution record UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`.
+
+<!-- execution:metadata Source SHA-256: 1e06d82c07020b03e80788e5723e95642c58c6af4343d7e81413c0f0262c7f4a; recorded UTC (run-batch start; per-program time unrecorded): 2026-11-17T23:48:18.967387+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-h100/27_reducescatter_by_hand/27_reducescatter_by_hand.cu) · [Compiler log](../validation/2026-11-17-h100/27_reducescatter_by_hand/compile.log) · [Execution log](../validation/2026-11-17-h100/27_reducescatter_by_hand/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -287,22 +273,7 @@ PASS: host-staged rank-ordered reduce-scatter on 2 GPUs, all nonuniform output v
 <!-- execution:end:h100:27_reducescatter_by_hand.cu -->
 
 
-**Current-source scope:** Real device buffers implement host-staged rank-ordered reduce-scatter; integer reference checks every output. Host-staged reductions deliberately use CPU arithmetic and are not GPU reduction kernels. The current source was compiled and executed in the dated H100 suite; use the linked record for its numerical, API-probe or other-execution scope. The output below is retained from the earlier authoring diagnostic and is not evidence for this replacement source.
-
 The [2026-11-17 H100 execution record](../validation-h100.md) covers two GPUs connected by local NV18. It distinguishes numerical checks, API probes and other executions; a successful exit alone does not establish GPU algorithm correctness.
-
-<details markdown="1"><summary>Historical authoring output — superseded by the current execution above</summary>
-
-```
-cudaGetDeviceCount(): 0 device(s).
-0 of 0 chunk(s) fully reduced, 0 of 0 chunk(s) scattered to
-their owner. On real hardware, EVERY device ends up holding
-exactly ONE reduced chunk -- never all 0, and never the SAME
-chunk as any other device. Section 10.3 covers all-to-all, the
-one collective in this chapter with no reduction step at all.
-```
-
-</details>
 
 File 27 checks transported data and host reduce-scatter arithmetic against a reference on two H100 GPUs. The simulation below separately checks the modeled chunk assignment.
 
@@ -375,7 +346,9 @@ int main() {
 ```
 
 <!-- execution:start:a100:28_alltoall_by_hand.cu -->
-> **Current execution — 2026-11-17-a100: Numerical/transport validation (recorded scope).** UTC (program start): `2026-11-18T00:01:42.240026+00:00`. Source SHA-256: `4e9ca7b00c130e7c5f97b17cc7e43960421ce609cb3df7e1d40281608601a2c4`.
+> **Compiled and executed — 2026-11-17-a100: Numerical/transport validation (recorded scope).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:01:43.758424+00:00`.
+
+<!-- execution:metadata Source SHA-256: 4e9ca7b00c130e7c5f97b17cc7e43960421ce609cb3df7e1d40281608601a2c4; recorded UTC (program start): 2026-11-18T00:01:42.240026+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-a100/28_alltoall_by_hand/28_alltoall_by_hand.cu) · [Compiler log](../validation/2026-11-17-a100/28_alltoall_by_hand/compile.log) · [Execution log](../validation/2026-11-17-a100/28_alltoall_by_hand/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -386,18 +359,20 @@ nvcc -std=c++17 -O2 -arch=sm_80 28_alltoall_by_hand.cu -o ./example
 ./example
 ```
 
-<details markdown="1"><summary>Captured current-source output</summary>
+**Sample output**
 
 ```text
 PASS: destination-specific all-to-all on 4 GPUs, all nonuniform output values checked.
 ```
 
-</details>
+
 <!-- execution:end:a100:28_alltoall_by_hand.cu -->
 
 
 <!-- execution:start:h100:28_alltoall_by_hand.cu -->
-> **Current execution — 2026-11-17-h100: Numerical/transport validation (recorded scope).** UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`. Source SHA-256: `4e9ca7b00c130e7c5f97b17cc7e43960421ce609cb3df7e1d40281608601a2c4`.
+> **Compiled and executed — 2026-11-17-h100: Numerical/transport validation (recorded scope).** Hardware: 2 H100 GPUs. Execution record UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`.
+
+<!-- execution:metadata Source SHA-256: 4e9ca7b00c130e7c5f97b17cc7e43960421ce609cb3df7e1d40281608601a2c4; recorded UTC (run-batch start; per-program time unrecorded): 2026-11-17T23:48:18.967387+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-h100/28_alltoall_by_hand/28_alltoall_by_hand.cu) · [Compiler log](../validation/2026-11-17-h100/28_alltoall_by_hand/compile.log) · [Execution log](../validation/2026-11-17-h100/28_alltoall_by_hand/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -418,24 +393,7 @@ PASS: destination-specific all-to-all on 2 GPUs, all nonuniform output values ch
 <!-- execution:end:h100:28_alltoall_by_hand.cu -->
 
 
-**Current-source scope:** Real device buffers implement destination-specific all-to-all; integer reference checks every output. Host-staged reductions deliberately use CPU arithmetic and are not GPU reduction kernels. The current source was compiled and executed in the dated H100 suite; use the linked record for its numerical, API-probe or other-execution scope. The output below is retained from the earlier authoring diagnostic and is not evidence for this replacement source.
-
 The [2026-11-17 H100 execution record](../validation-h100.md) covers two GPUs connected by local NV18. It distinguishes numerical checks, API probes and other executions; a successful exit alone does not establish GPU algorithm correctness.
-
-<details markdown="1"><summary>Historical authoring output — superseded by the current execution above</summary>
-
-```
-cudaGetDeviceCount(): 0 device(s).
-
-0 of 0 attempted point-to-point transfers completed --
-exactly 0 * (0 - 1) of them, one per ordered (src, dst) pair
-with src != dst. No reduction, no forwarding, no shortcut: every
-one of these transfers carries data no other transfer could have
-carried. Section 10.3's simulation verifies every device ends up
-with exactly the chunks addressed to it, and nothing else.
-```
-
-</details>
 
 File 28 checks all-to-all delivery over actual two-H100 transport. The host simulation separately checks chunk delivery and independent references for its modeled configurations:
 
@@ -572,7 +530,9 @@ int main() {
 ```
 
 <!-- execution:start:a100:29_collectives_simulation.cpp -->
-> **Current execution — 2026-11-17-a100: Host program/model (exit-only).** UTC (program start): `2026-11-18T00:01:47.633662+00:00`. Source SHA-256: `a36e2130a654c06143f478e1fb9a5786106b962893e68851b494ebaba7502203`.
+> **Compiled and executed — 2026-11-17-a100: Host program/model (exit-only).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:01:47.999704+00:00`.
+
+<!-- execution:metadata Source SHA-256: a36e2130a654c06143f478e1fb9a5786106b962893e68851b494ebaba7502203; recorded UTC (program start): 2026-11-18T00:01:47.633662+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-a100/29_collectives_simulation/29_collectives_simulation.cpp) · [Compiler log](../validation/2026-11-17-a100/29_collectives_simulation/compile.log) · [Execution log](../validation/2026-11-17-a100/29_collectives_simulation/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -583,7 +543,7 @@ g++ -std=c++17 -O2 29_collectives_simulation.cpp -o ./example
 ./example
 ```
 
-<details markdown="1"><summary>Captured current-source output</summary>
+**Sample output**
 
 ```text
 All-gather (N=4): independent reference chunks: 10 20 30 40
@@ -599,12 +559,14 @@ Direct all-gather/reduce-scatter: 3 message(s) per device, each to/from a DIFFER
 All-to-all: 3 message(s) per device too -- but unlike all-gather/reduce-scatter, none of them can be replaced by a cheaper ring relay, because every message is unique.
 ```
 
-</details>
+
 <!-- execution:end:a100:29_collectives_simulation.cpp -->
 
 
 <!-- execution:start:h100:29_collectives_simulation.cpp -->
-> **Current execution — 2026-11-17-h100: Host program/model (exit-only).** UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`. Source SHA-256: `a36e2130a654c06143f478e1fb9a5786106b962893e68851b494ebaba7502203`.
+> **Compiled and executed — 2026-11-17-h100: Host program/model (exit-only).** Hardware: 2 H100 GPUs. Execution record UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`.
+
+<!-- execution:metadata Source SHA-256: a36e2130a654c06143f478e1fb9a5786106b962893e68851b494ebaba7502203; recorded UTC (run-batch start; per-program time unrecorded): 2026-11-17T23:48:18.967387+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-h100/29_collectives_simulation/29_collectives_simulation.cpp) · [Compiler log](../validation/2026-11-17-h100/29_collectives_simulation/compile.log) · [Execution log](../validation/2026-11-17-h100/29_collectives_simulation/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -634,26 +596,6 @@ All-to-all: 3 message(s) per device too -- but unlike all-gather/reduce-scatter,
 </details>
 <!-- execution:end:h100:29_collectives_simulation.cpp -->
 
-
-Genuinely compiled with `g++` and genuinely run. Locked output, deterministic across repeated runs:
-
-<details markdown="1"><summary>Historical authoring output — superseded by the current execution above</summary>
-
-```
-All-gather (N=4): independent reference chunks: 10 20 30 40 
-  Every device's gathered array matches the reference: PASS
-
-Reduce-scatter (N=4): independent reference sums: 100 104 108 112 
-  Device c's scattered chunk matches reference[c] for every c: PASS
-
-All-to-all (N=4): every device's 4 received chunks match the
-  chunk their sender addressed to them (a full transpose): PASS
-
-Direct all-gather/reduce-scatter: 3 message(s) per device, each to/from a DIFFERENT remote device.
-All-to-all: 3 message(s) per device too -- but unlike all-gather/reduce-scatter, none of them can be replaced by a cheaper ring relay, because every message is unique.
-```
-
-</details>
 
 All three collectives check out against references computed completely independently of any of this section's own transfer logic -- reusing exactly the same numbers Chapter 8 (10/20/30/40) and Chapter 9 (100/104/108/112) already established, so the continuity between chapters is checkable, not just claimed. The final two lines make the real structural point concrete: all-gather and reduce-scatter, run directly, need the same `N-1`-messages-per-device as all-to-all does -- but only the first two have a cheaper ring alternative (Chapter 9 already built it) waiting to be swapped in.
 

@@ -1,11 +1,5 @@
 # Chapter 9: Ring All-Reduce: The Algorithm Behind Every Multi-GPU Training Job
 
-<!-- execution:provenance -->
-!!! info "Execution provenance"
-
-    Current execution blocks identify the tested source hash, hardware dataset, commands and captured output. References elsewhere on this page to a device-less environment describe the original authoring context. Historical output is superseded by the current record. Displayed output omits the runner command header and trims trailing line whitespace; raw logs remain exact. A host simulation or API validation has its stated scope; neither alone establishes a numerical multi-GPU workload or measured performance.
-
-
 <!-- mgpu:opener:start -->
 [![Chapter 9: Ring All-Reduce: The Algorithm Behind Every Multi-GPU Training Job](../images/chapter-openers/09.svg)](../images/chapter-openers/09.svg)
 <!-- mgpu:opener:end -->
@@ -104,7 +98,9 @@ int main() {
 ```
 
 <!-- execution:start:a100:23_naive_allreduce.cu -->
-> **Current execution — 2026-11-17-a100: Numerical/transport validation (recorded scope).** UTC (program start): `2026-11-18T00:01:20.304652+00:00`. Source SHA-256: `f5544339121bb2e49bb8fd519650811b79ab49543007222374435d50b1c7dbe5`.
+> **Compiled and executed — 2026-11-17-a100: Numerical/transport validation (recorded scope).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:01:21.822959+00:00`.
+
+<!-- execution:metadata Source SHA-256: f5544339121bb2e49bb8fd519650811b79ab49543007222374435d50b1c7dbe5; recorded UTC (program start): 2026-11-18T00:01:20.304652+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-a100/23_naive_allreduce/23_naive_allreduce.cu) · [Compiler log](../validation/2026-11-17-a100/23_naive_allreduce/compile.log) · [Execution log](../validation/2026-11-17-a100/23_naive_allreduce/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -115,18 +111,20 @@ nvcc -std=c++17 -O2 -arch=sm_80 23_naive_allreduce.cu -o ./example
 ./example
 ```
 
-<details markdown="1"><summary>Captured current-source output</summary>
+**Sample output**
 
 ```text
 PASS: naive host-reduce plus peer-broadcast all-reduce on 4 GPUs, all nonuniform output values checked.
 ```
 
-</details>
+
 <!-- execution:end:a100:23_naive_allreduce.cu -->
 
 
 <!-- execution:start:h100:23_naive_allreduce.cu -->
-> **Current execution — 2026-11-17-h100: Numerical/transport validation (recorded scope).** UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`. Source SHA-256: `f5544339121bb2e49bb8fd519650811b79ab49543007222374435d50b1c7dbe5`.
+> **Compiled and executed — 2026-11-17-h100: Numerical/transport validation (recorded scope).** Hardware: 2 H100 GPUs. Execution record UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`.
+
+<!-- execution:metadata Source SHA-256: f5544339121bb2e49bb8fd519650811b79ab49543007222374435d50b1c7dbe5; recorded UTC (run-batch start; per-program time unrecorded): 2026-11-17T23:48:18.967387+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-h100/23_naive_allreduce/23_naive_allreduce.cu) · [Compiler log](../validation/2026-11-17-h100/23_naive_allreduce/compile.log) · [Execution log](../validation/2026-11-17-h100/23_naive_allreduce/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -147,26 +145,7 @@ PASS: naive host-reduce plus peer-broadcast all-reduce on 2 GPUs, all nonuniform
 <!-- execution:end:h100:23_naive_allreduce.cu -->
 
 
-**Current-source scope:** Real device buffers implement naive host-reduce plus peer-broadcast all-reduce; integer reference checks every output. Host-staged reductions deliberately use CPU arithmetic and are not GPU reduction kernels. The current source was compiled and executed in the dated H100 suite; use the linked record for its numerical, API-probe or other-execution scope. The output below is retained from the earlier authoring diagnostic and is not evidence for this replacement source.
-
 The [2026-11-17 H100 execution record](../validation-h100.md) covers two GPUs connected by local NV18. It distinguishes numerical checks, API probes and other executions; a successful exit alone does not establish GPU algorithm correctness.
-
-<details markdown="1"><summary>Historical authoring output — superseded by the current execution above</summary>
-
-```
-cudaGetDeviceCount(): 0 device(s).
-Broadcast phase, cudaMemcpy(host result -> root device): no CUDA-capable device is detected (code 100)
-
-Reduced 0 device(s) through the host, then broadcast reached
-0 non-root device(s). Each phase of this all-reduce funnels
-everything through ONE hub: the HOST receives every device's
-full buffer during the reduce phase, and the ROOT device sends a
-full buffer to every other device during the broadcast phase --
-while every other device only ever sends once and receives once.
-Section 9.3 puts counted numbers on this star-shaped imbalance.
-```
-
-</details>
 
 File 23 checks the actual transported data and host-accumulated result on the H100 pair. Its star-shaped schedule remains a teaching baseline; the simulation below explores its workload distribution separately from measured GPU correctness.
 
@@ -234,7 +213,9 @@ int main() {
 ```
 
 <!-- execution:start:a100:24_ring_step_by_hand.cu -->
-> **Current execution — 2026-11-17-a100: Numerical/transport validation (recorded scope).** UTC (program start): `2026-11-18T00:01:25.748466+00:00`. Source SHA-256: `56eb9fa1d22abfcbb7b7022a76d3cc429e2665fdbc836427dbc6795a92f97137`.
+> **Compiled and executed — 2026-11-17-a100: Numerical/transport validation (recorded scope).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:01:27.267481+00:00`.
+
+<!-- execution:metadata Source SHA-256: 56eb9fa1d22abfcbb7b7022a76d3cc429e2665fdbc836427dbc6795a92f97137; recorded UTC (program start): 2026-11-18T00:01:25.748466+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-a100/24_ring_step_by_hand/24_ring_step_by_hand.cu) · [Compiler log](../validation/2026-11-17-a100/24_ring_step_by_hand/compile.log) · [Execution log](../validation/2026-11-17-a100/24_ring_step_by_hand/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -245,18 +226,20 @@ nvcc -std=c++17 -O2 -arch=sm_80 24_ring_step_by_hand.cu -o ./example
 ./example
 ```
 
-<details markdown="1"><summary>Captured current-source output</summary>
+**Sample output**
 
 ```text
 PASS: one ring step (distinct send/receive storage) on 4 GPUs, all nonuniform output values checked.
 ```
 
-</details>
+
 <!-- execution:end:a100:24_ring_step_by_hand.cu -->
 
 
 <!-- execution:start:h100:24_ring_step_by_hand.cu -->
-> **Current execution — 2026-11-17-h100: Numerical/transport validation (recorded scope).** UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`. Source SHA-256: `56eb9fa1d22abfcbb7b7022a76d3cc429e2665fdbc836427dbc6795a92f97137`.
+> **Compiled and executed — 2026-11-17-h100: Numerical/transport validation (recorded scope).** Hardware: 2 H100 GPUs. Execution record UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`.
+
+<!-- execution:metadata Source SHA-256: 56eb9fa1d22abfcbb7b7022a76d3cc429e2665fdbc836427dbc6795a92f97137; recorded UTC (run-batch start; per-program time unrecorded): 2026-11-17T23:48:18.967387+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-h100/24_ring_step_by_hand/24_ring_step_by_hand.cu) · [Compiler log](../validation/2026-11-17-h100/24_ring_step_by_hand/compile.log) · [Execution log](../validation/2026-11-17-h100/24_ring_step_by_hand/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -277,22 +260,7 @@ PASS: one ring step (distinct send/receive storage) on 2 GPUs, all nonuniform ou
 <!-- execution:end:h100:24_ring_step_by_hand.cu -->
 
 
-**Current-source scope:** Real device buffers implement one ring step (distinct send/receive storage); integer reference checks every output. Host-staged reductions deliberately use CPU arithmetic and are not GPU reduction kernels. The current source was compiled and executed in the dated H100 suite; use the linked record for its numerical, API-probe or other-execution scope. The output below is retained from the earlier authoring diagnostic and is not evidence for this replacement source.
-
 The [2026-11-17 H100 execution record](../validation-h100.md) covers two GPUs connected by local NV18. It distinguishes numerical checks, API probes and other executions; a successful exit alone does not establish GPU algorithm correctness.
-
-<details markdown="1"><summary>Historical authoring output — superseded by the current execution above</summary>
-
-```
-cudaGetDeviceCount(): 0 device(s).
-
-0 of 0 device(s) completed this ring step. On real hardware,
-every device performs exactly one cudaMemcpyPeer of exactly one
-chunk per step -- the same amount of work, every step, no matter
-how many devices are in the ring, and no device singled out.
-```
-
-</details>
 
 File 24 checks the actual ring transport and its resulting data on two H100 GPUs. The simulation below extends the modeled round structure to other rank counts; those simulated cases are not additional hardware executions.
 
@@ -441,7 +409,9 @@ int main() {
 ```
 
 <!-- execution:start:a100:25_ring_allreduce_simulation.cpp -->
-> **Current execution — 2026-11-17-a100: Host program/model (exit-only).** UTC (program start): `2026-11-18T00:01:31.143084+00:00`. Source SHA-256: `df47049aefe87153ff0b4d0aa159a8109ae12c4d23ef95face231ffc5b5d8de4`.
+> **Compiled and executed — 2026-11-17-a100: Host program/model (exit-only).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:01:31.459277+00:00`.
+
+<!-- execution:metadata Source SHA-256: df47049aefe87153ff0b4d0aa159a8109ae12c4d23ef95face231ffc5b5d8de4; recorded UTC (program start): 2026-11-18T00:01:31.143084+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-a100/25_ring_allreduce_simulation/25_ring_allreduce_simulation.cpp) · [Compiler log](../validation/2026-11-17-a100/25_ring_allreduce_simulation/compile.log) · [Execution log](../validation/2026-11-17-a100/25_ring_allreduce_simulation/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -452,7 +422,7 @@ g++ -std=c++17 -O2 25_ring_allreduce_simulation.cpp -o ./example
 ./example
 ```
 
-<details markdown="1"><summary>Captured current-source output</summary>
+**Sample output**
 
 ```text
 Independent reference (sum of all 4 devices' chunks): 100 104 108 112
@@ -467,12 +437,14 @@ Data-volume comparison for this exact problem (N=4 devices, 4 elements/device):
   Ratio (naive hub / ring device):   2.00x -- equals N/2 exactly.
 ```
 
-</details>
+
 <!-- execution:end:a100:25_ring_allreduce_simulation.cpp -->
 
 
 <!-- execution:start:h100:25_ring_allreduce_simulation.cpp -->
-> **Current execution — 2026-11-17-h100: Host program/model (exit-only).** UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`. Source SHA-256: `df47049aefe87153ff0b4d0aa159a8109ae12c4d23ef95face231ffc5b5d8de4`.
+> **Compiled and executed — 2026-11-17-h100: Host program/model (exit-only).** Hardware: 2 H100 GPUs. Execution record UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`.
+
+<!-- execution:metadata Source SHA-256: df47049aefe87153ff0b4d0aa159a8109ae12c4d23ef95face231ffc5b5d8de4; recorded UTC (run-batch start; per-program time unrecorded): 2026-11-17T23:48:18.967387+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-h100/25_ring_allreduce_simulation/25_ring_allreduce_simulation.cpp) · [Compiler log](../validation/2026-11-17-h100/25_ring_allreduce_simulation/compile.log) · [Execution log](../validation/2026-11-17-h100/25_ring_allreduce_simulation/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -501,25 +473,6 @@ Data-volume comparison for this exact problem (N=4 devices, 4 elements/device):
 </details>
 <!-- execution:end:h100:25_ring_allreduce_simulation.cpp -->
 
-
-Genuinely compiled with `g++` and genuinely run. Locked output, deterministic across repeated runs:
-
-<details markdown="1"><summary>Historical authoring output — superseded by the current execution above</summary>
-
-```
-Independent reference (sum of all 4 devices' chunks): 100 104 108 112 
-
-After 6 ring steps (scatter-reduce + all-gather), all 4 devices hold the reference sum: PASS
-
-Data-volume comparison for this exact problem (N=4 devices, 4 elements/device):
-  Naive hub's traffic (closed form): 24 elements (bottleneck)
-  Naive non-hub device's traffic:   8 elements
-  Ring: EVERY device's traffic:      12 elements (counted; all devices equal: PASS)
-  Ring: elements SENT per device:    6 = Gibiansky's 2(N-1)K/N = 6
-  Ratio (naive hub / ring device):   2.00x -- equals N/2 exactly.
-```
-
-</details>
 
 The correctness check passes: every device genuinely ends up holding the same, correctly-summed buffer, verified against a reference computed completely independently of the ring algorithm's own logic. The data-volume comparison then makes Section 9.1's Common Trap concrete: for this N=4 example, the naive approach's hub moves exactly 2x as much data as *any single device* in the ring does -- and per Gibiansky's own description, "the total amount of data transferred to and from every GPU is `2(N−1)K/N` which, crucially, is independent of the number of GPUs" (with `K` as the full buffer size). Note the factor of two between that formula and this section's "12 elements": Gibiansky's `2(N−1)K/N` counts each element once per hop -- equivalently, what each GPU *sends* (which equals what it receives) -- giving `2*3*4/4 = 6` here, exactly the counted "SENT per device" line. This section's traffic figure counts *both* directions (sent + received) for every device, naive and ring alike, so it is exactly double Gibiansky's figure; the ratio between the two algorithms is unaffected, because both sides are counted on the same basis. Either way, this means the ring's *per-device* load stays bounded as `N` grows, while the naive approach's hub keeps absorbing more and more of the total traffic as more devices join.
 
@@ -551,7 +504,7 @@ Chapter 10 builds the remaining core collectives -- all-gather, reduce-scatter, 
 
 **2.** In the idealized root-centered star that Section 9.3's closed form models, the root receives one full buffer from each of the other `N-1` devices during the reduce phase -- `(N-1)` buffers inbound -- and sends one full buffer to each of those same `N-1` devices during the broadcast phase -- another `(N-1)` buffers outbound. Section 9.1's actual by-hand code splits that hub role: the *host* receives a full buffer from all `N` devices during the reduce phase (then writes one result buffer to the root), and the *root* sends `N-1` buffers during the broadcast phase. Either way, every other device sends exactly one buffer (during the reduce phase) and receives exactly one buffer (during the broadcast phase), regardless of how many total devices are in the group. The hub's traffic is tied to `N`; everyone else's is a fixed, small constant.
 
-**3.** The full algorithm needs `2*(N-1)` total ring steps: `N-1` steps for the scatter-reduce phase, and `N-1` more steps for the all-gather phase. Section 9.3's code computes this directly as `totalSteps = 2 * (N - 1)`, and for the N=4 example used throughout this chapter, that's 6 total steps (3 scatter-reduce, 3 all-gather), matching the locked output's "After 6 ring steps."
+**3.** The full algorithm needs `2*(N-1)` total ring steps: `N-1` steps for the scatter-reduce phase, and `N-1` more steps for the all-gather phase. Section 9.3's code computes this directly as `totalSteps = 2 * (N - 1)`, and for the N=4 example used throughout this chapter, that's 6 total steps (3 scatter-reduce, 3 all-gather), matching the Sample output's "After 6 ring steps."
 
 **4.** Following Section 9.3's chunk-0 trace: chunk 0 starts at device 0 (value 10), and at each scatter-reduce step it moves one hop forward around the ring (`(i+1) % N`), picking up the receiving device's own value by addition. Device 0 -> device 1 (30) -> device 2 (60) -> device 3 (100) is exactly `N-1 = 3` hops, which is precisely enough hops to have picked up all `N = 4` devices' original contributions (device 0's own value was already included when it was first sent). Device 3 is simply the device that chunk 0 happens to land on after traveling exactly `N-1` hops forward from its starting device, device 0 -- for a different chunk index, this "owner" device would be different, following the same `N-1`-hops-forward rule from that chunk's own starting device.
 

@@ -1,11 +1,5 @@
 # Chapter 21: GPUDirect RDMA: Bypassing the Host Entirely
 
-<!-- execution:provenance -->
-!!! info "Execution provenance"
-
-    Current execution blocks identify the tested source hash, hardware dataset, commands and captured output. References elsewhere on this page to a device-less environment describe the original authoring context. Historical output is superseded by the current record. Displayed output omits the runner command header and trims trailing line whitespace; raw logs remain exact. A host simulation or API validation has its stated scope; neither alone establishes a numerical multi-GPU workload or measured performance.
-
-
 <!-- mgpu:opener:start -->
 [![Chapter 21: GPUDirect RDMA: Bypassing the Host Entirely](../images/chapter-openers/21.svg)](../images/chapter-openers/21.svg)
 <!-- mgpu:opener:end -->
@@ -208,7 +202,9 @@ int main(int argc, char** argv) {
 ```
 
 <!-- execution:start:a100:60_hybrid_mpi_nccl_bootstrap.cpp -->
-> **Current execution — 2026-11-17-a100: API/host demonstration (exit-only).** UTC (program start): `2026-11-18T00:03:25.369159+00:00`. Source SHA-256: `508c556599232034c5f7d85d83b597a52f61cd687133b506708bbc7cc6adb853`.
+> **Compiled and executed — 2026-11-17-a100: API/host demonstration (exit-only).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:03:25.785144+00:00`.
+
+<!-- execution:metadata Source SHA-256: 508c556599232034c5f7d85d83b597a52f61cd687133b506708bbc7cc6adb853; recorded UTC (program start): 2026-11-18T00:03:25.369159+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-a100/60_hybrid_mpi_nccl_bootstrap/60_hybrid_mpi_nccl_bootstrap.cpp) · [Compiler log](../validation/2026-11-17-a100/60_hybrid_mpi_nccl_bootstrap/compile.log) · [Execution log](../validation/2026-11-17-a100/60_hybrid_mpi_nccl_bootstrap/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -219,7 +215,7 @@ mpicxx -std=c++17 -O2 -I/usr/include -L/usr/local/cuda/lib64 -Wl,-rpath,/usr/loc
 /usr/mpi/gcc/openmpi-4.1.7rc1/bin/mpirun --oversubscribe -np 8 ./example
 ```
 
-<details markdown="1"><summary>Captured current-source output</summary>
+**Sample output**
 
 ```text
 [LOG_CAT_SBGP] libnuma.so: cannot open shared object file: No such file or directory
@@ -251,12 +247,14 @@ rank 3 of 8: cudaSetDevice(localRank=3)=no error ncclCommInitRank=no error (code
 rank 7 of 8: cudaSetDevice(localRank=7)=no error ncclCommInitRank=no error (code 0)
 ```
 
-</details>
+
 <!-- execution:end:a100:60_hybrid_mpi_nccl_bootstrap.cpp -->
 
 
 <!-- execution:start:h100:60_hybrid_mpi_nccl_bootstrap.cpp -->
-> **Current execution — 2026-11-17-h100: API/host demonstration (exit-only).** UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`. Source SHA-256: `508c556599232034c5f7d85d83b597a52f61cd687133b506708bbc7cc6adb853`.
+> **Compiled and executed — 2026-11-17-h100: API/host demonstration (exit-only).** Hardware: 2 H100 GPUs. Execution record UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`.
+
+<!-- execution:metadata Source SHA-256: 508c556599232034c5f7d85d83b597a52f61cd687133b506708bbc7cc6adb853; recorded UTC (run-batch start; per-program time unrecorded): 2026-11-17T23:48:18.967387+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-h100/60_hybrid_mpi_nccl_bootstrap/60_hybrid_mpi_nccl_bootstrap.cpp) · [Compiler log](../validation/2026-11-17-h100/60_hybrid_mpi_nccl_bootstrap/compile.log) · [Execution log](../validation/2026-11-17-h100/60_hybrid_mpi_nccl_bootstrap/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -319,28 +317,14 @@ Every rank sees the SAME honest failure code Chapter 11's single-process ncclCom
 <!-- execution:end:h100:60_hybrid_mpi_nccl_bootstrap.cpp -->
 
 
-Compiled with `mpicxx -Wall -Wextra 60_hybrid_mpi_nccl_bootstrap.cpp -o 60_hybrid_mpi_nccl_bootstrap -lnccl -lcudart` (the same real `mpicxx`-links-`libcudart` trick Chapter 20's own file 58 used, now also linking the real installed `libnccl`) and genuinely run with `mpirun --allow-run-as-root --oversubscribe -np 4 ./60_hybrid_mpi_nccl_bootstrap`. Locked output (the four per-rank lines and the closing paragraph are deterministic in content; their print ORDER across ranks is not, exactly like Chapter 20's own Section 20.1 -- three genuinely different real orderings, captured across three separate runs):
-
-<details markdown="1"><summary>Historical authoring output — superseded by the current execution above</summary>
-
-```text
-rank 0: generated the ONE ncclUniqueId every rank will share, and is about to MPI_Bcast it to all 4 ranks.
-rank 1 of 4: cudaSetDevice(localRank=1)=no CUDA-capable device is detected ncclCommInitRank=unhandled cuda error (run with NCCL_DEBUG=INFO for details) (code 1)
-rank 2 of 4: cudaSetDevice(localRank=2)=no CUDA-capable device is detected ncclCommInitRank=unhandled cuda error (run with NCCL_DEBUG=INFO for details) (code 1)
-rank 3 of 4: cudaSetDevice(localRank=3)=no CUDA-capable device is detected ncclCommInitRank=unhandled cuda error (run with NCCL_DEBUG=INFO for details) (code 1)
-rank 0 of 4: cudaSetDevice(localRank=0)=no CUDA-capable device is detected ncclCommInitRank=unhandled cuda error (run with NCCL_DEBUG=INFO for details) (code 1)
-
-Every rank sees the SAME honest failure code Chapter 11's single-process ncclCommInitAll() saw on its own well-formed requests (ncclUnhandledCudaError=1) -- this environment's real absence of any GPU doesn't care whether the caller was one process managing N devices or N real MPI processes each managing one. What changed is genuinely real: 4 separate operating-system processes, discovered through MPI, agreed on one shared id through MPI, and each independently called the exact same NCCL entry point every earlier chapter used.
-```
-
-</details>
+Compiled with `mpicxx -Wall -Wextra 60_hybrid_mpi_nccl_bootstrap.cpp -o 60_hybrid_mpi_nccl_bootstrap -lnccl -lcudart` (the same real `mpicxx`-links-`libcudart` trick Chapter 20's own file 58 used, now also linking the real installed `libnccl`) and genuinely run with `mpirun --allow-run-as-root --oversubscribe -np 4 ./60_hybrid_mpi_nccl_bootstrap`. Sample output (the four per-rank lines and the closing paragraph are deterministic in content; their print ORDER across ranks is not, exactly like Chapter 20's own Section 20.1 -- three genuinely different real orderings, captured across three separate runs):
 
 A second real run printed the closing paragraph immediately after rank 0's own per-rank line, before ranks 1-3 had printed at all; a third run printed ranks 1, 2, 3 in that exact order after rank 0. All three runs' VALUES were identical -- only which process's `printf()` reached the terminal first changed, run to run, exactly as Chapter 20's own Section 20.1 already demonstrated for a plain MPI ring.
 
 One detail in file 60 matters only on a real multi-node cluster, and this single-host environment can't exercise it: the device index passed to `cudaSetDevice()` is a *node-local* rank, computed by `computeLocalRank()` (hash each rank's hostname, `MPI_Allgather()` the hashes, count lower-numbered ranks on the same host -- the same pattern NCCL's own MPI example uses). Passing the global MPI rank instead would break as soon as there are two nodes: with 2 nodes x 8 GPUs, global rank 9 would call `cudaSetDevice(9)` on a node that only has devices 0-7. Here every rank shares one host, so `localRank` equals the global rank and the output can't show the difference.
 
-!!! warning "[COMMON TRAP] Every rank generating its own uniqueId, instead of one rank generating it and broadcasting it"
-    The code above deliberately guards `ncclGetUniqueId(&id)` with `if (myRank == 0)`. Delete that guard -- let every rank call `ncclGetUniqueId()` independently -- and every rank now holds a *different* 128-byte id, because `ncclUniqueId` is generated from process-local random state, not derived from anything shared. `ncclCommInitRank()` on a real cluster then has nothing to rendezvous on: each rank is waiting for peers who agree on an id that rank never received, and the call hangs -- not a fast, honest error like every device-less failure this book has shown since Chapter 3, but the same silent, indefinite hang Chapter 19 named as NCCL's real, worse failure mode. NCCL's own installed header is explicit about the fix, in the exact comment quoted above: the id must be "called once" and then "distributed to all ranks... before calling ncclCommInitRank" -- generated by exactly one rank, delivered to the rest by some other real mechanism. This book uses `MPI_Bcast()` because Chapter 20 already built real MPI; a job with no MPI at all still needs some equivalent distribution step (a shared filesystem, a rendezvous server, a job scheduler's own environment variables) -- there is no version of this bootstrap that skips broadcasting the id.
+!!! warning "[COMMON TRAP] Generating a different NCCL ID on every rank"
+    Generate one `ncclUniqueId` and distribute it to all participating ranks before communicator initialization. This example uses `MPI_Bcast`; another launcher needs an equivalent shared rendezvous mechanism.
 
 ## 21.2 Querying Real GPUDirect RDMA Support
 
@@ -368,7 +352,6 @@ directly, over PCIe BAR addresses, no host memory touched on either side:
 
 CUDA exposes GPUDirect RDMA support as three real device attributes, confirmed here directly against this exact environment's own installed `driver_types.h` rather than assumed from documentation: `cudaDevAttrGPUDirectRDMASupported` ("Device supports GPUDirect RDMA APIs, like nvidia_p2p_get_pages"), `cudaDevAttrGPUDirectRDMAFlushWritesOptions` (a bitmask of which flush mechanisms the device supports), and `cudaDevAttrGPUDirectRDMAWritesOrdering` (whether the device natively guarantees a NIC's writes are visible to that device's own running kernels). The same three facts also live as fields on `cudaDeviceProp` (`gpuDirectRDMASupported`, `gpuDirectRDMAFlushWritesOptions`, `gpuDirectRDMAWritesOrdering`), queryable through Chapter 18's own `cudaGetDeviceProperties()` function -- two independent real ways to ask, exactly like Chapter 20's own `MPIX_CUDA_AWARE_SUPPORT` macro vs. `MPIX_Query_cuda_support()` function pairing. When a platform does *not* natively guarantee write ordering, `cudaDeviceFlushGPUDirectRDMAWrites()` is the real, documented way to close that gap -- it blocks until pending GPUDirect RDMA writes are visible to the requested scope. The installed header documents `cudaSuccess` and `cudaErrorNotSupported` as its return values, and separately notes that when the requested scope is already covered by `cudaDevAttrGPUDirectRDMAWritesOrdering`, "the call will be a no-op and can be safely omitted" -- it does not say that no-op case returns an error.
 
-> **Validation update:** This API probe checks return values and actual reported capabilities. It does not measure copy/compute overlap, inject a failed peer, or validate a NIC/RDMA data transfer. Earlier zero-device transcripts below belong to the prior source.
 
 The [2026-11-17 H100 execution record](../validation-h100.md) covers two GPUs connected by local NV18. It distinguishes numerical checks, API probes and other executions; a successful exit alone does not establish GPU algorithm correctness.
 
@@ -398,7 +381,9 @@ int main() {
 ```
 
 <!-- execution:start:a100:61_gpudirect_rdma_query.cu -->
-> **Current execution — 2026-11-17-a100: API validation (recorded scope).** UTC (program start): `2026-11-18T00:03:33.518660+00:00`. Source SHA-256: `dff691eb23e9e5a742cb49fb94d32bd74a7bc45ecf467c4fba4e8a35aa84982e`.
+> **Compiled and executed — 2026-11-17-a100: API validation (recorded scope).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:03:34.585817+00:00`.
+
+<!-- execution:metadata Source SHA-256: dff691eb23e9e5a742cb49fb94d32bd74a7bc45ecf467c4fba4e8a35aa84982e; recorded UTC (program start): 2026-11-18T00:03:33.518660+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-a100/61_gpudirect_rdma_query/61_gpudirect_rdma_query.cu) · [Compiler log](../validation/2026-11-17-a100/61_gpudirect_rdma_query/compile.log) · [Execution log](../validation/2026-11-17-a100/61_gpudirect_rdma_query/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -409,7 +394,7 @@ nvcc -std=c++17 -O2 -arch=sm_80 61_gpudirect_rdma_query.cu -o ./example
 ./example
 ```
 
-<details markdown="1"><summary>Captured current-source output</summary>
+**Sample output**
 
 ```text
 device 0 GPUDirectRDMA: supported=1 flushOptions=1 writesOrdering=0
@@ -417,12 +402,14 @@ owner-scope flush API: no error (no external DMA was submitted)
 API PROBE PASS: queries and supported flush API only; no RDMA/NIC transfer validated, errors=0
 ```
 
-</details>
+
 <!-- execution:end:a100:61_gpudirect_rdma_query.cu -->
 
 
 <!-- execution:start:h100:61_gpudirect_rdma_query.cu -->
-> **Current execution — 2026-11-17-h100: API validation (recorded scope).** UTC (program start): `2026-11-17T23:51:16.740320+00:00`. Source SHA-256: `dff691eb23e9e5a742cb49fb94d32bd74a7bc45ecf467c4fba4e8a35aa84982e`.
+> **Compiled and executed — 2026-11-17-h100: API validation (recorded scope).** Hardware: 2 H100 GPUs. Executed UTC: `2026-11-17T23:51:17.455842+00:00`.
+
+<!-- execution:metadata Source SHA-256: dff691eb23e9e5a742cb49fb94d32bd74a7bc45ecf467c4fba4e8a35aa84982e; recorded UTC (program start): 2026-11-17T23:51:16.740320+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-h100/61_gpudirect_rdma_query/61_gpudirect_rdma_query.cu) · [Compiler log](../validation/2026-11-17-h100/61_gpudirect_rdma_query/compile.log) · [Execution log](../validation/2026-11-17-h100/61_gpudirect_rdma_query/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -445,25 +432,7 @@ API PROBE PASS: queries and supported flush API only; no RDMA/NIC transfer valid
 <!-- execution:end:h100:61_gpudirect_rdma_query.cu -->
 
 
-Compiled with `nvcc -Wno-deprecated-gpu-targets 61_gpudirect_rdma_query.cu -o 61_gpudirect_rdma_query` and genuinely run. Locked output, deterministic:
-
-<details markdown="1"><summary>Historical authoring output — superseded by the current execution above</summary>
-
-```text
-cudaGetDeviceCount(): no CUDA-capable device is detected, count=0
-
-cudaDeviceGetAttribute(cudaDevAttrGPUDirectRDMASupported): no CUDA-capable device is detected (queried value untouched at -1 since the call itself honestly failed -- no device 0 exists to report on)
-cudaDeviceGetAttribute(cudaDevAttrGPUDirectRDMAFlushWritesOptions): no CUDA-capable device is detected
-cudaDeviceGetAttribute(cudaDevAttrGPUDirectRDMAWritesOrdering): no CUDA-capable device is detected
-
-cudaGetDeviceProperties(): no CUDA-capable device is detected
-  (struct never populated -- same honest failure as the three cudaDeviceGetAttribute() calls above; this environment has no device 0 for either query style to report on)
-
-cudaDeviceFlushGPUDirectRDMAWrites(TargetCurrentDevice, ToOwner): no CUDA-capable device is detected
-This call needs an ACTIVE device context to mean anything at all -- there is no device 0 to make current, so this is the same honest cudaErrorNoDevice family every device-touching call in this book has returned since Chapter 3, not a new failure mode specific to GPUDirect RDMA.
-```
-
-</details>
+Compiled with `nvcc -Wno-deprecated-gpu-targets 61_gpudirect_rdma_query.cu -o 61_gpudirect_rdma_query` and genuinely run. Sample output, deterministic:
 
 !!! warning "[COMMON TRAP] Treating \"GPUDirect RDMA capable\" as a property of the GPU alone"
     `cudaDevAttrGPUDirectRDMASupported` answers one question: can this GPU's driver expose its memory to a third-party device at all. It says nothing about any *specific* NIC, and nothing about the PCIe path between that GPU and that NIC. NVIDIA's own GPUDirect RDMA design guide is explicit that both devices must "share the same upstream PCI Express root complex," and NCCL's own `NCCL_NET_GDR_LEVEL` variable exists precisely because that path varies: its real documented levels run from `PIX` (GPU and NIC on the same PCI switch -- fast) down through `PXB`, `PHB`, to `SYS` (crossing the inter-NUMA-node SMP interconnect -- GPUDirect RDMA still technically works, but see Section 21.3 for exactly how much slower). A device that answers "yes" to `cudaDevAttrGPUDirectRDMASupported` can still end up on the slow end of that range, or -- if some other real constraint in the system rules it out entirely -- fall back to no GPUDirect RDMA at all, for reasons this one attribute alone can never reveal. The device-level query in this section and the topology question in the next are two different questions, and answering only the first is not enough to predict real performance.
@@ -587,7 +556,9 @@ int main() {
 ```
 
 <!-- execution:start:a100:62_staged_vs_rdma_cost_model.cpp -->
-> **Current execution — 2026-11-17-a100: Host program/model (exit-only).** UTC (program start): `2026-11-18T00:03:37.712009+00:00`. Source SHA-256: `56b4b1a88020ba0b9246fe85a7c39e42370f6225fe23606527f59bf835cddbe1`.
+> **Compiled and executed — 2026-11-17-a100: Host program/model (exit-only).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:03:37.827340+00:00`.
+
+<!-- execution:metadata Source SHA-256: 56b4b1a88020ba0b9246fe85a7c39e42370f6225fe23606527f59bf835cddbe1; recorded UTC (program start): 2026-11-18T00:03:37.712009+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-a100/62_staged_vs_rdma_cost_model/62_staged_vs_rdma_cost_model.cpp) · [Compiler log](../validation/2026-11-17-a100/62_staged_vs_rdma_cost_model/compile.log) · [Execution log](../validation/2026-11-17-a100/62_staged_vs_rdma_cost_model/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -598,7 +569,7 @@ g++ -std=c++17 -O2 62_staged_vs_rdma_cost_model.cpp -o ./example
 ./example
 ```
 
-<details markdown="1"><summary>Captured current-source output</summary>
+**Sample output**
 
 ```text
 Part A -- small-message fixed latency (cited, not measured here):
@@ -615,12 +586,14 @@ Part C -- the source's own real crossover finding:
   The same post states: "GPUDirect RDMA is faster than the staging approach for message sizes up to 400-500KB (on Ivy Bridge Xeon)" -- a real, cited finding this book reports rather than re-derives. A simple two-term (fixed latency + bandwidth) model built from Part A's latency and Part B's good-topology bandwidth would put GPUDirect RDMA ahead at every size, so it cannot reproduce the crossover; the post ties the crossover to the platform it measured (Ivy Bridge Xeon, whose cross-socket QPI path is also Part B's 250 MB/s case), and this book does not rebuild that platform-specific bandwidth model here.
 ```
 
-</details>
+
 <!-- execution:end:a100:62_staged_vs_rdma_cost_model.cpp -->
 
 
 <!-- execution:start:h100:62_staged_vs_rdma_cost_model.cpp -->
-> **Current execution — 2026-11-17-h100: Host program/model (exit-only).** UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`. Source SHA-256: `56b4b1a88020ba0b9246fe85a7c39e42370f6225fe23606527f59bf835cddbe1`.
+> **Compiled and executed — 2026-11-17-h100: Host program/model (exit-only).** Hardware: 2 H100 GPUs. Execution record UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`.
+
+<!-- execution:metadata Source SHA-256: 56b4b1a88020ba0b9246fe85a7c39e42370f6225fe23606527f59bf835cddbe1; recorded UTC (run-batch start; per-program time unrecorded): 2026-11-17T23:48:18.967387+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-h100/62_staged_vs_rdma_cost_model/62_staged_vs_rdma_cost_model.cpp) · [Compiler log](../validation/2026-11-17-h100/62_staged_vs_rdma_cost_model/compile.log) · [Execution log](../validation/2026-11-17-h100/62_staged_vs_rdma_cost_model/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -652,26 +625,7 @@ Part C -- the source's own real crossover finding:
 <!-- execution:end:h100:62_staged_vs_rdma_cost_model.cpp -->
 
 
-Compiled with `g++ -Wall -Wextra -O2 62_staged_vs_rdma_cost_model.cpp -o 62_staged_vs_rdma_cost_model`, genuinely run, and cross-verified byte-identical on the device (`g++` 11.4.0). Locked output:
-
-<details markdown="1"><summary>Historical authoring output — superseded by the current execution above</summary>
-
-```text
-Part A -- small-message fixed latency (cited, not measured here):
-  GPUDirect RDMA, GPU-to-GPU:  1.9us  (Host-to-GPU: 1.7us, a different path, not averaged in)
-  Staged GPU-to-GPU (D2H + IB host-to-host + H2D): ~17.0us
-  Ratio: 8.9x -- this book's own arithmetic on the post's two GPU-to-GPU numbers; the post itself states no single speedup factor.
-
-Part B -- large-message bandwidth, same real post, single-rail vs single-rail:
-  Single rail, GPU and NIC on a good PCIe path: ~6.1 GB/s
-  Single rail, crossing inter-socket QPI on Ivy Bridge (SYS-class): 0.25 GB/s
-  Degradation: ~24x (the post's 11.6 GB/s headline is dual-rail, so 11.6 / 0.25 would double-count the second NIC). Even this ~24x is not one controlled experiment -- the two figures need not come from the same server platform -- but the order of magnitude is the point: "GPUDirect RDMA capable" (Section 21.2's own boolean attribute) is NECESSARY but not SUFFICIENT; a bad PCIe path between a capable GPU and a capable NIC can cost more than an order of magnitude of bandwidth with no code change at all.
-
-Part C -- the source's own real crossover finding:
-  The same post states: "GPUDirect RDMA is faster than the staging approach for message sizes up to 400-500KB (on Ivy Bridge Xeon)" -- a real, cited finding this book reports rather than re-derives. A simple two-term (fixed latency + bandwidth) model built from Part A's latency and Part B's good-topology bandwidth would put GPUDirect RDMA ahead at every size, so it cannot reproduce the crossover; the post ties the crossover to the platform it measured (Ivy Bridge Xeon, whose cross-socket QPI path is also Part B's 250 MB/s case), and this book does not rebuild that platform-specific bandwidth model here.
-```
-
-</details>
+Compiled with `g++ -Wall -Wextra -O2 62_staged_vs_rdma_cost_model.cpp -o 62_staged_vs_rdma_cost_model`, genuinely run, and cross-verified byte-identical on the device (`g++` 11.4.0). Sample output:
 
 !!! warning "[COMMON TRAP] Assuming GPUDirect RDMA is always the faster choice once it's available"
     Section 21.2's query and this section's Part A both make GPUDirect RDMA look like a strict win -- lower fixed latency, higher best-case bandwidth, no reason not to use it. Part C's own honestly-reported crossover is the real counter-example: NVIDIA's own benchmark found the staging approach becomes *competitive* past roughly 400-500KB on the platform it tested, and Part B shows a second, independent way GPUDirect RDMA can lose badly -- not from message size at all, but from the PCIe/QPI path, roughly a 24x single-rail-to-single-rail swing between two identically-"capable" configurations. This is exactly why real MPI implementations (MVAPICH2-GDR is a well-known example) expose a message-size threshold knob that switches between a direct GPUDirect RDMA path and a staged path, rather than always preferring one. Querying `cudaDevAttrGPUDirectRDMASupported` and stopping there answers "can I," never "should I, for this message, on this topology, right now."

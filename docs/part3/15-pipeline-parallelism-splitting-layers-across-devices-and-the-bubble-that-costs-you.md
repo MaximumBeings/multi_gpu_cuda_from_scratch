@@ -1,11 +1,5 @@
 # Chapter 15: Pipeline Parallelism: Splitting Layers Across Devices, and the Bubble That Costs You
 
-<!-- execution:provenance -->
-!!! info "Execution provenance"
-
-    Current execution blocks identify the tested source hash, hardware dataset, commands and captured output. References elsewhere on this page to a device-less environment describe the original authoring context. Historical output is superseded by the current record. Displayed output omits the runner command header and trims trailing line whitespace; raw logs remain exact. A host simulation or API validation has its stated scope; neither alone establishes a numerical multi-GPU workload or measured performance.
-
-
 <!-- mgpu:opener:start -->
 [![Chapter 15: Pipeline Parallelism: Splitting Layers Across Devices, and the Bubble That Costs You](../images/chapter-openers/15.svg)](../images/chapter-openers/15.svg)
 <!-- mgpu:opener:end -->
@@ -142,7 +136,9 @@ int main() {
 ```
 
 <!-- execution:start:a100:42_pipeline_schedule.cpp -->
-> **Current execution — 2026-11-17-a100: Host program/model (exit-only).** UTC (program start): `2026-11-18T00:02:31.863017+00:00`. Source SHA-256: `b6ebe70007adc7b7eea44a90cdf48c24744a894b71d5f387b6d02b02e879a5f5`.
+> **Compiled and executed — 2026-11-17-a100: Host program/model (exit-only).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:02:31.978090+00:00`.
+
+<!-- execution:metadata Source SHA-256: b6ebe70007adc7b7eea44a90cdf48c24744a894b71d5f387b6d02b02e879a5f5; recorded UTC (program start): 2026-11-18T00:02:31.863017+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-a100/42_pipeline_schedule/42_pipeline_schedule.cpp) · [Compiler log](../validation/2026-11-17-a100/42_pipeline_schedule/compile.log) · [Execution log](../validation/2026-11-17-a100/42_pipeline_schedule/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -153,7 +149,7 @@ g++ -std=c++17 -O2 42_pipeline_schedule.cpp -o ./example
 ./example
 ```
 
-<details markdown="1"><summary>Captured current-source output</summary>
+**Sample output**
 
 ```text
 Pipeline schedule, K=4 devices, M=6 micro-batches (totalTimeSteps = M+K-1 = 9):
@@ -173,12 +169,14 @@ Self-check: busySlots == K*M (24): PASS
 Self-check: idleSlots == K*(K-1) (12): PASS
 ```
 
-</details>
+
 <!-- execution:end:a100:42_pipeline_schedule.cpp -->
 
 
 <!-- execution:start:h100:42_pipeline_schedule.cpp -->
-> **Current execution — 2026-11-17-h100: Host program/model (exit-only).** UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`. Source SHA-256: `b6ebe70007adc7b7eea44a90cdf48c24744a894b71d5f387b6d02b02e879a5f5`.
+> **Compiled and executed — 2026-11-17-h100: Host program/model (exit-only).** Hardware: 2 H100 GPUs. Execution record UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`.
+
+<!-- execution:metadata Source SHA-256: b6ebe70007adc7b7eea44a90cdf48c24744a894b71d5f387b6d02b02e879a5f5; recorded UTC (run-batch start; per-program time unrecorded): 2026-11-17T23:48:18.967387+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-h100/42_pipeline_schedule/42_pipeline_schedule.cpp) · [Compiler log](../validation/2026-11-17-h100/42_pipeline_schedule/compile.log) · [Execution log](../validation/2026-11-17-h100/42_pipeline_schedule/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -212,30 +210,6 @@ Self-check: idleSlots == K*(K-1) (12): PASS
 </details>
 <!-- execution:end:h100:42_pipeline_schedule.cpp -->
 
-
-Genuinely compiled with `g++` and genuinely run. Locked output, deterministic across repeated runs:
-
-<details markdown="1"><summary>Historical authoring output — superseded by the current execution above</summary>
-
-```
-Pipeline schedule, K=4 devices, M=6 micro-batches (totalTimeSteps = M+K-1 = 9):
-
-device \ t   0  1  2  3  4  5  6  7  8
-dev 0        0  1  2  3  4  5  .  .  .
-dev 1        .  0  1  2  3  4  5  .  .
-dev 2        .  .  0  1  2  3  4  5  .
-dev 3        .  .  .  0  1  2  3  4  5
-
-Counted directly from the schedule above:
-  total device-time slots (K x totalTimeSteps): 36
-  busy slots (every device's M real micro-batches):  24
-  idle slots ('.' above):                             12
-
-Self-check: busySlots == K*M (24): PASS
-Self-check: idleSlots == K*(K-1) (12): PASS
-```
-
-</details>
 
 The schedule's own shape makes the cost visible without any formula at all: each device's row is a block of `M` consecutive numbers, staggered one time step later than the device before it, with dots everywhere else. Counting those dots directly gives 12 idle slots out of 36 total -- a third of all device-time in this particular small example, all of it concentrated at the pipeline's fill (the staircase of dots in the upper-left) and drain (the staircase in the lower-right). Both self-checks confirm the schedule behaves exactly the way the underlying arithmetic requires: every device does the same `M` units of work, and the total idle time is exactly `K*(K-1)` slots, no more and no less. Section 15.3 takes this counted result and checks it against GPipe's own cited closed-form formula for the general case.
 
@@ -308,7 +282,9 @@ int main() {
 ```
 
 <!-- execution:start:a100:43_pipeline_stage_sync.cu -->
-> **Current execution — 2026-11-17-a100: API validation (recorded scope).** UTC (program start): `2026-11-18T00:02:31.983487+00:00`. Source SHA-256: `e3d44151b74bd3c1534f9ab075292a9372a7389fa3d42ed29c50a71a0dd25f19`.
+> **Compiled and executed — 2026-11-17-a100: API validation (recorded scope).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:02:33.060290+00:00`.
+
+<!-- execution:metadata Source SHA-256: e3d44151b74bd3c1534f9ab075292a9372a7389fa3d42ed29c50a71a0dd25f19; recorded UTC (program start): 2026-11-18T00:02:31.983487+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-a100/43_pipeline_stage_sync/43_pipeline_stage_sync.cu) · [Compiler log](../validation/2026-11-17-a100/43_pipeline_stage_sync/compile.log) · [Execution log](../validation/2026-11-17-a100/43_pipeline_stage_sync/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -319,7 +295,7 @@ nvcc -std=c++17 -O2 -arch=sm_80 43_pipeline_stage_sync.cu -o ./example
 ./example
 ```
 
-<details markdown="1"><summary>Captured current-source output</summary>
+**Sample output**
 
 ```text
 cudaGetDeviceCount(&count): no error (code 0)
@@ -339,12 +315,14 @@ cudaStreamDestroy(stream0): no error (code 0)
 PASS: checked pipeline-stage event dependency lifecycle.
 ```
 
-</details>
+
 <!-- execution:end:a100:43_pipeline_stage_sync.cu -->
 
 
 <!-- execution:start:h100:43_pipeline_stage_sync.cu -->
-> **Current execution — 2026-11-17-h100: API validation (recorded scope).** UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`. Source SHA-256: `e3d44151b74bd3c1534f9ab075292a9372a7389fa3d42ed29c50a71a0dd25f19`.
+> **Compiled and executed — 2026-11-17-h100: API validation (recorded scope).** Hardware: 2 H100 GPUs. Execution record UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`.
+
+<!-- execution:metadata Source SHA-256: e3d44151b74bd3c1534f9ab075292a9372a7389fa3d42ed29c50a71a0dd25f19; recorded UTC (run-batch start; per-program time unrecorded): 2026-11-17T23:48:18.967387+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-h100/43_pipeline_stage_sync/43_pipeline_stage_sync.cu) · [Compiler log](../validation/2026-11-17-h100/43_pipeline_stage_sync/compile.log) · [Execution log](../validation/2026-11-17-h100/43_pipeline_stage_sync/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -379,32 +357,7 @@ PASS: checked pipeline-stage event dependency lifecycle.
 <!-- execution:end:h100:43_pipeline_stage_sync.cu -->
 
 
-**Historical authoring transcript (earlier source).** The current listing fixes device ownership and failed-handle sequencing. The current source was compiled and executed in the dated H100 suite; use the linked record for its numerical, API-probe or other-execution scope.
-
 The [2026-11-17 H100 execution record](../validation-h100.md) covers two GPUs connected by local NV18. It distinguishes numerical checks, API probes and other executions; a successful exit alone does not establish GPU algorithm correctness.
-
-<details markdown="1"><summary>Historical authoring output — superseded by the current execution above</summary>
-
-```
-cudaSetDevice(0) [producer]: no CUDA-capable device is detected (code 100)
-cudaStreamCreate(producerStream, on device 0): no CUDA-capable device is detected (code 100)
-cudaEventCreate(microbatchReady, on device 0): no CUDA-capable device is detected (code 100)
-cudaEventRecord(microbatchReady, producerStream) [marks 'micro-batch 0 done on device 0']: no CUDA-capable device is detected (code 100)
-
-cudaSetDevice(1) [consumer]: no CUDA-capable device is detected (code 100)
-cudaStreamCreate(consumerStream, on device 1): no CUDA-capable device is detected (code 100)
-cudaStreamWaitEvent(consumerStream waits on microbatchReady): no CUDA-capable device is detected (code 100)
-
-Every future kernel queued on consumerStream after this call
--- device 1's own layer-range kernels for micro-batch 0 -- will
-wait for device 0's event before it runs, with no host blocking
-and no cudaDeviceSynchronize() anywhere, exactly as Chapter 6
-established. Section 15.1's schedule is what decides WHICH
-(device, micro-batch) pairs need this call; this section is what
-actually enforces the dependency the schedule assumes.
-```
-
-</details>
 
 File 43 is a checked stream/event pipeline API probe on the H100 host. It checks submission and synchronization behavior, not a numerical neural-network pipeline or achieved pipeline overlap.
 
@@ -571,7 +524,9 @@ int main() {
 ```
 
 <!-- execution:start:a100:44_bubble_and_pipelined_correctness.cpp -->
-> **Current execution — 2026-11-17-a100: Host program/model (exit-only).** UTC (program start): `2026-11-18T00:02:36.485096+00:00`. Source SHA-256: `d44dc2c57da8948d74c5a45c483d4eb59c4fb7bf8848527038db7c74fe7a8636`.
+> **Compiled and executed — 2026-11-17-a100: Host program/model (exit-only).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:02:36.600245+00:00`.
+
+<!-- execution:metadata Source SHA-256: d44dc2c57da8948d74c5a45c483d4eb59c4fb7bf8848527038db7c74fe7a8636; recorded UTC (program start): 2026-11-18T00:02:36.485096+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-a100/44_bubble_and_pipelined_correctness/44_bubble_and_pipelined_correctness.cpp) · [Compiler log](../validation/2026-11-17-a100/44_bubble_and_pipelined_correctness/compile.log) · [Execution log](../validation/2026-11-17-a100/44_bubble_and_pipelined_correctness/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -582,7 +537,7 @@ g++ -std=c++17 -O2 44_bubble_and_pipelined_correctness.cpp -o ./example
 ./example
 ```
 
-<details markdown="1"><summary>Captured current-source output</summary>
+**Sample output**
 
 ```text
 Part A: bubble fraction (K-1)/(M+K-1), for real K values this
@@ -619,12 +574,14 @@ Comparing each micro-batch's PIPELINED result against Chapter 13's own UN-PIPELI
 All 3 micro-batch(es) bit-identical between the pipelined schedule and Chapter 13's own un-pipelined reference: PASS
 ```
 
-</details>
+
 <!-- execution:end:a100:44_bubble_and_pipelined_correctness.cpp -->
 
 
 <!-- execution:start:h100:44_bubble_and_pipelined_correctness.cpp -->
-> **Current execution — 2026-11-17-h100: Host program/model (exit-only).** UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`. Source SHA-256: `d44dc2c57da8948d74c5a45c483d4eb59c4fb7bf8848527038db7c74fe7a8636`.
+> **Compiled and executed — 2026-11-17-h100: Host program/model (exit-only).** Hardware: 2 H100 GPUs. Execution record UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`.
+
+<!-- execution:metadata Source SHA-256: d44dc2c57da8948d74c5a45c483d4eb59c4fb7bf8848527038db7c74fe7a8636; recorded UTC (run-batch start; per-program time unrecorded): 2026-11-17T23:48:18.967387+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-h100/44_bubble_and_pipelined_correctness/44_bubble_and_pipelined_correctness.cpp) · [Compiler log](../validation/2026-11-17-h100/44_bubble_and_pipelined_correctness/compile.log) · [Execution log](../validation/2026-11-17-h100/44_bubble_and_pipelined_correctness/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -675,47 +632,6 @@ All 3 micro-batch(es) bit-identical between the pipelined schedule and Chapter 1
 </details>
 <!-- execution:end:h100:44_bubble_and_pipelined_correctness.cpp -->
 
-
-Genuinely compiled with `g++` and genuinely run. Locked output, deterministic across repeated runs:
-
-<details markdown="1"><summary>Historical authoring output — superseded by the current execution above</summary>
-
-```
-Part A: bubble fraction (K-1)/(M+K-1), for real K values this
-book has already used, checked at GPipe's own empirical
-threshold M = 4xK:
-
-K (source)                        K      M=4xK   bubble frac.
-7B-class model (Ch13)             2          8         11.11%
-typical pipeline depth            4         16         15.79%
-typical pipeline depth            8         32         17.95%
-GPT-3 175B (Ch13)                35        140         19.54%
-
-Part B: running Chapter 13's own 8-layer network for 3 micro-batches
-through Section 15.1's interleaved K=4 pipeline schedule (totalTimeSteps=6):
-
-  t=0: device 0 processes micro-batch 0 (layers [0,2))
-  t=1: device 0 processes micro-batch 1 (layers [0,2))
-  t=1: device 1 processes micro-batch 0 (layers [2,4))
-  t=2: device 0 processes micro-batch 2 (layers [0,2))
-  t=2: device 1 processes micro-batch 1 (layers [2,4))
-  t=2: device 2 processes micro-batch 0 (layers [4,6))
-  t=3: device 1 processes micro-batch 2 (layers [2,4))
-  t=3: device 2 processes micro-batch 1 (layers [4,6))
-  t=3: device 3 processes micro-batch 0 (layers [6,8))
-  t=4: device 2 processes micro-batch 2 (layers [4,6))
-  t=4: device 3 processes micro-batch 1 (layers [6,8))
-  t=5: device 3 processes micro-batch 2 (layers [6,8))
-
-Comparing each micro-batch's PIPELINED result against Chapter 13's own UN-PIPELINED reference for the same input:
-  micro-batch 0, input (1.00, 1.00): reference = (0.3285223992, 0.2628870847), pipelined = (0.3285223992, 0.2628870847) -- PASS (bit-identical)
-  micro-batch 1, input (2.00, -1.00): reference = (0.3181013191, 0.2436102732), pipelined = (0.3181013191, 0.2436102732) -- PASS (bit-identical)
-  micro-batch 2, input (0.50, 3.00): reference = (0.3560831617, 0.3077149331), pipelined = (0.3560831617, 0.3077149331) -- PASS (bit-identical)
-
-All 3 micro-batch(es) bit-identical between the pipelined schedule and Chapter 13's own un-pipelined reference: PASS
-```
-
-</details>
 
 Part A confirms Section 15.1's own counted fraction generalizes exactly: plugging `K=4, M=6` into `(K-1)/(M+K-1)` gives `3/9 = 0.3333...`, matching Section 15.1's directly-counted `12/36` exactly, not approximately. At GPipe's own cited threshold, every real `K` this book has used lands under 20% -- including the 35-way split Chapter 13's own GPT-3 example required -- which is squarely consistent with GPipe's own characterization of that overhead as negligible rather than zero. Part B is this chapter's real correctness verification: even though device 0 raced ahead to start micro-batch 2 while device 3 was still working on micro-batch 0 -- visibly, in the interleaved trace above -- every micro-batch's own final result matches Chapter 13's un-pipelined reference exactly. Interleaving changed *when* each device did its work; it never touched *what* any individual micro-batch's own chain of layers computed.
 

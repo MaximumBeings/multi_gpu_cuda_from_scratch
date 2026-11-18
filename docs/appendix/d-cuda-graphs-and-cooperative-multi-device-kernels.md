@@ -1,11 +1,5 @@
 # Appendix D: CUDA Graphs and Cooperative Multi-Device Kernels
 
-<!-- execution:provenance -->
-!!! info "Execution provenance"
-
-    Current execution blocks identify the tested source hash, hardware dataset, commands and captured output. References elsewhere on this page to a device-less environment describe the original authoring context. Historical output is superseded by the current record. Displayed output omits the runner command header and trims trailing line whitespace; raw logs remain exact. A host simulation or API validation has its stated scope; neither alone establishes a numerical multi-GPU workload or measured performance.
-
-
 <!-- mgpu:opener:start -->
 [![Appendix D: CUDA Graphs and Cooperative Multi-Device Kernels](../images/chapter-openers/appendix-d.svg)](../images/chapter-openers/appendix-d.svg)
 <!-- mgpu:opener:end -->
@@ -89,7 +83,9 @@ int main(){
 ```
 
 <!-- execution:start:a100:129_graph_exec_update.cu -->
-> **Current execution — 2026-11-17-a100: Numerical/transport validation (recorded scope).** UTC (program start): `2026-11-17T23:59:13.649280+00:00`. Source SHA-256: `3b5541db649c285e9059c68df38dc2c21aa9d0b16a7d47249a3ac4b22bb6c795`.
+> **Compiled and executed — 2026-11-17-a100: Numerical/transport validation (recorded scope).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-17T23:59:14.766231+00:00`.
+
+<!-- execution:metadata Source SHA-256: 3b5541db649c285e9059c68df38dc2c21aa9d0b16a7d47249a3ac4b22bb6c795; recorded UTC (program start): 2026-11-17T23:59:13.649280+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-a100/129_graph_exec_update/129_graph_exec_update.cu) · [Compiler log](../validation/2026-11-17-a100/129_graph_exec_update/compile.log) · [Execution log](../validation/2026-11-17-a100/129_graph_exec_update/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -100,19 +96,21 @@ nvcc -std=c++17 -O2 -arch=sm_80 129_graph_exec_update.cu -o ./example
 ./example
 ```
 
-<details markdown="1"><summary>Captured current-source output</summary>
+**Sample output**
 
 ```text
 Compatible update: new pointer and scalar argument; original buffer unchanged.
 VALIDATION PASS: errors=0
 ```
 
-</details>
+
 <!-- execution:end:a100:129_graph_exec_update.cu -->
 
 
 <!-- execution:start:h100:129_graph_exec_update.cu -->
-> **Current execution — 2026-11-17-h100: Numerical/transport validation (recorded scope).** UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`. Source SHA-256: `3b5541db649c285e9059c68df38dc2c21aa9d0b16a7d47249a3ac4b22bb6c795`.
+> **Compiled and executed — 2026-11-17-h100: Numerical/transport validation (recorded scope).** Hardware: 2 H100 GPUs. Execution record UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`.
+
+<!-- execution:metadata Source SHA-256: 3b5541db649c285e9059c68df38dc2c21aa9d0b16a7d47249a3ac4b22bb6c795; recorded UTC (run-batch start; per-program time unrecorded): 2026-11-17T23:48:18.967387+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-h100/129_graph_exec_update/129_graph_exec_update.cu) · [Compiler log](../validation/2026-11-17-h100/129_graph_exec_update/compile.log) · [Execution log](../validation/2026-11-17-h100/129_graph_exec_update/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -143,59 +141,6 @@ nvcc -arch=sm_80 129_graph_exec_update.cu -o 129_graph_exec_update
 
 **Sample input:** none -- both captured graphs operate on fixed 8-element buffers; the point under test is the API sequence itself, not any particular data.
 
-**Sample output:**
-
-<details markdown="1"><summary>Historical authoring output — superseded by the current execution above</summary>
-
-```text
-=== Section D.1: cudaGraphExecUpdate() on Chapter 23's own graph shape ===
-
-  cudaGetDeviceCount                     -> cudaErrorNoDevice            (no CUDA-capable device is detected)
-  deviceCount = 0
-
-  cudaMalloc                             -> cudaErrorNoDevice            (no CUDA-capable device is detected)
-  cudaStreamCreate                       -> cudaErrorNoDevice            (no CUDA-capable device is detected)
-
---- first capture + instantiate (Chapter 23 File 66's own shape) ---
-
-  cudaStreamBeginCapture/EndCapture #1   -> cudaErrorNoDevice            (no CUDA-capable device is detected)
-  (skipping cudaGraphInstantiate -- capture #1 itself reports cudaErrorNoDevice,
-   exactly Chapter 23 File 66's own finding: the CUDA Runtime's per-thread
-   initialization fails once, permanently, the moment it discovers zero devices,
-   and every subsequent runtime call in this file -- stream capture, instantiate,
-   update, included -- genuinely executes, checks that same failed state, and
-   returns its own honest cudaErrorNoDevice rather than being silently skipped)
-
---- second capture: a STRUCTURALLY IDENTICAL graph (same node types, same
-    dependency shape -- only the data cudaMalloc'd this call points to differs) ---
-
-  cudaStreamBeginCapture/EndCapture #2   -> cudaErrorNoDevice            (no CUDA-capable device is detected)
-
---- cudaGraphExecUpdate(): patch graphExec in place to match graph2,
-    instead of instantiating a brand-new cudaGraphExec_t from scratch ---
-
-  (skipping the actual cudaGraphExecUpdate call -- graphExec was never
-   successfully instantiated above, so there is nothing real to update; this
-   file still reports the real API sequence and honest failure reason rather
-   than skipping the attempt silently)
-
-=== what cudaGraphExecUpdate() is actually FOR ===
-
-A real training loop that re-captures Chapter 23's own graph shape every
-iteration is doing exactly what CUDA Graphs exist to avoid -- the whole benefit
-NCCL's own user guide describes for File 67's captured ncclAllReduce() (removing
-"the per-step CPU launch overhead of re-issuing the collective by hand every
-iteration") disappears if the CPU has to re-issue a fresh cudaStreamBeginCapture()/
-cudaGraphInstantiate() pair every time too. cudaGraphExecUpdate() lets an
-application capture the SAME structural graph once per iteration (typically because
-the kernel's own arguments, like this file's data pointer, come from a fresh
-cudaMalloc() or a rotating buffer) and patch the ALREADY-instantiated cudaGraphExec_t
-to match it -- an update, not a re-instantiate, is enough whenever the graph's own
-topology (node count, node types, dependency edges) is unchanged and only a node's
-own parameters differ.
-```
-
-</details>
 
 ## D.2 Cooperative Multi-Device Kernels, and Why They're Deprecated
 
@@ -221,14 +166,13 @@ DSA's own sibling Appendix D.3 introduced `cg::this_grid()`/`grid.sync()`: a gen
   (both real, both deprecated in this installed toolkit)
 ```
 
-The installed `cuda_runtime_api.h`'s own doc comment for `cudaLaunchCooperativeKernelMultiDevice()` states its default behavior precisely: the kernel will not begin on any GPU until all prior work on every specified stream has completed (a pre-sync barrier around the whole launch), and any subsequent work on those streams will not begin until every GPU's kernel has completed (a post-sync barrier) -- both overridable per call via `cudaCooperativeLaunchMultiDeviceNoPreSync`/`...NoPostSync`. The same header also requires each entry's `cudaLaunchParams::stream` to be a real stream: it "cannot be the NULL stream or `cudaStreamLegacy` or `cudaStreamPerThread`", which is why File 130 below creates an explicit stream rather than passing `0`. And the host launch function is itself deprecated, not only its device-side counterpart: `cuda_runtime_api.h` declares it `extern __CUDA_DEPRECATED __host__ cudaError_t CUDARTAPI cudaLaunchCooperativeKernelMultiDevice(...)`, so any call to it draws a `-Wdeprecated-declarations` warning from the host compiler (checked separately; File 130 deliberately does not call it). That is a host-level bracket around the launch as a whole, not a way for a thread on one device to wait, mid-kernel, for a thread on another. The device-side primitive that actually reaches across devices from inside a kernel is a separate call, `cg::multi_grid_group::sync()`, reachable only after calling `cg::this_multi_grid()` -- and this installed toolkit's own `cooperative_groups.h` marks every single method on `multi_grid_group` (`sync()`, `size()`, `thread_rank()`, `grid_rank()`, `num_grids()`, `is_valid()`) and `this_multi_grid()` itself with a real compiler attribute, `_CG_DEPRECATED`, which expands to `__attribute__((deprecated))` on this platform -- genuinely triggering compiler warnings, not a comment anyone could miss in passing. The device attribute that reports whether a device supports the multi-device launch at all, `cudaDevAttrCooperativeMultiDeviceLaunch`, carries the same verdict directly in its own doc comment in the installed `driver_types.h`: "Deprecated, cudaLaunchCooperativeKernelMultiDevice is deprecated."
+The cooperative multi-device launch API is deprecated. File 130 checks its reported capability; File 131 demonstrates a supported composition of cooperative work within each device and explicit event dependencies between devices.
 
 [COMMON TRAP]
 It is tempting to assume that launching a kernel with `cudaLaunchCooperativeKernelMultiDevice()` automatically grants it the ability to synchronize across devices from inside its own code, the same way an ordinary cooperative launch on one device (DSA Appendix D.3) makes `grid.sync()` available. It does not, by itself: the multi-device launch call only brackets the launch from the host side with a pre/post-sync barrier. Reaching across devices from inside the kernel requires the separate, also-deprecated `cg::this_multi_grid()`/`multi_grid_group::sync()` device-side API, and building a kernel that uses it requires `-rdc=true` and linking `-lcudadevrt` (the device runtime library) just to resolve `cudaCGGetIntrinsicHandle`, a symbol the plain compile-and-link recipe used everywhere else in this book does not pull in at all.
 
 ### Code and Verification
 
-> **Validation update:** This updated source has checked API lifetimes and explicit result checks. API probes establish only the API behavior printed by the program; they do not establish numerical collective correctness or fault recovery. Earlier transcripts below belong to the earlier source. The current source was compiled and executed in the dated H100 suite; use the linked record for its numerical, API-probe or other-execution scope.
 
 The [2026-11-17 H100 execution record](../validation-h100.md) covers two GPUs connected by local NV18. It distinguishes numerical checks, API probes and other executions; a successful exit alone does not establish GPU algorithm correctness.
 
@@ -253,7 +197,9 @@ int main() {
 ```
 
 <!-- execution:start:a100:130_cooperative_multi_device.cu -->
-> **Current execution — 2026-11-17-a100: API validation (recorded scope).** UTC (program start): `2026-11-17T23:59:18.039127+00:00`. Source SHA-256: `0c66c335c5c5fdc8fb8a22a5693cebbe474765d3ef8290c91c9257aa35306a79`.
+> **Compiled and executed — 2026-11-17-a100: API validation (recorded scope).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-17T23:59:19.106447+00:00`.
+
+<!-- execution:metadata Source SHA-256: 0c66c335c5c5fdc8fb8a22a5693cebbe474765d3ef8290c91c9257aa35306a79; recorded UTC (program start): 2026-11-17T23:59:18.039127+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-a100/130_cooperative_multi_device/130_cooperative_multi_device.cu) · [Compiler log](../validation/2026-11-17-a100/130_cooperative_multi_device/compile.log) · [Execution log](../validation/2026-11-17-a100/130_cooperative_multi_device/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -264,7 +210,7 @@ nvcc -std=c++17 -O2 -arch=sm_80 -rdc=true 130_cooperative_multi_device.cu -o ./e
 ./example
 ```
 
-<details markdown="1"><summary>Captured current-source output</summary>
+**Sample output**
 
 ```text
 device 0: cooperative=1 deprecated multi-device capability=1
@@ -278,12 +224,14 @@ device 7: cooperative=1 deprecated multi-device capability=1
 API PROBE PASS: capability queries only, errors=0
 ```
 
-</details>
+
 <!-- execution:end:a100:130_cooperative_multi_device.cu -->
 
 
 <!-- execution:start:h100:130_cooperative_multi_device.cu -->
-> **Current execution — 2026-11-17-h100: API validation (recorded scope).** UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`. Source SHA-256: `0c66c335c5c5fdc8fb8a22a5693cebbe474765d3ef8290c91c9257aa35306a79`.
+> **Compiled and executed — 2026-11-17-h100: API validation (recorded scope).** Hardware: 2 H100 GPUs. Execution record UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`.
+
+<!-- execution:metadata Source SHA-256: 0c66c335c5c5fdc8fb8a22a5693cebbe474765d3ef8290c91c9257aa35306a79; recorded UTC (run-batch start; per-program time unrecorded): 2026-11-17T23:48:18.967387+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-h100/130_cooperative_multi_device/130_cooperative_multi_device.cu) · [Compiler log](../validation/2026-11-17-h100/130_cooperative_multi_device/compile.log) · [Execution log](../validation/2026-11-17-h100/130_cooperative_multi_device/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -315,86 +263,6 @@ nvcc -arch=sm_80 -rdc=true 130_cooperative_multi_device.cu -o 130_cooperative_mu
 
 **Sample input:** none -- the `cudaLaunchParams` struct this file builds is populated entirely with compile-time constants (a grid of 1 block, 8 threads).
 
-**Sample output (compiler diagnostics, genuinely emitted during the compile step above):**
-
-<details markdown="1"><summary>Historical authoring output — superseded by the current execution above</summary>
-
-```text
-130_cooperative_multi_device.cu(31): warning #1215-D: function "cooperative_groups::__v1::this_multi_grid"
-/usr/include/cooperative_groups.h(305): here was declared deprecated
-
-Remark: The warnings can be suppressed with "-diag-suppress <warning-number>"
-
-130_cooperative_multi_device.cu(35): warning #1215-D: function "cooperative_groups::__v1::multi_grid_group::sync"
-/usr/include/cooperative_groups.h(260): here was declared deprecated
-```
-
-</details>
-
-**Sample output (program's own stdout, after a successful compile and link):**
-
-```text
-=== Section D.2: cudaLaunchCooperativeKernelMultiDevice() and cg::this_multi_grid() ===
-
-  cudaGetDeviceCount                         -> cudaErrorNoDevice            (no CUDA-capable device is detected)
-  deviceCount = 0
-
-=== what cudaLaunchCooperativeKernelMultiDevice() actually promises ===
-
-Its own real doc comment in cuda_runtime_api.h states the default behavior
-precisely: "the kernel won't begin execution on any GPU until all prior work
-in all the specified streams has completed" (a PRE-sync barrier around the
-whole multi-device launch), and "any subsequent work pushed in any of the
-specified streams will not begin execution until the kernels on all GPUs have
-completed" (a POST-sync barrier). Both defaults can be turned off per-call via
-cudaCooperativeLaunchMultiDeviceNoPreSync / ...NoPostSync. Note precisely what
-this IS: a HOST-side barrier bracketing the launch as a whole. It is NOT, by
-itself, a way for a thread on device 0 to wait for a thread on device 1 to
-reach a specific point INSIDE the kernel -- that mid-kernel, device-to-device
-wait is a SEPARATE capability, provided only by the device-side
-cg::multi_grid_group::sync() call this file's own multi_device_kernel() above
-uses.
-
-=== confirming both pieces are real, and both are deprecated ===
-
-  cudaDeviceGetAttribute(CooperativeMultiDeviceLaunch) -> cudaErrorNoDevice            (no CUDA-capable device is detected)
-  (this attribute's own real doc comment in driver_types.h reads, verbatim:
-   "Deprecated, cudaLaunchCooperativeKernelMultiDevice is deprecated.")
-
-  cudaStreamCreate(&launchStream)            -> cudaErrorNoDevice            (no CUDA-capable device is detected)
-
-real cudaLaunchParams built (func=0x5584c241a498, gridDim=1, blockDim=8, an explicit
-non-NULL stream from cudaStreamCreate() as the header requires) -- on a real
-device, this is the struct cudaLaunchCooperativeKernelMultiDevice() consumes.
-Here stream creation itself fails (no device), so the launch is not attempted;
-the kernel function symbol itself is real -- confirmed non-null
-
-the host launch function is itself deprecated, not just the device side:
-cuda_runtime_api.h declares it as
-  extern __CUDA_DEPRECATED __host__ cudaError_t CUDARTAPI
-  cudaLaunchCooperativeKernelMultiDevice(struct cudaLaunchParams *launchParamsList,
-      unsigned int numDevices, unsigned int flags __dv(0));
-so any call to it draws its own deprecation warning at compile time (this file
-deliberately does not call it, so its two warnings below come from the
-device-side API only).
-
-compiling this file requires -rdc=true and -lcudadevrt (relocatable device
-code + the device runtime library) just for multi_device_kernel() to LINK at
-all -- without them, ptxas genuinely fails with "Unresolved extern function
-'cudaCGGetIntrinsicHandle'", confirmed by trying the plain compile first --
-and even once it links cleanly, the compiler emits two real deprecation
-warnings for this file's own multi_device_kernel(), reproduced verbatim in
-this file's own locked Compile-and-run block below (warning #1215-D, for
-cg::this_multi_grid() and for cg::multi_grid_group::sync(), both pointing at
-real line numbers inside the installed cooperative_groups.h).
-
-self-check: cudaDevAttrCooperativeMultiDeviceLaunch resolves to a real integer
-attribute id, cudaLaunchParams accepted a real, non-null kernel function
-pointer, and the kernel using cg::this_multi_grid()/multi_grid_group::sync()
-compiled and linked successfully (with -rdc=true/-lcudadevrt) despite the
-multi-device API, host and device side, being deprecated in this installed
-CUDA 12.0 toolkit: confirmed
-```
 
 (the printed function pointer `0x5584c241a498` is a real address from this build and will differ run to run; only its non-null-ness is the thing being checked)
 
@@ -477,7 +345,9 @@ int main(){
 ```
 
 <!-- execution:start:a100:131_modern_composed_equivalent.cu -->
-> **Current execution — 2026-11-17-a100: Numerical/transport validation (recorded scope).** UTC (program start): `2026-11-17T23:59:21.878629+00:00`. Source SHA-256: `aec29136fb84fb03282c5159d44579632814ad5f51efc010a829c4483c2792da`.
+> **Compiled and executed — 2026-11-17-a100: Numerical/transport validation (recorded scope).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-17T23:59:25.503780+00:00`.
+
+<!-- execution:metadata Source SHA-256: aec29136fb84fb03282c5159d44579632814ad5f51efc010a829c4483c2792da; recorded UTC (program start): 2026-11-17T23:59:21.878629+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-a100/131_modern_composed_equivalent/131_modern_composed_equivalent.cu) · [Compiler log](../validation/2026-11-17-a100/131_modern_composed_equivalent/compile.log) · [Execution log](../validation/2026-11-17-a100/131_modern_composed_equivalent/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -488,19 +358,21 @@ nvcc -std=c++17 -O2 -arch=sm_80 131_modern_composed_equivalent.cu -o ./example
 ./example
 ```
 
-<details markdown="1"><summary>Captured current-source output</summary>
+**Sample output**
 
 ```text
 Two cooperative blocks on GPU0; whole-kernel event dependency to GPU1. Separate buffers, no data transfer.
 VALIDATION PASS: errors=0
 ```
 
-</details>
+
 <!-- execution:end:a100:131_modern_composed_equivalent.cu -->
 
 
 <!-- execution:start:h100:131_modern_composed_equivalent.cu -->
-> **Current execution — 2026-11-17-h100: Numerical/transport validation (recorded scope).** UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`. Source SHA-256: `aec29136fb84fb03282c5159d44579632814ad5f51efc010a829c4483c2792da`.
+> **Compiled and executed — 2026-11-17-h100: Numerical/transport validation (recorded scope).** Hardware: 2 H100 GPUs. Execution record UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`.
+
+<!-- execution:metadata Source SHA-256: aec29136fb84fb03282c5159d44579632814ad5f51efc010a829c4483c2792da; recorded UTC (run-batch start; per-program time unrecorded): 2026-11-17T23:48:18.967387+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-h100/131_modern_composed_equivalent/131_modern_composed_equivalent.cu) · [Compiler log](../validation/2026-11-17-h100/131_modern_composed_equivalent/compile.log) · [Execution log](../validation/2026-11-17-h100/131_modern_composed_equivalent/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -531,81 +403,6 @@ nvcc -arch=sm_80 131_modern_composed_equivalent.cu -o 131_modern_composed_equiva
 
 **Sample input:** none -- both device kernels operate on fixed 8-element buffers; the point under test is the composed API sequence.
 
-**Sample output:**
-
-<details markdown="1"><summary>Historical authoring output — superseded by the current execution above</summary>
-
-```text
-=== Section D.3: composing single-device grid.sync() with Chapter 23's own
-    cross-device event capture -- the non-deprecated equivalent ===
-
-  cudaGetDeviceCount                       -> cudaErrorNoDevice            (no CUDA-capable device is detected)
-  deviceCount = 0
-
-=== the composed real API sequence this file genuinely attempts ===
-
-  1. cudaSetDevice(0); cudaStreamCreate(&stream0)
-  2. cudaStreamBeginCapture(stream0, Global)          <- Chapter 23 File 66's origin stream
-  3. cudaLaunchKernelEx(&coopCfg, device0_kernel, ...) (grid.sync() WITHIN device 0)
-  4. cudaEventRecord(ev, stream0)                     <- the real cross-device edge
-  5. cudaSetDevice(1); cudaStreamCreate(&stream1)
-  6. cudaStreamWaitEvent(stream1, ev, 0)               <- Chapter 6's own real API,
-                                                          captured (Chapter 23's finding)
-  7. device1_kernel<<<...,stream1>>>(...)
-  8. cudaEventRecord(evJoin, stream1)                 <- JOIN stream1 back...
-  9. cudaSetDevice(0); cudaStreamWaitEvent(stream0, evJoin, 0)
-                                                      ...into the origin stream
- 10. cudaStreamEndCapture(stream0, &graph)            <- ONE graph, TWO devices
- 11. cudaGraphInstantiate(...); cudaGraphLaunch(...)
-
-  step 3 uses cudaLaunchKernelEx() with cudaLaunchAttributeCooperative, not a
-  plain <<<...>>> launch: grid.sync() is only valid in a cooperative launch.
-  steps 8-9 are required: a forked stream that is not joined back before
-  cudaStreamEndCapture() makes capture fail with
-  cudaErrorStreamCaptureUnjoined (904) on real hardware.
-
-  cudaSetDevice(0)                         -> cudaErrorNoDevice            (no CUDA-capable device is detected)
-  cudaStreamCreate(&stream0)               -> cudaErrorNoDevice            (no CUDA-capable device is detected)
-  cudaStreamBeginCapture(stream0)          -> cudaErrorNoDevice            (no CUDA-capable device is detected)
-  cudaLaunchKernelEx(cooperative)          -> cudaErrorNoDevice            (no CUDA-capable device is detected)
-  cudaEventRecord(ev, stream0)             -> cudaErrorNoDevice            (no CUDA-capable device is detected)
-  cudaSetDevice(1)                         -> cudaErrorNoDevice            (no CUDA-capable device is detected)
-  cudaStreamCreate(&stream1)               -> cudaErrorNoDevice            (no CUDA-capable device is detected)
-  cudaStreamWaitEvent(stream1, ev)         -> cudaErrorNoDevice            (no CUDA-capable device is detected)
-  cudaEventRecord(evJoin, stream1)         -> cudaErrorNoDevice            (no CUDA-capable device is detected)
-  cudaSetDevice(0) (back)                  -> cudaErrorNoDevice            (no CUDA-capable device is detected)
-  cudaStreamWaitEvent(stream0, evJoin)     -> cudaErrorNoDevice            (no CUDA-capable device is detected)
-  cudaStreamEndCapture(stream0, &graph)    -> cudaErrorNoDevice            (no CUDA-capable device is detected)
-  (skipping instantiate/launch -- capture itself already reports the same
-   honest cudaErrorNoDevice every real call in this file has reported since
-   cudaSetDevice(0), exactly Chapter 23's own established finding: the runtime's
-   per-thread init fails once, permanently, and every subsequent call genuinely
-   executes and checks that same failed state)
-
-=== why this composition, not the deprecated single call ===
-
-cudaLaunchCooperativeKernelMultiDevice() (Section D.2) would have given ONE
-host-level pre/post-sync bracket around a same-kernel, all-devices launch, in
-one call -- but it is deprecated, and so is the only device-side primitive
-(cg::multi_grid_group::sync()) that could reach across devices from INSIDE a
-kernel. The composition this file just attempted needs no deprecated API at
-all: grid.sync() (still current) handles cross-block synchronization WITHIN
-each device's own kernel, and a captured cudaEventRecord()/cudaStreamWaitEvent()
-pair (Chapter 23's own real finding, itself resting on Chapter 6's own real
-cross-stream synchronization) handles the dependency BETWEEN devices -- two
-separate, well-supported tools. Note what the composition does NOT give back:
-the captured event is a stream-level edge between whole kernels, not a
-barrier device code can call mid-kernel. Device 1's kernel starts only after
-device 0's kernel has finished; no thread on one device can wait, inside a
-running kernel, for a thread on another the way multi_grid_group::sync() did.
-
-self-check: every real API call in this composed sequence reports the SAME
-honest cudaErrorNoDevice this environment reports for every device-touching
-call since Chapter 2, confirming the full sequence was genuinely attempted and
-not silently skipped: confirmed
-```
-
-</details>
 
 ## D.4 When to Reach for Which Tool
 

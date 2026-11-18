@@ -1,11 +1,5 @@
 # Chapter 8: Broadcast and Reduce: The First Two Collectives, By Hand
 
-<!-- execution:provenance -->
-!!! info "Execution provenance"
-
-    Current execution blocks identify the tested source hash, hardware dataset, commands and captured output. References elsewhere on this page to a device-less environment describe the original authoring context. Historical output is superseded by the current record. Displayed output omits the runner command header and trims trailing line whitespace; raw logs remain exact. A host simulation or API validation has its stated scope; neither alone establishes a numerical multi-GPU workload or measured performance.
-
-
 <!-- mgpu:opener:start -->
 [![Chapter 8: Broadcast and Reduce: The First Two Collectives, By Hand](../images/chapter-openers/08.svg)](../images/chapter-openers/08.svg)
 <!-- mgpu:opener:end -->
@@ -74,7 +68,9 @@ int main() {
 ```
 
 <!-- execution:start:a100:20_broadcast_by_hand.cu -->
-> **Current execution — 2026-11-17-a100: Numerical/transport validation (recorded scope).** UTC (program start): `2026-11-18T00:01:09.174909+00:00`. Source SHA-256: `b4f21489e3581a967b24259f6387068c0b98a38ac1ac98ae519b622d4f065433`.
+> **Compiled and executed — 2026-11-17-a100: Numerical/transport validation (recorded scope).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:01:10.712404+00:00`.
+
+<!-- execution:metadata Source SHA-256: b4f21489e3581a967b24259f6387068c0b98a38ac1ac98ae519b622d4f065433; recorded UTC (program start): 2026-11-18T00:01:09.174909+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-a100/20_broadcast_by_hand/20_broadcast_by_hand.cu) · [Compiler log](../validation/2026-11-17-a100/20_broadcast_by_hand/compile.log) · [Execution log](../validation/2026-11-17-a100/20_broadcast_by_hand/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -85,18 +81,20 @@ nvcc -std=c++17 -O2 -arch=sm_80 20_broadcast_by_hand.cu -o ./example
 ./example
 ```
 
-<details markdown="1"><summary>Captured current-source output</summary>
+**Sample output**
 
 ```text
 PASS: broadcast on 4 GPUs, all nonuniform output values checked.
 ```
 
-</details>
+
 <!-- execution:end:a100:20_broadcast_by_hand.cu -->
 
 
 <!-- execution:start:h100:20_broadcast_by_hand.cu -->
-> **Current execution — 2026-11-17-h100: Numerical/transport validation (recorded scope).** UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`. Source SHA-256: `b4f21489e3581a967b24259f6387068c0b98a38ac1ac98ae519b622d4f065433`.
+> **Compiled and executed — 2026-11-17-h100: Numerical/transport validation (recorded scope).** Hardware: 2 H100 GPUs. Execution record UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`.
+
+<!-- execution:metadata Source SHA-256: b4f21489e3581a967b24259f6387068c0b98a38ac1ac98ae519b622d4f065433; recorded UTC (run-batch start; per-program time unrecorded): 2026-11-17T23:48:18.967387+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-h100/20_broadcast_by_hand/20_broadcast_by_hand.cu) · [Compiler log](../validation/2026-11-17-h100/20_broadcast_by_hand/compile.log) · [Execution log](../validation/2026-11-17-h100/20_broadcast_by_hand/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -117,23 +115,7 @@ PASS: broadcast on 2 GPUs, all nonuniform output values checked.
 <!-- execution:end:h100:20_broadcast_by_hand.cu -->
 
 
-**Current-source scope:** Real device buffers implement broadcast; integer reference checks every output. Host-staged reductions deliberately use CPU arithmetic and are not GPU reduction kernels. The current source was compiled and executed in the dated H100 suite; use the linked record for its numerical, API-probe or other-execution scope. The output below is retained from the earlier authoring diagnostic and is not evidence for this replacement source.
-
 The [2026-11-17 H100 execution record](../validation-h100.md) covers two GPUs connected by local NV18. It distinguishes numerical checks, API probes and other executions; a successful exit alone does not establish GPU algorithm correctness.
-
-<details markdown="1"><summary>Historical authoring output — superseded by the current execution above</summary>
-
-```
-cudaGetDeviceCount(): 0 device(s).
-cudaSetDevice(root=0): no CUDA-capable device is detected (code 100)
-cudaMalloc(root's data): no CUDA-capable device is detected (code 100)
-Broadcast reached 0 of 0 non-root device(s). On real hardware
-this same loop -- one cudaMemcpyPeer per non-root device, all from
-the same unchanging root pointer -- delivers an identical copy of
-the root's data to every other device.
-```
-
-</details>
 
 File 20 initializes nonuniform data, broadcasts over real GPU transport and checks destination values in the H100 run. The simulation below independently checks the modeled broadcast logic for its stated cases.
 
@@ -191,7 +173,9 @@ int main() {
 ```
 
 <!-- execution:start:a100:21_reduce_by_hand.cu -->
-> **Current execution — 2026-11-17-a100: Numerical/transport validation (recorded scope).** UTC (program start): `2026-11-18T00:01:14.588057+00:00`. Source SHA-256: `31af26d63bb08f04ea9be7f5ff0c894aebeda6eb77b8a8462d4e33ee843fe5a9`.
+> **Compiled and executed — 2026-11-17-a100: Numerical/transport validation (recorded scope).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:01:16.106772+00:00`.
+
+<!-- execution:metadata Source SHA-256: 31af26d63bb08f04ea9be7f5ff0c894aebeda6eb77b8a8462d4e33ee843fe5a9; recorded UTC (program start): 2026-11-18T00:01:14.588057+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-a100/21_reduce_by_hand/21_reduce_by_hand.cu) · [Compiler log](../validation/2026-11-17-a100/21_reduce_by_hand/compile.log) · [Execution log](../validation/2026-11-17-a100/21_reduce_by_hand/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -202,18 +186,20 @@ nvcc -std=c++17 -O2 -arch=sm_80 21_reduce_by_hand.cu -o ./example
 ./example
 ```
 
-<details markdown="1"><summary>Captured current-source output</summary>
+**Sample output**
 
 ```text
 PASS: host-staged reduce to root on 4 GPUs, all nonuniform output values checked.
 ```
 
-</details>
+
 <!-- execution:end:a100:21_reduce_by_hand.cu -->
 
 
 <!-- execution:start:h100:21_reduce_by_hand.cu -->
-> **Current execution — 2026-11-17-h100: Numerical/transport validation (recorded scope).** UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`. Source SHA-256: `31af26d63bb08f04ea9be7f5ff0c894aebeda6eb77b8a8462d4e33ee843fe5a9`.
+> **Compiled and executed — 2026-11-17-h100: Numerical/transport validation (recorded scope).** Hardware: 2 H100 GPUs. Execution record UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`.
+
+<!-- execution:metadata Source SHA-256: 31af26d63bb08f04ea9be7f5ff0c894aebeda6eb77b8a8462d4e33ee843fe5a9; recorded UTC (run-batch start; per-program time unrecorded): 2026-11-17T23:48:18.967387+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-h100/21_reduce_by_hand/21_reduce_by_hand.cu) · [Compiler log](../validation/2026-11-17-h100/21_reduce_by_hand/compile.log) · [Execution log](../validation/2026-11-17-h100/21_reduce_by_hand/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -234,22 +220,7 @@ PASS: host-staged reduce to root on 2 GPUs, all nonuniform output values checked
 <!-- execution:end:h100:21_reduce_by_hand.cu -->
 
 
-**Current-source scope:** Real device buffers implement host-staged reduce to root; integer reference checks every output. Host-staged reductions deliberately use CPU arithmetic and are not GPU reduction kernels. The current source was compiled and executed in the dated H100 suite; use the linked record for its numerical, API-probe or other-execution scope. The output below is retained from the earlier authoring diagnostic and is not evidence for this replacement source.
-
 The [2026-11-17 H100 execution record](../validation-h100.md) covers two GPUs connected by local NV18. It distinguishes numerical checks, API probes and other executions; a successful exit alone does not establish GPU algorithm correctness.
-
-<details markdown="1"><summary>Historical authoring output — superseded by the current execution above</summary>
-
-```
-cudaGetDeviceCount(): 0 device(s).
-Reduced 0 of 0 device(s) into the host accumulator. On real
-hardware this same per-device stage-then-accumulate loop produces
-the elementwise sum across every device's buffer -- the reduce
-collective's defining result, computed here entirely on the host
-since no device kernel is needed for the accumulation step.
-```
-
-</details>
 
 File 21 checks GPU transport and host reduction arithmetic against a reference in the H100 run. Its combining arithmetic is on the host; this is not a GPU reduction-kernel benchmark.
 
@@ -262,7 +233,7 @@ The [2026-11-17 H100 execution record](../validation-h100.md) covers two GPUs co
 
 ### Intuition
 
-The preceding broadcast and reduce examples now have numerical H100 checks. This host simulation supplements them with independent arithmetic checks at modeled rank counts. It does not establish asynchronous visibility, physical transport performance or correctness on untested GPU topologies.
+The GPU broadcast and reduce checks validate actual data movement. The host simulation independently explores additional rank counts and arithmetic cases.
 
 The [2026-11-17 H100 execution record](../validation-h100.md) covers two GPUs connected by local NV18. It distinguishes numerical checks, API probes and other executions; a successful exit alone does not establish GPU algorithm correctness.
 
@@ -371,7 +342,9 @@ int main() {
 ```
 
 <!-- execution:start:a100:22_collectives_simulation.cpp -->
-> **Current execution — 2026-11-17-a100: Host program/model (exit-only).** UTC (program start): `2026-11-18T00:01:19.932180+00:00`. Source SHA-256: `d4ae2885d106db3e9db093ebcad90a1438c83d898eb8f87062a7c9dfc0a8acbb`.
+> **Compiled and executed — 2026-11-17-a100: Host program/model (exit-only).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:01:20.298089+00:00`.
+
+<!-- execution:metadata Source SHA-256: d4ae2885d106db3e9db093ebcad90a1438c83d898eb8f87062a7c9dfc0a8acbb; recorded UTC (program start): 2026-11-18T00:01:19.932180+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-a100/22_collectives_simulation/22_collectives_simulation.cpp) · [Compiler log](../validation/2026-11-17-a100/22_collectives_simulation/compile.log) · [Execution log](../validation/2026-11-17-a100/22_collectives_simulation/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -382,7 +355,7 @@ g++ -std=c++17 -O2 22_collectives_simulation.cpp -o ./example
 ./example
 ```
 
-<details markdown="1"><summary>Captured current-source output</summary>
+**Sample output**
 
 ```text
 Broadcast: all 4 devices hold an identical copy of the root's data: PASS
@@ -391,12 +364,14 @@ Reduce (device order 3..0): result matches independent reference: PASS
 Both accumulation orders produce the IDENTICAL result (true for integers; NOT guaranteed for floating point): PASS
 ```
 
-</details>
+
 <!-- execution:end:a100:22_collectives_simulation.cpp -->
 
 
 <!-- execution:start:h100:22_collectives_simulation.cpp -->
-> **Current execution — 2026-11-17-h100: Host program/model (exit-only).** UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`. Source SHA-256: `d4ae2885d106db3e9db093ebcad90a1438c83d898eb8f87062a7c9dfc0a8acbb`.
+> **Compiled and executed — 2026-11-17-h100: Host program/model (exit-only).** Hardware: 2 H100 GPUs. Execution record UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`.
+
+<!-- execution:metadata Source SHA-256: d4ae2885d106db3e9db093ebcad90a1438c83d898eb8f87062a7c9dfc0a8acbb; recorded UTC (run-batch start; per-program time unrecorded): 2026-11-17T23:48:18.967387+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-h100/22_collectives_simulation/22_collectives_simulation.cpp) · [Compiler log](../validation/2026-11-17-h100/22_collectives_simulation/compile.log) · [Execution log](../validation/2026-11-17-h100/22_collectives_simulation/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -419,19 +394,6 @@ Both accumulation orders produce the IDENTICAL result (true for integers; NOT gu
 </details>
 <!-- execution:end:h100:22_collectives_simulation.cpp -->
 
-
-Genuinely compiled with `g++` and genuinely run. Locked output, deterministic across repeated runs:
-
-<details markdown="1"><summary>Historical authoring output — superseded by the current execution above</summary>
-
-```
-Broadcast: all 4 devices hold an identical copy of the root's data: PASS
-Reduce (device order 0..3): result matches independent reference: PASS
-Reduce (device order 3..0): result matches independent reference: PASS
-Both accumulation orders produce the IDENTICAL result (true for integers; NOT guaranteed for floating point): PASS
-```
-
-</details>
 
 All four checks pass. The broadcast check confirms Section 8.1's algorithm actually produces identical copies at every device, for real, checkable data -- not just a correctly compiled loop with nothing to verify it against. The two reduce checks confirm the sum is correct regardless of device order, and the fourth check confirms both orderings agree with each other exactly -- the specific property Section 8.2's Common Trap named as true for integers and explicitly not guaranteed for floating point.
 
@@ -475,7 +437,7 @@ Chapter 9 builds ring all-reduce -- the algorithm that combines every device's d
 
 **7.** This widening guards against integer overflow, not accumulation order. Summing several `int`-typed device values could exceed the range a 32-bit `int` can represent, producing a wrapped-around, silently wrong result even though the *order* of accumulation was never in question. Using `long long` for the running accumulator (while the per-device staged values remain `int`, matching what a real device buffer of that type would hold) keeps the intermediate sum correct regardless of how large it grows, which is a separate concern from the order-independence question Section 8.3's simulation focuses on.
 
-**8.** Numerical collective checks must compare the data relationship across participating ranks after completion. A successful API return, capability query or historical no-device diagnostic cannot establish that relationship. The current H100 checks exercise actual two-GPU data; the simulation independently checks additional modeled cases.
+**8.** Compare each collective’s completed output with its expected data relationship. The device tests check actual transfers, and the host models independently explore additional algorithm cases.
 
 ---
 

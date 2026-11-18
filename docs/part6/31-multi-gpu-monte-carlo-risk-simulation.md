@@ -1,11 +1,5 @@
 # Chapter 31: Multi-GPU Monte Carlo Risk Simulation
 
-<!-- execution:provenance -->
-!!! info "Execution provenance"
-
-    Current execution blocks identify the tested source hash, hardware dataset, commands and captured output. References elsewhere on this page to a device-less environment describe the original authoring context. Historical output is superseded by the current record. Displayed output omits the runner command header and trims trailing line whitespace; raw logs remain exact. A host simulation or API validation has its stated scope; neither alone establishes a numerical multi-GPU workload or measured performance.
-
-
 <!-- mgpu:opener:start -->
 [![Chapter 31: Multi-GPU Monte Carlo Risk Simulation](../images/chapter-openers/31.svg)](../images/chapter-openers/31.svg)
 <!-- mgpu:opener:end -->
@@ -185,7 +179,9 @@ int main() {
 ```
 
 <!-- execution:start:a100:90_independent_path_correctness_simulation.cpp -->
-> **Current execution — 2026-11-17-a100: Host program/model (exit-only).** UTC (program start): `2026-11-18T00:05:28.387055+00:00`. Source SHA-256: `6ae1e1b96c842c49da43d72be12a411fa20e5188b0ea4ad4a659d2ce12d64905`.
+> **Compiled and executed — 2026-11-17-a100: Host program/model (exit-only).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:05:28.752219+00:00`.
+
+<!-- execution:metadata Source SHA-256: 6ae1e1b96c842c49da43d72be12a411fa20e5188b0ea4ad4a659d2ce12d64905; recorded UTC (program start): 2026-11-18T00:05:28.387055+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-a100/90_independent_path_correctness_simulation/90_independent_path_correctness_simulation.cpp) · [Compiler log](../validation/2026-11-17-a100/90_independent_path_correctness_simulation/compile.log) · [Execution log](../validation/2026-11-17-a100/90_independent_path_correctness_simulation/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -196,7 +192,7 @@ g++ -std=c++17 -O2 90_independent_path_correctness_simulation.cpp -o ./example
 ./example
 ```
 
-<details markdown="1"><summary>Captured current-source output</summary>
+**Sample output**
 
 ```text
 Reference (single-process): count=24  mean=10.541666666666666  M2=3837.9583333333348
@@ -214,12 +210,14 @@ P      count      combined mean  combined M2              mean match   M2 match
 Every combined count matches exactly (integer payoff sums are exactly associative, unlike the floating-point mean and M2). The combined MEAN matches the reference exactly at every P tested here -- Chan et al.'s own pairwise mean formula happens to reproduce this dataset's reference mean bit-for-bit. The combined M2 does NOT match at P > 1: a real, tiny (last-few-digits) floating-point difference. Note which side is off: computed exactly in rational arithmetic, this dataset's true M2 rounds to 3837.9583333333335 -- what the combined result gives at every P > 1 except P = 12 (1 ulp low). It is the single-process two-pass REFERENCE that is 3 ulp high. Pairwise combination is a genuinely different formula from the two-pass one, not a regrouping of the same additions, so a bit-for-bit match was never promised in either direction.
 ```
 
-</details>
+
 <!-- execution:end:a100:90_independent_path_correctness_simulation.cpp -->
 
 
 <!-- execution:start:h100:90_independent_path_correctness_simulation.cpp -->
-> **Current execution — 2026-11-17-h100: Host program/model (exit-only).** UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`. Source SHA-256: `6ae1e1b96c842c49da43d72be12a411fa20e5188b0ea4ad4a659d2ce12d64905`.
+> **Compiled and executed — 2026-11-17-h100: Host program/model (exit-only).** Hardware: 2 H100 GPUs. Execution record UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`.
+
+<!-- execution:metadata Source SHA-256: 6ae1e1b96c842c49da43d72be12a411fa20e5188b0ea4ad4a659d2ce12d64905; recorded UTC (run-batch start; per-program time unrecorded): 2026-11-17T23:48:18.967387+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-h100/90_independent_path_correctness_simulation/90_independent_path_correctness_simulation.cpp) · [Compiler log](../validation/2026-11-17-h100/90_independent_path_correctness_simulation/compile.log) · [Execution log](../validation/2026-11-17-h100/90_independent_path_correctness_simulation/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -253,15 +251,6 @@ Every combined count matches exactly (integer payoff sums are exactly associativ
 
 
 Compile and run:
-
-<details markdown="1"><summary>Historical authoring output — superseded by the current execution above</summary>
-
-```
-g++ -O2 -ffp-contract=off 90_independent_path_correctness_simulation.cpp -o 90_independent_path_correctness_simulation
-./90_independent_path_correctness_simulation
-```
-
-</details>
 
 ```text
 Reference (single-process): count=24  mean=10.541666666666666  M2=3837.9583333333348
@@ -438,7 +427,9 @@ int main() {
 ```
 
 <!-- execution:start:a100:91_rng_independence_and_reduction_topology_model.cpp -->
-> **Current execution — 2026-11-17-a100: Host program/model (exit-only).** UTC (program start): `2026-11-18T00:05:28.760314+00:00`. Source SHA-256: `761119d16fe9883726cc9a137ac6568585b5294ded96bccbff33540780a0b3b9`.
+> **Compiled and executed — 2026-11-17-a100: Host program/model (exit-only).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:05:29.175502+00:00`.
+
+<!-- execution:metadata Source SHA-256: 761119d16fe9883726cc9a137ac6568585b5294ded96bccbff33540780a0b3b9; recorded UTC (program start): 2026-11-18T00:05:28.760314+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-a100/91_rng_independence_and_reduction_topology_model/91_rng_independence_and_reduction_topology_model.cpp) · [Compiler log](../validation/2026-11-17-a100/91_rng_independence_and_reduction_topology_model/compile.log) · [Execution log](../validation/2026-11-17-a100/91_rng_independence_and_reduction_topology_model/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -449,7 +440,7 @@ g++ -std=c++17 -O2 91_rng_independence_and_reduction_topology_model.cpp -o ./exa
 ./example
 ```
 
-<details markdown="1"><summary>Captured current-source output</summary>
+**Sample output**
 
 ```text
 --- Real production RNG independence: cuRAND's own real Philox family ---
@@ -467,12 +458,14 @@ Mean match: YES   M2 match: NO
 The mean matches; the M2 does NOT. Both reductions combine the exact SAME 8 partial statistics, using the exact SAME real Chan et al. formula at every step -- the ONLY difference is the ORDER AND GROUPING in which those 8 partial results are combined. The tree's real round-count advantage (fewer rounds: 3 vs 7 here) is not the only reason production systems care which reduction shape they use -- the reduction shape can also change the LAST FEW BITS of a floating-point risk statistic, independently of how the data was partitioned in the first place.
 ```
 
-</details>
+
 <!-- execution:end:a100:91_rng_independence_and_reduction_topology_model.cpp -->
 
 
 <!-- execution:start:h100:91_rng_independence_and_reduction_topology_model.cpp -->
-> **Current execution — 2026-11-17-h100: Host program/model (exit-only).** UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`. Source SHA-256: `761119d16fe9883726cc9a137ac6568585b5294ded96bccbff33540780a0b3b9`.
+> **Compiled and executed — 2026-11-17-h100: Host program/model (exit-only).** Hardware: 2 H100 GPUs. Execution record UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`.
+
+<!-- execution:metadata Source SHA-256: 761119d16fe9883726cc9a137ac6568585b5294ded96bccbff33540780a0b3b9; recorded UTC (run-batch start; per-program time unrecorded): 2026-11-17T23:48:18.967387+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-h100/91_rng_independence_and_reduction_topology_model/91_rng_independence_and_reduction_topology_model.cpp) · [Compiler log](../validation/2026-11-17-h100/91_rng_independence_and_reduction_topology_model/compile.log) · [Execution log](../validation/2026-11-17-h100/91_rng_independence_and_reduction_topology_model/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -506,15 +499,6 @@ The mean matches; the M2 does NOT. Both reductions combine the exact SAME 8 part
 
 
 Compile and run:
-
-<details markdown="1"><summary>Historical authoring output — superseded by the current execution above</summary>
-
-```
-g++ -O2 -ffp-contract=off 91_rng_independence_and_reduction_topology_model.cpp -o 91_rng_independence_and_reduction_topology_model
-./91_rng_independence_and_reduction_topology_model
-```
-
-</details>
 
 ```text
 --- Real production RNG independence: cuRAND's own real Philox family ---
@@ -665,7 +649,9 @@ int main() {
 ```
 
 <!-- execution:start:a100:92_var_percentile_and_allgather_cost_model.cpp -->
-> **Current execution — 2026-11-17-a100: Host program/model (exit-only).** UTC (program start): `2026-11-18T00:05:29.183500+00:00`. Source SHA-256: `3724bca7211e8959f6a443999e8bb20f3ce8aec7c11058ba859c20d141973518`.
+> **Compiled and executed — 2026-11-17-a100: Host program/model (exit-only).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:05:29.548888+00:00`.
+
+<!-- execution:metadata Source SHA-256: 3724bca7211e8959f6a443999e8bb20f3ce8aec7c11058ba859c20d141973518; recorded UTC (program start): 2026-11-18T00:05:29.183500+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-a100/92_var_percentile_and_allgather_cost_model/92_var_percentile_and_allgather_cost_model.cpp) · [Compiler log](../validation/2026-11-17-a100/92_var_percentile_and_allgather_cost_model/compile.log) · [Execution log](../validation/2026-11-17-a100/92_var_percentile_and_allgather_cost_model/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -676,7 +662,7 @@ g++ -std=c++17 -O2 92_var_percentile_and_allgather_cost_model.cpp -o ./example
 ./example
 ```
 
-<details markdown="1"><summary>Captured current-source output</summary>
+**Sample output**
 
 ```text
 Reference (single-process), 100 simulated paths.
@@ -697,12 +683,14 @@ P        Chan et al.: values/rank     exact VaR: values/rank (gather) VaR_99 EXA
 Every rank's own message size for the MEAN/VARIANCE path stays at 3 values, always -- but an EXACT VaR needs each rank to contribute its full local share of the dataset (N/P values per rank) to a gather step, because only the full sorted set determines which value sits at the 99th percentile. Real production systems facing this exact tradeoff at genuinely large scale use approximate streaming-percentile techniques (e.g., t-digest-style sketches) specifically to avoid gathering every raw value -- an extension this chapter's own exact gather model does not build, but names honestly as the real next step production systems take.
 ```
 
-</details>
+
 <!-- execution:end:a100:92_var_percentile_and_allgather_cost_model.cpp -->
 
 
 <!-- execution:start:h100:92_var_percentile_and_allgather_cost_model.cpp -->
-> **Current execution — 2026-11-17-h100: Host program/model (exit-only).** UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`. Source SHA-256: `3724bca7211e8959f6a443999e8bb20f3ce8aec7c11058ba859c20d141973518`.
+> **Compiled and executed — 2026-11-17-h100: Host program/model (exit-only).** Hardware: 2 H100 GPUs. Execution record UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`.
+
+<!-- execution:metadata Source SHA-256: 3724bca7211e8959f6a443999e8bb20f3ce8aec7c11058ba859c20d141973518; recorded UTC (run-batch start; per-program time unrecorded): 2026-11-17T23:48:18.967387+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-h100/92_var_percentile_and_allgather_cost_model/92_var_percentile_and_allgather_cost_model.cpp) · [Compiler log](../validation/2026-11-17-h100/92_var_percentile_and_allgather_cost_model/compile.log) · [Execution log](../validation/2026-11-17-h100/92_var_percentile_and_allgather_cost_model/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -739,15 +727,6 @@ Every rank's own message size for the MEAN/VARIANCE path stays at 3 values, alwa
 
 
 Compile and run:
-
-<details markdown="1"><summary>Historical authoring output — superseded by the current execution above</summary>
-
-```
-g++ -O2 92_var_percentile_and_allgather_cost_model.cpp -o 92_var_percentile_and_allgather_cost_model
-./92_var_percentile_and_allgather_cost_model
-```
-
-</details>
 
 ```text
 Reference (single-process), 100 simulated paths.

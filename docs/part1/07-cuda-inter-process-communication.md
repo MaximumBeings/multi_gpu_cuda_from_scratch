@@ -1,11 +1,5 @@
 # Chapter 7: CUDA Inter-Process Communication: Sharing Memory and Events Across Processes
 
-<!-- execution:provenance -->
-!!! info "Execution provenance"
-
-    Current execution blocks identify the tested source hash, hardware dataset, commands and captured output. References elsewhere on this page to a device-less environment describe the original authoring context. Historical output is superseded by the current record. Displayed output omits the runner command header and trims trailing line whitespace; raw logs remain exact. A host simulation or API validation has its stated scope; neither alone establishes a numerical multi-GPU workload or measured performance.
-
-
 <!-- mgpu:opener:start -->
 [![Chapter 7: CUDA Inter-Process Communication: Sharing Memory and Events Across Processes](../images/chapter-openers/07.svg)](../images/chapter-openers/07.svg)
 <!-- mgpu:opener:end -->
@@ -213,7 +207,9 @@ int main() {
 ```
 
 <!-- execution:start:a100:17_ipc_mem_handle.cu -->
-> **Current execution — 2026-11-17-a100: Numerical/transport validation (recorded scope).** UTC (program start): `2026-11-18T00:00:58.753373+00:00`. Source SHA-256: `fc4bd504bca901310ce7d63d5c62facc6b5093bb53c7ca06864026ce83df4ee5`.
+> **Compiled and executed — 2026-11-17-a100: Numerical/transport validation (recorded scope).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:01:00.171741+00:00`.
+
+<!-- execution:metadata Source SHA-256: fc4bd504bca901310ce7d63d5c62facc6b5093bb53c7ca06864026ce83df4ee5; recorded UTC (program start): 2026-11-18T00:00:58.753373+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-a100/17_ipc_mem_handle/17_ipc_mem_handle.cu) · [Compiler log](../validation/2026-11-17-a100/17_ipc_mem_handle/compile.log) · [Execution log](../validation/2026-11-17-a100/17_ipc_mem_handle/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -224,19 +220,21 @@ nvcc -std=c++17 -O2 -arch=sm_80 17_ipc_mem_handle.cu -o ./example
 ./example
 ```
 
-<details markdown="1"><summary>Captured current-source output</summary>
+**Sample output**
 
 ```text
 Consumer: 4096 / 4096 exact payload values correct.
 PASS: two-process IPC memory, 4096 nonuniform values checked.
 ```
 
-</details>
+
 <!-- execution:end:a100:17_ipc_mem_handle.cu -->
 
 
 <!-- execution:start:h100:17_ipc_mem_handle.cu -->
-> **Current execution — 2026-11-17-h100: Numerical/transport validation (recorded scope).** UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`. Source SHA-256: `fc4bd504bca901310ce7d63d5c62facc6b5093bb53c7ca06864026ce83df4ee5`.
+> **Compiled and executed — 2026-11-17-h100: Numerical/transport validation (recorded scope).** Hardware: 2 H100 GPUs. Execution record UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`.
+
+<!-- execution:metadata Source SHA-256: fc4bd504bca901310ce7d63d5c62facc6b5093bb53c7ca06864026ce83df4ee5; recorded UTC (run-batch start; per-program time unrecorded): 2026-11-17T23:48:18.967387+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-h100/17_ipc_mem_handle/17_ipc_mem_handle.cu) · [Compiler log](../validation/2026-11-17-h100/17_ipc_mem_handle/compile.log) · [Execution log](../validation/2026-11-17-h100/17_ipc_mem_handle/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -257,19 +255,6 @@ PASS: two-process IPC memory, 4096 nonuniform values checked.
 </details>
 <!-- execution:end:h100:17_ipc_mem_handle.cu -->
 
-
-**Historical authoring transcript (earlier single-process source).** The current two-process implementation has a checked nonuniform payload oracle and passed its two-process numerical H100 check on 2026-11-17. This earlier no-device output does not establish successful IPC and is retained only as authoring history.
-
-<details markdown="1"><summary>Historical authoring output — superseded by the current execution above</summary>
-
-```
-cudaMalloc(exported allocation): no CUDA-capable device is detected (code 100)
-cudaIpcGetMemHandle: no CUDA-capable device is detected (code 100)
-cudaIpcOpenMemHandle: no CUDA-capable device is detected (code 100)
-cudaIpcCloseMemHandle: no CUDA-capable device is detected (code 100)
-```
-
-</details>
 
 The earlier single-process no-device diagnostic did not validate IPC. The current listings fork before CUDA initialization, exchange opaque handles through a pipe, use producer GPU 0 and consumer GPU 1, and check 4,096 nonuniform values. Both IPC programs passed on the H100 pair. The exporter waits for the importer to close its mapping before teardown; the event variant also checks a consumer-stream wait. This is a correctness demonstration, not a transfer-overlap benchmark.
 
@@ -443,7 +428,9 @@ int main() {
 ```
 
 <!-- execution:start:a100:18_ipc_event_handle.cu -->
-> **Current execution — 2026-11-17-a100: Numerical/transport validation (recorded scope).** UTC (program start): `2026-11-18T00:01:03.795830+00:00`. Source SHA-256: `5ca751f5113e67325f9bae932f5e16777800d3202b844a28b4c80bf3afffbebf`.
+> **Compiled and executed — 2026-11-17-a100: Numerical/transport validation (recorded scope).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:01:05.264113+00:00`.
+
+<!-- execution:metadata Source SHA-256: 5ca751f5113e67325f9bae932f5e16777800d3202b844a28b4c80bf3afffbebf; recorded UTC (program start): 2026-11-18T00:01:03.795830+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-a100/18_ipc_event_handle/18_ipc_event_handle.cu) · [Compiler log](../validation/2026-11-17-a100/18_ipc_event_handle/compile.log) · [Execution log](../validation/2026-11-17-a100/18_ipc_event_handle/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -454,19 +441,21 @@ nvcc -std=c++17 -O2 -arch=sm_80 18_ipc_event_handle.cu -o ./example
 ./example
 ```
 
-<details markdown="1"><summary>Captured current-source output</summary>
+**Sample output**
 
 ```text
 Consumer: 4096 / 4096 exact payload values correct.
 PASS: two-process IPC memory + event readiness, 4096 nonuniform values checked.
 ```
 
-</details>
+
 <!-- execution:end:a100:18_ipc_event_handle.cu -->
 
 
 <!-- execution:start:h100:18_ipc_event_handle.cu -->
-> **Current execution — 2026-11-17-h100: Numerical/transport validation (recorded scope).** UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`. Source SHA-256: `5ca751f5113e67325f9bae932f5e16777800d3202b844a28b4c80bf3afffbebf`.
+> **Compiled and executed — 2026-11-17-h100: Numerical/transport validation (recorded scope).** Hardware: 2 H100 GPUs. Execution record UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`.
+
+<!-- execution:metadata Source SHA-256: 5ca751f5113e67325f9bae932f5e16777800d3202b844a28b4c80bf3afffbebf; recorded UTC (run-batch start; per-program time unrecorded): 2026-11-17T23:48:18.967387+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-h100/18_ipc_event_handle/18_ipc_event_handle.cu) · [Compiler log](../validation/2026-11-17-h100/18_ipc_event_handle/compile.log) · [Execution log](../validation/2026-11-17-h100/18_ipc_event_handle/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -487,18 +476,6 @@ PASS: two-process IPC memory + event readiness, 4096 nonuniform values checked.
 </details>
 <!-- execution:end:h100:18_ipc_event_handle.cu -->
 
-
-**Historical authoring transcript (earlier single-process source).** The current two-process implementation has a checked nonuniform payload oracle and passed its two-process numerical H100 check on 2026-11-17. This earlier no-device output does not establish successful IPC and is retained only as authoring history.
-
-<details markdown="1"><summary>Historical authoring output — superseded by the current execution above</summary>
-
-```
-cudaEventCreateWithFlags(DisableTiming|Interprocess): no CUDA-capable device is detected (code 100)
-cudaIpcGetEventHandle: no CUDA-capable device is detected (code 100)
-cudaIpcOpenEventHandle: no CUDA-capable device is detected (code 100)
-```
-
-</details>
 
 File 18 now checks actual interprocess event/memory handoff with 4,096 nonuniform values on the H100 pair. The timing-disabled interprocess event and exporter/importer lifetimes are checked parts of that test; the earlier no-device diagnostic did not validate them.
 
@@ -608,7 +585,9 @@ int main() {
 ```
 
 <!-- execution:start:a100:19_ipc_handoff_simulation.cpp -->
-> **Current execution — 2026-11-17-a100: Host program/model (exit-only).** UTC (program start): `2026-11-18T00:01:08.902977+00:00`. Source SHA-256: `3aa9454c4e495de3b81eaa7c6e447215e78102ea3733ee046b70673513faa6f6`.
+> **Compiled and executed — 2026-11-17-a100: Host program/model (exit-only).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:01:09.168650+00:00`.
+
+<!-- execution:metadata Source SHA-256: 3aa9454c4e495de3b81eaa7c6e447215e78102ea3733ee046b70673513faa6f6; recorded UTC (program start): 2026-11-18T00:01:08.902977+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-a100/19_ipc_handoff_simulation/19_ipc_handoff_simulation.cpp) · [Compiler log](../validation/2026-11-17-a100/19_ipc_handoff_simulation/compile.log) · [Execution log](../validation/2026-11-17-a100/19_ipc_handoff_simulation/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -619,7 +598,7 @@ g++ -std=c++17 -O2 19_ipc_handoff_simulation.cpp -o ./example
 ./example
 ```
 
-<details markdown="1"><summary>Captured current-source output</summary>
+**Sample output**
 
 ```text
 Exporter allocated data and exported handle 0.
@@ -636,12 +615,14 @@ cudaIpcCloseMemHandle() is undefined behavior, per the CUDA
 Runtime API documentation.
 ```
 
-</details>
+
 <!-- execution:end:a100:19_ipc_handoff_simulation.cpp -->
 
 
 <!-- execution:start:h100:19_ipc_handoff_simulation.cpp -->
-> **Current execution — 2026-11-17-h100: Host program/model (exit-only).** UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`. Source SHA-256: `3aa9454c4e495de3b81eaa7c6e447215e78102ea3733ee046b70673513faa6f6`.
+> **Compiled and executed — 2026-11-17-h100: Host program/model (exit-only).** Hardware: 2 H100 GPUs. Execution record UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`.
+
+<!-- execution:metadata Source SHA-256: 3aa9454c4e495de3b81eaa7c6e447215e78102ea3733ee046b70673513faa6f6; recorded UTC (run-batch start; per-program time unrecorded): 2026-11-17T23:48:18.967387+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-h100/19_ipc_handoff_simulation/19_ipc_handoff_simulation.cpp) · [Compiler log](../validation/2026-11-17-h100/19_ipc_handoff_simulation/compile.log) · [Execution log](../validation/2026-11-17-h100/19_ipc_handoff_simulation/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -672,27 +653,6 @@ Runtime API documentation.
 </details>
 <!-- execution:end:h100:19_ipc_handoff_simulation.cpp -->
 
-
-Genuinely compiled with `g++` and genuinely run. Locked output, deterministic across repeated runs:
-
-<details markdown="1"><summary>Historical authoring output — superseded by the current execution above</summary>
-
-```
-Exporter allocated data and exported handle 0.
-Importer opened handle 0.
-Immediately after opening, importer's view matches exporter's data: PASS
-After exporter mutates index 2 with NO further transfer call,
-importer's view reflects it immediately: PASS
-
-[Documented, NOT executed here -- this would be real undefined
-behavior on real hardware, so this simulation only prints the
-warning rather than reproducing it]: calling cudaFree() on the
-exporter's allocation before the importer calls
-cudaIpcCloseMemHandle() is undefined behavior, per the CUDA
-Runtime API documentation.
-```
-
-</details>
 
 Both checks pass, and the second one is the point of this whole section: no `transferDirectP2P()`-style call, no `cudaMemcpy()`-style call, nothing at all moved the mutated value from the exporter's reference to the importer's -- there was never a second copy to move it *to*. This is the one property that distinguishes IPC memory sharing from every other cross-process or cross-device operation this book has modeled: it doesn't transfer data faster, it removes the need to transfer data at all.
 

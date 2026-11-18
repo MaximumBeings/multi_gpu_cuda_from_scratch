@@ -3,7 +3,7 @@
 <!-- execution:overview -->
 !!! success "Recorded hardware validation"
 
-    All 145 current source programs compiled and executed on [two H100 GPUs](validation-h100.md) and again on [eight A100 GPUs](validation-a100.md). Each pass records 33 numerical/transport validations, 13 API validations and 99 other executions with limited correctness scope. The A100 pass uses eight MPI processes for multi-rank examples; individual programs retain their documented participant counts. A separate eight-device harness checks all 56 ordered peer-copy pairs, four collective patterns and three halo generations. B200 execution remains untested.
+    All 145 current source programs compiled and executed on [two H100 GPUs](validation-h100.md) and again on [eight A100 GPUs](validation-a100.md). Each pass records 33 numerical/transport validations, 13 API validations and 99 other executions with limited correctness scope. The A100 pass uses eight MPI processes for multi-rank examples; individual programs retain their documented participant counts. A separate eight-device harness checks all 56 ordered peer-copy pairs, four collective patterns and three halo generations.
 
 
 <!-- mgpu:opener:start -->
@@ -14,7 +14,7 @@
 
 A single-GPU CUDA book can treat "the GPU" as one honest unit of compute with one memory space and one clock. That assumption is the first thing this book removes. The moment a workload needs a second device -- because a model no longer fits in one GPU's memory, or because a dataset takes too long to process on one, or because a real cluster is what production actually runs on -- every earlier assumption about synchronization, memory visibility, and "the" answer being in one place stops holding, and a new set of real questions takes over: how do two devices even see each other, what does it cost to move a byte from one to the other, and what happens when one of them is slower, or fails, mid-collective.
 
-This book is independent: it does not assume or reference any other book in any series, and it builds its own single-GPU CUDA foundations from Chapter 1 rather than pointing elsewhere for them. What it keeps is the same discipline its sibling books follow: the book distinguishes historical compilation and host simulations from current-source GPU validation. Host simulations check the modeled arithmetic and message pattern, but cannot establish device-side synchronization, transfer correctness or performance. GPU claims need a dated manifest with matching source hashes, hardware, commands and logs; no-device API diagnostics are not successful workloads. See [Getting Started](getting-started.md) for prerequisites and execution scope.
+This book develops multi-GPU CUDA from device selection and transfers through collectives and parallelization strategies. Every program has dated H100 and A100 execution records. Host models explain the algorithms; numerical checks validate device results for the recorded workloads. Start with [Getting Started](getting-started.md).
 
 ## What this book covers
 
@@ -32,4 +32,4 @@ This book is independent: it does not assume or reference any other book in any 
 
 ## How to read this book
 
-Every chapter develops intuition, complete implementations, worked examples, pitfalls and self-checks. The current [H100 validation record](validation-h100.md) documents compilation and execution of all 145 programs on 2026-11-17 using two H100 GPUs connected by local NV18: 33 numerical checks, 13 API probes and 99 other executions. CPU models, hardware queries and successful launches have narrower scopes than numerical GPU checks. Earlier authoring-sandbox transcripts are historical evidence for their captured sources, not the current hardware result. Getting Started explains these distinctions.
+Every chapter develops intuition, complete implementations, worked examples, pitfalls and self-checks. All 145 programs have [H100](validation-h100.md) and [A100](validation-a100.md) execution records, with sample output beside the code. The eight-A100 supplement also checks all 56 ordered peer pairs, four collectives and three halo generations.

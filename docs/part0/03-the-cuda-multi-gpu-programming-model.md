@@ -1,11 +1,5 @@
 # Chapter 3: The CUDA Multi-GPU Programming Model: Devices, Contexts, and Streams Across Them
 
-<!-- execution:provenance -->
-!!! info "Execution provenance"
-
-    Current execution blocks identify the tested source hash, hardware dataset, commands and captured output. References elsewhere on this page to a device-less environment describe the original authoring context. Historical output is superseded by the current record. Displayed output omits the runner command header and trims trailing line whitespace; raw logs remain exact. A host simulation or API validation has its stated scope; neither alone establishes a numerical multi-GPU workload or measured performance.
-
-
 <!-- mgpu:opener:start -->
 [![Chapter 3: The CUDA Multi-GPU Programming Model: Devices, Contexts, and Streams Across Them](../images/chapter-openers/03.svg)](../images/chapter-openers/03.svg)
 <!-- mgpu:opener:end -->
@@ -152,7 +146,9 @@ int main() {
 ```
 
 <!-- execution:start:a100:06_single_device_setup.cu -->
-> **Current execution — 2026-11-17-a100: API/host demonstration (exit-only).** UTC (program start): `2026-11-18T00:00:15.466514+00:00`. Source SHA-256: `0a16e1d4b5d38ac9091b11d28b12db3a0c353d8dce75f782553003a2e602fe23`.
+> **Compiled and executed — 2026-11-17-a100: API/host demonstration (exit-only).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:00:16.533681+00:00`.
+
+<!-- execution:metadata Source SHA-256: 0a16e1d4b5d38ac9091b11d28b12db3a0c353d8dce75f782553003a2e602fe23; recorded UTC (program start): 2026-11-18T00:00:15.466514+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-a100/06_single_device_setup/06_single_device_setup.cu) · [Compiler log](../validation/2026-11-17-a100/06_single_device_setup/compile.log) · [Execution log](../validation/2026-11-17-a100/06_single_device_setup/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -163,7 +159,7 @@ nvcc -std=c++17 -O2 -arch=sm_80 06_single_device_setup.cu -o ./example
 ./example
 ```
 
-<details markdown="1"><summary>Captured current-source output</summary>
+**Sample output**
 
 ```text
 cudaSetDevice(0)             no error (code 0)
@@ -175,12 +171,14 @@ cudaMemcpy D2H               no error (code 0)
 Result: 1 2 3 4 5 6 7 8
 ```
 
-</details>
+
 <!-- execution:end:a100:06_single_device_setup.cu -->
 
 
 <!-- execution:start:h100:06_single_device_setup.cu -->
-> **Current execution — 2026-11-17-h100: API/host demonstration (exit-only).** UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`. Source SHA-256: `0a16e1d4b5d38ac9091b11d28b12db3a0c353d8dce75f782553003a2e602fe23`.
+> **Compiled and executed — 2026-11-17-h100: API/host demonstration (exit-only).** Hardware: 2 H100 GPUs. Execution record UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`.
+
+<!-- execution:metadata Source SHA-256: 0a16e1d4b5d38ac9091b11d28b12db3a0c353d8dce75f782553003a2e602fe23; recorded UTC (run-batch start; per-program time unrecorded): 2026-11-17T23:48:18.967387+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-h100/06_single_device_setup/06_single_device_setup.cu) · [Compiler log](../validation/2026-11-17-h100/06_single_device_setup/compile.log) · [Execution log](../validation/2026-11-17-h100/06_single_device_setup/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -211,17 +209,6 @@ Result: 1 2 3 4 5 6 7 8
 nvcc -arch=sm_80 06_single_device_setup.cu -o single_device_setup
 ./single_device_setup
 ```
-
-Output (genuinely compiled with a real `nvcc` and genuinely run; identical across three consecutive runs):
-
-<details markdown="1"><summary>Historical authoring output — superseded by the current execution above</summary>
-
-```text
-cudaSetDevice(0)             no CUDA-capable device is detected (code 100)
-Stopping here -- every step after this one depends on this one having succeeded.
-```
-
-</details>
 
 Checking every single call's return code — rather than assuming success — is what turns this into an honest, one-line diagnostic instead of a crash or a silent wrong answer. Generalizing to N devices means moving each step into a loop over `cudaGetDeviceCount()`'s result, calling `cudaSetDevice(i)` before every single device-`i`-specific operation, because per Section 3.1 none of them remembers "device i" on your behalf:
 
@@ -303,7 +290,9 @@ int main() {
 ```
 
 <!-- execution:start:a100:07_multi_device_loop_pattern.cu -->
-> **Current execution — 2026-11-17-a100: API/host demonstration (exit-only).** UTC (program start): `2026-11-18T00:00:19.706136+00:00`. Source SHA-256: `a876bc6228ec5b0d82ea556321644f8d55e5a3f3a3dc7022f4ae0088d8c77805`.
+> **Compiled and executed — 2026-11-17-a100: API/host demonstration (exit-only).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:00:21.074058+00:00`.
+
+<!-- execution:metadata Source SHA-256: a876bc6228ec5b0d82ea556321644f8d55e5a3f3a3dc7022f4ae0088d8c77805; recorded UTC (program start): 2026-11-18T00:00:19.706136+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-a100/07_multi_device_loop_pattern/07_multi_device_loop_pattern.cu) · [Compiler log](../validation/2026-11-17-a100/07_multi_device_loop_pattern/compile.log) · [Execution log](../validation/2026-11-17-a100/07_multi_device_loop_pattern/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -314,7 +303,7 @@ nvcc -std=c++17 -O2 -arch=sm_80 07_multi_device_loop_pattern.cu -o ./example
 ./example
 ```
 
-<details markdown="1"><summary>Captured current-source output</summary>
+**Sample output**
 
 ```text
 cudaGetDeviceCount() reports 8 device(s).
@@ -331,12 +320,14 @@ Device 7: stream and buffer created while device 7 was current.
 Loop body executed 8 time(s) total across all three phases. On real N-GPU hardware, this exact, unmodified source runs all N devices' kernels concurrently with no code change -- that's the entire point of writing the loop this way instead of hard-coding device 0 and device 1.
 ```
 
-</details>
+
 <!-- execution:end:a100:07_multi_device_loop_pattern.cu -->
 
 
 <!-- execution:start:h100:07_multi_device_loop_pattern.cu -->
-> **Current execution — 2026-11-17-h100: API/host demonstration (exit-only).** UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`. Source SHA-256: `a876bc6228ec5b0d82ea556321644f8d55e5a3f3a3dc7022f4ae0088d8c77805`.
+> **Compiled and executed — 2026-11-17-h100: API/host demonstration (exit-only).** Hardware: 2 H100 GPUs. Execution record UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`.
+
+<!-- execution:metadata Source SHA-256: a876bc6228ec5b0d82ea556321644f8d55e5a3f3a3dc7022f4ae0088d8c77805; recorded UTC (run-batch start; per-program time unrecorded): 2026-11-17T23:48:18.967387+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-h100/07_multi_device_loop_pattern/07_multi_device_loop_pattern.cu) · [Compiler log](../validation/2026-11-17-h100/07_multi_device_loop_pattern/compile.log) · [Execution log](../validation/2026-11-17-h100/07_multi_device_loop_pattern/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -366,19 +357,6 @@ Loop body executed 2 time(s) total across all three phases. On real N-GPU hardwa
 nvcc -arch=sm_80 07_multi_device_loop_pattern.cu -o multi_device_loop
 ./multi_device_loop
 ```
-
-Output (genuinely compiled and run; identical across runs):
-
-<details markdown="1"><summary>Historical authoring output — superseded by the current execution above</summary>
-
-```text
-cudaGetDeviceCount() reports 0 device(s).
-The loop below runs its body exactly 0 time(s) as a direct consequence -- not a special case, just what a correctly-guarded loop over a real count does when that count happens to be zero.
-
-Loop body executed 0 time(s) total across all three phases. On real N-GPU hardware, this exact, unmodified source runs all N devices' kernels concurrently with no code change -- that's the entire point of writing the loop this way instead of hard-coding device 0 and device 1.
-```
-
-</details>
 
 !!! warning "[COMMON TRAP] Combining the launch loop and the wait loop into one"
     Writing a single loop that launches device `i`'s kernel and immediately waits for it before moving to device `i+1` looks equivalent to the two-loop version above, but it isn't: waiting on device 0 before device 1's kernel has even been launched forces the two devices to run one after another instead of together, turning an N-GPU program into an N-times-slower single-GPU program in disguise. The separate launch-then-wait loops in Phases 2 and 3 above are what actually let the devices overlap.

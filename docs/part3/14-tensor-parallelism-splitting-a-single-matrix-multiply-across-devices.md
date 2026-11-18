@@ -1,11 +1,5 @@
 # Chapter 14: Tensor Parallelism: Splitting a Single Matrix Multiply Across Devices
 
-<!-- execution:provenance -->
-!!! info "Execution provenance"
-
-    Current execution blocks identify the tested source hash, hardware dataset, commands and captured output. References elsewhere on this page to a device-less environment describe the original authoring context. Historical output is superseded by the current record. Displayed output omits the runner command header and trims trailing line whitespace; raw logs remain exact. A host simulation or API validation has its stated scope; neither alone establishes a numerical multi-GPU workload or measured performance.
-
-
 <!-- mgpu:opener:start -->
 [![Chapter 14: Tensor Parallelism: Splitting a Single Matrix Multiply Across Devices](../images/chapter-openers/14.svg)](../images/chapter-openers/14.svg)
 <!-- mgpu:opener:end -->
@@ -177,7 +171,9 @@ int main() {
 ```
 
 <!-- execution:start:a100:39_column_parallel_linear.cu -->
-> **Current execution — 2026-11-17-a100: API/host demonstration (exit-only).** UTC (program start): `2026-11-18T00:02:20.153776+00:00`. Source SHA-256: `3848720f3b511e7f79c3a3b1cd250ace02014c296eb63f822abb9e03212d8f8d`.
+> **Compiled and executed — 2026-11-17-a100: API/host demonstration (exit-only).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:02:21.220651+00:00`.
+
+<!-- execution:metadata Source SHA-256: 3848720f3b511e7f79c3a3b1cd250ace02014c296eb63f822abb9e03212d8f8d; recorded UTC (program start): 2026-11-18T00:02:20.153776+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-a100/39_column_parallel_linear/39_column_parallel_linear.cu) · [Compiler log](../validation/2026-11-17-a100/39_column_parallel_linear/compile.log) · [Execution log](../validation/2026-11-17-a100/39_column_parallel_linear/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -188,7 +184,7 @@ nvcc -std=c++17 -O2 -arch=sm_80 39_column_parallel_linear.cu -o ./example
 ./example
 ```
 
-<details markdown="1"><summary>Captured current-source output</summary>
+**Sample output**
 
 ```text
 cudaGetDeviceCount(): 8 device(s).
@@ -211,12 +207,14 @@ code ever ran. Section 14.2 shows the very next GEMM in the
 same block, where that free ride ends.
 ```
 
-</details>
+
 <!-- execution:end:a100:39_column_parallel_linear.cu -->
 
 
 <!-- execution:start:h100:39_column_parallel_linear.cu -->
-> **Current execution — 2026-11-17-h100: API/host demonstration (exit-only).** UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`. Source SHA-256: `3848720f3b511e7f79c3a3b1cd250ace02014c296eb63f822abb9e03212d8f8d`.
+> **Compiled and executed — 2026-11-17-h100: API/host demonstration (exit-only).** Hardware: 2 H100 GPUs. Execution record UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`.
+
+<!-- execution:metadata Source SHA-256: 3848720f3b511e7f79c3a3b1cd250ace02014c296eb63f822abb9e03212d8f8d; recorded UTC (run-batch start; per-program time unrecorded): 2026-11-17T23:48:18.967387+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-h100/39_column_parallel_linear/39_column_parallel_linear.cu) · [Compiler log](../validation/2026-11-17-h100/39_column_parallel_linear/compile.log) · [Execution log](../validation/2026-11-17-h100/39_column_parallel_linear/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -254,33 +252,6 @@ same block, where that free ride ends.
 <!-- execution:end:h100:39_column_parallel_linear.cu -->
 
 
-Genuinely compiled with a real `nvcc` and genuinely run. Locked output, deterministic across repeated runs:
-
-<details markdown="1"><summary>Historical authoring output — superseded by the current execution above</summary>
-
-```
-cudaGetDeviceCount(): 0 device(s).
-
-Unsplit reference H = ReLU(X * A): [1.1000, 0.0000, 1.1000, 2.0000]
-rank 0 computes columns [0, 2) independently: [1.1000, 0.0000]
-rank 1 computes columns [2, 4) independently: [1.1000, 2.0000]
-
-Concatenating both ranks' independently-computed columns matches the unsplit reference exactly: PASS (bit-identical)
-
-Notice what this section did NOT need: no cudaMemcpyPeer(),
-no ncclBroadcast(), no ncclAllReduce() -- nothing beyond the
-device count query above. Splitting a GEMM's OUTPUT columns,
-followed by an elementwise nonlinearity, is the one shape of
-tensor-parallel split this book will show that needs no real
-collective at all, PROVIDED every device already holds an
-identical copy of X -- which itself had to get there via a
-real broadcast (Chapter 8, Chapter 12), before this section's
-code ever ran. Section 14.2 shows the very next GEMM in the
-same block, where that free ride ends.
-```
-
-</details>
-
 Both ranks' independently-computed column slices concatenate into exactly the same four values the unsplit reference produced -- unsurprising once you see that each output column's dot product never touches any other output column's arithmetic at all, split or not. What's notable is what the code above never had to call: no transfer, no broadcast, no reduce. That silence is Megatron-LM's own real design insight made concrete: a column-parallel GEMM immediately followed by an elementwise nonlinearity is, uniquely among every operation this book has built, genuinely communication-free.
 
 !!! warning "[COMMON TRAP] Assuming column-parallel means no data movement anywhere in the pipeline"
@@ -311,7 +282,7 @@ Section 14.1's column split of A:
 
 ### Background
 
-Section 14.1's output, `H`, is reused here unchanged as this section's input -- each rank already holds exactly the slice of `H` it needs, with no new transfer. What's new is what happens after each rank computes its own partial dot product over only its own row range: those two partial vectors have to be summed together, elementwise, before either rank has the block's actual output. Megatron-LM's own paper states this directly -- "the output of the second GEMM is then reduced across the GPUs" -- and the real call for that reduction is `ncclAllReduce(ncclSum)`, the same real collective this book has called since Chapter 8, attempted here on the same never-successfully-created communicator every chapter since Chapter 11 has reported honestly.
+Each rank computes a partial dot product over its own input-feature range. `ncclAllReduce(ncclSum)` combines those partial outputs. File 40 checks the GPU result against a full, unsplit CPU product, including uneven feature shards.
 
 ```cpp
 // 40_row_parallel_allreduce.cu
@@ -348,7 +319,9 @@ int main(){
 ```
 
 <!-- execution:start:a100:40_row_parallel_allreduce.cu -->
-> **Current execution — 2026-11-17-a100: Numerical/transport validation (recorded scope).** UTC (program start): `2026-11-18T00:02:24.043611+00:00`. Source SHA-256: `8568061f3a5e3c9943595f7419d7c63bdfd6c8ff817a2c67c01af9333b2464f1`.
+> **Compiled and executed — 2026-11-17-a100: Numerical/transport validation (recorded scope).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:02:26.363351+00:00`.
+
+<!-- execution:metadata Source SHA-256: 8568061f3a5e3c9943595f7419d7c63bdfd6c8ff817a2c67c01af9333b2464f1; recorded UTC (program start): 2026-11-18T00:02:24.043611+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-a100/40_row_parallel_allreduce/40_row_parallel_allreduce.cu) · [Compiler log](../validation/2026-11-17-a100/40_row_parallel_allreduce/compile.log) · [Execution log](../validation/2026-11-17-a100/40_row_parallel_allreduce/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -359,18 +332,20 @@ nvcc -std=c++17 -O2 -arch=sm_80 40_row_parallel_allreduce.cu -o ./example -lnccl
 ./example
 ```
 
-<details markdown="1"><summary>Captured current-source output</summary>
+**Sample output**
 
 ```text
 PASS: row-parallel partial GEMM plus NCCL AllReduce on 4 GPUs; all reference values checked.
 ```
 
-</details>
+
 <!-- execution:end:a100:40_row_parallel_allreduce.cu -->
 
 
 <!-- execution:start:h100:40_row_parallel_allreduce.cu -->
-> **Current execution — 2026-11-17-h100: Numerical/transport validation (recorded scope).** UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`. Source SHA-256: `8568061f3a5e3c9943595f7419d7c63bdfd6c8ff817a2c67c01af9333b2464f1`.
+> **Compiled and executed — 2026-11-17-h100: Numerical/transport validation (recorded scope).** Hardware: 2 H100 GPUs. Execution record UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`.
+
+<!-- execution:metadata Source SHA-256: 8568061f3a5e3c9943595f7419d7c63bdfd6c8ff817a2c67c01af9333b2464f1; recorded UTC (run-batch start; per-program time unrecorded): 2026-11-17T23:48:18.967387+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-h100/40_row_parallel_allreduce/40_row_parallel_allreduce.cu) · [Compiler log](../validation/2026-11-17-h100/40_row_parallel_allreduce/compile.log) · [Execution log](../validation/2026-11-17-h100/40_row_parallel_allreduce/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -391,29 +366,9 @@ PASS: row-parallel partial GEMM plus NCCL AllReduce on 2 GPUs; all reference val
 <!-- execution:end:h100:40_row_parallel_allreduce.cu -->
 
 
-**Current-source scope:** Each GPU computes its disjoint feature range of a 3×7 by 7×5 linear product, including uneven feature shards. NCCL sums the partial outputs; a full unsplit CPU product checks every rank’s result. The generated operands are nonuniform binary fractions. The current source was compiled and executed in the dated H100 suite; use the linked record for its numerical, API-probe or other-execution scope. The output below is retained from the earlier authoring diagnostic and is not evidence for this replacement source.
-
 The [2026-11-17 H100 execution record](../validation-h100.md) covers two GPUs connected by local NV18. It distinguishes numerical checks, API probes and other executions; a successful exit alone does not establish GPU algorithm correctness.
 
-Genuinely compiled with a real `nvcc`, genuinely linked against a real `libnccl`, and genuinely run. Locked output, deterministic across repeated runs:
-
-<details markdown="1"><summary>Historical authoring output — superseded by the current execution above</summary>
-
-```
-cudaGetDeviceCount(): 0 device(s).
-
-Unsplit reference Z = H * B: [2.1700000000, 2.3700000000]
-rank 0 computes a PARTIAL product from rows [0, 2): [0.2200000000, 0.1100000000] -- not yet the final answer
-rank 1 computes a PARTIAL product from rows [2, 4): [1.9500000000, 2.2600000000] -- not yet the final answer
-
-ncclAllReduce(partial products, ..., ncclSum, ...): invalid argument (run with NCCL_DEBUG=WARN for details) (code 4)
-Host-summed combination of both ranks' partial products: [2.1700000000, 2.3700000000]
-Matches the unsplit reference exactly: PASS (bit-identical)
-```
-
-</details>
-
-Neither rank's partial product is remotely close to the real answer on its own -- rank 0's `[0.22, 0.11]` and rank 1's `[1.95, 2.26]` are both genuinely incomplete, and only their sum, `[2.17, 2.37]`, matches the unsplit reference. `ncclAllReduce()` reports the same honest `ncclInvalidArgument` this book's every real collective call has reported since Chapter 11 -- the real collective was genuinely attempted; the host-side sum is this section's honest stand-in for what it would have done. For these particular numbers, that sum happens to land bit-identical to the reference; Section 14.3 pushes on that with more inputs, and it will not stay true every time.
+Each partial product covers only its rank’s assigned features. The AllReduce sum reconstructs the complete output, and the independent CPU reference checks every output value.
 
 !!! warning "[COMMON TRAP] Confusing 'this GEMM needs no communication' with 'no GEMM in this block needs communication'"
     Section 14.1 was genuinely, entirely communication-free. It is tempting to generalize that into "tensor parallelism doesn't need real collectives" -- and Section 14.2's own code is the direct counterexample sitting right next to it. The two sections use the *same* partitioning philosophy (split a big matrix across devices) but produce opposite communication requirements, because column splits produce independent output slices while row splits produce partial sums of the *same* output slice. Whether a given tensor-parallel split needs a collective is a structural property of which dimension got split, not a property of "tensor parallelism" as a single technique.
@@ -597,7 +552,9 @@ int main() {
 ```
 
 <!-- execution:start:a100:41_tensor_parallel_mlp_simulation.cpp -->
-> **Current execution — 2026-11-17-a100: Host program/model (exit-only).** UTC (program start): `2026-11-18T00:02:31.591985+00:00`. Source SHA-256: `0818a5967109ccfea689b11cb6433505bffe6830a5c57797afcc81cc9fbf9b66`.
+> **Compiled and executed — 2026-11-17-a100: Host program/model (exit-only).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:02:31.857633+00:00`.
+
+<!-- execution:metadata Source SHA-256: 0818a5967109ccfea689b11cb6433505bffe6830a5c57797afcc81cc9fbf9b66; recorded UTC (program start): 2026-11-18T00:02:31.591985+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-a100/41_tensor_parallel_mlp_simulation/41_tensor_parallel_mlp_simulation.cpp) · [Compiler log](../validation/2026-11-17-a100/41_tensor_parallel_mlp_simulation/compile.log) · [Execution log](../validation/2026-11-17-a100/41_tensor_parallel_mlp_simulation/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -608,7 +565,7 @@ g++ -std=c++17 -O2 41_tensor_parallel_mlp_simulation.cpp -o ./example
 ./example
 ```
 
-<details markdown="1"><summary>Captured current-source output</summary>
+**Sample output**
 
 ```text
 input (1.00, 2.00):
@@ -643,12 +600,14 @@ Collectives needed for this 2-GEMM MLP block:
 Megatron-LM's own paper states this directly: this design "requires only a single all-reduce operation in the forward pass."
 ```
 
-</details>
+
 <!-- execution:end:a100:41_tensor_parallel_mlp_simulation.cpp -->
 
 
 <!-- execution:start:h100:41_tensor_parallel_mlp_simulation.cpp -->
-> **Current execution — 2026-11-17-h100: Host program/model (exit-only).** UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`. Source SHA-256: `0818a5967109ccfea689b11cb6433505bffe6830a5c57797afcc81cc9fbf9b66`.
+> **Compiled and executed — 2026-11-17-h100: Host program/model (exit-only).** Hardware: 2 H100 GPUs. Execution record UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`.
+
+<!-- execution:metadata Source SHA-256: 0818a5967109ccfea689b11cb6433505bffe6830a5c57797afcc81cc9fbf9b66; recorded UTC (run-batch start; per-program time unrecorded): 2026-11-17T23:48:18.967387+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-h100/41_tensor_parallel_mlp_simulation/41_tensor_parallel_mlp_simulation.cpp) · [Compiler log](../validation/2026-11-17-h100/41_tensor_parallel_mlp_simulation/compile.log) · [Execution log](../validation/2026-11-17-h100/41_tensor_parallel_mlp_simulation/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -698,53 +657,14 @@ Megatron-LM's own paper states this directly: this design "requires only a singl
 <!-- execution:end:h100:41_tensor_parallel_mlp_simulation.cpp -->
 
 
-Genuinely compiled with `g++` and genuinely run. Locked output, deterministic across repeated runs:
-
-<details markdown="1"><summary>Historical authoring output — superseded by the current execution above</summary>
-
-```
-input (1.00, 2.00):
-  unsplit reference       = (2.1699999999999999, 2.3700000000000001)
-  tensor-parallel (2-way) = (2.1699999999999999, 2.3699999999999997)
-  differs in the last representable bit only (still correct to full display precision)
-input (-1.00, 0.50):
-  unsplit reference       = (0.35499999999999998, 0.40499999999999997)
-  tensor-parallel (2-way) = (0.35499999999999998, 0.40499999999999997)
-  bit-identical
-input (3.00, -2.00):
-  unsplit reference       = (0.54000000000000004, 0.72000000000000008)
-  tensor-parallel (2-way) = (0.54000000000000004, 0.72000000000000008)
-  bit-identical
-
-2 of 3 input(s) bit-identical between the unsplit reference and the 2-way tensor-parallel MLP block; every input matches to within 1e-09: PASS
-
-This is the real floating-point reassociation risk this book
-flagged back in Chapter 8's reduce, showing up empirically: summing
-two partial dot products, (a0+a1)+(b0+b1), is not guaranteed by IEEE
-754 to equal one accumulator visiting all four terms in order,
-a0+a1+b0+b1 -- even though both are the exact same real-number sum.
-Unlike Chapter 13's sequential relocation (always bit-identical,
-since no operation's order ever changed), a row-parallel GEMM's
-combine step is structurally the same kind of operation as Chapter 8's
-reduce, and inherits the exact same honest caveat -- correct,
-but not bit-for-bit, in general.
-
-Collectives needed for this 2-GEMM MLP block:
-  naive (synchronize after every GEMM):          2
-  Megatron-LM's column+row split (this chapter): 1
-Megatron-LM's own paper states this directly: this design "requires only a single all-reduce operation in the forward pass."
-```
-
-</details>
-
 The first test input is the interesting one: printed at full precision, the tensor-parallel result's second component (`2.3699999999999997`) differs from the unsplit reference's (`2.3700000000000001`) in the very last representable bit -- a real, measured instance of exactly the reassociation risk Chapter 8 warned about, not a hypothetical one. The other two inputs happen to land bit-identical for these particular numbers, which is itself the honest point: whether a row-parallel combine reproduces the unsplit result bit-for-bit is not something this chapter can promise in general, only something it can check, input by input, the same way Chapter 8 always insisted on checking rather than assuming. Every input still matches to well within any tolerance that would matter for real training or inference, and the collective count confirms the chapter's other real claim exactly: two GEMMs, one collective, precisely matching Megatron-LM's own stated design.
 
 !!! warning "[COMMON TRAP] Assuming tensor parallelism gives Chapter 13's exact-equality guarantee for free"
-    It's easy to walk away from Chapter 13 having internalized "splitting a model across devices doesn't change the answer" as a general rule. Section 14.3's own first test case is the direct counterexample: tensor parallelism's row-split combine step is a genuine floating-point summation performed in a different grouping than the unsplit reference uses, and Chapter 8 already established that IEEE 754 doesn't guarantee those groupings produce identical bit patterns. The correctness guarantee that *does* hold generally -- and that this chapter's own numbers confirm -- is much weaker than bit-identical: the split and unsplit results are the same real number, to within ordinary floating-point rounding, every time. Treating that weaker, checked guarantee as if it were Chapter 13's stronger, structural one is the mistake this section's own locked output was chosen specifically to make visible.
+    It's easy to walk away from Chapter 13 having internalized "splitting a model across devices doesn't change the answer" as a general rule. Section 14.3's own first test case is the direct counterexample: tensor parallelism's row-split combine step is a genuine floating-point summation performed in a different grouping than the unsplit reference uses, and Chapter 8 already established that IEEE 754 doesn't guarantee those groupings produce identical bit patterns. The correctness guarantee that *does* hold generally -- and that this chapter's own numbers confirm -- is much weaker than bit-identical: the split and unsplit results are the same real number, to within ordinary floating-point rounding, every time. Treating that weaker, checked guarantee as if it were Chapter 13's stronger, structural one is the mistake this section's own Sample output was chosen specifically to make visible.
 
 ## Chapter Summary
 
-Tensor parallelism splits a single matrix multiply across devices rather than splitting between whole layers, and Megatron-LM's own paper builds it out of two matched halves with genuinely different communication requirements. Section 14.1 built the column-parallel half: splitting a weight matrix's output columns across devices needs no communication at all, because each output column's arithmetic never depends on any other column's, and an elementwise nonlinearity rides along on that same independence for free -- provided every device already holds an identical, previously-broadcast copy of the input. Section 14.2 built the matching row-parallel half, where splitting a second weight matrix's rows produces genuine partial sums that must be combined with a real collective, `ncclAllReduce(ncclSum)`, the same one this book has called since Chapter 8. Section 14.3 chained both halves into the complete 2-GEMM MLP block Megatron-LM's paper describes, confirming its stated design exactly -- one real collective for the whole block, not one per GEMM -- while also being honest about a limit Chapter 13 never had to face: unlike a layer-wise split's guaranteed bit-identical relocation, a row-parallel combine step is a real floating-point summation, and this chapter's own locked output shows, empirically, one of its three test cases differing from the unsplit reference in the last representable bit, correct to any reasonable tolerance but not bit-for-bit. Chapter 15 returns to Chapter 13's own unresolved cost -- the idle time a naive layer-wise split creates -- and quantifies and fixes it with micro-batch pipelining.
+Tensor parallelism splits a single matrix multiply across devices rather than splitting between whole layers, and Megatron-LM's own paper builds it out of two matched halves with genuinely different communication requirements. Section 14.1 built the column-parallel half: splitting a weight matrix's output columns across devices needs no communication at all, because each output column's arithmetic never depends on any other column's, and an elementwise nonlinearity rides along on that same independence for free -- provided every device already holds an identical, previously-broadcast copy of the input. Section 14.2 built the matching row-parallel half, where splitting a second weight matrix's rows produces genuine partial sums that must be combined with a real collective, `ncclAllReduce(ncclSum)`, the same one this book has called since Chapter 8. Section 14.3 chained both halves into the complete 2-GEMM MLP block Megatron-LM's paper describes, confirming its stated design exactly -- one real collective for the whole block, not one per GEMM -- while also being honest about a limit Chapter 13 never had to face: unlike a layer-wise split's guaranteed bit-identical relocation, a row-parallel combine step is a real floating-point summation, and this chapter's own Sample output shows, empirically, one of its three test cases differing from the unsplit reference in the last representable bit, correct to any reasonable tolerance but not bit-for-bit. Chapter 15 returns to Chapter 13's own unresolved cost -- the idle time a naive layer-wise split creates -- and quantifies and fixes it with micro-batch pipelining.
 
 ## Self-Check Questions
 
@@ -752,7 +672,7 @@ Tensor parallelism splits a single matrix multiply across devices rather than sp
 2. Why does Section 14.1's column-parallel GEMM require every device to already hold a full, identical copy of the input `X`, and which earlier chapter's real collective is responsible for guaranteeing that?
 3. Using Section 14.2's own numbers, explain why neither rank's partial product, on its own, is close to the correct final answer.
 4. What real NCCL call does Section 14.2 use to combine the two ranks' partial products, and what honest error does it report here, matching which earlier chapter's own established pattern?
-5. Using Section 14.3's own locked output, identify which of the three test inputs produced a non-bit-identical result, and explain in your own words why that happened.
+5. Using Section 14.3's own Sample output, identify which of the three test inputs produced a non-bit-identical result, and explain in your own words why that happened.
 6. Contrast Chapter 13's correctness guarantee with this chapter's. Which is structurally stronger, and why does the difference trace back to what kind of operation combines the split pieces?
 7. Using Section 14.3's own collective-count comparison, explain why a naive design that synchronized after every GEMM in the block would need two collectives instead of Megatron-LM's one.
 8. A colleague argues that since Section 14.1 needed zero real collectives, tensor parallelism is strictly "cheaper" to communicate with than the model parallelism Chapter 13 built. Using Section 14.2's own code, explain what's wrong with that generalization.
@@ -769,11 +689,11 @@ Chapter 15 returns to a cost this book has named twice now but never quantified:
 
 **3.** Rank 0's partial product (`[0.22, 0.11]`) only sums over rows 0 and 1 of `B`, weighted by `H[0]` and `H[1]` -- it is missing every contribution from `H[2]` and `H[3]` entirely. Rank 1's partial (`[1.95, 2.26]`) is missing the opposite half. Since the correct final value is the sum of contributions from all four rows, a partial sum over only half of them is, by construction, not the answer -- it's exactly half of the addition that produces the answer.
 
-**4.** Section 14.2 uses `ncclAllReduce()` with `ncclSum`, the same real reduction op this book introduced in Chapter 8 and has used in every all-reduce since. It reports `ncclInvalidArgument` (code 4) here, the same honest failure this book's every `ncclAllReduce()` call has reported since the communicator was first shown never successfully created in Chapter 11.
+**4.** File 40 uses `ncclAllReduce` with `ncclSum` to combine row-parallel partial products. Its reference check compares every rank’s completed result with the unsplit matrix product.
 
 **5.** The first test input, `(1.00, 2.00)`, produced the non-bit-identical result -- its second output component was `2.3700000000000001` in the unsplit reference versus `2.3699999999999997` in the tensor-parallel version. This happened because the row-parallel combine step computes `(partial_rank0 + partial_rank1)`, summing two already-summed partial dot products, while the unsplit reference computes one accumulator that adds all four terms in a single, uninterrupted sequence -- a different grouping of the same four real-number terms, which IEEE 754 floating-point arithmetic does not guarantee will round to the identical bit pattern.
 
-**6.** Chapter 13's guarantee is structurally stronger: it is unconditional, because a layer-wise split only ever *relocates* a strictly sequential chain of operations, never regrouping or reordering any of them, so there is nothing for floating-point rounding to catch. This chapter's row-parallel combine step is a genuine summation of independently-computed partial results -- structurally the same category of operation as Chapter 8's reduce -- so it inherits reduce's weaker, checked-not-assumed guarantee: correct to within floating-point rounding, but not bit-identical in general, exactly as Section 14.3's own locked output demonstrated.
+**6.** Chapter 13's guarantee is structurally stronger: it is unconditional, because a layer-wise split only ever *relocates* a strictly sequential chain of operations, never regrouping or reordering any of them, so there is nothing for floating-point rounding to catch. This chapter's row-parallel combine step is a genuine summation of independently-computed partial results -- structurally the same category of operation as Chapter 8's reduce -- so it inherits reduce's weaker, checked-not-assumed guarantee: correct to within floating-point rounding, but not bit-identical in general, exactly as Section 14.3's own Sample output demonstrated.
 
 **7.** A naive design has no reason to know that Section 14.1's nonlinearity commutes with a column split -- treated as two independent matrix multiplies, each one's result would need to be reassembled into a full, correct tensor before the next operation could safely run, requiring one synchronizing collective after GEMM 1 and a second after GEMM 2. Megatron-LM's design specifically arranges the split (column then matching row) so that the intermediate result after GEMM 1 never needs to be reassembled at all -- every device already has everything it needs for GEMM 2 -- collapsing the requirement to a single collective after GEMM 2 alone.
 

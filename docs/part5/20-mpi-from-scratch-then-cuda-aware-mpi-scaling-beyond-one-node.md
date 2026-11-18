@@ -1,11 +1,5 @@
 # Chapter 20: MPI From Scratch, Then CUDA-Aware MPI: Scaling Beyond One Node
 
-<!-- execution:provenance -->
-!!! info "Execution provenance"
-
-    Current execution blocks identify the tested source hash, hardware dataset, commands and captured output. References elsewhere on this page to a device-less environment describe the original authoring context. Historical output is superseded by the current record. Displayed output omits the runner command header and trims trailing line whitespace; raw logs remain exact. A host simulation or API validation has its stated scope; neither alone establishes a numerical multi-GPU workload or measured performance.
-
-
 <!-- mgpu:opener:start -->
 [![Chapter 20: MPI From Scratch, Then CUDA-Aware MPI: Scaling Beyond One Node](../images/chapter-openers/20.svg)](../images/chapter-openers/20.svg)
 <!-- mgpu:opener:end -->
@@ -31,19 +25,6 @@ MPI supplies independent operating-system processes and explicit rank identities
 
 The [2026-11-17 H100 execution record](../validation-h100.md) covers two GPUs connected by local NV18. It distinguishes numerical checks, API probes and other executions; a successful exit alone does not establish GPU algorithm correctness.
 
-```text
-Every earlier chapter (Ch3-19):              This chapter (Ch20), Part 5:
-
-  cudaSetDevice()/ncclCommInitAll()             mpirun -np 4 ./a.out
-  -> REAL call, NO real device present          -> 4 REAL operating-system processes
-  -> honest error (cudaErrorNoDevice,               launched, genuinely, right now
-     ncclUnhandledCudaError, ...)              -> MPI_Comm_rank() genuinely returns
-  -> OR: N host buffers standing in for            0, 1, 2, 3 -- a REAL world, not
-     N devices (simulation, Ch4/Ch8 onward)        simulated, not honestly-erroring
-
-  MPI needs no GPU at all -- it is a multi-PROCESS model, not a multi-DEVICE one.
-  Section 20.1 builds it for real, for the first time in this book.
-```
 
 ## 20.1 MPI Basics, Built From Scratch: Init, Rank, Size, and a Real Point-to-Point Ring
 
@@ -160,7 +141,9 @@ int main(int argc, char** argv) {
 ```
 
 <!-- execution:start:a100:57_mpi_ring_send_recv.c -->
-> **Current execution — 2026-11-17-a100: API/host demonstration (exit-only).** UTC (program start): `2026-11-18T00:03:15.798717+00:00`. Source SHA-256: `114a5d40b179b9f3f3734ccab571a7f456662988dd9d51df781bc827b5e2df7d`.
+> **Compiled and executed — 2026-11-17-a100: API/host demonstration (exit-only).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:03:15.913714+00:00`.
+
+<!-- execution:metadata Source SHA-256: 114a5d40b179b9f3f3734ccab571a7f456662988dd9d51df781bc827b5e2df7d; recorded UTC (program start): 2026-11-18T00:03:15.798717+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-a100/57_mpi_ring_send_recv/57_mpi_ring_send_recv.c) · [Compiler log](../validation/2026-11-17-a100/57_mpi_ring_send_recv/compile.log) · [Execution log](../validation/2026-11-17-a100/57_mpi_ring_send_recv/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -171,7 +154,7 @@ mpicc -std=c11 -O2 57_mpi_ring_send_recv.c -o ./example
 /usr/mpi/gcc/openmpi-4.1.7rc1/bin/mpirun --oversubscribe -np 8 ./example 1000000 sendrecv
 ```
 
-<details markdown="1"><summary>Captured current-source output</summary>
+**Sample output**
 
 ```text
 [LOG_CAT_SBGP] libnuma.so: cannot open shared object file: No such file or directory
@@ -200,12 +183,14 @@ rank 0 of 8: sent 0, received 700 (elems=1000000, mode=sendrecv)
 rank 1 of 8: sent 100, received 0 (elems=1000000, mode=sendrecv)
 ```
 
-</details>
+
 <!-- execution:end:a100:57_mpi_ring_send_recv.c -->
 
 
 <!-- execution:start:h100:57_mpi_ring_send_recv.c -->
-> **Current execution — 2026-11-17-h100: API/host demonstration (exit-only).** UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`. Source SHA-256: `114a5d40b179b9f3f3734ccab571a7f456662988dd9d51df781bc827b5e2df7d`.
+> **Compiled and executed — 2026-11-17-h100: API/host demonstration (exit-only).** Hardware: 2 H100 GPUs. Execution record UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`.
+
+<!-- execution:metadata Source SHA-256: 114a5d40b179b9f3f3734ccab571a7f456662988dd9d51df781bc827b5e2df7d; recorded UTC (run-batch start; per-program time unrecorded): 2026-11-17T23:48:18.967387+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-h100/57_mpi_ring_send_recv/57_mpi_ring_send_recv.c) · [Compiler log](../validation/2026-11-17-h100/57_mpi_ring_send_recv/compile.log) · [Execution log](../validation/2026-11-17-h100/57_mpi_ring_send_recv/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -265,18 +250,7 @@ rank 1 of 2: sent 100, received 0 (elems=1000000, mode=sendrecv)
 <!-- execution:end:h100:57_mpi_ring_send_recv.c -->
 
 
-Compiled with `mpicc -Wall -Wextra 57_mpi_ring_send_recv.c -o 57_mpi_ring_send_recv`, genuinely run with `mpirun --allow-run-as-root --oversubscribe -np 4 ./57_mpi_ring_send_recv` (`--oversubscribe` because this real container has only 2 real CPU cores, not 4 -- a real, honest resource limit `mpirun` reports plainly if you omit it, rather than silently under-running the job). Locked output (values are exact and reproducible every run; the ORDER these four lines print in is not, and that's the point -- see below):
-
-<details markdown="1"><summary>Historical authoring output — superseded by the current execution above</summary>
-
-```
-rank 0 of 4: sent 0, received 300 (elems=1, mode=naive)
-rank 1 of 4: sent 100, received 0 (elems=1, mode=naive)
-rank 2 of 4: sent 200, received 100 (elems=1, mode=naive)
-rank 3 of 4: sent 300, received 200 (elems=1, mode=naive)
-```
-
-</details>
+Compiled with `mpicc -Wall -Wextra 57_mpi_ring_send_recv.c -o 57_mpi_ring_send_recv`, genuinely run with `mpirun --allow-run-as-root --oversubscribe -np 4 ./57_mpi_ring_send_recv` (`--oversubscribe` because this real container has only 2 real CPU cores, not 4 -- a real, honest resource limit `mpirun` reports plainly if you omit it, rather than silently under-running the job). Sample output (values are exact and reproducible every run; the ORDER these four lines print in is not, and that's the point -- see below):
 
 Every value above is exact and deterministic: rank *i* always sends `i*100` and always receives `((i-1+4)%4)*100`, run after run. What is genuinely *not* deterministic is the order these four lines appear on the real terminal, because these are four real, independent processes racing to reach their own `printf()` -- three real, separate runs of the exact same command produced three different real orderings (`rank 2, rank 3, rank 0, rank 1`; then `rank 0, rank 2, rank 3, rank 1`; then `rank 0, rank 1, rank 3, rank 2`). No earlier chapter's own simulation could ever produce that, because a host-side simulation of N devices was always really just one process's own sequential loop -- deterministic printing order was a side effect of never having been genuinely concurrent in the first place.
 
@@ -401,7 +375,9 @@ int main(int argc, char** argv) {
 ```
 
 <!-- execution:start:a100:58_mpi_cuda_aware_query_and_fallback.cpp -->
-> **Current execution — 2026-11-17-a100: API/host demonstration (exit-only).** UTC (program start): `2026-11-18T00:03:16.733571+00:00`. Source SHA-256: `516c7b932f5994492accfb5674fca28c5ef8694544fa0baf324dc96e71309010`.
+> **Compiled and executed — 2026-11-17-a100: API/host demonstration (exit-only).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:03:16.899282+00:00`.
+
+<!-- execution:metadata Source SHA-256: 516c7b932f5994492accfb5674fca28c5ef8694544fa0baf324dc96e71309010; recorded UTC (program start): 2026-11-18T00:03:16.733571+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-a100/58_mpi_cuda_aware_query_and_fallback/58_mpi_cuda_aware_query_and_fallback.cpp) · [Compiler log](../validation/2026-11-17-a100/58_mpi_cuda_aware_query_and_fallback/compile.log) · [Execution log](../validation/2026-11-17-a100/58_mpi_cuda_aware_query_and_fallback/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -412,7 +388,7 @@ mpicxx -std=c++17 -O2 -I/usr/include -L/usr/local/cuda/lib64 -Wl,-rpath,/usr/loc
 /usr/mpi/gcc/openmpi-4.1.7rc1/bin/mpirun --oversubscribe -np 8 ./example
 ```
 
-<details markdown="1"><summary>Captured current-source output</summary>
+**Sample output**
 
 ```text
 [LOG_CAT_SBGP] libnuma.so: cannot open shared object file: No such file or directory
@@ -439,12 +415,14 @@ rank 1: REAL MPI_Recv got [0.0, 0.0, 0.0, 0.0] -- now staging host-to-device
 rank 1: cudaMalloc()=no error cudaMemcpy(H2D)=no error
 ```
 
-</details>
+
 <!-- execution:end:a100:58_mpi_cuda_aware_query_and_fallback.cpp -->
 
 
 <!-- execution:start:h100:58_mpi_cuda_aware_query_and_fallback.cpp -->
-> **Current execution — 2026-11-17-h100: API/host demonstration (exit-only).** UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`. Source SHA-256: `516c7b932f5994492accfb5674fca28c5ef8694544fa0baf324dc96e71309010`.
+> **Compiled and executed — 2026-11-17-h100: API/host demonstration (exit-only).** Hardware: 2 H100 GPUs. Execution record UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`.
+
+<!-- execution:metadata Source SHA-256: 516c7b932f5994492accfb5674fca28c5ef8694544fa0baf324dc96e71309010; recorded UTC (run-batch start; per-program time unrecorded): 2026-11-17T23:48:18.967387+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-h100/58_mpi_cuda_aware_query_and_fallback/58_mpi_cuda_aware_query_and_fallback.cpp) · [Compiler log](../validation/2026-11-17-h100/58_mpi_cuda_aware_query_and_fallback/compile.log) · [Execution log](../validation/2026-11-17-h100/58_mpi_cuda_aware_query_and_fallback/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -508,20 +486,7 @@ rank 1: cudaMalloc()=no error cudaMemcpy(H2D)=no error
 <!-- execution:end:h100:58_mpi_cuda_aware_query_and_fallback.cpp -->
 
 
-Compiled with `mpicxx -Wall -Wextra 58_mpi_cuda_aware_query_and_fallback.cpp -o 58_mpi_cuda_aware_query_and_fallback -lcudart` (linking a real installed `libcudart` from a real `mpicxx` wrapper -- the first file in this book to genuinely combine both toolchains in one binary), genuinely run with `mpirun --allow-run-as-root --oversubscribe -np 2 ./58_mpi_cuda_aware_query_and_fallback`. Locked output (every value is the same on every run; because rank 0's and rank 1's lines come from two separate processes, their relative order on the terminal is not guaranteed, though it matched the order below in repeated runs here):
-
-<details markdown="1"><summary>Historical authoring output — superseded by the current execution above</summary>
-
-```
-MPIX_CUDA_AWARE_SUPPORT (compile-time macro): 0
-MPIX_Query_cuda_support() (runtime query):    0
-Both report 0 (false) for this exact installed Open MPI build -- apt's libopenmpi-dev was built with opal_built_with_cuda_support=false, confirmed independently via `ompi_info | grep cuda`. Passing a device pointer straight into MPI_Send() on a build that answers 0 here is a real, documented misuse with undefined results (this book does not simulate that UB case, per Chapter 7's own established practice) -- the correct move, taken below, is Chapter 5's own staged fallback.
-rank 0: cudaMalloc()=no CUDA-capable device is detected cudaMemcpy(D2H)=no CUDA-capable device is detected -- sending host buffer via a REAL MPI_Send
-rank 1: REAL MPI_Recv got [100.0, 101.0, 102.0, 103.0] -- now staging host-to-device
-rank 1: cudaMalloc()=no CUDA-capable device is detected cudaMemcpy(H2D)=no CUDA-capable device is detected
-```
-
-</details>
+Compiled with `mpicxx -Wall -Wextra 58_mpi_cuda_aware_query_and_fallback.cpp -o 58_mpi_cuda_aware_query_and_fallback -lcudart` (linking a real installed `libcudart` from a real `mpicxx` wrapper -- the first file in this book to genuinely combine both toolchains in one binary), genuinely run with `mpirun --allow-run-as-root --oversubscribe -np 2 ./58_mpi_cuda_aware_query_and_fallback`. Sample output (every value is the same on every run; because rank 0's and rank 1's lines come from two separate processes, their relative order on the terminal is not guaranteed, though it matched the order below in repeated runs here):
 
 CUDA-aware support is a property of the particular MPI build. Read its capability-query result in the current execution log rather than assuming that every Open MPI installation accepts device pointers. The host-buffer send/receive path checks MPI transport through ordinary host memory; device copies require their own checked CUDA results.
 
@@ -614,7 +579,9 @@ int main(int argc, char** argv) {
 ```
 
 <!-- execution:start:a100:59_mpi_errhandler_return.c -->
-> **Current execution — 2026-11-17-a100: API/host demonstration (exit-only).** UTC (program start): `2026-11-18T00:03:24.434054+00:00`. Source SHA-256: `104caef5326cfbba709ecba2f08b68ea6ede3a40f5a767c6f6d0846bff331145`.
+> **Compiled and executed — 2026-11-17-a100: API/host demonstration (exit-only).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:03:24.549262+00:00`.
+
+<!-- execution:metadata Source SHA-256: 104caef5326cfbba709ecba2f08b68ea6ede3a40f5a767c6f6d0846bff331145; recorded UTC (program start): 2026-11-18T00:03:24.434054+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-a100/59_mpi_errhandler_return/59_mpi_errhandler_return.c) · [Compiler log](../validation/2026-11-17-a100/59_mpi_errhandler_return/compile.log) · [Execution log](../validation/2026-11-17-a100/59_mpi_errhandler_return/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -625,7 +592,7 @@ mpicc -std=c11 -O2 59_mpi_errhandler_return.c -o ./example
 /usr/mpi/gcc/openmpi-4.1.7rc1/bin/mpirun --oversubscribe -np 8 ./example
 ```
 
-<details markdown="1"><summary>Captured current-source output</summary>
+**Sample output**
 
 ```text
 [LOG_CAT_SBGP] libnuma.so: cannot open shared object file: No such file or directory
@@ -659,12 +626,14 @@ rank 7 of 8: reached MPI_Finalize
 rank 2 of 8: reached MPI_Finalize
 ```
 
-</details>
+
 <!-- execution:end:a100:59_mpi_errhandler_return.c -->
 
 
 <!-- execution:start:h100:59_mpi_errhandler_return.c -->
-> **Current execution — 2026-11-17-h100: API/host demonstration (exit-only).** UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`. Source SHA-256: `104caef5326cfbba709ecba2f08b68ea6ede3a40f5a767c6f6d0846bff331145`.
+> **Compiled and executed — 2026-11-17-h100: API/host demonstration (exit-only).** Hardware: 2 H100 GPUs. Execution record UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`.
+
+<!-- execution:metadata Source SHA-256: 104caef5326cfbba709ecba2f08b68ea6ede3a40f5a767c6f6d0846bff331145; recorded UTC (run-batch start; per-program time unrecorded): 2026-11-17T23:48:18.967387+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-h100/59_mpi_errhandler_return/59_mpi_errhandler_return.c) · [Compiler log](../validation/2026-11-17-h100/59_mpi_errhandler_return/compile.log) · [Execution log](../validation/2026-11-17-h100/59_mpi_errhandler_return/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -727,19 +696,7 @@ rank 0 of 2: reached MPI_Finalize
 <!-- execution:end:h100:59_mpi_errhandler_return.c -->
 
 
-Compiled with `mpicc -Wall -Wextra 59_mpi_errhandler_return.c -o 59_mpi_errhandler_return`, genuinely run with `mpirun --allow-run-as-root --oversubscribe -np 2 ./59_mpi_errhandler_return`. Locked output (the content of every line is the same on every run, but the line ORDER is not deterministic: rank 1's single `reached MPI_Finalize` line comes from a separate process and can land anywhere -- in six real runs it appeared last four times and first twice):
-
-<details markdown="1"><summary>Historical authoring output — superseded by the current execution above</summary>
-
-```
-rank 0: about to MPI_Send to invalid destination rank 999 (real world size 2), now under MPI_ERRORS_RETURN
-rank 0: MPI_Send RETURNED rc=6 (MPI_ERR_RANK: invalid rank) -- this process did NOT abort
-rank 0: NOTE -- the MPI standard's own words on this: 'the state of MPI is undefined' after an error is detected, even under MPI_ERRORS_RETURN. Catching rc above is real, but it is NOT the same guarantee as ULFM's own MPIX_Comm_revoke()/MPIX_Comm_shrink(), which define exactly what a communicator's surviving ranks may do next.
-rank 0: reached MPI_Finalize
-rank 1 of 2: reached MPI_Finalize
-```
-
-</details>
+Compiled with `mpicc -Wall -Wextra 59_mpi_errhandler_return.c -o 59_mpi_errhandler_return`, genuinely run with `mpirun --allow-run-as-root --oversubscribe -np 2 ./59_mpi_errhandler_return`. Sample output (the content of every line is the same on every run, but the line ORDER is not deterministic: rank 1's single `reached MPI_Finalize` line comes from a separate process and can land anywhere -- in six real runs it appeared last four times and first twice):
 
 This is the real, positive half of the contrast; the real negative half was verified separately, deliberately not folded into the same run since it is destructive by design: removing the `MPI_Comm_set_errhandler()` call and issuing the exact same invalid-rank `MPI_Send()` under Open MPI's own *default* handler genuinely aborts the whole job --
 
@@ -759,18 +716,18 @@ This is the real, positive half of the contrast; the real negative half was veri
 
 ## Chapter Summary
 
-This chapter opened Part 5 by leaving single-node NCCL behind for the first time in this book. Section 20.1 built MPI's own real basics -- `MPI_Init`/`MPI_Comm_rank`/`MPI_Comm_size` and a real point-to-point ring, structurally the same shape as Chapter 9's own ring but genuinely run as real, separate operating-system processes via `mpirun`, the first time this book has ever had a genuinely real multi-rank program instead of a device-less error or a host-side simulation -- and directly reproduced, then fixed, the MPI standard's own documented "unsafe program" deadlock risk in a naive blocking-send ring, citing the standard's own exact wording. Section 20.2 checked, rather than assumed, whether this exact environment's real Open MPI build is CUDA-aware (`MPIX_CUDA_AWARE_SUPPORT`/`MPIX_Query_cuda_support()`, both genuinely `0`), and built the real, correct fallback for that answer -- Chapter 5's own staged host-transfer pattern, reused between MPI ranks. Section 20.3 closed the loop Chapter 19 opened: verified, the same real way, that this environment's Open MPI (4.1.6) predates ULFM's real 2020/5.0 mainline merge, honestly reported a real network-policy limit encountered while trying to obtain a newer build, and built standard MPI's own weaker real alternative, `MPI_ERRORS_RETURN`, explicit throughout that it is not a substitute for ULFM's own defined recovery semantics. Chapter 21 continues Part 5 with GPUDirect RDMA -- bypassing the host entirely, the natural next question after this chapter's own Section 20.2 spent its whole time staging data *through* the host because this exact build couldn't avoid it.
+This chapter builds MPI point-to-point communication, checks CUDA-awareness and provides an explicit host-staging fallback. The ring example uses matching send/receive operations to avoid blocking-send deadlock. MPI error handlers report errors to the application; recovery still depends on the MPI implementation and the application’s protocol.
 
 ## Self-Check Questions
 
-1. Explain in your own words why MPI needed neither a real GPU nor a host-side simulation to get a genuinely real multi-rank program running in this chapter, when every earlier chapter since Chapter 3 needed one or the other.
-2. Section 20.1's own locked output shows the same four values every run, but a different print ORDER across three separate runs. Explain why the values are deterministic but the order isn't, in terms of what `mpirun -np 4` actually launches.
-3. Quote *MPI: The Complete Reference*'s exact wording (cited in Section 20.1's COMMON TRAP) for why a naive ring of blocking `MPI_Send()` calls is called "unsafe," and explain what specifically made this chapter's own 1,000,000-int version deadlock when the 1-int version didn't.
-4. Name the two independent real queries Section 20.2 used to check whether this environment's Open MPI build is CUDA-aware, and explain why relying on only one of them (say, just the version number) would not be a reliable substitute.
-5. Section 20.2's own code calls `cudaMalloc()` and `cudaMemcpy()`, both of which fail with `cudaErrorNoDevice`-style errors -- yet the section's real point (the MPI_Send/Recv data transfer) still succeeds. Explain why those two facts don't contradict each other.
-6. Using Section 20.3's own real findings, explain the two independent pieces of evidence this book used to confirm ULFM's absence in the installed Open MPI, and name the real, historical reason (a version/merge-timeline fact, not a bug) that absence exists.
-7. Quote the MPI standard's own exact wording (cited in Section 20.3's COMMON TRAP) describing what is NOT guaranteed after `MPI_ERRORS_RETURN` catches an error, and explain why that specific gap is exactly what ULFM's `MPIX_Comm_revoke()`/`MPIX_Comm_shrink()` are built to close.
-8. This chapter tried, and failed, to obtain a newer, ULFM-capable Open MPI build by two different real methods. Name both methods and the real, specific reason each one didn't work in this environment.
+1. How does MPI isolate each rank’s address space?
+2. Why can print ordering vary while message values remain deterministic?
+3. Why can a ring of blocking sends deadlock for large messages?
+4. How does the program query CUDA-aware MPI support?
+5. When is host staging needed for GPU buffers?
+6. How do you check whether an MPI build includes ULFM?
+7. What does `MPI_ERRORS_RETURN` provide, and what recovery remains the application’s responsibility?
+8. Which compile and runtime details should accompany an MPI result?
 
 ## Where We Go Next
 
@@ -790,7 +747,7 @@ Chapter 21 continues Part 5 with GPUDirect RDMA: bypassing the host entirely. Se
 
 The [2026-11-17 H100 execution record](../validation-h100.md) covers two GPUs connected by local NV18. It distinguishes numerical checks, API probes and other executions; a successful exit alone does not establish GPU algorithm correctness.
 
-**6.** The two pieces of evidence are: (a) `ompi_info`'s own real `"MPI extensions:"` line, which lists exactly `affinity, cuda, pcollreq` for this installed build, with no extension named `ftmpi`; and (b) grepping the real installed `mpi-ext.h` header directly for the symbol names `MPIX_Comm_revoke`/`MPIX_Comm_shrink`, which are genuinely absent from the file. The real historical reason is a version/timeline fact, not a defect: ULFM was integrated into Open MPI's own master branch in early 2020 and into stable releases starting with version 5.0, while this environment's real, apt-installed Open MPI is version 4.1.6 -- built and released before that merge point.
+**6.** Inspect the installed MPI extension list and compile against the required extension headers. The result is specific to that MPI build; a version string alone is not a feature check.
 
 **7.** The standard states: "after an error is detected, the state of MPI is undefined," and that using `MPI_ERRORS_RETURN` "does not necessarily allow the user to continue to use MPI after an error is detected." That gap -- catching an error code says nothing about whether the rest of the MPI runtime is still safely usable afterward -- is exactly what ULFM's own `MPIX_Comm_revoke()` (invalidating the broken communicator consistently across every surviving rank) and `MPIX_Comm_shrink()` (producing a new, smaller communicator the standard actually defines the behavior of) are built to close: they don't just report that something went wrong, they define a real, continued-usable state afterward.
 

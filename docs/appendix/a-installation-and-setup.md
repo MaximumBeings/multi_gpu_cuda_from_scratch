@@ -1,16 +1,10 @@
 # Appendix A: Installation and Setup -- Multi-GPU Development Without a Multi-GPU Machine
 
-<!-- execution:provenance -->
-!!! info "Execution provenance"
-
-    Current execution blocks identify the tested source hash, hardware dataset, commands and captured output. References elsewhere on this page to a device-less environment describe the original authoring context. Historical output is superseded by the current record. Displayed output omits the runner command header and trims trailing line whitespace; raw logs remain exact. A host simulation or API validation has its stated scope; neither alone establishes a numerical multi-GPU workload or measured performance.
-
-
 <!-- mgpu:opener:start -->
 [![Appendix A: Installation and Setup -- Multi-GPU Development Without a Multi-GPU Machine](../images/chapter-openers/appendix-a.svg)](../images/chapter-openers/appendix-a.svg)
 <!-- mgpu:opener:end -->
 
-This appendix covers toolchain installation and build checks. Compilation needs the appropriate toolkit and libraries; executing device work additionally needs a compatible driver and GPU. The book was initially authored with device-less diagnostics, then all 145 programs were compiled and executed on two H100 GPUs on 2026-11-17. Build-only smoke tests below establish linkage, not GPU numerical correctness.
+This appendix covers toolchain installation and build checks. The recorded H100 setup built all five Makefile recipes, and the program records show execution on H100 and A100 hardware. Select the compiler target and installed dependencies for your own machine.
 
 The [2026-11-17 H100 execution record](../validation-h100.md) covers two GPUs connected by local NV18. It distinguishes numerical checks, API probes and other executions; a successful exit alone does not establish GPU algorithm correctness.
 
@@ -68,7 +62,9 @@ int main(){
 ```
 
 <!-- execution:start:a100:120_toolchain_version_check.cu -->
-> **Current execution — 2026-11-17-a100: API/host demonstration (exit-only).** UTC (program start): `2026-11-17T23:58:24.460758+00:00`. Source SHA-256: `a369251bcc2880196148df003e3864ad44b7145f1cbdb8a71b730042330c8ff9`.
+> **Compiled and executed — 2026-11-17-a100: API/host demonstration (exit-only).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-17T23:58:25.777749+00:00`.
+
+<!-- execution:metadata Source SHA-256: a369251bcc2880196148df003e3864ad44b7145f1cbdb8a71b730042330c8ff9; recorded UTC (program start): 2026-11-17T23:58:24.460758+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-a100/120_toolchain_version_check/120_toolchain_version_check.cu) · [Compiler log](../validation/2026-11-17-a100/120_toolchain_version_check/compile.log) · [Execution log](../validation/2026-11-17-a100/120_toolchain_version_check/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -79,7 +75,7 @@ nvcc -std=c++17 -O2 -arch=sm_80 120_toolchain_version_check.cu -o ./example
 ./example
 ```
 
-<details markdown="1"><summary>Captured current-source output</summary>
+**Sample output**
 
 ```text
 C++ language level: 201703
@@ -88,12 +84,14 @@ CUDA compiler: 12.8.93
 Compiler identity: PASS (installation source is not inferred)
 ```
 
-</details>
+
 <!-- execution:end:a100:120_toolchain_version_check.cu -->
 
 
 <!-- execution:start:h100:120_toolchain_version_check.cu -->
-> **Current execution — 2026-11-17-h100: API/host demonstration (exit-only).** UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`. Source SHA-256: `a369251bcc2880196148df003e3864ad44b7145f1cbdb8a71b730042330c8ff9`.
+> **Compiled and executed — 2026-11-17-h100: API/host demonstration (exit-only).** Hardware: 2 H100 GPUs. Execution record UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`.
+
+<!-- execution:metadata Source SHA-256: a369251bcc2880196148df003e3864ad44b7145f1cbdb8a71b730042330c8ff9; recorded UTC (run-batch start; per-program time unrecorded): 2026-11-17T23:48:18.967387+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-h100/120_toolchain_version_check/120_toolchain_version_check.cu) · [Compiler log](../validation/2026-11-17-h100/120_toolchain_version_check/compile.log) · [Execution log](../validation/2026-11-17-h100/120_toolchain_version_check/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -121,30 +119,6 @@ Compiler identity: PASS (installation source is not inferred)
 
 **Sample input:** none
 
-**Sample output:**
-
-<details markdown="1"><summary>Historical authoring output — superseded by the current execution above</summary>
-
-```
-=== Host compiler (g++) ===
-__GNUC__ = 12, __GNUC_MINOR__ = 4, __GNUC_PATCHLEVEL__ = 0
-
-=== C++ language standard actually in effect ===
-__cplusplus = 201703L
-This is C++17 or newer -- matches this book's own -std=c++17 convention (Appendix A.4's own Makefile).
-
-=== CUDA compiler (nvcc) driving this compilation ===
-__CUDACC_VER_MAJOR__ = 12, __CUDACC_VER_MINOR__ = 0, __CUDACC_VER_BUILD__ = 140
-This file was successfully compiled by a REAL nvcc binary --
-by itself, this is proof the apt-installed toolchain (not a
-pip package alone) is what made this compilation possible,
-since a pip-only nvidia-cuda-nvcc-cu12 install in this same
-environment has no nvcc executable for the shell to find.
-
-self-check: toolchain identity read confirmed
-```
-
-</details>
 
 Note the `__GNUC__ = 12` line: this machine's own `g++ --version` reports `13.3.0` at a plain shell prompt, and both numbers are correct, for the reasons explained above.
 
@@ -173,7 +147,7 @@ A working `nvcc` and `g++` are necessary but not sufficient for this book's own 
 +-----------------------------------------------------------------+
 ```
 
-Each layer's own version can be read directly from its own installed header, the same "read the real header, never trust memory" discipline this book has followed since Chapter 1: NCCL's `nccl.h` defines `NCCL_MAJOR`, `NCCL_MINOR`, and `NCCL_PATCH` as plain preprocessor integers; Open MPI's `mpi.h` defines `OMPI_MAJOR_VERSION`, `OMPI_MINOR_VERSION`, and `OMPI_RELEASE_VERSION` the same way; and NVSHMEM's `non_abi/nvshmem_version.h` defines `NVSHMEM_VENDOR_MAJOR_VERSION`, `_MINOR_VERSION`, and `_PATCH_VERSION`. All three are readable at compile time with no library initialization and no GPU required -- a reader can confirm every version number in this section on a machine with no physical GPU at all, exactly as this book's own build environment did.
+Read dependency versions from the installed headers and runtime queries. NCCL defines `NCCL_MAJOR`, `NCCL_MINOR` and `NCCL_PATCH`; Open MPI defines its `OMPI_*_VERSION` macros; NVSHMEM provides vendor version macros in its version header. The captured output below shows the versions available to each tested build.
 
 [COMMON TRAP] NVSHMEM's own pip package (`nvidia-nvshmem-cu12`) installs as a Python namespace package -- it has no `__init__.py`, so its `__file__` attribute exists but is `None` (the behavior for namespace packages since Python 3.7). Running `python3 -c "import nvidia.nvshmem; print(nvidia.nvshmem.__file__)"` therefore does not fail -- it quietly prints `None`, which is not a path. The error only appears one step later, when that `None` is handed to something that expects a path: `os.path.dirname(nvidia.nvshmem.__file__)` raises `TypeError: expected str, bytes or os.PathLike object, not NoneType`. The reliable way to locate the real install path is `list(nvidia.nvshmem.__path__)[0]` instead -- Appendix A.4's own Makefile and File 121's compile command below use exactly this line to locate NVSHMEM's headers and libraries automatically.
 
@@ -258,7 +232,9 @@ int main(int argc, char** argv) {
 ```
 
 <!-- execution:start:a100:121_multi_gpu_stack_version_check.cpp -->
-> **Current execution — 2026-11-17-a100: API/host demonstration (exit-only).** UTC (program start): `2026-11-17T23:58:25.779995+00:00`. Source SHA-256: `add11655555eb6445b9dfb060870ef5d06fa7cb4f8de8816c3e06b81499e4147`.
+> **Compiled and executed — 2026-11-17-a100: API/host demonstration (exit-only).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-17T23:58:26.095434+00:00`.
+
+<!-- execution:metadata Source SHA-256: add11655555eb6445b9dfb060870ef5d06fa7cb4f8de8816c3e06b81499e4147; recorded UTC (program start): 2026-11-17T23:58:25.779995+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-a100/121_multi_gpu_stack_version_check/121_multi_gpu_stack_version_check.cpp) · [Compiler log](../validation/2026-11-17-a100/121_multi_gpu_stack_version_check/compile.log) · [Execution log](../validation/2026-11-17-a100/121_multi_gpu_stack_version_check/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -269,7 +245,7 @@ mpicxx -std=c++17 -O2 121_multi_gpu_stack_version_check.cpp -o ./example -lnccl
 /usr/mpi/gcc/openmpi-4.1.7rc1/bin/mpirun --oversubscribe -np 8 ./example
 ```
 
-<details markdown="1"><summary>Captured current-source output</summary>
+**Sample output**
 
 ```text
 === NCCL (collective communication) ===
@@ -354,12 +330,14 @@ NVSHMEM version macros not defined -- non_abi/nvshmem_version.h was not found. A
 self-check: this program compiled and ran, which by itself confirms nccl.h and mpi.h were both found on this system's own include path -- a well-formed documented result either way, matching this book's own Appendix pattern.
 ```
 
-</details>
+
 <!-- execution:end:a100:121_multi_gpu_stack_version_check.cpp -->
 
 
 <!-- execution:start:h100:121_multi_gpu_stack_version_check.cpp -->
-> **Current execution — 2026-11-17-h100: API/host demonstration (exit-only).** UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`. Source SHA-256: `add11655555eb6445b9dfb060870ef5d06fa7cb4f8de8816c3e06b81499e4147`.
+> **Compiled and executed — 2026-11-17-h100: API/host demonstration (exit-only).** Hardware: 2 H100 GPUs. Execution record UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`.
+
+<!-- execution:metadata Source SHA-256: add11655555eb6445b9dfb060870ef5d06fa7cb4f8de8816c3e06b81499e4147; recorded UTC (run-batch start; per-program time unrecorded): 2026-11-17T23:48:18.967387+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-h100/121_multi_gpu_stack_version_check/121_multi_gpu_stack_version_check.cpp) · [Compiler log](../validation/2026-11-17-h100/121_multi_gpu_stack_version_check/compile.log) · [Execution log](../validation/2026-11-17-h100/121_multi_gpu_stack_version_check/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -414,24 +392,6 @@ g++ -std=c++17 -Wall -Wextra -O2 -I/usr/lib/x86_64-linux-gnu/openmpi/include -I$
 
 **Sample input:** none
 
-**Sample output:**
-
-<details markdown="1"><summary>Historical authoring output — superseded by the current execution above</summary>
-
-```
-=== NCCL (collective communication) ===
-NCCL_MAJOR = 2, NCCL_MINOR = 18, NCCL_PATCH = 3 (NCCL_VERSION_CODE = 21803)
-
-=== Open MPI (host-side process launch and messaging) ===
-OMPI_MAJOR_VERSION = 4, OMPI_MINOR_VERSION = 1, OMPI_RELEASE_VERSION = 6
-
-=== NVSHMEM (GPU-initiated one-sided communication) ===
-NVSHMEM_VENDOR_MAJOR_VERSION = 3, NVSHMEM_VENDOR_MINOR_VERSION = 8, NVSHMEM_VENDOR_PATCH_VERSION = 0
-
-self-check: this program compiled and ran, which by itself confirms nccl.h and mpi.h were both found on this system's own include path -- a well-formed documented result either way, matching this book's own Appendix pattern.
-```
-
-</details>
 
 ## A.3 The CUDA Runtime API, Checked for Multiple Devices
 
@@ -446,9 +406,9 @@ Q1: toolkit installed? -> Q2: driver installed? -> Q3: >=1 GPU? -> Q4: >=2 GPUs?
     cudaRuntimeGetVersion    cudaDriverGetVersion    cudaGetDeviceCount   this book's own check
 ```
 
-These four questions must be asked in exactly this order, because each answer conditions how the next one should be read. A missing toolkit makes every later answer meaningless. A found toolkit with no driver loaded means `cudaGetDeviceCount` will report zero devices for a completely different reason than a found driver with a genuinely empty PCI bus would. And a machine that answers YES through Q3 but NO at Q4 can still compile and run every single-GPU kernel in this book -- Part 1 through most of Part 2 -- but cannot exercise the actual cross-device transfers, collectives, and topology questions that are this book's own reason for existing, starting at Chapter 3's own per-thread device-state model.
+Check the toolkit, driver, visible device count and required device topology before building the workload. The compiler target and dependencies must match the chosen host.
 
-[COMMON TRAP] A driver-version query alone does not establish an available physical GPU. Check `cudaGetDeviceCount()` and its status, then inspect the actual driver and topology records. The earlier authoring output and the current two-H100 execution describe different environments.
+[COMMON TRAP] A driver-version query alone does not establish device availability. Check `cudaGetDeviceCount()` and its return status, then inspect the topology.
 
 ### Code and Verification
 
@@ -564,7 +524,9 @@ int main() {
 ```
 
 <!-- execution:start:a100:122_multi_device_runtime_api_check.cu -->
-> **Current execution — 2026-11-17-a100: API/host demonstration (exit-only).** UTC (program start): `2026-11-17T23:58:26.260737+00:00`. Source SHA-256: `03968f222a7dfa5f56c10b90704b6dfb6244bcc0f7d458483ed3d50a10b0cbd8`.
+> **Compiled and executed — 2026-11-17-a100: API/host demonstration (exit-only).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-17T23:58:27.327539+00:00`.
+
+<!-- execution:metadata Source SHA-256: 03968f222a7dfa5f56c10b90704b6dfb6244bcc0f7d458483ed3d50a10b0cbd8; recorded UTC (program start): 2026-11-17T23:58:26.260737+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-a100/122_multi_device_runtime_api_check/122_multi_device_runtime_api_check.cu) · [Compiler log](../validation/2026-11-17-a100/122_multi_device_runtime_api_check/compile.log) · [Execution log](../validation/2026-11-17-a100/122_multi_device_runtime_api_check/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -575,7 +537,7 @@ nvcc -std=c++17 -O2 -arch=sm_80 122_multi_device_runtime_api_check.cu -o ./examp
 ./example
 ```
 
-<details markdown="1"><summary>Captured current-source output</summary>
+**Sample output**
 
 ```text
 === Q1: Is the CUDA toolkit installed? (cudaRuntimeGetVersion) ===
@@ -599,12 +561,14 @@ YES: 8 devices -- this machine can run this book's own cross-device chapters dir
 self-check: diagnosis confirmed
 ```
 
-</details>
+
 <!-- execution:end:a100:122_multi_device_runtime_api_check.cu -->
 
 
 <!-- execution:start:h100:122_multi_device_runtime_api_check.cu -->
-> **Current execution — 2026-11-17-h100: API/host demonstration (exit-only).** UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`. Source SHA-256: `03968f222a7dfa5f56c10b90704b6dfb6244bcc0f7d458483ed3d50a10b0cbd8`.
+> **Compiled and executed — 2026-11-17-h100: API/host demonstration (exit-only).** Hardware: 2 H100 GPUs. Execution record UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`.
+
+<!-- execution:metadata Source SHA-256: 03968f222a7dfa5f56c10b90704b6dfb6244bcc0f7d458483ed3d50a10b0cbd8; recorded UTC (run-batch start; per-program time unrecorded): 2026-11-17T23:48:18.967387+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-h100/122_multi_device_runtime_api_check/122_multi_device_runtime_api_check.cu) · [Compiler log](../validation/2026-11-17-h100/122_multi_device_runtime_api_check/compile.log) · [Execution log](../validation/2026-11-17-h100/122_multi_device_runtime_api_check/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -647,33 +611,6 @@ self-check: diagnosis confirmed
 
 **Sample input:** none
 
-**Sample output:**
-
-<details markdown="1"><summary>Historical authoring output — superseded by the current execution above</summary>
-
-```
-=== Q1: Is the CUDA toolkit installed? (cudaRuntimeGetVersion) ===
-FOUND: CUDA Runtime version 12.0
-
-=== Q2: Is a compatible driver installed? (cudaDriverGetVersion) ===
-FOUND: CUDA Driver version 13.0
-
-=== Q3: Is at least one GPU visible? (cudaGetDeviceCount) ===
-cudaGetDeviceCount reports 0 device(s) (cudaError=100, no CUDA-capable device is detected)
-
-=== Q4 (this book's own addition): Are there at least TWO GPUs? ===
-NO: 0 devices found -- this matches this exact environment's own real, honest situation (a GPU-less cloud sandbox with only a driver stub library present, no physical device behind it). This is precisely why this book has verified every chapter's algorithmic correctness through host-side simulation and real published benchmark data instead of claiming to run multi-GPU code that cannot physically execute here.
-
-=== How to read this on YOUR machine ===
-1. Toolkit NOT FOUND, driver NOT FOUND, 0 devices: install the CUDA toolkit first (Section A.1 -- apt, not pip alone).
-2. Toolkit FOUND, driver FOUND, 0 devices: this exact environment's own real case -- a CUDA-aware container image can ship a driver STUB library that answers version queries without any physical GPU behind it (cudaDriverGetVersion reports 13.0 above), so 'driver FOUND' alone does not mean a GPU is present. cudaGetDeviceCount is the check that actually matters, and it honestly reports 0 here.
-3. Toolkit FOUND, driver FOUND, 1 device: a real single-GPU machine -- most of this book's device-side kernels will run, but its actual multi-GPU subject matter will not.
-4. Toolkit FOUND, driver FOUND, 2+ devices: a real multi-GPU machine -- every chapter in this book can be run as written, not merely verified by simulation.
-
-self-check: diagnosis confirmed
-```
-
-</details>
 
 ## A.4 A Minimal Makefile for This Book's Five Real Compile Recipes
 
@@ -797,7 +734,9 @@ int main() {
 ```
 
 <!-- execution:start:a100:hello_host.cpp -->
-> **Current execution — 2026-11-17-a100: Host program/model (exit-only).** UTC (program start): `2026-11-17T23:59:52.172031+00:00`. Source SHA-256: `b3a2a37506e18af2928c48d0001d67632564358bc61846cb24858d8442177987`.
+> **Compiled and executed — 2026-11-17-a100: Host program/model (exit-only).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-17T23:59:52.236872+00:00`.
+
+<!-- execution:metadata Source SHA-256: b3a2a37506e18af2928c48d0001d67632564358bc61846cb24858d8442177987; recorded UTC (program start): 2026-11-17T23:59:52.172031+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-a100/hello_host/hello_host.cpp) · [Compiler log](../validation/2026-11-17-a100/hello_host/compile.log) · [Execution log](../validation/2026-11-17-a100/hello_host/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -808,18 +747,20 @@ g++ -std=c++17 -O2 hello_host.cpp -o ./example
 ./example
 ```
 
-<details markdown="1"><summary>Captured current-source output</summary>
+**Sample output**
 
 ```text
 hello_host: compiled with plain g++, no CUDA involved.
 ```
 
-</details>
+
 <!-- execution:end:a100:hello_host.cpp -->
 
 
 <!-- execution:start:h100:hello_host.cpp -->
-> **Current execution — 2026-11-17-h100: Host program/model (exit-only).** UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`. Source SHA-256: `b3a2a37506e18af2928c48d0001d67632564358bc61846cb24858d8442177987`.
+> **Compiled and executed — 2026-11-17-h100: Host program/model (exit-only).** Hardware: 2 H100 GPUs. Execution record UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`.
+
+<!-- execution:metadata Source SHA-256: b3a2a37506e18af2928c48d0001d67632564358bc61846cb24858d8442177987; recorded UTC (run-batch start; per-program time unrecorded): 2026-11-17T23:48:18.967387+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-h100/hello_host/hello_host.cpp) · [Compiler log](../validation/2026-11-17-h100/hello_host/compile.log) · [Execution log](../validation/2026-11-17-h100/hello_host/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -857,7 +798,9 @@ int main() {
 ```
 
 <!-- execution:start:a100:hello_kernel.cu -->
-> **Current execution — 2026-11-17-a100: API/host demonstration (exit-only).** UTC (program start): `2026-11-17T23:59:52.240261+00:00`. Source SHA-256: `8d99406ef2c8c5754ceb22e9d201042532875d78f0208d46b5a8ea725123fca8`.
+> **Compiled and executed — 2026-11-17-a100: API/host demonstration (exit-only).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-17T23:59:53.306986+00:00`.
+
+<!-- execution:metadata Source SHA-256: 8d99406ef2c8c5754ceb22e9d201042532875d78f0208d46b5a8ea725123fca8; recorded UTC (program start): 2026-11-17T23:59:52.240261+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-a100/hello_kernel/hello_kernel.cu) · [Compiler log](../validation/2026-11-17-a100/hello_kernel/compile.log) · [Execution log](../validation/2026-11-17-a100/hello_kernel/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -868,18 +811,20 @@ nvcc -std=c++17 -O2 -arch=sm_80 hello_kernel.cu -o ./example
 ./example
 ```
 
-<details markdown="1"><summary>Captured current-source output</summary>
+**Sample output**
 
 ```text
 hello_kernel: compiled with plain nvcc, one real (unlaunched) __global__ kernel present.
 ```
 
-</details>
+
 <!-- execution:end:a100:hello_kernel.cu -->
 
 
 <!-- execution:start:h100:hello_kernel.cu -->
-> **Current execution — 2026-11-17-h100: API/host demonstration (exit-only).** UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`. Source SHA-256: `8d99406ef2c8c5754ceb22e9d201042532875d78f0208d46b5a8ea725123fca8`.
+> **Compiled and executed — 2026-11-17-h100: API/host demonstration (exit-only).** Hardware: 2 H100 GPUs. Execution record UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`.
+
+<!-- execution:metadata Source SHA-256: 8d99406ef2c8c5754ceb22e9d201042532875d78f0208d46b5a8ea725123fca8; recorded UTC (run-batch start; per-program time unrecorded): 2026-11-17T23:48:18.967387+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-h100/hello_kernel/hello_kernel.cu) · [Compiler log](../validation/2026-11-17-h100/hello_kernel/compile.log) · [Execution log](../validation/2026-11-17-h100/hello_kernel/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -912,7 +857,9 @@ int main() {
 ```
 
 <!-- execution:start:a100:hello_nccl.cu -->
-> **Current execution — 2026-11-17-a100: API/host demonstration (exit-only).** UTC (program start): `2026-11-17T23:59:54.299856+00:00`. Source SHA-256: `896631aa38ae497c9d173eccae2b3ec4f054b5a09a916244859110544fdd7b9a`.
+> **Compiled and executed — 2026-11-17-a100: API/host demonstration (exit-only).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-17T23:59:56.018189+00:00`.
+
+<!-- execution:metadata Source SHA-256: 896631aa38ae497c9d173eccae2b3ec4f054b5a09a916244859110544fdd7b9a; recorded UTC (program start): 2026-11-17T23:59:54.299856+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-a100/hello_nccl/hello_nccl.cu) · [Compiler log](../validation/2026-11-17-a100/hello_nccl/compile.log) · [Execution log](../validation/2026-11-17-a100/hello_nccl/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -923,18 +870,20 @@ nvcc -std=c++17 -O2 -arch=sm_80 hello_nccl.cu -o ./example -lnccl
 ./example
 ```
 
-<details markdown="1"><summary>Captured current-source output</summary>
+**Sample output**
 
 ```text
 hello_nccl: compiled and linked against real libnccl (NCCL 2.26.2).
 ```
 
-</details>
+
 <!-- execution:end:a100:hello_nccl.cu -->
 
 
 <!-- execution:start:h100:hello_nccl.cu -->
-> **Current execution — 2026-11-17-h100: API/host demonstration (exit-only).** UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`. Source SHA-256: `896631aa38ae497c9d173eccae2b3ec4f054b5a09a916244859110544fdd7b9a`.
+> **Compiled and executed — 2026-11-17-h100: API/host demonstration (exit-only).** Hardware: 2 H100 GPUs. Execution record UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`.
+
+<!-- execution:metadata Source SHA-256: 896631aa38ae497c9d173eccae2b3ec4f054b5a09a916244859110544fdd7b9a; recorded UTC (run-batch start; per-program time unrecorded): 2026-11-17T23:48:18.967387+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-h100/hello_nccl/hello_nccl.cu) · [Compiler log](../validation/2026-11-17-h100/hello_nccl/compile.log) · [Execution log](../validation/2026-11-17-h100/hello_nccl/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -974,7 +923,9 @@ int main(int argc, char** argv) {
 ```
 
 <!-- execution:start:a100:hello_mpi.cpp -->
-> **Current execution — 2026-11-17-a100: API/host demonstration (exit-only).** UTC (program start): `2026-11-17T23:59:53.310194+00:00`. Source SHA-256: `7b7da37c388ddb4cc608825e0b136dfd437e296354b0f7504c6050b1ff3463ce`.
+> **Compiled and executed — 2026-11-17-a100: API/host demonstration (exit-only).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-17T23:59:53.475199+00:00`.
+
+<!-- execution:metadata Source SHA-256: 7b7da37c388ddb4cc608825e0b136dfd437e296354b0f7504c6050b1ff3463ce; recorded UTC (program start): 2026-11-17T23:59:53.310194+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-a100/hello_mpi/hello_mpi.cpp) · [Compiler log](../validation/2026-11-17-a100/hello_mpi/compile.log) · [Execution log](../validation/2026-11-17-a100/hello_mpi/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -985,7 +936,7 @@ mpicxx -std=c++17 -O2 -I/usr/include -L/usr/local/cuda/lib64 -Wl,-rpath,/usr/loc
 /usr/mpi/gcc/openmpi-4.1.7rc1/bin/mpirun --oversubscribe -np 8 ./example
 ```
 
-<details markdown="1"><summary>Captured current-source output</summary>
+**Sample output**
 
 ```text
 [LOG_CAT_SBGP] libnuma.so: cannot open shared object file: No such file or directory
@@ -1014,12 +965,14 @@ hello_mpi: rank 2, linked against real libcudart (CUDA runtime 12.8)
 hello_mpi: rank 4, linked against real libcudart (CUDA runtime 12.8)
 ```
 
-</details>
+
 <!-- execution:end:a100:hello_mpi.cpp -->
 
 
 <!-- execution:start:h100:hello_mpi.cpp -->
-> **Current execution — 2026-11-17-h100: API/host demonstration (exit-only).** UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`. Source SHA-256: `7b7da37c388ddb4cc608825e0b136dfd437e296354b0f7504c6050b1ff3463ce`.
+> **Compiled and executed — 2026-11-17-h100: API/host demonstration (exit-only).** Hardware: 2 H100 GPUs. Execution record UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`.
+
+<!-- execution:metadata Source SHA-256: 7b7da37c388ddb4cc608825e0b136dfd437e296354b0f7504c6050b1ff3463ce; recorded UTC (run-batch start; per-program time unrecorded): 2026-11-17T23:48:18.967387+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-h100/hello_mpi/hello_mpi.cpp) · [Compiler log](../validation/2026-11-17-h100/hello_mpi/compile.log) · [Execution log](../validation/2026-11-17-h100/hello_mpi/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -1110,7 +1063,9 @@ int main(int argc, char** argv) {
 ```
 
 <!-- execution:start:a100:hello_nvshmem.cu -->
-> **Current execution — 2026-11-17-a100: API/host demonstration (exit-only).** UTC (program start): `2026-11-17T23:59:56.021430+00:00`. Source SHA-256: `edf226f1cd9a3f82d21165d02e326ee770d511ce010045913431ef7073957d25`.
+> **Compiled and executed — 2026-11-17-a100: API/host demonstration (exit-only).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:00:03.903236+00:00`.
+
+<!-- execution:metadata Source SHA-256: edf226f1cd9a3f82d21165d02e326ee770d511ce010045913431ef7073957d25; recorded UTC (program start): 2026-11-17T23:59:56.021430+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-a100/hello_nvshmem/hello_nvshmem.cu) · [Compiler log](../validation/2026-11-17-a100/hello_nvshmem/compile.log) · [Execution log](../validation/2026-11-17-a100/hello_nvshmem/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -1121,7 +1076,7 @@ nvcc -std=c++17 -O2 -arch=sm_80 -ccbin mpicxx -rdc=true -I/home/ubuntu/book2-dep
 /usr/mpi/gcc/openmpi-4.1.7rc1/bin/mpirun --oversubscribe -np 8 ./example
 ```
 
-<details markdown="1"><summary>Captured current-source output</summary>
+**Sample output**
 
 ```text
 [LOG_CAT_SBGP] libnuma.so: cannot open shared object file: No such file or directory
@@ -1150,12 +1105,14 @@ hello_nvshmem: rank 1, compiled and linked against real libnvshmem_host/libnvshm
 hello_nvshmem: rank 5, compiled and linked against real libnvshmem_host/libnvshmem_device (NVSHMEM 3.8.0), real MPI bootstrap headers present.
 ```
 
-</details>
+
 <!-- execution:end:a100:hello_nvshmem.cu -->
 
 
 <!-- execution:start:h100:hello_nvshmem.cu -->
-> **Current execution — 2026-11-17-h100: API/host demonstration (exit-only).** UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`. Source SHA-256: `edf226f1cd9a3f82d21165d02e326ee770d511ce010045913431ef7073957d25`.
+> **Compiled and executed — 2026-11-17-h100: API/host demonstration (exit-only).** Hardware: 2 H100 GPUs. Execution record UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`.
+
+<!-- execution:metadata Source SHA-256: edf226f1cd9a3f82d21165d02e326ee770d511ce010045913431ef7073957d25; recorded UTC (run-batch start; per-program time unrecorded): 2026-11-17T23:48:18.967387+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-h100/hello_nvshmem/hello_nvshmem.cu) · [Compiler log](../validation/2026-11-17-h100/hello_nvshmem/compile.log) · [Execution log](../validation/2026-11-17-h100/hello_nvshmem/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -1219,42 +1176,8 @@ hello_nvshmem: rank 0, compiled and linked against real libnvshmem_host/libnvshm
 
 **Sample input:** none
 
-**Sample output:**
 
-<details markdown="1"><summary>Historical authoring output — superseded by the current execution above</summary>
-
-```
-$ make all
-g++ -std=c++17 -Wall -Wextra -O2 hello_host.cpp -o host_only
-nvcc -arch=sm_80 hello_kernel.cu -o cuda_only
-nvcc -arch=sm_80 -I/usr/include -L/usr/lib/x86_64-linux-gnu hello_nccl.cu -o cuda_nccl -lnccl
-mpicxx -Wall -Wextra -DOMPI_SKIP_MPICXX hello_mpi.cpp -o mpi_only -lcudart
-mkdir -p nvshmem_shim
-ln -sf /usr/local/lib/python3.13/site-packages/nvidia/nvshmem/lib/libnvshmem_host.so.3 nvshmem_shim/libnvshmem_host.so
-nvcc -rdc=true -ccbin mpicxx -gencode=arch=compute_70,code=sm_70 \
-	-I/usr/local/lib/python3.13/site-packages/nvidia/nvshmem/include -Lnvshmem_shim -L/usr/local/lib/python3.13/site-packages/nvidia/nvshmem/lib \
-	hello_nvshmem.cu -o cuda_nvshmem_mpi -lnvshmem_host -lnvshmem_device -lcuda -lmpi
-
-$ ./host_only
-hello_host: compiled with plain g++, no CUDA involved.
-
-$ ./cuda_only
-hello_kernel: compiled with plain nvcc, one real (unlaunched) __global__ kernel present.
-
-$ ./cuda_nccl
-hello_nccl: compiled and linked against real libnccl (NCCL 2.18.3).
-
-$ mpirun --allow-run-as-root --oversubscribe -np 2 ./mpi_only
-hello_mpi: rank 0, linked against real libcudart (CUDA runtime 12.0)
-hello_mpi: rank 1, linked against real libcudart (CUDA runtime 12.0)
-
-$ LD_LIBRARY_PATH=/usr/local/lib/python3.13/site-packages/nvidia/nvshmem/lib mpirun --allow-run-as-root --oversubscribe -np 1 ./cuda_nvshmem_mpi
-hello_nvshmem: rank 0, compiled and linked against real libnvshmem_host/libnvshmem_device (NVSHMEM 3.8.0), real MPI bootstrap headers present.
-```
-
-</details>
-
-The historical `make all` transcript above checks five build/link smoke programs. Their empty or host-only bodies do not validate device work or collectives. For actual per-program execution and validation scopes, use the current H100 record; retain toolkit paths and architecture flags appropriate to your own host.
+The Makefile checks five build/link recipes. Their execution records and the separate numerical examples show what each program checks.
 
 The [2026-11-17 H100 execution record](../validation-h100.md) covers two GPUs connected by local NV18. It distinguishes numerical checks, API probes and other executions; a successful exit alone does not establish GPU algorithm correctness.
 

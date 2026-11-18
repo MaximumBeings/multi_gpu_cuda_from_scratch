@@ -1,11 +1,5 @@
 # Chapter 26: Multi-GPU LLM Inference: Tensor and Pipeline Parallelism in Practice
 
-<!-- execution:provenance -->
-!!! info "Execution provenance"
-
-    Current execution blocks identify the tested source hash, hardware dataset, commands and captured output. References elsewhere on this page to a device-less environment describe the original authoring context. Historical output is superseded by the current record. Displayed output omits the runner command header and trims trailing line whitespace; raw logs remain exact. A host simulation or API validation has its stated scope; neither alone establishes a numerical multi-GPU workload or measured performance.
-
-
 <!-- mgpu:opener:start -->
 [![Chapter 26: Multi-GPU LLM Inference: Tensor and Pipeline Parallelism in Practice](../images/chapter-openers/26.svg)](../images/chapter-openers/26.svg)
 <!-- mgpu:opener:end -->
@@ -260,7 +254,9 @@ int main() {
 ```
 
 <!-- execution:start:a100:75_tp_pp_combined_correctness_simulation.cpp -->
-> **Current execution — 2026-11-17-a100: Host program/model (exit-only).** UTC (program start): `2026-11-18T00:05:24.611949+00:00`. Source SHA-256: `e7ce19914b34c55778fce459991872fb157e8f6d4d6cdbb7857b2dd62ee94dfe`.
+> **Compiled and executed — 2026-11-17-a100: Host program/model (exit-only).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:05:25.027225+00:00`.
+
+<!-- execution:metadata Source SHA-256: e7ce19914b34c55778fce459991872fb157e8f6d4d6cdbb7857b2dd62ee94dfe; recorded UTC (program start): 2026-11-18T00:05:24.611949+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-a100/75_tp_pp_combined_correctness_simulation/75_tp_pp_combined_correctness_simulation.cpp) · [Compiler log](../validation/2026-11-17-a100/75_tp_pp_combined_correctness_simulation/compile.log) · [Execution log](../validation/2026-11-17-a100/75_tp_pp_combined_correctness_simulation/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -271,7 +267,7 @@ g++ -std=c++17 -O2 75_tp_pp_combined_correctness_simulation.cpp -o ./example
 ./example
 ```
 
-<details markdown="1"><summary>Captured current-source output</summary>
+**Sample output**
 
 ```text
 Grid: PP_STAGES=2 x TP_DEGREE=2 = 4 total simulated devices, 4 layers (2 per stage), 4 microbatches (inference: forward only)
@@ -286,12 +282,14 @@ All 4 microbatches EXACT MATCH between naive and combined TP+PP: YES
 Forward-only inference pipeline schedule: 4 microbatches, 2 stages -> 5 total time steps, 8/10 stage-slots busy, 2 idle (20.0% bubble)
 ```
 
-</details>
+
 <!-- execution:end:a100:75_tp_pp_combined_correctness_simulation.cpp -->
 
 
 <!-- execution:start:h100:75_tp_pp_combined_correctness_simulation.cpp -->
-> **Current execution — 2026-11-17-h100: Host program/model (exit-only).** UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`. Source SHA-256: `e7ce19914b34c55778fce459991872fb157e8f6d4d6cdbb7857b2dd62ee94dfe`.
+> **Compiled and executed — 2026-11-17-h100: Host program/model (exit-only).** Hardware: 2 H100 GPUs. Execution record UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`.
+
+<!-- execution:metadata Source SHA-256: e7ce19914b34c55778fce459991872fb157e8f6d4d6cdbb7857b2dd62ee94dfe; recorded UTC (run-batch start; per-program time unrecorded): 2026-11-17T23:48:18.967387+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-h100/75_tp_pp_combined_correctness_simulation/75_tp_pp_combined_correctness_simulation.cpp) · [Compiler log](../validation/2026-11-17-h100/75_tp_pp_combined_correctness_simulation/compile.log) · [Execution log](../validation/2026-11-17-h100/75_tp_pp_combined_correctness_simulation/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -321,29 +319,12 @@ Forward-only inference pipeline schedule: 4 microbatches, 2 stages -> 5 total ti
 <!-- execution:end:h100:75_tp_pp_combined_correctness_simulation.cpp -->
 
 
-Compiled with `g++ -O2 75_tp_pp_combined_correctness_simulation.cpp -o 75_tp_pp_combined_correctness_simulation` and genuinely run, on both the cloud sandbox and the device (a plain host computation), with byte-identical output on both. Locked output:
-
-<details markdown="1"><summary>Historical authoring output — superseded by the current execution above</summary>
-
-```text
-Grid: PP_STAGES=2 x TP_DEGREE=2 = 4 total simulated devices, 4 layers (2 per stage), 4 microbatches (inference: forward only)
-
-Microbatch 0: naive=[-1152,128,-384,896]  combined-TP+PP=[-1152,128,-384,896]  EXACT MATCH
-Microbatch 1: naive=[0,0,0,0]  combined-TP+PP=[0,0,0,0]  EXACT MATCH
-Microbatch 2: naive=[-6624,736,-2208,5152]  combined-TP+PP=[-6624,736,-2208,5152]  EXACT MATCH
-Microbatch 3: naive=[-576,64,-192,448]  combined-TP+PP=[-576,64,-192,448]  EXACT MATCH
-
-All 4 microbatches EXACT MATCH between naive and combined TP+PP: YES
-
-Forward-only inference pipeline schedule: 4 microbatches, 2 stages -> 5 total time steps, 8/10 stage-slots busy, 2 idle (20.0% bubble)
-```
-
-</details>
+Compiled with `g++ -O2 75_tp_pp_combined_correctness_simulation.cpp -o 75_tp_pp_combined_correctness_simulation` and genuinely run, on the recorded H100 and A100 hosts (a plain host computation), with the execution output recorded above.
 
 Read this check for what it is, and no more. Microbatch 1 produces an all-zero output, so it would match under almost any routing; and in a host simulation the tensor-parallel "all-reduce" and the pipeline "handoff" are a plain sum and a plain copy, so they cannot fail the way a real collective on a wrong communicator can. What the three non-zero microbatches do confirm is the index bookkeeping: each TP shard multiplies the right slice of each layer's weights, and each stage consumes the previous stage's combined output rather than a partial one.
 
 !!! warning "[COMMON TRAP] Assuming Chapter 15's bubble formula, `(K-1)/(M+K-1)`, is training-only and needs re-deriving for inference"
-    It is tempting to think a pipeline-bubble formula from a training chapter must carry hidden backward-pass terms, and so cannot be reused for a forward-only inference server. Chapter 15's formula has no such terms: Chapter 15 derived it by directly counting a forward-only schedule -- micro-batches staggered one time step per stage -- exactly the shape an inference pipeline runs. It applies unchanged. This section's own locked output is an independent cross-check of that, not a replacement: counting stage-slots directly, `M` microbatches through `PP_STAGES` stages take `M + PP_STAGES - 1` total time steps, of which `M * PP_STAGES` stage-slots are busy, leaving 2 of 10 idle -- 20%. Chapter 15's formula with K=2 stages and M=4 microbatches gives `(2-1)/(4+2-1) = 1/5`, the same 20%. What genuinely differs in a real serving system is not the formula but its inputs: requests arrive continuously rather than as one fixed batch of M microbatches, so the effective M depends on load and on how the server schedules incoming requests.
+    It is tempting to think a pipeline-bubble formula from a training chapter must carry hidden backward-pass terms, and so cannot be reused for a forward-only inference server. Chapter 15's formula has no such terms: Chapter 15 derived it by directly counting a forward-only schedule -- micro-batches staggered one time step per stage -- exactly the shape an inference pipeline runs. It applies unchanged. This section's own Sample output is an independent cross-check of that, not a replacement: counting stage-slots directly, `M` microbatches through `PP_STAGES` stages take `M + PP_STAGES - 1` total time steps, of which `M * PP_STAGES` stage-slots are busy, leaving 2 of 10 idle -- 20%. Chapter 15's formula with K=2 stages and M=4 microbatches gives `(2-1)/(4+2-1) = 1/5`, the same 20%. What genuinely differs in a real serving system is not the formula but its inputs: requests arrive continuously rather than as one fixed batch of M microbatches, so the effective M depends on load and on how the server schedules incoming requests.
 
 
 ## 26.2 Why 8-Way, Why 35-Way: A Real 530-Billion-Parameter Config
@@ -465,7 +446,9 @@ int main() {
 ```
 
 <!-- execution:start:a100:76_tp_pp_scale_cost_model.cpp -->
-> **Current execution — 2026-11-17-a100: Host program/model (exit-only).** UTC (program start): `2026-11-18T00:05:25.034995+00:00`. Source SHA-256: `7bd6884382e03f87763b8653318789753609ab156fd7f5858392476334c0a208`.
+> **Compiled and executed — 2026-11-17-a100: Host program/model (exit-only).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:05:25.149814+00:00`.
+
+<!-- execution:metadata Source SHA-256: 7bd6884382e03f87763b8653318789753609ab156fd7f5858392476334c0a208; recorded UTC (program start): 2026-11-18T00:05:25.034995+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-a100/76_tp_pp_scale_cost_model/76_tp_pp_scale_cost_model.cpp) · [Compiler log](../validation/2026-11-17-a100/76_tp_pp_scale_cost_model/compile.log) · [Execution log](../validation/2026-11-17-a100/76_tp_pp_scale_cost_model/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -476,7 +459,7 @@ g++ -std=c++17 -O2 76_tp_pp_scale_cost_model.cpp -o ./example
 ./example
 ```
 
-<details markdown="1"><summary>Captured current-source output</summary>
+**Sample output**
 
 ```text
 Megatron-Turing NLG 530B (Smith et al.): 530000000000 params, TP=8 (within a node), PP=35 (across nodes), TOTAL=280 GPUs per model replica
@@ -493,12 +476,14 @@ Communication ROUND-COUNT ratio, TP=280 vs TP=8: 558x / 14x = 39.9x (this does N
 And critically: EVERY one of TP=8's 14 rounds stays inside one node (real NVLink, per the Megatron-LM paper's own quote), while ALL 558 of TP=280's rounds would have to cross the slower inter-server link the SAME paper names as the real reason to keep tensor parallelism inside a node.
 ```
 
-</details>
+
 <!-- execution:end:a100:76_tp_pp_scale_cost_model.cpp -->
 
 
 <!-- execution:start:h100:76_tp_pp_scale_cost_model.cpp -->
-> **Current execution — 2026-11-17-h100: Host program/model (exit-only).** UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`. Source SHA-256: `7bd6884382e03f87763b8653318789753609ab156fd7f5858392476334c0a208`.
+> **Compiled and executed — 2026-11-17-h100: Host program/model (exit-only).** Hardware: 2 H100 GPUs. Execution record UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`.
+
+<!-- execution:metadata Source SHA-256: 7bd6884382e03f87763b8653318789753609ab156fd7f5858392476334c0a208; recorded UTC (run-batch start; per-program time unrecorded): 2026-11-17T23:48:18.967387+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-h100/76_tp_pp_scale_cost_model/76_tp_pp_scale_cost_model.cpp) · [Compiler log](../validation/2026-11-17-h100/76_tp_pp_scale_cost_model/compile.log) · [Execution log](../validation/2026-11-17-h100/76_tp_pp_scale_cost_model/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -530,29 +515,10 @@ And critically: EVERY one of TP=8's 14 rounds stays inside one node (real NVLink
 <!-- execution:end:h100:76_tp_pp_scale_cost_model.cpp -->
 
 
-Compiled with `g++ -O2 76_tp_pp_scale_cost_model.cpp -o 76_tp_pp_scale_cost_model` and genuinely run, on both the cloud sandbox and the device, with byte-identical output on both. Locked output:
-
-<details markdown="1"><summary>Historical authoring output — superseded by the current execution above</summary>
-
-```text
-Megatron-Turing NLG 530B (Smith et al.): 530000000000 params, TP=8 (within a node), PP=35 (across nodes), TOTAL=280 GPUs per model replica
-
-Total fp16 parameter bytes: 987.20 GiB. Sharded evenly across all 280 GPUs (TP x PP combined): 3.526 GiB/GPU -- this chapter's own worked calculation, not a number from the paper.
-
---- Ch9's own ring all-reduce formula, applied to TWO cases ---
-N=8    rounds=2(N-1)=14     per-rank volume factor 2(N-1)/N = 1.7500 (approaches the constant 2 either way)
-N=280  rounds=2(N-1)=558    per-rank volume factor 2(N-1)/N = 1.9929 (approaches the constant 2 either way)
-
-Communication VOLUME ratio, TP=280 vs TP=8: 1.1388x (nearly flat -- Chapter 9/25's own finding still holds: volume barely grows with N).
-Communication ROUND-COUNT ratio, TP=280 vs TP=8: 558x / 14x = 39.9x (this does NOT stay flat -- it scales directly with N-1).
-
-And critically: EVERY one of TP=8's 14 rounds stays inside one node (real NVLink, per the Megatron-LM paper's own quote), while ALL 558 of TP=280's rounds would have to cross the slower inter-server link the SAME paper names as the real reason to keep tensor parallelism inside a node.
-```
-
-</details>
+Compiled with `g++ -O2 76_tp_pp_scale_cost_model.cpp -o 76_tp_pp_scale_cost_model` and genuinely run, on the recorded H100 and A100 hosts, with the execution output recorded above.
 
 !!! warning "[COMMON TRAP] Assuming ring all-reduce's own near-flat communication VOLUME (Ch9/Ch25) means tensor-parallel degree doesn't matter much for latency"
-    Chapter 9 and Chapter 25 each showed, correctly, that a ring all-reduce's per-rank communication VOLUME approaches a constant (`2K`) as the group size `N` grows -- which is real and true, and this section's own locked output confirms it again: TP=280 moves only 1.14x more data per rank than TP=8. It would be a mistake to conclude from that alone that tensor-parallel degree is nearly free to scale up. The ROUND COUNT -- `2(N-1)` -- does NOT flatten out; it grows directly with `N`, and this section's own locked output shows TP=280 needs 39.9x more rounds than TP=8. Each round carries real per-message latency regardless of how little data it moves, and -- the specific reason this matters here -- every one of TP=8's rounds can stay on fast intra-node NVLink, while every one of TP=280's extra rounds would have to cross the Megatron-LM paper's own named slower inter-server link. Ring all-reduce's near-flat volume is real, but it answers a different question than "is a larger tensor-parallel group still fast," and conflating the two would miss the actual reason production configs like Megatron-Turing NLG 530B cap tensor parallelism at a node's own GPU count.
+    Chapter 9 and Chapter 25 each showed, correctly, that a ring all-reduce's per-rank communication VOLUME approaches a constant (`2K`) as the group size `N` grows -- which is real and true, and this section's own Sample output confirms it again: TP=280 moves only 1.14x more data per rank than TP=8. It would be a mistake to conclude from that alone that tensor-parallel degree is nearly free to scale up. The ROUND COUNT -- `2(N-1)` -- does NOT flatten out; it grows directly with `N`, and this section's own Sample output shows TP=280 needs 39.9x more rounds than TP=8. Each round carries real per-message latency regardless of how little data it moves, and -- the specific reason this matters here -- every one of TP=8's rounds can stay on fast intra-node NVLink, while every one of TP=280's extra rounds would have to cross the Megatron-LM paper's own named slower inter-server link. Ring all-reduce's near-flat volume is real, but it answers a different question than "is a larger tensor-parallel group still fast," and conflating the two would miss the actual reason production configs like Megatron-Turing NLG 530B cap tensor parallelism at a node's own GPU count.
 
 ## 26.3 A Real Super-Linear Effect: Tensor Parallelism and KV Cache Capacity
 
@@ -668,7 +634,9 @@ int main() {
 ```
 
 <!-- execution:start:a100:77_kv_cache_tp_scaling_model.cpp -->
-> **Current execution — 2026-11-17-a100: Host program/model (exit-only).** UTC (program start): `2026-11-18T00:05:25.156465+00:00`. Source SHA-256: `f07f2e781746413cb3dc829b34bc6b409b2cc8f9a2a9c0e0d5c7ec8f30c92e6d`.
+> **Compiled and executed — 2026-11-17-a100: Host program/model (exit-only).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:05:25.271427+00:00`.
+
+<!-- execution:metadata Source SHA-256: f07f2e781746413cb3dc829b34bc6b409b2cc8f9a2a9c0e0d5c7ec8f30c92e6d; recorded UTC (program start): 2026-11-18T00:05:25.156465+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-a100/77_kv_cache_tp_scaling_model/77_kv_cache_tp_scaling_model.cpp) · [Compiler log](../validation/2026-11-17-a100/77_kv_cache_tp_scaling_model/compile.log) · [Execution log](../validation/2026-11-17-a100/77_kv_cache_tp_scaling_model/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -679,7 +647,7 @@ g++ -std=c++17 -O2 77_kv_cache_tp_scaling_model.cpp -o ./example
 ./example
 ```
 
-<details markdown="1"><summary>Captured current-source output</summary>
+**Sample output**
 
 ```text
 --- Real, cited numbers (vLLM blog post) -- NOT computed by this program ---
@@ -702,12 +670,14 @@ W/C          (2-w)/(1-w) KV-capacity ratio
 No published source found (vLLM docs, TensorRT-LLM docs, or an academic paper) gives a direct, apples-to-apples throughput or latency comparison of a COMBINED TP+PP configuration against TP-only or PP-only at the same total GPU count. TensorRT-LLM's own public docs describe the two qualitatively instead: TP is "Best for: Small batch sizes, memory-constrained scenarios"; PP is "Best for: Large models that don't fit in single GPU memory." This section cites that real qualitative guidance rather than fabricating a number to fill the gap -- the same discipline this book applied in Chapter 21's own GPUDirect RDMA section and Chapter 25's own communication-cost model.
 ```
 
-</details>
+
 <!-- execution:end:a100:77_kv_cache_tp_scaling_model.cpp -->
 
 
 <!-- execution:start:h100:77_kv_cache_tp_scaling_model.cpp -->
-> **Current execution — 2026-11-17-h100: Host program/model (exit-only).** UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`. Source SHA-256: `f07f2e781746413cb3dc829b34bc6b409b2cc8f9a2a9c0e0d5c7ec8f30c92e6d`.
+> **Compiled and executed — 2026-11-17-h100: Host program/model (exit-only).** Hardware: 2 H100 GPUs. Execution record UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`.
+
+<!-- execution:metadata Source SHA-256: f07f2e781746413cb3dc829b34bc6b409b2cc8f9a2a9c0e0d5c7ec8f30c92e6d; recorded UTC (run-batch start; per-program time unrecorded): 2026-11-17T23:48:18.967387+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-h100/77_kv_cache_tp_scaling_model/77_kv_cache_tp_scaling_model.cpp) · [Compiler log](../validation/2026-11-17-h100/77_kv_cache_tp_scaling_model/compile.log) · [Execution log](../validation/2026-11-17-h100/77_kv_cache_tp_scaling_model/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -745,32 +715,7 @@ No published source found (vLLM docs, TensorRT-LLM docs, or an academic paper) g
 <!-- execution:end:h100:77_kv_cache_tp_scaling_model.cpp -->
 
 
-Compiled with `g++ -O2 77_kv_cache_tp_scaling_model.cpp -o 77_kv_cache_tp_scaling_model` and genuinely run, on both the cloud sandbox and the device, with byte-identical output on both. Locked output:
-
-<details markdown="1"><summary>Historical authoring output — superseded by the current execution above</summary>
-
-```text
---- Real, cited numbers (vLLM blog post) -- NOT computed by this program ---
-Between TP=1 and TP=2: KV cache blocks increase 13.9x; measured token throughput increases 3.9x (vs. a naive 2x expectation from doubling GPU count alone).
-
---- This chapter's own worked model (illustrative, NOT a reconstruction of vLLM's real internal accounting) ---
-Model: KV-cache-available capacity at TP=1 is (C - W); at TP=2 it is (2C - W), where C = one GPU's capacity, W = full model weight bytes.
-Solving (2 - w)/(1 - w) = 13.9 for w = W/C: w = 0.9225
--> Under this simplified model, vLLM's own cited 13.9x KV-cache gain is the shape you'd expect if the model's weights alone were already consuming about 92.2% of one GPU's memory at TP=1 -- leaving very little headroom for KV cache until a second GPU's capacity is added.
-
-W/C          (2-w)/(1-w) KV-capacity ratio
-0.5000       3.00                    
-0.7000       4.33                    
-0.8000       6.00                    
-0.9000       11.00                   
-0.9225       13.90                   
-0.9500       21.00                   
-
---- The honest gap this section does NOT fill ---
-No published source found (vLLM docs, TensorRT-LLM docs, or an academic paper) gives a direct, apples-to-apples throughput or latency comparison of a COMBINED TP+PP configuration against TP-only or PP-only at the same total GPU count. TensorRT-LLM's own public docs describe the two qualitatively instead: TP is "Best for: Small batch sizes, memory-constrained scenarios"; PP is "Best for: Large models that don't fit in single GPU memory." This section cites that real qualitative guidance rather than fabricating a number to fill the gap -- the same discipline this book applied in Chapter 21's own GPUDirect RDMA section and Chapter 25's own communication-cost model.
-```
-
-</details>
+Compiled with `g++ -O2 77_kv_cache_tp_scaling_model.cpp -o 77_kv_cache_tp_scaling_model` and genuinely run, on the recorded H100 and A100 hosts, with the execution output recorded above.
 
 !!! warning "[COMMON TRAP] Treating this section's own solved weight-fraction (92.2%) as a reconstruction of vLLM's real internal accounting"
     This section's own model solved backward for the ONE weight-fraction, `W/C = 0.9225`, that reproduces vLLM's cited 13.9x under a deliberately simplified shape -- one GPU's capacity, one weight size, no accounting for activation memory, framework overhead, memory fragmentation, or how vLLM's own PagedAttention actually allocates KV-cache blocks. Finding a value that reproduces a real published number under a simplified model is evidence the model's own SHAPE (weights eating disproportionately into a shared capacity budget) is a plausible mechanism -- it is not evidence that vLLM's real production deployment actually runs at 92.2% weight occupancy, which this section has no way to verify. The distinction matters for the same reason Chapter 25's own COMMON TRAP drew a line between a closed-form ratio and a measured efficiency percentage: mixing "a toy model that CAN produce this number" with "the real cause of this number" would overstate what a backward-solved illustration actually proves.
@@ -802,7 +747,7 @@ Chapter 26 combined two of this book's own earlier parallelization strategies in
 
 **3.** The paper states "each 530 billion parameter model replica spans 280 NVIDIA A100 GPUs, with 8-way tensor-slicing within a node and 35-way pipeline parallelism across nodes." The real multiplication confirming this is `8 (TP) x 35 (PP) = 280`, exactly matching the reported total GPU count.
 
-**4.** Because the two quantities answer different questions. Volume determines how much data crosses the network per round, and Chapter 9/25 already showed it stays nearly flat as the tensor-parallel group grows -- so volume alone would suggest scaling TP up is nearly free. Round count determines how many separate latency-bound round-trips a collective needs, and it grows directly with `N`; Section 26.2's own locked output showed TP=280 needs 39.9x more rounds than TP=8, and -- the decisive real fact -- every one of those extra rounds would have to cross the slower inter-server link the Megatron-LM paper names, rather than staying on fast intra-node NVLink.
+**4.** Because the two quantities answer different questions. Volume determines how much data crosses the network per round, and Chapter 9/25 already showed it stays nearly flat as the tensor-parallel group grows -- so volume alone would suggest scaling TP up is nearly free. Round count determines how many separate latency-bound round-trips a collective needs, and it grows directly with `N`; Section 26.2's own Sample output showed TP=280 needs 39.9x more rounds than TP=8, and -- the decisive real fact -- every one of those extra rounds would have to cross the slower inter-server link the Megatron-LM paper names, rather than staying on fast intra-node NVLink.
 
 **5.** "The all-reduce communication required for tensor parallelism needs to go through inter-server links, which are slower than the high-bandwidth NVLink available within a multi-GPU server." This is why the paper recommends "tensor model parallelism should generally be used up to degree g when using g-GPU servers, and then pipeline model parallelism can be used to scale up to larger models across servers."
 

@@ -1,22 +1,15 @@
 # Chapter 19: Stragglers, Failures, and Fault-Tolerant Collectives
 
-<!-- execution:provenance -->
-!!! info "Execution provenance"
-
-    Current execution blocks identify the tested source hash, hardware dataset, commands and captured output. References elsewhere on this page to a device-less environment describe the original authoring context. Historical output is superseded by the current record. Displayed output omits the runner command header and trims trailing line whitespace; raw logs remain exact. A host simulation or API validation has its stated scope; neither alone establishes a numerical multi-GPU workload or measured performance.
-
-
 <!-- mgpu:opener:start -->
 [![Chapter 19: Stragglers, Failures, and Fault-Tolerant Collectives](../images/chapter-openers/19.svg)](../images/chapter-openers/19.svg)
 <!-- mgpu:opener:end -->
 
 **What you will understand by the end of this chapter:**
 
-- Why every real NCCL call this book has made since Chapter 11 has returned an instant, honest error code -- and why that is *not* how a real cluster's real peer failure behaves: NVIDIA's own documentation states plainly that even healthy ranks should expect NCCL to either error *or hang* on a collective.
-- How to build a non-blocking NCCL communicator (`ncclConfig_t`, `config.blocking = 0`) and poll `ncclCommGetAsyncError()` in a bounded loop, so a hang becomes something you can detect instead of something you endure.
-- Why `ncclCommAbort()` only stops a hang -- it does not repair or replace the communicator -- and what a real application still has to do afterward.
-- How Open MPI's ULFM extension offers a genuinely richer recovery model, `MPIX_Comm_revoke()` and `MPIX_Comm_shrink()` -- and why NCCL's own counterpart, `ncclCommShrink()` (NCCL 2.27+), isn't available on the NCCL 2.18.3 installed here.
-- The real "backup workers" technique (Chen et al., 2016) for tolerating stragglers with *no failure detection at all*, and the one combinatorial invariant its selection rule guarantees for any timings.
+- How peer failure can surface as an error or a stalled collective.
+- How a non-blocking communicator and bounded asynchronous-error polling support timeout handling.
+- Why aborting a communicator and rebuilding it are separate recovery steps.
+- How backup workers can reduce straggler delays, and what their selection rule guarantees.
 
 **What you need to know first:**
 
@@ -26,23 +19,8 @@
 
 ---
 
-Chapter 18 asked what happens when every rank finishes, just not at the same time. This chapter asks the harder question Chapter 18 left alone: what happens when a rank doesn't finish at all. Every real CUDA and NCCL call this book has made, since Chapter 3, has returned an honest, *immediate* error code, because this environment has never had a real device to begin with -- `cudaErrorNoDevice`, `ncclUnhandledCudaError`, `ncclInvalidArgument`, always instant, always clean. It would be easy to let that instant-error pattern quietly stand in for what a real cluster does when a rank genuinely dies mid-collective. It's the wrong model. NVIDIA's own documentation on building fault-tolerant NCCL applications states the real failure mode plainly, and it is worse than an error: "even healthy ranks should expect NCCL to either return an error or hang on any collective operation." A rank that dies doesn't make the other ranks see an error -- it makes them wait, forever, at whatever collective or barrier they were sharing with it. This chapter builds the real detect-and-recover pattern NCCL actually offers for that, names what it doesn't offer (contrasted with MPI's own ULFM extension, previewing Chapter 20), and then covers a real, different, milder technique -- backup workers -- for the far more common case where a rank isn't dead, just slow.
+A slow rank can delay a collective; a failed rank can prevent completion. This chapter separates communicator progress, error polling and application recovery, then models backup workers as a way to tolerate stragglers. The API probes check their declared cases; the timing models explain the scheduling tradeoff.
 
-```text
-This book's own environment            A real cluster, one peer dies
-(no device, ever):                     mid-collective:
-
-  rank0 -> ncclAllReduce()                 rank0 -> ncclAllReduce() ... waiting
-  rank0 -> ncclUnhandledCudaError          rank1 -> ncclAllReduce() ... waiting
-           (instant, honest, code 1)       rank2 -> ncclAllReduce() ... waiting
-                                            rank3 -> dead, never returns
-                                            -----------------------------------
-                                            rank0, rank1, rank2 HANG. Forever.
-
-  Every chapter's own call, through        Section 19.1 names this real gap;
-  Ch18, has looked like the LEFT           19.2 builds the real escape; 19.3
-  column above.                            covers the milder case: SLOW, not dead.
-```
 
 ## 19.1 The Problem: A Failed Peer Can Cause Errors or Hangs
 
@@ -77,7 +55,6 @@ Non-blocking communicator (this section names it; 19.2 builds the real escape):
 
 Every communicator this book has built through Chapter 18 -- Chapter 11's `ncclCommInitAll()`, and every direct `ncclCommInitRank()`-style call implicit since -- is *blocking* by default: `config.blocking = 1`, whether or not any code ever set that field explicitly. This section builds both the default blocking communicator every earlier chapter used, and the real, documented alternative -- a non-blocking one, `config.blocking = 0` -- side by side, using NCCL's real `ncclConfig_t` struct and `NCCL_CONFIG_INITIALIZER` macro, confirmed present in the actual installed NCCL header (libnccl 2.18.3). Section 19.2 is what a non-blocking communicator like the second one below actually makes possible.
 
-> **Validation update:** This API probe checks return values and actual reported capabilities. It does not measure copy/compute overlap, inject a failed peer, or validate a NIC/RDMA data transfer. Earlier zero-device transcripts below belong to the prior source.
 
 The [2026-11-17 H100 execution record](../validation-h100.md) covers two GPUs connected by local NV18. It distinguishes numerical checks, API probes and other executions; a successful exit alone does not establish GPU algorithm correctness.
 
@@ -120,7 +97,9 @@ int main() {
 ```
 
 <!-- execution:start:a100:54_blocking_vs_nonblocking_comm.cu -->
-> **Current execution — 2026-11-17-a100: API validation (recorded scope).** UTC (program start): `2026-11-18T00:03:04.074363+00:00`. Source SHA-256: `527cec6ac2cffe900da522d9e34f7d6362041294890831649623032560b81a18`.
+> **Compiled and executed — 2026-11-17-a100: API validation (recorded scope).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:03:06.193299+00:00`.
+
+<!-- execution:metadata Source SHA-256: 527cec6ac2cffe900da522d9e34f7d6362041294890831649623032560b81a18; recorded UTC (program start): 2026-11-18T00:03:04.074363+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-a100/54_blocking_vs_nonblocking_comm/54_blocking_vs_nonblocking_comm.cu) · [Compiler log](../validation/2026-11-17-a100/54_blocking_vs_nonblocking_comm/compile.log) · [Execution log](../validation/2026-11-17-a100/54_blocking_vs_nonblocking_comm/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -131,18 +110,20 @@ nvcc -std=c++17 -O2 -arch=sm_80 54_blocking_vs_nonblocking_comm.cu -o ./example 
 ./example
 ```
 
-<details markdown="1"><summary>Captured current-source output</summary>
+**Sample output**
 
 ```text
 API PROBE PASS: one-rank nonblocking init/poll/abort only; no fault recovery tested, errors=0
 ```
 
-</details>
+
 <!-- execution:end:a100:54_blocking_vs_nonblocking_comm.cu -->
 
 
 <!-- execution:start:h100:54_blocking_vs_nonblocking_comm.cu -->
-> **Current execution — 2026-11-17-h100: API validation (recorded scope).** UTC (program start): `2026-11-17T23:51:13.055975+00:00`. Source SHA-256: `527cec6ac2cffe900da522d9e34f7d6362041294890831649623032560b81a18`.
+> **Compiled and executed — 2026-11-17-h100: API validation (recorded scope).** Hardware: 2 H100 GPUs. Executed UTC: `2026-11-17T23:51:14.572581+00:00`.
+
+<!-- execution:metadata Source SHA-256: 527cec6ac2cffe900da522d9e34f7d6362041294890831649623032560b81a18; recorded UTC (program start): 2026-11-17T23:51:13.055975+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-h100/54_blocking_vs_nonblocking_comm/54_blocking_vs_nonblocking_comm.cu) · [Compiler log](../validation/2026-11-17-h100/54_blocking_vs_nonblocking_comm/compile.log) · [Execution log](../validation/2026-11-17-h100/54_blocking_vs_nonblocking_comm/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -163,22 +144,6 @@ API PROBE PASS: one-rank nonblocking init/poll/abort only; no fault recovery tes
 <!-- execution:end:h100:54_blocking_vs_nonblocking_comm.cu -->
 
 
-Genuinely compiled with a real `nvcc` and genuinely run. Locked output, deterministic across repeated runs:
-
-<details markdown="1"><summary>Historical authoring output — superseded by the current execution above</summary>
-
-```
-cudaGetDeviceCount(): 0 device(s).
-
-ncclGetUniqueId(): no error (code 0)
-ncclCommInitRankConfig(blocking=1): unhandled cuda error (run with NCCL_DEBUG=INFO for details) (code 1)
-ncclCommInitRankConfig(blocking=0): unhandled cuda error (run with NCCL_DEBUG=INFO for details) (code 1)
-
-Both calls above return immediately in THIS environment, honestly reporting that initialization on a never-successful communicator failed to progress. That's this environment's own honest failure mode (no device, ever) -- it is NOT the same as a real cluster's hang-on-peer-failure mode, which this section's whole point is to name correctly rather than let this book's own always-instant errors quietly stand in for it. Section 19.2 builds the real detect-and-recover sequence a non-blocking communicator like the second one above makes possible.
-```
-
-</details>
-
 File 54 checks a valid one-rank blocking initialization lifecycle and a nonblocking initialization with bounded progress polling and cleanup. The H100 API-probe result establishes that lifecycle, not the behavior of a failed remote rank. Nonblocking configuration permits application-controlled progress/error handling; it does not guarantee that initialization succeeds without a usable device.
 
 The [2026-11-17 H100 execution record](../validation-h100.md) covers two GPUs connected by local NV18. It distinguishes numerical checks, API probes and other executions; a successful exit alone does not establish GPU algorithm correctness.
@@ -196,7 +161,7 @@ The [2026-11-17 H100 execution record](../validation-h100.md) covers two GPUs co
 
 ### Intuition
 
-A non-blocking communicator on its own only solves half the problem Section 19.1 named: it stops a caller from being trapped *inside* a call, but it doesn't yet tell the caller whether initialization -- or any later collective -- actually succeeded, failed, or is still working. NVIDIA's own documentation names the missing piece directly: a non-blocking communicator lets an application "enable non-blocking NCCL communicator so that we may detect and react to timeouts," and the mechanism for that detection is a second real call, `ncclCommGetAsyncError()`, checked in a loop. Their own example code shows exactly this pattern -- `NCCL_CHECK(ncclCommGetAsyncError(comm, &asyncError)); while (asyncError == ncclInProgress)` -- polling until the result stops being "still working" and becomes something definite. Once it's definite and bad, NVIDIA's documentation names the one way out in equally direct terms: "typical recovery for the healthy ranks starts with `ncclCommAbort` on the existing communicator," which "will exit any operation currently in progress, and destroy the communicator." Abort is not repair. It stops the hang and nothing more -- a real application still has to build a fresh communicator afterward, almost always excluding the rank that caused the trouble. Open MPI's own ULFM (User-Level Failure Mitigation) extension, previewed here (Chapter 20 checks this environment's Open MPI 4.1.6 for it and finds it predates ULFM's mainline integration, so it is never run in this book), offers a strictly richer version of this same idea: `MPIX_Comm_revoke()`, which "interrupts any communication pending on the communicator at all ranks" in one call, and `MPIX_Comm_shrink()`, which then "creates a new communicator where dead processes ... were removed" -- survivors keep going in a smaller world, with no full rebuild required. NCCL has since grown its own counterpart: the same NVIDIA blog notes that "NCCL 2.27 introduced `ncclCommShrink`." The NCCL 2.18.3 installed here predates that (its `nccl.h` does already export `ncclCommSplit()`, which "creates one or more communicators from an existing one," but no shrink), so on this version the documented path is abort-and-rebuild, involving every surviving rank from scratch.
+A non-blocking communicator exposes progress through `ncclCommGetAsyncError()`. Applications poll with a timeout, respond to errors, and abort or rebuild the communicator as their recovery protocol requires. MPI ULFM and newer NCCL communicator-shrink APIs provide additional version-dependent recovery mechanisms.
 
 ```text
 NCCL's real escape (this section):          MPI ULFM's real escape (preview):   
@@ -214,7 +179,6 @@ NCCL's real escape (this section):          MPI ULFM's real escape (preview):
 
 `pollUntilSettled()` below is this book's own version of NVIDIA's documented polling loop, bounded by a maximum poll count standing in for a real wall-clock timeout, exactly the way Section 19.1 named it. It calls `ncclCommGetAsyncError()` on the non-blocking communicator Section 19.1 introduced, then, once settled, calls the real `ncclCommAbort()` escape.
 
-> **Validation update:** This updated source has checked API lifetimes and explicit result checks. API probes establish only the API behavior printed by the program; they do not establish numerical collective correctness or fault recovery. Earlier transcripts below belong to the earlier source. The current source was compiled and executed in the dated H100 suite; use the linked record for its numerical, API-probe or other-execution scope.
 
 The [2026-11-17 H100 execution record](../validation-h100.md) covers two GPUs connected by local NV18. It distinguishes numerical checks, API probes and other executions; a successful exit alone does not establish GPU algorithm correctness.
 
@@ -251,7 +215,9 @@ int main() {
 ```
 
 <!-- execution:start:a100:55_nccl_async_detect_and_recover.cu -->
-> **Current execution — 2026-11-17-a100: API validation (recorded scope).** UTC (program start): `2026-11-18T00:03:10.028035+00:00`. Source SHA-256: `31673a5258b42bca2b98b88c9e3664446ae87f8204281b77b33ccd527608314a`.
+> **Compiled and executed — 2026-11-17-a100: API validation (recorded scope).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:03:12.197715+00:00`.
+
+<!-- execution:metadata Source SHA-256: 31673a5258b42bca2b98b88c9e3664446ae87f8204281b77b33ccd527608314a; recorded UTC (program start): 2026-11-18T00:03:10.028035+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-a100/55_nccl_async_detect_and_recover/55_nccl_async_detect_and_recover.cu) · [Compiler log](../validation/2026-11-17-a100/55_nccl_async_detect_and_recover/compile.log) · [Execution log](../validation/2026-11-17-a100/55_nccl_async_detect_and_recover/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -262,18 +228,20 @@ nvcc -std=c++17 -O2 -arch=sm_80 55_nccl_async_detect_and_recover.cu -o ./example
 ./example
 ```
 
-<details markdown="1"><summary>Captured current-source output</summary>
+**Sample output**
 
 ```text
 API PROBE PASS: one-rank nonblocking init/poll/abort only; no fault recovery tested, errors=0
 ```
 
-</details>
+
 <!-- execution:end:a100:55_nccl_async_detect_and_recover.cu -->
 
 
 <!-- execution:start:h100:55_nccl_async_detect_and_recover.cu -->
-> **Current execution — 2026-11-17-h100: API validation (recorded scope).** UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`. Source SHA-256: `31673a5258b42bca2b98b88c9e3664446ae87f8204281b77b33ccd527608314a`.
+> **Compiled and executed — 2026-11-17-h100: API validation (recorded scope).** Hardware: 2 H100 GPUs. Execution record UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`.
+
+<!-- execution:metadata Source SHA-256: 31673a5258b42bca2b98b88c9e3664446ae87f8204281b77b33ccd527608314a; recorded UTC (run-batch start; per-program time unrecorded): 2026-11-17T23:48:18.967387+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-h100/55_nccl_async_detect_and_recover/55_nccl_async_detect_and_recover.cu) · [Compiler log](../validation/2026-11-17-h100/55_nccl_async_detect_and_recover/compile.log) · [Execution log](../validation/2026-11-17-h100/55_nccl_async_detect_and_recover/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -293,27 +261,6 @@ API PROBE PASS: one-rank nonblocking init/poll/abort only; no fault recovery tes
 </details>
 <!-- execution:end:h100:55_nccl_async_detect_and_recover.cu -->
 
-
-Genuinely compiled with a real `nvcc` and genuinely run. Locked output, deterministic across repeated runs:
-
-<details markdown="1"><summary>Historical authoring output — superseded by the current execution above</summary>
-
-```
-cudaGetDeviceCount(): 0 device(s).
-
-ncclCommInitRankConfig(blocking=0): unhandled cuda error (run with NCCL_DEBUG=INFO for details) (code 1)
-On a non-blocking communicator this call is allowed to return BEFORE initialization has actually finished -- that's the whole point, so the caller gets control back immediately instead of blocking. Whether init is really done yet is a separate question, answered only by polling ncclCommGetAsyncError(), never by this return value alone.
-
-pollUntilSettled(): settled after 1/1000 poll(s) with result invalid argument (run with NCCL_DEBUG=WARN for details) (code 4)
-The very first poll already saw a settled (non-ncclInProgress) result -- this environment's own honest failure mode is immediate, not a hang, so there was never anything for this loop to genuinely wait out. On a real cluster with a genuinely dead peer, ncclCommGetAsyncError() keeps returning ncclInProgress for as long as the peer stays dead, and THIS loop is what turns that into a bounded wait instead of an unbounded hang.
-
-ncclCommAbort(): no error (code 0)
-ncclCommAbort() only guarantees that this call returns -- it does NOT rebuild a working communicator. A real application still has to call ncclCommInitRankConfig() again afterward (19.1's own call, unchanged) to get back into a workable state, almost always with the dead rank excluded from the new membership list.
-
-Open MPI's ULFM (User-Level Failure Mitigation) extension offers a real, richer alternative to this abort-and-rebuild cycle: MPIX_Comm_revoke() invalidates a communicator across every surviving rank at once (so nobody is left waiting on a peer that already knows to give up), and MPIX_Comm_shrink() then produces a NEW communicator that simply excludes the dead rank -- survivors keep going with a smaller world, no full rebuild required. NCCL's own counterpart, ncclCommShrink(), arrived in NCCL 2.27; the NCCL 2.18.3 installed here predates it (its nccl.h does offer ncclCommSplit(), which carves smaller communicators out of an existing one), so on THIS version the documented recovery path is abort-and-rebuild: ncclCommInitRankConfig() again with a new rank count and a new ncclUniqueId. Chapter 20 opens Part 5 with MPI's own first dedicated chapter, and checks whether this environment's Open MPI ships ULFM at all.
-```
-
-</details>
 
 File 55 uses a valid one-rank nonblocking communicator, bounded polling and checked cleanup. Its current API-probe pass checks that path only. It does not manufacture a hung peer, demonstrate multi-rank recovery, or use `ncclCommAbort(nullptr)` as evidence of a real abort.
 
@@ -480,7 +427,9 @@ int main() {
 ```
 
 <!-- execution:start:a100:56_backup_workers_simulation.cpp -->
-> **Current execution — 2026-11-17-a100: Host program/model (exit-only).** UTC (program start): `2026-11-18T00:03:15.374862+00:00`. Source SHA-256: `17769870b0835023844462f57d5caec3fb3c556a77c2987fc61bc6702d708bf3`.
+> **Compiled and executed — 2026-11-17-a100: Host program/model (exit-only).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:03:15.791011+00:00`.
+
+<!-- execution:metadata Source SHA-256: 17769870b0835023844462f57d5caec3fb3c556a77c2987fc61bc6702d708bf3; recorded UTC (program start): 2026-11-18T00:03:15.374862+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-a100/56_backup_workers_simulation/56_backup_workers_simulation.cpp) · [Compiler log](../validation/2026-11-17-a100/56_backup_workers_simulation/compile.log) · [Execution log](../validation/2026-11-17-a100/56_backup_workers_simulation/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -491,7 +440,7 @@ g++ -std=c++17 -O2 56_backup_workers_simulation.cpp -o ./example
 ./example
 ```
 
-<details markdown="1"><summary>Captured current-source output</summary>
+**Sample output**
 
 ```text
 Section 19.3: backup workers, N=4 required + b=2 backup, 3 fixed scenarios.
@@ -522,12 +471,14 @@ Invariant across every scenario above -- waiting for backups is never slower tha
 This is exactly Chen et al.'s own real claim, checked here on fixed numbers rather than assumed: taking the n-th order statistic of a LARGER pool can only ever be less than or equal to the max of one FIXED subset of that same pool's own n members, for any numbers at all -- adding more candidates and picking the best n of them never makes the n-th-best candidate's time worse.
 ```
 
-</details>
+
 <!-- execution:end:a100:56_backup_workers_simulation.cpp -->
 
 
 <!-- execution:start:h100:56_backup_workers_simulation.cpp -->
-> **Current execution — 2026-11-17-h100: Host program/model (exit-only).** UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`. Source SHA-256: `17769870b0835023844462f57d5caec3fb3c556a77c2987fc61bc6702d708bf3`.
+> **Compiled and executed — 2026-11-17-h100: Host program/model (exit-only).** Hardware: 2 H100 GPUs. Execution record UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`.
+
+<!-- execution:metadata Source SHA-256: 17769870b0835023844462f57d5caec3fb3c556a77c2987fc61bc6702d708bf3; recorded UTC (run-batch start; per-program time unrecorded): 2026-11-17T23:48:18.967387+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-h100/56_backup_workers_simulation/56_backup_workers_simulation.cpp) · [Compiler log](../validation/2026-11-17-h100/56_backup_workers_simulation/compile.log) · [Execution log](../validation/2026-11-17-h100/56_backup_workers_simulation/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -573,41 +524,6 @@ This is exactly Chen et al.'s own real claim, checked here on fixed numbers rath
 <!-- execution:end:h100:56_backup_workers_simulation.cpp -->
 
 
-Genuinely compiled with a real `g++` and genuinely run, re-verified identical on both this book's real toolchains (no floating-point exact-bit comparison here -- only `<=` comparisons and a `max` -- so no `-ffp-contract=off` flag was needed). Locked output, deterministic across repeated runs:
-
-<details markdown="1"><summary>Historical authoring output — superseded by the current execution above</summary>
-
-```
-Section 19.3: backup workers, N=4 required + b=2 backup, 3 fixed scenarios.
-
-Scenario: no true straggler
-  required times: [10.0, 11.0, 9.0, 12.0]   backup times: [10.5, 11.5]
-  without backups (max of the 4 required):        12.0
-  with backups (4th-fastest of all 6, pooled):     11.0
-  with <= without: PASS
-  Nothing is actually hung -- every one of the 6 workers finishes in ordinary time. Even here, backups still help: the 4th-fastest of all 6 (11.0) beats the slowest of the 4 originally-required ones (12.0), purely from having two extra chances at the draw.
-
-Scenario: a required worker catastrophically straggles
-  required times: [10.0, 11.0, 9.0, 1000000.0]   backup times: [12.0, 13.0]
-  without backups (max of the 4 required):        1000000.0
-  with backups (4th-fastest of all 6, pooled):     12.0
-  with <= without: PASS
-  One of the 4 ORIGINALLY-REQUIRED workers is the real target case -- effectively hung (a straggler so slow it may as well be Section 19.1's dead peer). Without backups, the whole step is held hostage to it. With 2 backups in flight, the pool has 4 OTHER finishers well under the straggler's time, so the step proceeds without ever waiting on it at all.
-
-Scenario: slow backups, no downside
-  required times: [10.0, 11.0, 9.0, 12.0]   backup times: [500.0, 600.0]
-  without backups (max of the 4 required):        12.0
-  with backups (4th-fastest of all 6, pooled):     12.0
-  with <= without: PASS
-  The backups themselves are the slow ones this time, far slower than any required worker. That costs nothing: the first 4 finishers are still the 4 required workers (9,10,11,12), so the backups' own results are simply dropped, unused, exactly as designed.
-
-Invariant across every scenario above -- waiting for backups is never slower than waiting for the fixed required set alone -- holds in all 3/3 cases: PASS
-
-This is exactly Chen et al.'s own real claim, checked here on fixed numbers rather than assumed: taking the n-th order statistic of a LARGER pool can only ever be less than or equal to the max of one FIXED subset of that same pool's own n members, for any numbers at all -- adding more candidates and picking the best n of them never makes the n-th-best candidate's time worse.
-```
-
-</details>
-
 The middle scenario is the one worth sitting with: without backups, the step's makespan is `1000000.0` -- Chapter 18's own worst-case makespan, taken to an extreme. With two backups in flight, the very same catastrophic straggler costs the step nothing at all; the pool's 4th-fastest finisher is `12.0`, and the straggler is simply never waited on. That's the real payoff Chen et al. report at scale (`N=96, b=4`, out of 100 total machines): a small, fixed number of extra workers absorbs almost any single straggler, without ever having to detect, classify, or recover from anything -- the technique's whole mechanism is "don't wait past the N-th finisher," full stop.
 
 !!! warning "[COMMON TRAP] Treating backup workers as a fault-tolerance technique, not a straggler-mitigation one"
@@ -615,13 +531,13 @@ The middle scenario is the one worth sitting with: without backups, the step's m
 
 ## Chapter Summary
 
-This chapter completed Part 4's arc from "every rank is equally fast and always present" (the silent assumption behind every partitioning function since Chapter 12) to "a rank can be absent entirely." Section 19.1 named the real, and worse, failure mode a genuinely dead peer causes on a real cluster: not the instant, honest error this book's every device-less call has produced since Chapter 3, but a hang, on any collective, at any rank still healthy enough to be waiting -- NVIDIA's own documentation states this plainly for NCCL. Section 19.2 built the real fix NCCL actually offers: a non-blocking communicator (`ncclConfig_t`, `config.blocking = 0`), polled via `ncclCommGetAsyncError()` in a bounded loop instead of blocked on directly, escaped via `ncclCommAbort()` once a real problem is detected -- while being explicit that abort only stops the hang, it doesn't repair anything, and a full communicator rebuild (all ranks, from scratch) is still required afterward. That section also named a real, richer alternative this book does not get to run: MPI's ULFM extension, whose `MPIX_Comm_revoke()` and `MPIX_Comm_shrink()` let survivors continue in a smaller communicator without a full rebuild (NCCL 2.27's `ncclCommShrink()` is NCCL's later counterpart, absent from the installed 2.18.3). Section 19.3 then covered a genuinely different, milder, and far more common case -- a worker that's merely slow, not dead -- via Chen et al.'s real backup-workers technique, verified directly against a fixed, checked invariant that follows combinatorially from the selection rule itself: pooling more candidates and keeping the fastest N of them is never slower than waiting on one fixed set of N, for any timings at all. This completes Part 4 (Chapters 17-19: barriers, load balancing, and fault tolerance). Chapter 20 opens Part 5 by leaving single-node NCCL behind for MPI's own first dedicated chapter -- built, not just referenced, including a real check of whether this environment's Open MPI ships the ULFM extension this chapter could only preview (it doesn't).
+This chapter completes Part 4 with communicator error handling and straggler-tolerant scheduling. A failed operation needs a recovery protocol; an abort is not a replacement communicator. Backup-worker models address a different problem by choosing a completed subset of workers. Chapter 20 extends communication to MPI processes.
 
 ## Self-Check Questions
 
 1. Quote NVIDIA's own documented distinction between an ordinary NCCL error and what a genuinely dead peer causes on a *blocking* communicator, and explain in your own words why checking a call's `ncclResult_t` cannot catch the second case.
 2. What does setting `config.blocking = 0` actually change about when `ncclCommInitRankConfig()` returns, and what does it *not* change about whether initialization has actually finished?
-3. In Section 19.2's own locked output, `ncclCommAbort()` reports `no error (code 0)` even though initialization failed. What handle was it actually called on, and why does that make the success code uninformative rather than evidence of a real cleanup?
+3. In Section 19.2's own Sample output, `ncclCommAbort()` reports `no error (code 0)` even though initialization failed. What handle was it actually called on, and why does that make the success code uninformative rather than evidence of a real cleanup?
 4. Name the one real capability Open MPI's ULFM extension offers (via `MPIX_Comm_shrink()`) that the `ncclCommAbort()` + rebuild cycle available on the installed NCCL 2.18.3 does not. Which later NCCL version adds a counterpart?
 5. Using Section 19.3's own `withBackupsWait()` function, explain in your own words why pooling N+b candidates and taking the N-th smallest can never produce a *worse* (larger) result than `withoutBackupsWait()`'s max of one fixed set of N, for any input timings at all.
 6. Section 19.3's third scenario makes the backup workers themselves the slowest of all 6 candidates, and the "with backups" result is unchanged from the baseline. Why does that happen, and what does it say about the actual cost of adding backup workers when no one straggles?
@@ -638,7 +554,7 @@ Chapter 20 opens Part 5 by leaving single-node NCCL behind for the first time in
 
 **2.** Setting `config.blocking = 0` changes *when the call returns*: a non-blocking `ncclCommInitRankConfig()` is allowed to return control to the caller before initialization has actually finished, instead of blocking until it's done (or never returning, if a peer is dead). It does *not* change whether initialization has actually completed by the time the call returns -- that's a separate fact, which the caller has to check afterward, in a loop, via `ncclCommGetAsyncError()`.
 
-**3.** It was called on `nullptr`. The failed `ncclCommInitRankConfig()` never wrote a communicator into `comm`, so `comm` still holds the `nullptr` the file initialized it to, and `ncclCommAbort(nullptr)` is a no-op that returns `ncclSuccess` (the same null handle is why `ncclCommGetAsyncError()` returned `ncclInvalidArgument`, code 4). Nothing was exited or destroyed, so the success code says nothing about how abort behaves on a real, stuck communicator, where its documented job -- "exit any operation currently in progress, and destroy the communicator" -- is real work.
+**3.** Check whether a communicator is valid before querying or aborting it. The expected-error probe checks NULL-handle rejection; successful cleanup of a valid communicator is a separate case.
 
 **4.** ULFM's `MPIX_Comm_shrink()` produces a new, smaller communicator that excludes the dead process directly, letting survivors continue without a full rebuild. NCCL's own `ncclCommAbort()` only stops the hang -- it destroys the communicator entirely, requiring every surviving rank to call `ncclCommInitRankConfig()` again from scratch (a new rank count, a new `ncclUniqueId`) to get back to a workable state, which is a strictly heavier-weight recovery than ULFM's shrink-in-place. That is a statement about the installed NCCL 2.18.3, not NCCL in general: NCCL 2.27 introduced `ncclCommShrink()`, its own counterpart to ULFM's shrink.
 

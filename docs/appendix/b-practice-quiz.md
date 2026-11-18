@@ -1,11 +1,5 @@
 # Appendix B: Practice Quiz
 
-<!-- execution:provenance -->
-!!! info "Execution provenance"
-
-    Current execution blocks identify the tested source hash, hardware dataset, commands and captured output. References elsewhere on this page to a device-less environment describe the original authoring context. Historical output is superseded by the current record. Displayed output omits the runner command header and trims trailing line whitespace; raw logs remain exact. A host simulation or API validation has its stated scope; neither alone establishes a numerical multi-GPU workload or measured performance.
-
-
 <!-- mgpu:opener:start -->
 [![Appendix B: Practice Quiz](../images/chapter-openers/appendix-b.svg)](../images/chapter-openers/appendix-b.svg)
 <!-- mgpu:opener:end -->
@@ -206,7 +200,9 @@ int main() {
 ```
 
 <!-- execution:start:a100:123_quiz_ring_allreduce_phases.cpp -->
-> **Current execution — 2026-11-17-a100: Host program/model (exit-only).** UTC (program start): `2026-11-17T23:58:31.850735+00:00`. Source SHA-256: `de78a917a29312f29b7ee7ce0fb3405a64481c852426eeeb1072c31c0dda2e81`.
+> **Compiled and executed — 2026-11-17-a100: Host program/model (exit-only).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-17T23:58:32.216314+00:00`.
+
+<!-- execution:metadata Source SHA-256: de78a917a29312f29b7ee7ce0fb3405a64481c852426eeeb1072c31c0dda2e81; recorded UTC (program start): 2026-11-17T23:58:31.850735+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-a100/123_quiz_ring_allreduce_phases/123_quiz_ring_allreduce_phases.cpp) · [Compiler log](../validation/2026-11-17-a100/123_quiz_ring_allreduce_phases/compile.log) · [Execution log](../validation/2026-11-17-a100/123_quiz_ring_allreduce_phases/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -217,7 +213,7 @@ g++ -std=c++17 -O2 123_quiz_ring_allreduce_phases.cpp -o ./example
 ./example
 ```
 
-<details markdown="1"><summary>Captured current-source output</summary>
+**Sample output**
 
 ```text
 === initial state (before reduce-scatter) ===
@@ -246,12 +242,14 @@ rank 2's own fully-reduced chunk is chunk index 3, value = 112 (matches ground t
 self-check: every rank's final buffer matches ground truth: YES
 ```
 
-</details>
+
 <!-- execution:end:a100:123_quiz_ring_allreduce_phases.cpp -->
 
 
 <!-- execution:start:h100:123_quiz_ring_allreduce_phases.cpp -->
-> **Current execution — 2026-11-17-h100: Host program/model (exit-only).** UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`. Source SHA-256: `de78a917a29312f29b7ee7ce0fb3405a64481c852426eeeb1072c31c0dda2e81`.
+> **Compiled and executed — 2026-11-17-h100: Host program/model (exit-only).** Hardware: 2 H100 GPUs. Execution record UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`.
+
+<!-- execution:metadata Source SHA-256: de78a917a29312f29b7ee7ce0fb3405a64481c852426eeeb1072c31c0dda2e81; recorded UTC (run-batch start; per-program time unrecorded): 2026-11-17T23:48:18.967387+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-h100/123_quiz_ring_allreduce_phases/123_quiz_ring_allreduce_phases.cpp) · [Compiler log](../validation/2026-11-17-h100/123_quiz_ring_allreduce_phases/compile.log) · [Execution log](../validation/2026-11-17-h100/123_quiz_ring_allreduce_phases/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -303,37 +301,6 @@ g++ -std=c++17 -Wall -Wextra -O2 123_quiz_ring_allreduce_phases.cpp -o 123_quiz_
 ```
 
 **Revealed output:**
-
-<details markdown="1"><summary>Historical authoring output — superseded by the current execution above</summary>
-
-```text
-=== initial state (before reduce-scatter) ===
-  rank 0: [10, 11, 12, 13]
-  rank 1: [20, 21, 22, 23]
-  rank 2: [30, 31, 32, 33]
-  rank 3: [40, 41, 42, 43]
-
-=== ground truth: elementwise sum across all 4 ranks ===
-  [100, 104, 108, 112]
-
-=== after reduce-scatter (P-1 = 3 steps) ===
-  rank 0: [10, 104, 86, 56]
-  rank 1: [30, 21, 108, 79]
-  rank 2: [60, 52, 32, 112]
-  rank 3: [100, 93, 74, 43]
-
-rank 2's own fully-reduced chunk is chunk index 3, value = 112 (matches ground truth [3]=112)
-
-=== after all-gather (P-1 = 3 more steps) -- every rank now holds the full result ===
-  rank 0: [100, 104, 108, 112]
-  rank 1: [100, 104, 108, 112]
-  rank 2: [100, 104, 108, 112]
-  rank 3: [100, 104, 108, 112]
-
-self-check: every rank's final buffer matches ground truth: YES
-```
-
-</details>
 
 Only chunk index 3 is fully reduced on rank 2 right after reduce-scatter -- every other entry in rank 2's own buffer at that point is still a partial, in-progress sum, not yet the final answer, exactly the distinction the two-phase design exists to make precise.
 
@@ -405,7 +372,9 @@ int main() {
 ```
 
 <!-- execution:start:a100:124_quiz_reassociation_cancellation.cpp -->
-> **Current execution — 2026-11-17-a100: Host program/model (exit-only).** UTC (program start): `2026-11-17T23:58:32.220725+00:00`. Source SHA-256: `5b7a6dbb7d3434c7d9cca6f57135e389ceb89387093e13c38d52ee0de5289c64`.
+> **Compiled and executed — 2026-11-17-a100: Host program/model (exit-only).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-17T23:58:32.285588+00:00`.
+
+<!-- execution:metadata Source SHA-256: 5b7a6dbb7d3434c7d9cca6f57135e389ceb89387093e13c38d52ee0de5289c64; recorded UTC (program start): 2026-11-17T23:58:32.220725+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-a100/124_quiz_reassociation_cancellation/124_quiz_reassociation_cancellation.cpp) · [Compiler log](../validation/2026-11-17-a100/124_quiz_reassociation_cancellation/compile.log) · [Execution log](../validation/2026-11-17-a100/124_quiz_reassociation_cancellation/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -416,7 +385,7 @@ g++ -std=c++17 -O2 124_quiz_reassociation_cancellation.cpp -o ./example
 ./example
 ```
 
-<details markdown="1"><summary>Captured current-source output</summary>
+**Sample output**
 
 ```text
 === summing the same four doubles in two different orders ===
@@ -439,12 +408,14 @@ difference        = 1.0
 self-check: do the two orders agree? NO -- both orders sum the IDENTICAL four numbers, so any difference is entirely a property of ROUND-OFF ORDER, not of the data itself. This is the exact same real mechanism Chapters 25/29/31 each found: a ring's own sequential forwarding order and a tree-style pairwise combine order are NOT required to produce bit-identical sums, even though both are mathematically "the same" reduction.
 ```
 
-</details>
+
 <!-- execution:end:a100:124_quiz_reassociation_cancellation.cpp -->
 
 
 <!-- execution:start:h100:124_quiz_reassociation_cancellation.cpp -->
-> **Current execution — 2026-11-17-h100: Host program/model (exit-only).** UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`. Source SHA-256: `5b7a6dbb7d3434c7d9cca6f57135e389ceb89387093e13c38d52ee0de5289c64`.
+> **Compiled and executed — 2026-11-17-h100: Host program/model (exit-only).** Hardware: 2 H100 GPUs. Execution record UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`.
+
+<!-- execution:metadata Source SHA-256: 5b7a6dbb7d3434c7d9cca6f57135e389ceb89387093e13c38d52ee0de5289c64; recorded UTC (run-batch start; per-program time unrecorded): 2026-11-17T23:48:18.967387+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-h100/124_quiz_reassociation_cancellation/124_quiz_reassociation_cancellation.cpp) · [Compiler log](../validation/2026-11-17-h100/124_quiz_reassociation_cancellation/compile.log) · [Execution log](../validation/2026-11-17-h100/124_quiz_reassociation_cancellation/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -490,31 +461,6 @@ g++ -std=c++17 -Wall -Wextra -O2 124_quiz_reassociation_cancellation.cpp -o 124_
 ```
 
 **Revealed output:**
-
-<details markdown="1"><summary>Historical authoring output — superseded by the current execution above</summary>
-
-```text
-=== summing the same four doubles in two different orders ===
-a=10000000000000000.0, b=1.0, c=-10000000000000000.0, d=1.0
-
-sequential ((a+b)+c)+d:
-  a+b       = 10000000000000000.0  (b=1.0 is far smaller than a's own ULP at this magnitude -- it vanishes in the rounding)
-  (a+b)+c   = 0.0
-  ((a+b)+c)+d = 1.0
-
-pairwise (a+c)+(b+d):
-  a+c       = 0.0  (equal magnitude, opposite sign -- exact cancellation, no rounding loss)
-  b+d       = 2.0
-  (a+c)+(b+d) = 2.0
-
-sequential result = 1.0
-pairwise result   = 2.0
-difference        = 1.0
-
-self-check: do the two orders agree? NO -- both orders sum the IDENTICAL four numbers, so any difference is entirely a property of ROUND-OFF ORDER, not of the data itself. This is the exact same real mechanism Chapters 25/29/31 each found: a ring's own sequential forwarding order and a tree-style pairwise combine order are NOT required to produce bit-identical sums, even though both are mathematically "the same" reduction.
-```
-
-</details>
 
 The two orders don't merely round differently in some tiny last digit -- they disagree by a full `1.0`, because `a` and `c` cancel EXACTLY when added directly to each other, but `b`'s own contribution is lost entirely when added to `a` first, since `b` falls below `a`'s own representable precision at that magnitude. This is deliberately the least subtle possible version of the same mechanism Chapters 25/29/31 found as a small, easy-to-miss single-bit difference -- the underlying cause is identical.
 
@@ -633,7 +579,9 @@ int main() {
 ```
 
 <!-- execution:start:a100:125_quiz_ghost_cell_trap.cpp -->
-> **Current execution — 2026-11-17-a100: Host program/model (exit-only).** UTC (program start): `2026-11-17T23:58:32.287992+00:00`. Source SHA-256: `0e77e1425ac760ec69d2b496ad330625e5abb2c524d204b02285fe4142d1eeb5`.
+> **Compiled and executed — 2026-11-17-a100: Host program/model (exit-only).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-17T23:58:32.553350+00:00`.
+
+<!-- execution:metadata Source SHA-256: 0e77e1425ac760ec69d2b496ad330625e5abb2c524d204b02285fe4142d1eeb5; recorded UTC (program start): 2026-11-17T23:58:32.287992+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-a100/125_quiz_ghost_cell_trap/125_quiz_ghost_cell_trap.cpp) · [Compiler log](../validation/2026-11-17-a100/125_quiz_ghost_cell_trap/compile.log) · [Execution log](../validation/2026-11-17-a100/125_quiz_ghost_cell_trap/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -644,7 +592,7 @@ g++ -std=c++17 -O2 125_quiz_ghost_cell_trap.cpp -o ./example
 ./example
 ```
 
-<details markdown="1"><summary>Captured current-source output</summary>
+**Sample output**
 
 ```text
 === 8-cell array split across 2 ranks, 4 interior cells each ===
@@ -663,12 +611,14 @@ total cells where the no-sync version disagrees with the single-process referenc
 those mismatches occur ONLY at the two rank-boundary cells (index 3 and index 4) -- every purely interior cell (0,1,2 and 5,6,7) never reads a neighbor across the rank boundary at all, so it is correct with or without the ghost-cell exchange. This is exactly Chapters 16 and 40's own real finding: a missing halo sync does not corrupt the whole domain, it silently corrupts precisely the cells whose correctness depends on it -- the boundary, and nowhere else.
 ```
 
-</details>
+
 <!-- execution:end:a100:125_quiz_ghost_cell_trap.cpp -->
 
 
 <!-- execution:start:h100:125_quiz_ghost_cell_trap.cpp -->
-> **Current execution — 2026-11-17-h100: Host program/model (exit-only).** UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`. Source SHA-256: `0e77e1425ac760ec69d2b496ad330625e5abb2c524d204b02285fe4142d1eeb5`.
+> **Compiled and executed — 2026-11-17-h100: Host program/model (exit-only).** Hardware: 2 H100 GPUs. Execution record UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`.
+
+<!-- execution:metadata Source SHA-256: 0e77e1425ac760ec69d2b496ad330625e5abb2c524d204b02285fe4142d1eeb5; recorded UTC (run-batch start; per-program time unrecorded): 2026-11-17T23:48:18.967387+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-h100/125_quiz_ghost_cell_trap/125_quiz_ghost_cell_trap.cpp) · [Compiler log](../validation/2026-11-17-h100/125_quiz_ghost_cell_trap/compile.log) · [Execution log](../validation/2026-11-17-h100/125_quiz_ghost_cell_trap/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -710,27 +660,6 @@ g++ -std=c++17 -Wall -Wextra -O2 125_quiz_ghost_cell_trap.cpp -o 125_quiz_ghost_
 ```
 
 **Revealed output:**
-
-<details markdown="1"><summary>Historical authoring output — superseded by the current execution above</summary>
-
-```text
-=== 8-cell array split across 2 ranks, 4 interior cells each ===
-
-cell   reference      correct-sync   buggy(no-sync)
-0      10.5000        matches        matches   
-1      11.0000        matches        matches   
-2      12.0000        matches        matches   
-3      13.0000        matches        MISMATCH (stale ghost=0)
-4      14.0000        matches        MISMATCH (stale ghost=0)
-5      15.0000        matches        matches   
-6      16.0000        matches        matches   
-7      16.5000        matches        matches   
-
-total cells where the no-sync version disagrees with the single-process reference: 2 out of 8
-those mismatches occur ONLY at the two rank-boundary cells (index 3 and index 4) -- every purely interior cell (0,1,2 and 5,6,7) never reads a neighbor across the rank boundary at all, so it is correct with or without the ghost-cell exchange. This is exactly Chapters 16 and 40's own real finding: a missing halo sync does not corrupt the whole domain, it silently corrupts precisely the cells whose correctness depends on it -- the boundary, and nowhere else.
-```
-
-</details>
 
 Exactly 2 of the 8 cells are wrong, and both are the cells immediately adjacent to the rank boundary -- not a handful of scattered errors, and not the entire domain. A missing synchronization step tends to look like this in practice: a small, localized, boundary-shaped wrongness that is easy to miss in a quick spot-check of the interior, and easy to misdiagnose as "probably fine" precisely because most of the output IS fine.
 

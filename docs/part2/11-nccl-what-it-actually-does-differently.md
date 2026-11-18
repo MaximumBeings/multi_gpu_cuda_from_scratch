@@ -1,11 +1,5 @@
 # Chapter 11: NCCL: What It Actually Does Differently From What You Just Built
 
-<!-- execution:provenance -->
-!!! info "Execution provenance"
-
-    Current execution blocks identify the tested source hash, hardware dataset, commands and captured output. References elsewhere on this page to a device-less environment describe the original authoring context. Historical output is superseded by the current record. Displayed output omits the runner command header and trims trailing line whitespace; raw logs remain exact. A host simulation or API validation has its stated scope; neither alone establishes a numerical multi-GPU workload or measured performance.
-
-
 <!-- mgpu:opener:start -->
 [![Chapter 11: NCCL: What It Actually Does Differently From What You Just Built](../images/chapter-openers/11.svg)](../images/chapter-openers/11.svg)
 <!-- mgpu:opener:end -->
@@ -24,7 +18,7 @@
 
 ---
 
-This chapter introduces NCCL communicator construction and expected-error probes. Files 30 and 31 are checked API probes in the current H100 run, not numerical collective algorithms. Subsequent chapters contain initialized-buffer collective checks. Earlier device-less transcripts describe historical diagnostics only.
+This chapter introduces communicator construction, expected-error API probes and NCCL algorithm selection. Later initialized-buffer examples exercise the numerical collectives.
 
 The [2026-11-17 H100 execution record](../validation-h100.md) covers two GPUs connected by local NV18. It distinguishes numerical checks, API probes and other executions; a successful exit alone does not establish GPU algorithm correctness.
 
@@ -70,9 +64,8 @@ Before any collective call, a real NCCL program needs a communicator:
 
 ### Background
 
-`ncclGetVersion()` is the one call in this section that needs nothing from the machine at all -- it reads a version number baked into the library at build time, so it can genuinely succeed even here. `ncclCommInitAll()` is different: it has to actually attach communicators to real CUDA devices, and it can fail in two genuinely different ways depending on *which argument* is wrong. NCCL first runs argument checks: a `NULL` `comms` pointer or a negative `ndev` is rejected immediately as `ncclInvalidArgument` (code 4), before any device is touched. A valid request must additionally complete CUDA setup; a CUDA failure can be reported as `ncclUnhandledCudaError`. The old NCCL 2.18.3 no-device transcript is historical, not a specification for the current library or a successful initialization test. The code below makes all four cases explicit, and every explanation in this section was confirmed by running it with `NCCL_DEBUG=WARN`, which makes NCCL print its own reason for each failure on stderr.
+`ncclGetVersion()` reads the linked library version. Communicator initialization additionally binds ranks to CUDA devices. File 30 checks valid setup and deliberately invalid arguments as separate cases; NCCL warning text identifies the reason for each rejected call.
 
-> **Validation update:** This updated source has checked API lifetimes and explicit result checks. API probes establish only the API behavior printed by the program; they do not establish numerical collective correctness or fault recovery. Earlier transcripts below belong to the earlier source. The current source was compiled and executed in the dated H100 suite; use the linked record for its numerical, API-probe or other-execution scope.
 
 The [2026-11-17 H100 execution record](../validation-h100.md) covers two GPUs connected by local NV18. It distinguishes numerical checks, API probes and other executions; a successful exit alone does not establish GPU algorithm correctness.
 
@@ -103,7 +96,9 @@ int main() {
 ```
 
 <!-- execution:start:a100:30_nccl_comm_init.cu -->
-> **Current execution — 2026-11-17-a100: API validation (recorded scope).** UTC (program start): `2026-11-18T00:01:48.006326+00:00`. Source SHA-256: `8727f9eeaaba6ddea198f70216798f22ba552ebeaf625453234128773ef4074b`.
+> **Compiled and executed — 2026-11-17-a100: API validation (recorded scope).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:01:50.025564+00:00`.
+
+<!-- execution:metadata Source SHA-256: 8727f9eeaaba6ddea198f70216798f22ba552ebeaf625453234128773ef4074b; recorded UTC (program start): 2026-11-18T00:01:48.006326+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-a100/30_nccl_comm_init/30_nccl_comm_init.cu) · [Compiler log](../validation/2026-11-17-a100/30_nccl_comm_init/compile.log) · [Execution log](../validation/2026-11-17-a100/30_nccl_comm_init/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -114,18 +109,20 @@ nvcc -std=c++17 -O2 -arch=sm_80 30_nccl_comm_init.cu -o ./example -lnccl
 ./example
 ```
 
-<details markdown="1"><summary>Captured current-source output</summary>
+**Sample output**
 
 ```text
 API PROBE PASS: 8 devices, valid initialization/destruction and invalid argument checks, errors=0
 ```
 
-</details>
+
 <!-- execution:end:a100:30_nccl_comm_init.cu -->
 
 
 <!-- execution:start:h100:30_nccl_comm_init.cu -->
-> **Current execution — 2026-11-17-h100: API validation (recorded scope).** UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`. Source SHA-256: `8727f9eeaaba6ddea198f70216798f22ba552ebeaf625453234128773ef4074b`.
+> **Compiled and executed — 2026-11-17-h100: API validation (recorded scope).** Hardware: 2 H100 GPUs. Execution record UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`.
+
+<!-- execution:metadata Source SHA-256: 8727f9eeaaba6ddea198f70216798f22ba552ebeaf625453234128773ef4074b; recorded UTC (run-batch start; per-program time unrecorded): 2026-11-17T23:48:18.967387+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-h100/30_nccl_comm_init/30_nccl_comm_init.cu) · [Compiler log](../validation/2026-11-17-h100/30_nccl_comm_init/compile.log) · [Execution log](../validation/2026-11-17-h100/30_nccl_comm_init/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -146,32 +143,7 @@ API PROBE PASS: 2 devices, valid initialization/destruction and invalid argument
 <!-- execution:end:h100:30_nccl_comm_init.cu -->
 
 
-Genuinely compiled with a real `nvcc`, genuinely linked against a real, installed `libnccl` (version 2.18.3), and genuinely run. Locked output, deterministic across repeated runs:
-
-<details markdown="1"><summary>Historical authoring output — superseded by the current execution above</summary>
-
-```
-cudaGetDeviceCount(): 0 device(s).
-ncclGetVersion(): no error (code 0), reports version 21803 (major.minor.patch = 2.18.3)
-
-(a) ncclCommInitAll(comms, ndev=0 [this book's real deviceCount]): unhandled cuda error (run with NCCL_DEBUG=INFO for details) (code 1)
-(b) ncclCommInitAll(comms, ndev=1): unhandled cuda error (run with NCCL_DEBUG=INFO for details) (code 1)
-(c) ncclCommInitAll(comms=nullptr, ndev=1): invalid argument (run with NCCL_DEBUG=WARN for details) (code 4)
-(d) ncclCommInitAll(comms, ndev=-1): invalid argument (run with NCCL_DEBUG=WARN for details) (code 4)
-
-Two genuinely different failure modes: a malformed ARGUMENT
-(a NULL comms pointer, or a negative device count) is rejected
-immediately as ncclInvalidArgument (code 4); a well-formed request
--- including ndev=0 -- gets past argument checking and fails as
-ncclUnhandledCudaError (code 1) once NCCL's first CUDA call finds
-no device. No communicator was created by any of these calls;
-Section 11.2 shows what every collective reports when handed a
-comm that is still NULL.
-```
-
-</details>
-
-File 30 sizes communicator storage from the actual device count, checks valid initialization and destruction, and separately checks invalid arguments against explicit expected-error results. Use its current H100 log for this source. Earlier zero-device diagnostics cannot establish how a valid communicator or collective behaves.
+File 30 checks communicator initialization and destruction against the detected device count, then checks invalid arguments as separate expected-error cases.
 
 The [2026-11-17 H100 execution record](../validation-h100.md) covers two GPUs connected by local NV18. It distinguishes numerical checks, API probes and other executions; a successful exit alone does not establish GPU algorithm correctness.
 
@@ -203,9 +175,8 @@ Chapter 8-10's six collectives, and their real NCCL 2.18.3 call:
 
 ### Background
 
-No communicator can be created on this machine (Section 11.1), so every call below is handed a `comm` handle that is literally `nullptr`. NCCL's own argument check rejects that `NULL` handle before any of these calls could do anything with real device memory, so every one of the five collectives reports `ncclInvalidArgument` (code 4) -- and `NCCL_DEBUG=WARN` names the cause precisely, once per call: `NCCL WARN Broadcast : comm argument is NULL`, `Reduce : comm argument is NULL`, and likewise for `AllReduce`, `AllGather`, and `ReduceScatter`. This is the same `NULL`-pointer argument check as Section 11.1's case (c), not anything to do with how many devices were requested -- which also means a real program that ignored a failed `ncclCommInitAll()` and carried on would not necessarily see this particular error, since NCCL makes no promise that a failed init leaves the handle `NULL`.
+File 31 deliberately passes a NULL communicator to check argument rejection. These expected-error cases are distinct from the initialized-buffer collective examples in Chapters 12, 14 and 17.
 
-> **Validation update:** This updated source has checked API lifetimes and explicit result checks. API probes establish only the API behavior printed by the program; they do not establish numerical collective correctness or fault recovery. Earlier transcripts below belong to the earlier source. The current source was compiled and executed in the dated H100 suite; use the linked record for its numerical, API-probe or other-execution scope.
 
 The [2026-11-17 H100 execution record](../validation-h100.md) covers two GPUs connected by local NV18. It distinguishes numerical checks, API probes and other executions; a successful exit alone does not establish GPU algorithm correctness.
 
@@ -235,7 +206,9 @@ int main() {
 ```
 
 <!-- execution:start:a100:31_nccl_collectives_mapped.cu -->
-> **Current execution — 2026-11-17-a100: API validation (recorded scope).** UTC (program start): `2026-11-18T00:01:57.510122+00:00`. Source SHA-256: `1d7c8fdc5703d2568fad0a308233cb39f8245aa0f25d25c709d493e216f63a2c`.
+> **Compiled and executed — 2026-11-17-a100: API validation (recorded scope).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:01:59.278843+00:00`.
+
+<!-- execution:metadata Source SHA-256: 1d7c8fdc5703d2568fad0a308233cb39f8245aa0f25d25c709d493e216f63a2c; recorded UTC (program start): 2026-11-18T00:01:57.510122+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-a100/31_nccl_collectives_mapped/31_nccl_collectives_mapped.cu) · [Compiler log](../validation/2026-11-17-a100/31_nccl_collectives_mapped/compile.log) · [Execution log](../validation/2026-11-17-a100/31_nccl_collectives_mapped/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -246,7 +219,7 @@ nvcc -std=c++17 -O2 -arch=sm_80 31_nccl_collectives_mapped.cu -o ./example -lncc
 ./example
 ```
 
-<details markdown="1"><summary>Captured current-source output</summary>
+**Sample output**
 
 ```text
 Broadcast: invalid argument (run with NCCL_DEBUG=WARN for details) (expected invalid argument)
@@ -259,12 +232,14 @@ Recv: invalid argument (run with NCCL_DEBUG=WARN for details) (expected invalid 
 API PROBE PASS: NULL-communicator rejection only, errors=0
 ```
 
-</details>
+
 <!-- execution:end:a100:31_nccl_collectives_mapped.cu -->
 
 
 <!-- execution:start:h100:31_nccl_collectives_mapped.cu -->
-> **Current execution — 2026-11-17-h100: API validation (recorded scope).** UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`. Source SHA-256: `1d7c8fdc5703d2568fad0a308233cb39f8245aa0f25d25c709d493e216f63a2c`.
+> **Compiled and executed — 2026-11-17-h100: API validation (recorded scope).** Hardware: 2 H100 GPUs. Execution record UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`.
+
+<!-- execution:metadata Source SHA-256: 1d7c8fdc5703d2568fad0a308233cb39f8245aa0f25d25c709d493e216f63a2c; recorded UTC (run-batch start; per-program time unrecorded): 2026-11-17T23:48:18.967387+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-h100/31_nccl_collectives_mapped/31_nccl_collectives_mapped.cu) · [Compiler log](../validation/2026-11-17-h100/31_nccl_collectives_mapped/compile.log) · [Execution log](../validation/2026-11-17-h100/31_nccl_collectives_mapped/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -292,43 +267,7 @@ API PROBE PASS: NULL-communicator rejection only, errors=0
 <!-- execution:end:h100:31_nccl_collectives_mapped.cu -->
 
 
-Genuinely compiled with a real `nvcc`, genuinely linked against a real `libnccl`, and genuinely run. Locked output, deterministic across repeated runs:
-
-<details markdown="1"><summary>Historical authoring output — superseded by the current execution above</summary>
-
-```
-cudaGetDeviceCount(): 0 device(s).
-
--- Five of this book's six hand-built collectives, as one
-   real NCCL call each: --
-
-ncclBroadcast()      [Chapter 8, Section 8.1's broadcast]:      invalid argument (run with NCCL_DEBUG=WARN for details) (code 4)
-ncclReduce()         [Chapter 8, Section 8.2's reduce]:         invalid argument (run with NCCL_DEBUG=WARN for details) (code 4)
-ncclAllReduce()      [Chapter 9's ring all-reduce]:             invalid argument (run with NCCL_DEBUG=WARN for details) (code 4)
-ncclAllGather()      [Chapter 10, Section 10.1's all-gather]:   invalid argument (run with NCCL_DEBUG=WARN for details) (code 4)
-ncclReduceScatter()  [Chapter 10, Section 10.2's reduce-scatter]: invalid argument (run with NCCL_DEBUG=WARN for details) (code 4)
-
--- All-to-all [Chapter 10, Section 10.3]: no dedicated call in 2.18.3 --
-   built from ncclSend()/ncclRecv(), exactly like this book's
-   own direct implementation: --
-
-ncclGroupStart(): no error (code 0)
-ncclGroupEnd(): no error (code 0)
-
-0 device(s) worth of ncclSend()/ncclRecv() pairs attempted
-inside the group, so ncclSend()/ncclRecv() were never actually
-called. All five collective calls above report the same
-failure: ncclInvalidArgument, because the comm handle they were
-given is NULL (NCCL_DEBUG=WARN: "comm argument is NULL").
-ncclGroupStart()/ncclGroupEnd() succeed: they touch no comm.
-Section 11.3 turns to the one real difference that would
-matter if a comm HAD been created: how NCCL chooses an
-algorithm for ncclAllReduce().
-```
-
-</details>
-
-`ncclGroupStart()` and `ncclGroupEnd()` genuinely succeed -- like `ncclGetVersion()`, they only manage process-local grouping state, not device state, and take no communicator, so they need no real hardware at all. With `deviceCount = 0`, the loop between them never runs, so `ncclSend()`/`ncclRecv()` are never actually called -- the same honest degradation this book has shown for every device-count-driven loop since Chapter 4. So exactly five real NCCL calls fail here, not six, and all five fail for the reason `NCCL_DEBUG=WARN` reports: a `NULL` comm argument.
+The API probe checks the documented rejection of invalid communicator handles. Real All-to-All communication uses matching sends and receives within a group, with every rank participating.
 
 !!! warning "[COMMON TRAP] Assuming the missing all-to-all call (in NCCL 2.18.3) means all-to-all is somehow a second-class operation in NCCL"
     It would be easy to read "no dedicated call" as "NCCL doesn't really support this." Two things say otherwise. First, the gap is version-specific: NCCL 2.28 added a dedicated `ncclAlltoAll()`, so on a current NCCL the one-call form exists. Second, even in the 2.18.3 this book links against, NCCL's own documentation says otherwise: point-to-point `ncclSend()`/`ncclRecv()` calls "can be fused together with `ncclGroupStart()` and `ncclGroupEnd()` to form more complex communication patterns," and the documentation's own example for exactly this fusion is an all-to-all loop, line for line the same shape as this section's code. All-to-all is fully supported in 2.18.3 -- it's just supported there as a composition of two more primitive calls, the same way this book's own Chapter 10 built it as a composition of `cudaMemcpyPeer()` calls, rather than as one specially-named function.
@@ -416,7 +355,9 @@ int main() {
 ```
 
 <!-- execution:start:a100:32_ring_vs_tree_model.cpp -->
-> **Current execution — 2026-11-17-a100: Host program/model (exit-only).** UTC (program start): `2026-11-18T00:01:59.285330+00:00`. Source SHA-256: `26cb373d652c1985ee1c42d2aa5edb5bee5a47ca5900dc938ca2e110e76967e5`.
+> **Compiled and executed — 2026-11-17-a100: Host program/model (exit-only).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:01:59.500551+00:00`.
+
+<!-- execution:metadata Source SHA-256: 26cb373d652c1985ee1c42d2aa5edb5bee5a47ca5900dc938ca2e110e76967e5; recorded UTC (program start): 2026-11-18T00:01:59.285330+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-a100/32_ring_vs_tree_model/32_ring_vs_tree_model.cpp) · [Compiler log](../validation/2026-11-17-a100/32_ring_vs_tree_model/compile.log) · [Execution log](../validation/2026-11-17-a100/32_ring_vs_tree_model/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -427,7 +368,7 @@ g++ -std=c++17 -O2 32_ring_vs_tree_model.cpp -o ./example
 ./example
 ```
 
-<details markdown="1"><summary>Captured current-source output</summary>
+**Sample output**
 
 ```text
 N          Ring rounds (Ch9)      Tree rounds (up+down)  Ratio
@@ -450,12 +391,14 @@ chapter cites from NVIDIA's own NCCL 2.4 announcement, without
 fabricating a single timing number of its own.
 ```
 
-</details>
+
 <!-- execution:end:a100:32_ring_vs_tree_model.cpp -->
 
 
 <!-- execution:start:h100:32_ring_vs_tree_model.cpp -->
-> **Current execution — 2026-11-17-h100: Host program/model (exit-only).** UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`. Source SHA-256: `26cb373d652c1985ee1c42d2aa5edb5bee5a47ca5900dc938ca2e110e76967e5`.
+> **Compiled and executed — 2026-11-17-h100: Host program/model (exit-only).** Hardware: 2 H100 GPUs. Execution record UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`.
+
+<!-- execution:metadata Source SHA-256: 26cb373d652c1985ee1c42d2aa5edb5bee5a47ca5900dc938ca2e110e76967e5; recorded UTC (run-batch start; per-program time unrecorded): 2026-11-17T23:48:18.967387+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-h100/32_ring_vs_tree_model/32_ring_vs_tree_model.cpp) · [Compiler log](../validation/2026-11-17-h100/32_ring_vs_tree_model/compile.log) · [Execution log](../validation/2026-11-17-h100/32_ring_vs_tree_model/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -493,33 +436,6 @@ fabricating a single timing number of its own.
 <!-- execution:end:h100:32_ring_vs_tree_model.cpp -->
 
 
-Genuinely compiled with `g++` and genuinely run. Locked output, deterministic across repeated runs:
-
-<details markdown="1"><summary>Historical authoring output — superseded by the current execution above</summary>
-
-```
-N          Ring rounds (Ch9)      Tree rounds (up+down)  Ratio     
--          2*(N-1)                2*ceil(log2(N))        ring/tree 
-4          6                      4                      1.50      x
-8          14                     6                      2.33      x
-16         30                     8                      3.75      x
-64         126                    12                     10.50     x
-256        510                    16                     31.88     x
-1024       2046                   20                     102.30    x
-8192       16382                  26                     630.08    x
-24576      49150                  30                     1638.33   x
-
-Ring's round count grows linearly with N (doubling N roughly
-doubles the rounds needed); the tree's grows logarithmically
-(doubling N adds only one more level in each direction). This
-is a structural count of communication ROUNDS, not a measured
-time -- it makes concrete exactly the shape of the claim this
-chapter cites from NVIDIA's own NCCL 2.4 announcement, without
-fabricating a single timing number of its own.
-```
-
-</details>
-
 The last row uses `N=24576` deliberately: NVIDIA's own announcement cites testing this exact feature at 24,576 GPUs on the Summit supercomputer, reporting "up to 180x" latency improvement at that scale. This model's own round-count ratio at that same `N` -- 1638.33x -- is not that measured number, and shouldn't be read as if it were; a round-count ratio and a measured latency-improvement ratio are different quantities, computed differently, and this book has no real timing data to produce the second one. What this table *does* honestly establish is the shape both numbers share: at small `N` the two algorithms are close enough that either one is fine, and the gap between them widens dramatically, in the same direction, as `N` grows into the thousands.
 
 !!! warning "[COMMON TRAP] Treating this section's round-count ratio as a measured performance number"
@@ -527,7 +443,7 @@ The last row uses `N=24576` deliberately: NVIDIA's own announcement cites testin
 
 ## Chapter Summary
 
-This chapter checked this book's own hand-built work in Chapters 8 through 10 against a real, genuinely-linked NCCL library, rather than building a new hand-rolled substitute. A real communicator (Section 11.1) plays exactly the role this book's own `deviceCount` loops have played informally since Chapter 3, and genuinely fails in two different, genuinely informative ways: a malformed argument (a `NULL` `comms` pointer, a negative device count) is rejected up front as `ncclInvalidArgument`, while any well-formed request -- `ndev=0` included -- fails inside CUDA as `ncclUnhandledCudaError`, with `NCCL_DEBUG=WARN` naming the cause in each case. Five of this book's six hand-built collectives turn out to have a literal, one-call NCCL equivalent (Section 11.2), and each one, handed a `NULL` comm, reports "comm argument is NULL"; the sixth, all-to-all, has no dedicated call in the NCCL 2.18.3 this book links against (NCCL 2.28 later added `ncclAlltoAll()`), and there is built the same way Chapter 10 built it -- from repeated point-to-point transfers, just using `ncclSend()`/`ncclRecv()` instead of `cudaMemcpyPeer()`. The one place this book's own algorithm genuinely falls short of what NCCL does for real is scale: Chapter 9's ring all-reduce needs a round count that grows linearly with the number of devices, which is fine at the `N=4` this book has used throughout but becomes a genuine bottleneck at the thousands-of-devices scale real training clusters reach -- which is exactly why NCCL, since version 2.4, automatically chooses between the ring this book built and a second, tree-based algorithm with logarithmic round growth (Section 11.3). With this, **Part 2 is complete**: Chapters 8 through 11 took this book from broadcast and reduce, by hand, all the way to checking that hand-built work against the real library every real multi-GPU training job actually uses. Part 3 turns to what all of this communication infrastructure is actually *for*: the parallelization strategies -- data, model, tensor, and pipeline parallelism -- that decide who computes what, and when they need to talk to each other at all.
+NCCL supplies the collective semantics built by hand in Chapters 8–10 and chooses implementations for the available topology and payload. Ring and tree schedules trade bandwidth and latency differently. The version-specific API probes, numerical examples and round-count model address these separate concerns.
 
 ## Self-Check Questions
 
@@ -550,7 +466,7 @@ Part 2 is complete. Part 3 turns to parallelization strategies -- starting with 
 
 The [2026-11-17 H100 execution record](../validation-h100.md) covers two GPUs connected by local NV18. It distinguishes numerical checks, API probes and other executions; a successful exit alone does not establish GPU algorithm correctness.
 
-**2.** Separate valid communicator initialization from intentionally invalid pointer/count cases. Use explicit expected-error checks and warning text rather than attributing every failure to device count. A historical no-device error is not a portable specification for `ndev=0` or evidence of a working communicator.
+**2.** Treat valid communicator construction and intentionally invalid pointer/count cases separately. Check return codes and diagnostics for the specific case being tested.
 
 The [2026-11-17 H100 execution record](../validation-h100.md) covers two GPUs connected by local NV18. It distinguishes numerical checks, API probes and other executions; a successful exit alone does not establish GPU algorithm correctness.
 

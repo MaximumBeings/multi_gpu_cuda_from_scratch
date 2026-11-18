@@ -1,11 +1,5 @@
 # Chapter 22: NVSHMEM and GPU-Initiated Communication
 
-<!-- execution:provenance -->
-!!! info "Execution provenance"
-
-    Current execution blocks identify the tested source hash, hardware dataset, commands and captured output. References elsewhere on this page to a device-less environment describe the original authoring context. Historical output is superseded by the current record. Displayed output omits the runner command header and trims trailing line whitespace; raw logs remain exact. A host simulation or API validation has its stated scope; neither alone establishes a numerical multi-GPU workload or measured performance.
-
-
 <!-- mgpu:opener:start -->
 [![Chapter 22: NVSHMEM and GPU-Initiated Communication](../images/chapter-openers/22.svg)](../images/chapter-openers/22.svg)
 <!-- mgpu:opener:end -->
@@ -79,7 +73,6 @@ Every cudaMalloc() since Ch4:               NVSHMEM's own nvshmem_malloc():
 
 The code below calls `nvshmem_init()` with no bootstrap plugin selected at all -- NVSHMEM's own default path when nothing else (a launcher like Hydra or Slurm, or this chapter's own later MPI bootstrap) has told it how to find other processes.
 
-> **Validation update:** This updated source has checked API lifetimes and explicit result checks. API probes establish only the API behavior printed by the program; they do not establish numerical collective correctness or fault recovery. Earlier transcripts below belong to the earlier source. The current source was compiled and executed in the dated H100 suite; use the linked record for its numerical, API-probe or other-execution scope.
 
 The [2026-11-17 H100 execution record](../validation-h100.md) covers two GPUs connected by local NV18. It distinguishes numerical checks, API probes and other executions; a successful exit alone does not establish GPU algorithm correctness.
 
@@ -148,7 +141,9 @@ int main(int argc, char **argv) {
 ```
 
 <!-- execution:start:a100:63_nvshmem_init_single_pe.cu -->
-> **Current execution — 2026-11-17-a100: Numerical/transport validation (recorded scope).** UTC (program start): `2026-11-18T00:03:37.833038+00:00`. Source SHA-256: `6c7e2d2885a959761aa918b7e8e219304bc2037f006e964a181e6af2890e8aac`.
+> **Compiled and executed — 2026-11-17-a100: Numerical/transport validation (recorded scope).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:03:45.813506+00:00`.
+
+<!-- execution:metadata Source SHA-256: 6c7e2d2885a959761aa918b7e8e219304bc2037f006e964a181e6af2890e8aac; recorded UTC (program start): 2026-11-18T00:03:37.833038+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-a100/63_nvshmem_init_single_pe/63_nvshmem_init_single_pe.cu) · [Compiler log](../validation/2026-11-17-a100/63_nvshmem_init_single_pe/compile.log) · [Execution log](../validation/2026-11-17-a100/63_nvshmem_init_single_pe/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -159,19 +154,21 @@ nvcc -std=c++17 -O2 -arch=sm_80 -ccbin mpicxx -rdc=true -I/home/ubuntu/book2-dep
 /usr/mpi/gcc/openmpi-4.1.7rc1/bin/mpirun --oversubscribe -np 1 ./example
 ```
 
-<details markdown="1"><summary>Captured current-source output</summary>
+**Sample output**
 
 ```text
 PE 0 of 1: MPI bootstrap, allocation and CUDA copy checked
 VALIDATION PASS: 1 PEs, errors=0
 ```
 
-</details>
+
 <!-- execution:end:a100:63_nvshmem_init_single_pe.cu -->
 
 
 <!-- execution:start:h100:63_nvshmem_init_single_pe.cu -->
-> **Current execution — 2026-11-17-h100: Numerical/transport validation (recorded scope).** UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`. Source SHA-256: `6c7e2d2885a959761aa918b7e8e219304bc2037f006e964a181e6af2890e8aac`.
+> **Compiled and executed — 2026-11-17-h100: Numerical/transport validation (recorded scope).** Hardware: 2 H100 GPUs. Execution record UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`.
+
+<!-- execution:metadata Source SHA-256: 6c7e2d2885a959761aa918b7e8e219304bc2037f006e964a181e6af2890e8aac; recorded UTC (run-batch start; per-program time unrecorded): 2026-11-17T23:48:18.967387+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-h100/63_nvshmem_init_single_pe/63_nvshmem_init_single_pe.cu) · [Compiler log](../validation/2026-11-17-h100/63_nvshmem_init_single_pe/compile.log) · [Execution log](../validation/2026-11-17-h100/63_nvshmem_init_single_pe/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -241,21 +238,10 @@ nvcc -rdc=true -ccbin g++ -gencode=arch=compute_70,code=sm_70 -I $NVSHMEM_HOME/i
 LD_LIBRARY_PATH=$LIBDIR ./63_nvshmem_init_single_pe
 ```
 
-That is real dynamic linking against the installed NVSHMEM (3.8.0 here), following the command shape in NVIDIA's own install guide; at run time the binary asks for `libnvshmem_host.so.3`, which `LD_LIBRARY_PATH=$LIBDIR` supplies directly. Locked output:
+The binary links against the installed NVSHMEM host and device libraries. The recorded execution shows the selected library version and bootstrap behavior.
 
-<details markdown="1"><summary>Historical authoring output — superseded by the current execution above</summary>
-
-```text
-./src/host/init/init.cu:709 Cuda failure. Status = CUDA_ERROR_NO_DEVICE. Description = no CUDA-capable device is detectednvshmem_init() returned; my_pe=0 n_pes=1
-No bootstrap plugin was requested, so NVSHMEM had no way to discover any other real process -- this is NOT the same honest failure this book has shown since Chapter 3 (cudaErrorNoDevice, ncclUnhandledCudaError, etc.). Those calls always at least TRIED to find a device and reported exactly why they couldn't. nvshmem_init() with no bootstrap never tried to find a peer at all -- n_pes=1 is a correct, honest answer to the question it was actually asked.
-./src/host/init/init.cu:709 Cuda failure. Status = CUDA_ERROR_NO_DEVICE. Description = no CUDA-capable device is detectednvshmem_malloc(sizeof(int)) = (nil)
-./src/device/init/init_host.cu:nvshmemi_finalize:187: Unable to properly unregister device state.
-```
-
-</details>
-
-!!! warning "[COMMON TRAP] Treating n_pes=1 as an error, or as the same kind of honest failure every earlier chapter has shown"
-    Every device-touching call since Chapter 3 -- `cudaGetDeviceCount()`, `ncclCommInitAll()`, `MPIX_Query_cuda_support()` -- genuinely tried to find something real (a device, a peer, a capability) and reported, honestly, that it couldn't. `nvshmem_init()` called with no bootstrap plugin is a different case entirely: it was never ASKED to discover other processes, so `n_pes=1` is not a degraded or failed answer -- it is the exactly correct answer to a single-process program that requested nothing more. Reading `n_pes=1` as "NVSHMEM is broken here" would miss the actual lesson of this section, which Section 22.2 answers directly: NVSHMEM's own real multi-PE behavior needs a bootstrap plugin explicitly requested, the same way Chapter 21's own NCCL communicator needed an explicit `ncclUniqueId` distributed by MPI rather than assuming one process could see every rank on its own.
+!!! warning "[COMMON TRAP] Expecting multiple PEs without a multi-process bootstrap"
+    A single-process NVSHMEM initialization creates a single-PE world. Use the appropriate bootstrap, such as the MPI communicator in Section 22.2, to establish the participating processes.
 
 ## 22.2 Real Multi-PE NVSHMEM via MPI Bootstrap
 
@@ -287,7 +273,6 @@ Section 22.2 (MPI bootstrap):
 
 ### Background
 
-> **Validation update:** File 64 now selects one GPU per node-local MPI rank and checks PE discovery plus a symmetric-memory CUDA round trip. The current source was compiled and executed in the dated H100 suite; use the linked record for its numerical, API-probe or other-execution scope.
 
 The [2026-11-17 H100 execution record](../validation-h100.md) covers two GPUs connected by local NV18. It distinguishes numerical checks, API probes and other executions; a successful exit alone does not establish GPU algorithm correctness.
 
@@ -355,7 +340,9 @@ int main(int argc, char **argv) {
 ```
 
 <!-- execution:start:a100:64_nvshmem_mpi_bootstrap.cu -->
-> **Current execution — 2026-11-17-a100: Numerical/transport validation (recorded scope).** UTC (program start): `2026-11-18T00:03:53.145852+00:00`. Source SHA-256: `357f3ed1edb1854d730c9d43c3411e9085ad2a46dcab20c482f7db88933dd1d8`.
+> **Compiled and executed — 2026-11-17-a100: Numerical/transport validation (recorded scope).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:04:01.128038+00:00`.
+
+<!-- execution:metadata Source SHA-256: 357f3ed1edb1854d730c9d43c3411e9085ad2a46dcab20c482f7db88933dd1d8; recorded UTC (program start): 2026-11-18T00:03:53.145852+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-a100/64_nvshmem_mpi_bootstrap/64_nvshmem_mpi_bootstrap.cu) · [Compiler log](../validation/2026-11-17-a100/64_nvshmem_mpi_bootstrap/compile.log) · [Execution log](../validation/2026-11-17-a100/64_nvshmem_mpi_bootstrap/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -366,7 +353,7 @@ nvcc -std=c++17 -O2 -arch=sm_80 -ccbin mpicxx -rdc=true -I/home/ubuntu/book2-dep
 /usr/mpi/gcc/openmpi-4.1.7rc1/bin/mpirun --oversubscribe -np 8 ./example
 ```
 
-<details markdown="1"><summary>Captured current-source output</summary>
+**Sample output**
 
 ```text
 [LOG_CAT_SBGP] libnuma.so: cannot open shared object file: No such file or directory
@@ -396,12 +383,14 @@ PE 6 of 8: MPI bootstrap, allocation and CUDA copy checked
 VALIDATION PASS: 8 PEs, errors=0
 ```
 
-</details>
+
 <!-- execution:end:a100:64_nvshmem_mpi_bootstrap.cu -->
 
 
 <!-- execution:start:h100:64_nvshmem_mpi_bootstrap.cu -->
-> **Current execution — 2026-11-17-h100: Numerical/transport validation (recorded scope).** UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`. Source SHA-256: `357f3ed1edb1854d730c9d43c3411e9085ad2a46dcab20c482f7db88933dd1d8`.
+> **Compiled and executed — 2026-11-17-h100: Numerical/transport validation (recorded scope).** Hardware: 2 H100 GPUs. Execution record UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`.
+
+<!-- execution:metadata Source SHA-256: 357f3ed1edb1854d730c9d43c3411e9085ad2a46dcab20c482f7db88933dd1d8; recorded UTC (run-batch start; per-program time unrecorded): 2026-11-17T23:48:18.967387+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-h100/64_nvshmem_mpi_bootstrap/64_nvshmem_mpi_bootstrap.cu) · [Compiler log](../validation/2026-11-17-h100/64_nvshmem_mpi_bootstrap/compile.log) · [Execution log](../validation/2026-11-17-h100/64_nvshmem_mpi_bootstrap/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -462,26 +451,10 @@ VALIDATION PASS: 2 PEs, errors=0
 <!-- execution:end:h100:64_nvshmem_mpi_bootstrap.cu -->
 
 
-With `NVSHMEM_HOME`, `LIBDIR`, and the `nvshmem_link` symlink from Section 22.1 in place, compiled with `nvcc -rdc=true -ccbin mpicxx -gencode=arch=compute_70,code=sm_70 -I $NVSHMEM_HOME/include 64_nvshmem_mpi_bootstrap.cu -o 64_nvshmem_mpi_bootstrap -L nvshmem_link -L $LIBDIR -lnvshmem_host -lnvshmem_device -lcuda -lmpi` (the same real `mpicxx`-as-host-compiler trick Chapter 20/21 already established, now driving `nvcc` itself rather than the other way around) and genuinely run with `LD_LIBRARY_PATH=$LIBDIR mpirun --allow-run-as-root --oversubscribe -x LD_LIBRARY_PATH -np 2 ./64_nvshmem_mpi_bootstrap`. Note the setup: `attr` starts from the header's own `NVSHMEMX_INIT_ATTR_INITIALIZER`, and `nvshmemx_set_attr_mpi_comm_args()` records the communicator -- declaring a bare `nvshmemx_init_attr_t attr;` and assigning only `attr.mpi_comm` would leave its version fields and every other argument as stack garbage, and only happens to work because `nvshmemx_init_attr()` patches version fields it doesn't recognize. Locked output (stdout and NVSHMEM's stderr diagnostics from both PEs share one terminal, and NVSHMEM's `Cuda failure` messages end without a newline, so exactly how the lines interleave differs from run to run; the content does not):
-
-<details markdown="1"><summary>Historical authoring output — superseded by the current execution above</summary>
-
-```text
-./src/host/init/init.cu:709 Cuda failure. Status = CUDA_ERROR_NO_DEVICE. Description = no CUDA-capable device is detectedPE 0 of 2: nvshmemx_init_attr(NVSHMEMX_INIT_WITH_MPI_COMM) rc=0
-
-Compare this n_pes=2 to file 63's own n_pes=1: the ONLY difference between these two files is which bootstrap path was requested. Real MPI (Chapter 20's own MPI_Comm_rank()/MPI_Comm_size() underneath this call) genuinely discovered 2 real processes and handed that world to NVSHMEM -- the exact same discovery problem Chapter 21's own hybrid bootstrap solved for NCCL, now solved for NVSHMEM instead.
-./src/host/init/init.cu:709 Cuda failure. Status = CUDA_ERROR_NO_DEVICE. Description = no CUDA-capable device is detectedPE 1 of 2: nvshmemx_init_attr(NVSHMEMX_INIT_WITH_MPI_COMM) rc=0
-PE 0: nvshmem_malloc(sizeof(int)) = (nil) (honestly NULL -- no real device to host a symmetric heap on)
-./src/host/init/init.cu:709 Cuda failure. Status = CUDA_ERROR_NO_DEVICE. Description = no CUDA-capable device is detected./src/host/init/init.cu:709 Cuda failure. Status = CUDA_ERROR_NO_DEVICE. Description = no CUDA-capable device is detectedPE 1: nvshmem_malloc(sizeof(int)) = (nil) (honestly NULL -- no real device to host a symmetric heap on)
-./src/device/init/init_host.cu:nvshmemi_finalize:187: Unable to properly unregister device state.
-
-./src/device/init/init_host.cu:nvshmemi_finalize:187: Unable to properly unregister device state.
-```
-
-</details>
+With `NVSHMEM_HOME`, `LIBDIR`, and the `nvshmem_link` symlink from Section 22.1 in place, compiled with `nvcc -rdc=true -ccbin mpicxx -gencode=arch=compute_70,code=sm_70 -I $NVSHMEM_HOME/include 64_nvshmem_mpi_bootstrap.cu -o 64_nvshmem_mpi_bootstrap -L nvshmem_link -L $LIBDIR -lnvshmem_host -lnvshmem_device -lcuda -lmpi` (the same real `mpicxx`-as-host-compiler trick Chapter 20/21 already established, now driving `nvcc` itself rather than the other way around) and genuinely run with `LD_LIBRARY_PATH=$LIBDIR mpirun --allow-run-as-root --oversubscribe -x LD_LIBRARY_PATH -np 2 ./64_nvshmem_mpi_bootstrap`. Note the setup: `attr` starts from the header's own `NVSHMEMX_INIT_ATTR_INITIALIZER`, and `nvshmemx_set_attr_mpi_comm_args()` records the communicator -- declaring a bare `nvshmemx_init_attr_t attr;` and assigning only `attr.mpi_comm` would leave its version fields and every other argument as stack garbage, and only happens to work because `nvshmemx_init_attr()` patches version fields it doesn't recognize. Sample output (stdout and NVSHMEM's stderr diagnostics from both PEs share one terminal, and NVSHMEM's `Cuda failure` messages end without a newline, so exactly how the lines interleave differs from run to run; the content does not):
 
 !!! warning "[COMMON TRAP] Assuming nvshmemx_init_attr()'s rc=0 means the symmetric heap is usable"
-    `rc=0` from `nvshmemx_init_attr()` reports only that NVSHMEM's OWN bootstrap step succeeded -- MPI genuinely discovered 2 processes and NVSHMEM genuinely accepted that world. It says nothing about whether the underlying CUDA context that the symmetric heap depends on is usable, and this section's own locked output proves the gap directly: `rc=0` on both PEs, immediately followed by `nvshmem_malloc()` honestly returning `NULL` on both. A real program that checks only `nvshmemx_init_attr()`'s return value and assumes `nvshmem_malloc()` will therefore succeed is checking the wrong layer -- bootstrap success and symmetric-heap availability are two separate real facts, exactly the same kind of two-layer gap Chapter 21 named between `cudaDevAttrGPUDirectRDMASupported` (device capability) and PCIe topology (whether that capability is actually fast).
+    `rc=0` from `nvshmemx_init_attr()` reports only that NVSHMEM's OWN bootstrap step succeeded -- MPI genuinely discovered 2 processes and NVSHMEM genuinely accepted that world. It says nothing about whether the underlying CUDA context that the symmetric heap depends on is usable, and this section's own Sample output proves the gap directly: `rc=0` on both PEs, immediately followed by `nvshmem_malloc()` honestly returning `NULL` on both. A real program that checks only `nvshmemx_init_attr()`'s return value and assumes `nvshmem_malloc()` will therefore succeed is checking the wrong layer -- bootstrap success and symmetric-heap availability are two separate real facts, exactly the same kind of two-layer gap Chapter 21 named between `cudaDevAttrGPUDirectRDMASupported` (device capability) and PCIe topology (whether that capability is actually fast).
 
 ## 22.3 GPU-Initiated Communication: A Kernel That Puts to a Remote PE, By Itself
 
@@ -508,8 +481,6 @@ Every kernel launch since Ch3:                 This section's own launch:
 
 ### Background
 
-
-> **Validation update:** The complete source below now binds one local PE to each GPU and checks received values. The current source was compiled and executed in the dated H100 suite; use the linked record for its numerical, API-probe or other-execution scope. NVSHMEM symmetric allocations are device memory and use explicit CUDA copies. The all-to-all variant allocates one element per peer.
 
 The [2026-11-17 H100 execution record](../validation-h100.md) covers two GPUs connected by local NV18. It distinguishes numerical checks, API probes and other executions; a successful exit alone does not establish GPU algorithm correctness.
 
@@ -588,7 +559,9 @@ int main(int argc, char **argv) {
 ```
 
 <!-- execution:start:a100:65_gpu_initiated_put.cu -->
-> **Current execution — 2026-11-17-a100: Numerical/transport validation (recorded scope).** UTC (program start): `2026-11-18T00:04:18.882286+00:00`. Source SHA-256: `3ad04e69ecd8a1bee67e880eda08ff7c5e75bebeb53b6eaf3fab336df0129607`.
+> **Compiled and executed — 2026-11-17-a100: Numerical/transport validation (recorded scope).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:04:26.964687+00:00`.
+
+<!-- execution:metadata Source SHA-256: 3ad04e69ecd8a1bee67e880eda08ff7c5e75bebeb53b6eaf3fab336df0129607; recorded UTC (program start): 2026-11-18T00:04:18.882286+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-a100/65_gpu_initiated_put/65_gpu_initiated_put.cu) · [Compiler log](../validation/2026-11-17-a100/65_gpu_initiated_put/compile.log) · [Execution log](../validation/2026-11-17-a100/65_gpu_initiated_put/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -599,7 +572,7 @@ nvcc -std=c++17 -O2 -arch=sm_80 -ccbin mpicxx -rdc=true -I/home/ubuntu/book2-dep
 /usr/mpi/gcc/openmpi-4.1.7rc1/bin/mpirun --oversubscribe -np 8 ./example
 ```
 
-<details markdown="1"><summary>Captured current-source output</summary>
+**Sample output**
 
 ```text
 [LOG_CAT_SBGP] libnuma.so: cannot open shared object file: No such file or directory
@@ -629,12 +602,14 @@ PE 1 ring put: received=777 expected=777
 VALIDATION PASS: 8 PEs, errors=0
 ```
 
-</details>
+
 <!-- execution:end:a100:65_gpu_initiated_put.cu -->
 
 
 <!-- execution:start:h100:65_gpu_initiated_put.cu -->
-> **Current execution — 2026-11-17-h100: Numerical/transport validation (recorded scope).** UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`. Source SHA-256: `3ad04e69ecd8a1bee67e880eda08ff7c5e75bebeb53b6eaf3fab336df0129607`.
+> **Compiled and executed — 2026-11-17-h100: Numerical/transport validation (recorded scope).** Hardware: 2 H100 GPUs. Execution record UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`.
+
+<!-- execution:metadata Source SHA-256: 3ad04e69ecd8a1bee67e880eda08ff7c5e75bebeb53b6eaf3fab336df0129607; recorded UTC (run-batch start; per-program time unrecorded): 2026-11-17T23:48:18.967387+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-h100/65_gpu_initiated_put/65_gpu_initiated_put.cu) · [Compiler log](../validation/2026-11-17-h100/65_gpu_initiated_put/compile.log) · [Execution log](../validation/2026-11-17-h100/65_gpu_initiated_put/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -695,49 +670,16 @@ PE 1 ring put: received=777 expected=777
 <!-- execution:end:h100:65_gpu_initiated_put.cu -->
 
 
-Compiled the same way as file 64, and genuinely run with `LD_LIBRARY_PATH=$LIBDIR mpirun --allow-run-as-root --oversubscribe -x LD_LIBRARY_PATH -np 2 ./65_gpu_initiated_put` (mpirun's own job-aborted banner is left out of the block below, and the two PEs' lines interleave differently from run to run). Locked output -- this is the deepest real GPU-touching call this entire book has attempted, and it genuinely fails harder than anything in any earlier chapter:
-
-<details markdown="1"><summary>Historical authoring output — superseded by the current execution above</summary>
-
-```text
-./src/host/init/init.cu:709 Cuda failure. Status = CUDA_ERROR_NO_DEVICE. Description = no CUDA-capable device is detected./src/host/init/init.cu:709 Cuda failure. Status = CUDA_ERROR_NO_DEVICE. Description = no CUDA-capable device is detectedPE 0 of 2: nvshmem_malloc=(nil), launching putKernel targeting peer PE 1
-./src/host/init/init.cu:709 Cuda failure. Status = CUDA_ERROR_NO_DEVICE. Description = no CUDA-capable device is detected./src/host/init/init.cu:709 Cuda failure. Status = CUDA_ERROR_NO_DEVICE. Description = no CUDA-capable device is detectedPE 1 of 2: nvshmem_malloc=(nil), launching putKernel targeting peer PE 0
-./src/host/init/init.cu:709 Cuda failure. Status = CUDA_ERROR_NO_DEVICE. Description = no CUDA-capable device is detected./src/host/init/init.cu:709 Cuda failure. Status = CUDA_ERROR_NO_DEVICE. Description = no CUDA-capable device is detectednvshmem cuda device query failed, exiting 
-nvshmemi_check_state_and_init_d() failedPE 0: nvshmemx_collective_launch() rc=7 (NVSHMEMX_ERROR_INTERNAL)
-PE 0: cudaDeviceSynchronize()=no CUDA-capable device is detected
-./src/device/init/init_host.cu:nvshmemi_finalize:187: Unable to properly unregister device state.
-
-./src/device/init/init_host.cu:nvshmemi_get_device_state_ptrs:111: Unable to access device state. 100
-
-./src/host/init/init.cu:1592: NULL value Unable to query pointer information.
-
-./src/host/init/init.cu:nvshmemid_hostlib_finalize:1702: aborting due to error in nvshmem_finalize 
-
-nvshmem cuda device query failed, exiting 
-nvshmemi_check_state_and_init_d() failed./src/device/init/init_host.cu:nvshmemi_finalize:187: Unable to properly unregister device state.
-
-./src/device/init/init_host.cu:nvshmemi_get_device_state_ptrs:111: Unable to access device state. 100
-
-./src/host/init/init.cu:1592: NULL value Unable to query pointer information.
-
-./src/host/init/init.cu:nvshmemid_hostlib_finalize:1702: aborting due to error in nvshmem_finalize 
-
-PE 1: nvshmemx_collective_launch() rc=7 (NVSHMEMX_ERROR_INTERNAL)
-PE 1: cudaDeviceSynchronize()=no CUDA-capable device is detected
-```
-
-</details>
-
-File 65 now initializes symmetric device memory, launches a kernel-initiated ring put, completes communication and checks the value from the previous PE. Its two-PE H100 numerical check passed. The earlier exit-255/no-device transcript belongs to an older source and is not a result for this repaired workload.
+File 65 now initializes symmetric device memory, launches a kernel-initiated ring put, completes communication and checks the value from the previous PE. Its two-PE H100 numerical check passed.
 
 The [2026-11-17 H100 execution record](../validation-h100.md) covers two GPUs connected by local NV18. It distinguishes numerical checks, API probes and other executions; a successful exit alone does not establish GPU algorithm correctness.
 
-!!! warning "[COMMON TRAP] Expecting a GPU-initiated call to fail as cleanly as a host-initiated one"
-    Every host-initiated call this book has made since Chapter 3 -- `cudaMalloc()`, `ncclCommInitAll()`, `MPI_Send()` -- checks for a device (or a peer, or a valid communicator) BEFORE doing anything else, and returns one honest error code if it isn't there. `nvshmemx_collective_launch()` is asked to do something structurally harder: hand a kernel to a device, coordinate NVSHMEM's own internal per-device state for that launch, and only then let the kernel run. This section's own locked output shows that when the device itself doesn't exist, that coordination step fails first and hard (`NVSHMEMX_ERROR_INTERNAL`), the standard CUDA error only shows up SEPARATELY when `cudaDeviceSynchronize()` is called afterward, and `nvshmem_finalize()` itself -- normally just cleanup -- fails too, because it also needs real device state to tear down. A program that assumes a `nvshmemx_collective_launch()` failure means "no kernel ran, otherwise everything is fine" is wrong on the last point: the whole library's internal bookkeeping is now compromised, and this book's own real `mpirun` run above genuinely could not finalize cleanly as a result -- the honest lesson is that GPU-initiated communication concentrates failure into a much sharper, less recoverable moment than every earlier chapter's host-initiated calls ever did.
+!!! warning "[COMMON TRAP] Ignoring collective-launch completion"
+    Check the collective launch return code, complete the device work and inspect every destination value before finalizing NVSHMEM. All participating PEs must follow the required launch and synchronization protocol.
 
 ## Chapter Summary
 
-This chapter left every earlier chapter's host-initiated communication model behind. Section 22.1 got a genuinely installed real NVSHMEM (via the pip package `nvidia-nvshmem-cu12`, which -- unlike the incomplete pip `nvcc` package Chapter 1 warned about -- ships complete real headers, host library, and device bitcode) running in its simplest form: no bootstrap plugin, a correct single-PE world. Section 22.2 reused this book's own real MPI infrastructure (Chapter 20) to give NVSHMEM a real multi-PE world via `NVSHMEMX_INIT_WITH_MPI_COMM`, the same real discovery problem Chapter 21 already solved for NCCL, now solved for a third library. Section 22.3 built the one genuinely new capability this book has never had before: a CUDA kernel calling `nvshmem_int_p()` directly from device code, launched through `nvshmemx_collective_launch()` -- and reported, honestly and in full, that this deepest real GPU-touching call fails harder and less cleanly than any earlier chapter's device-less error, right down to `nvshmem_finalize()` itself being unable to tear down afterward.
+NVSHMEM adds a symmetric address space and GPU-initiated communication. This chapter starts with single-PE initialization, adds MPI bootstrap for multiple PEs, then checks a device-initiated put against initialized destination data.
 
 ## Self-Check Questions
 

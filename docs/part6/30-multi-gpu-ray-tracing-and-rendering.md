@@ -1,11 +1,5 @@
 # Chapter 30: Multi-GPU Ray Tracing and Rendering
 
-<!-- execution:provenance -->
-!!! info "Execution provenance"
-
-    Current execution blocks identify the tested source hash, hardware dataset, commands and captured output. References elsewhere on this page to a device-less environment describe the original authoring context. Historical output is superseded by the current record. Displayed output omits the runner command header and trims trailing line whitespace; raw logs remain exact. A host simulation or API validation has its stated scope; neither alone establishes a numerical multi-GPU workload or measured performance.
-
-
 <!-- mgpu:opener:start -->
 [![Chapter 30: Multi-GPU Ray Tracing and Rendering](../images/chapter-openers/30.svg)](../images/chapter-openers/30.svg)
 <!-- mgpu:opener:end -->
@@ -175,7 +169,9 @@ int main() {
 ```
 
 <!-- execution:start:a100:87_independent_tile_rendering_correctness_simulation.cpp -->
-> **Current execution — 2026-11-17-a100: Host program/model (exit-only).** UTC (program start): `2026-11-18T00:05:27.722258+00:00`. Source SHA-256: `15ac1dd53540576d85be53eaf6d7465d53be23d9caa2eaf0ef39e28c2f5dace8`.
+> **Compiled and executed — 2026-11-17-a100: Host program/model (exit-only).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:05:27.987262+00:00`.
+
+<!-- execution:metadata Source SHA-256: 15ac1dd53540576d85be53eaf6d7465d53be23d9caa2eaf0ef39e28c2f5dace8; recorded UTC (program start): 2026-11-18T00:05:27.722258+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-a100/87_independent_tile_rendering_correctness_simulation/87_independent_tile_rendering_correctness_simulation.cpp) · [Compiler log](../validation/2026-11-17-a100/87_independent_tile_rendering_correctness_simulation/compile.log) · [Execution log](../validation/2026-11-17-a100/87_independent_tile_rendering_correctness_simulation/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -186,7 +182,7 @@ g++ -std=c++17 -O2 87_independent_tile_rendering_correctness_simulation.cpp -o .
 ./example
 ```
 
-<details markdown="1"><summary>Captured current-source output</summary>
+**Sample output**
 
 ```text
 Reference (single-process) 16x12 render, 2-circle scene ('.'=background, '1'/'2'=circle color, nearest hit wins):
@@ -213,12 +209,14 @@ P      rows/rank              assembled image EXACT match?
 12     1                      YES
 ```
 
-</details>
+
 <!-- execution:end:a100:87_independent_tile_rendering_correctness_simulation.cpp -->
 
 
 <!-- execution:start:h100:87_independent_tile_rendering_correctness_simulation.cpp -->
-> **Current execution — 2026-11-17-h100: Host program/model (exit-only).** UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`. Source SHA-256: `15ac1dd53540576d85be53eaf6d7465d53be23d9caa2eaf0ef39e28c2f5dace8`.
+> **Compiled and executed — 2026-11-17-h100: Host program/model (exit-only).** Hardware: 2 H100 GPUs. Execution record UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`.
+
+<!-- execution:metadata Source SHA-256: 15ac1dd53540576d85be53eaf6d7465d53be23d9caa2eaf0ef39e28c2f5dace8; recorded UTC (run-batch start; per-program time unrecorded): 2026-11-17T23:48:18.967387+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-h100/87_independent_tile_rendering_correctness_simulation/87_independent_tile_rendering_correctness_simulation.cpp) · [Compiler log](../validation/2026-11-17-h100/87_independent_tile_rendering_correctness_simulation/compile.log) · [Execution log](../validation/2026-11-17-h100/87_independent_tile_rendering_correctness_simulation/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -261,15 +259,6 @@ P      rows/rank              assembled image EXACT match?
 
 
 Compile and run:
-
-<details markdown="1"><summary>Historical authoring output — superseded by the current execution above</summary>
-
-```
-g++ -O2 87_independent_tile_rendering_correctness_simulation.cpp -o 87_independent_tile_rendering_correctness_simulation
-./87_independent_tile_rendering_correctness_simulation
-```
-
-</details>
 
 ```text
 Reference (single-process) 16x12 render, 2-circle scene ('.'=background, '1'/'2'=circle color, nearest hit wins):
@@ -441,7 +430,9 @@ int main() {
 ```
 
 <!-- execution:start:a100:88_rendering_comm_and_load_balance_model.cpp -->
-> **Current execution — 2026-11-17-a100: Host program/model (exit-only).** UTC (program start): `2026-11-18T00:05:27.995353+00:00`. Source SHA-256: `439295acd50f70c692cb1aeaaf059da93244ca7b4e2c3cb0c34e713d1f55a332`.
+> **Compiled and executed — 2026-11-17-a100: Host program/model (exit-only).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:05:28.260337+00:00`.
+
+<!-- execution:metadata Source SHA-256: 439295acd50f70c692cb1aeaaf059da93244ca7b4e2c3cb0c34e713d1f55a332; recorded UTC (program start): 2026-11-18T00:05:27.995353+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-a100/88_rendering_comm_and_load_balance_model/88_rendering_comm_and_load_balance_model.cpp) · [Compiler log](../validation/2026-11-17-a100/88_rendering_comm_and_load_balance_model/compile.log) · [Execution log](../validation/2026-11-17-a100/88_rendering_comm_and_load_balance_model/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -452,7 +443,7 @@ g++ -std=c++17 -O2 88_rendering_comm_and_load_balance_model.cpp -o ./example
 ./example
 ```
 
-<details markdown="1"><summary>Captured current-source output</summary>
+**Sample output**
 
 ```text
 --- Total communication volume vs. earlier Part 6 chapters ---
@@ -502,12 +493,14 @@ rank     rows assigned            total weight
 Slowest rank's weight after rebalancing: 12 (down from 18) -- a 1.50x reduction in the slowest rank's load, achieved with UNEQUAL row counts per rank but more balanced TOTAL weight, exactly Chapter 18's own real point that equal SHARE COUNT and equal WORK are different things.
 ```
 
-</details>
+
 <!-- execution:end:a100:88_rendering_comm_and_load_balance_model.cpp -->
 
 
 <!-- execution:start:h100:88_rendering_comm_and_load_balance_model.cpp -->
-> **Current execution — 2026-11-17-h100: Host program/model (exit-only).** UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`. Source SHA-256: `439295acd50f70c692cb1aeaaf059da93244ca7b4e2c3cb0c34e713d1f55a332`.
+> **Compiled and executed — 2026-11-17-h100: Host program/model (exit-only).** Hardware: 2 H100 GPUs. Execution record UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`.
+
+<!-- execution:metadata Source SHA-256: 439295acd50f70c692cb1aeaaf059da93244ca7b4e2c3cb0c34e713d1f55a332; recorded UTC (run-batch start; per-program time unrecorded): 2026-11-17T23:48:18.967387+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-h100/88_rendering_comm_and_load_balance_model/88_rendering_comm_and_load_balance_model.cpp) · [Compiler log](../validation/2026-11-17-h100/88_rendering_comm_and_load_balance_model/compile.log) · [Execution log](../validation/2026-11-17-h100/88_rendering_comm_and_load_balance_model/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -573,15 +566,6 @@ Slowest rank's weight after rebalancing: 12 (down from 18) -- a 1.50x reduction 
 
 
 Compile and run:
-
-<details markdown="1"><summary>Historical authoring output — superseded by the current execution above</summary>
-
-```
-g++ -O2 88_rendering_comm_and_load_balance_model.cpp -o 88_rendering_comm_and_load_balance_model
-./88_rendering_comm_and_load_balance_model
-```
-
-</details>
 
 ```text
 --- Total communication volume vs. earlier Part 6 chapters ---
@@ -740,7 +724,9 @@ int main() {
 ```
 
 <!-- execution:start:a100:89_out_of_core_scene_scale_model.cpp -->
-> **Current execution — 2026-11-17-a100: Host program/model (exit-only).** UTC (program start): `2026-11-18T00:05:28.266372+00:00`. Source SHA-256: `12580a6e363dab5a75f52da9206f2a89a9ee722e3cee9e195c7a0ad7b72c813b`.
+> **Compiled and executed — 2026-11-17-a100: Host program/model (exit-only).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:05:28.381151+00:00`.
+
+<!-- execution:metadata Source SHA-256: 12580a6e363dab5a75f52da9206f2a89a9ee722e3cee9e195c7a0ad7b72c813b; recorded UTC (program start): 2026-11-18T00:05:28.266372+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-a100/89_out_of_core_scene_scale_model/89_out_of_core_scene_scale_model.cpp) · [Compiler log](../validation/2026-11-17-a100/89_out_of_core_scene_scale_model/compile.log) · [Execution log](../validation/2026-11-17-a100/89_out_of_core_scene_scale_model/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -751,7 +737,7 @@ g++ -std=c++17 -O2 89_out_of_core_scene_scale_model.cpp -o ./example
 ./example
 ```
 
-<details markdown="1"><summary>Captured current-source output</summary>
+**Sample output**
 
 ```text
 --- R2E2's own real scale problem ---
@@ -771,12 +757,14 @@ Section 30.1's own simulation worked because every pixel's ray test needed ONLY 
 R2E2's own real reported results against a single-machine in-memory baseline (pbrt-treelet): "R2E2 is 3.5-7.8x faster than pbrt-treelet's single-machine in-memory path tracer," with scene loading itself "4.9x (Moana-XL) and 2.9x (Terrace) faster." The real headline finding: "R2E2 completes the entire path tracing job before pbrt-treelet begins tracing a single ray" for most of their tested configurations -- because the single-machine baseline cannot even START until the whole scene has been paged in from disk, while R2E2's own distributed approach never needs the whole scene on any one node at all.
 ```
 
-</details>
+
 <!-- execution:end:a100:89_out_of_core_scene_scale_model.cpp -->
 
 
 <!-- execution:start:h100:89_out_of_core_scene_scale_model.cpp -->
-> **Current execution — 2026-11-17-h100: Host program/model (exit-only).** UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`. Source SHA-256: `12580a6e363dab5a75f52da9206f2a89a9ee722e3cee9e195c7a0ad7b72c813b`.
+> **Compiled and executed — 2026-11-17-h100: Host program/model (exit-only).** Hardware: 2 H100 GPUs. Execution record UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`.
+
+<!-- execution:metadata Source SHA-256: 12580a6e363dab5a75f52da9206f2a89a9ee722e3cee9e195c7a0ad7b72c813b; recorded UTC (run-batch start; per-program time unrecorded): 2026-11-17T23:48:18.967387+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-h100/89_out_of_core_scene_scale_model/89_out_of_core_scene_scale_model.cpp) · [Compiler log](../validation/2026-11-17-h100/89_out_of_core_scene_scale_model/compile.log) · [Execution log](../validation/2026-11-17-h100/89_out_of_core_scene_scale_model/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -812,15 +800,6 @@ R2E2's own real reported results against a single-machine in-memory baseline (pb
 
 
 Compile and run:
-
-<details markdown="1"><summary>Historical authoring output — superseded by the current execution above</summary>
-
-```
-g++ -O2 89_out_of_core_scene_scale_model.cpp -o 89_out_of_core_scene_scale_model
-./89_out_of_core_scene_scale_model
-```
-
-</details>
 
 ```text
 --- R2E2's own real scale problem ---

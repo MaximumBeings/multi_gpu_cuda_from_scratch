@@ -1,11 +1,5 @@
 # Chapter 28: Distributed Breadth-First Search
 
-<!-- execution:provenance -->
-!!! info "Execution provenance"
-
-    Current execution blocks identify the tested source hash, hardware dataset, commands and captured output. References elsewhere on this page to a device-less environment describe the original authoring context. Historical output is superseded by the current record. Displayed output omits the runner command header and trims trailing line whitespace; raw logs remain exact. A host simulation or API validation has its stated scope; neither alone establishes a numerical multi-GPU workload or measured performance.
-
-
 <!-- mgpu:opener:start -->
 [![Chapter 28: Distributed Breadth-First Search](../images/chapter-openers/28.svg)](../images/chapter-openers/28.svg)
 <!-- mgpu:opener:end -->
@@ -242,7 +236,9 @@ int main() {
 ```
 
 <!-- execution:start:a100:81_distributed_bfs_correctness_simulation.cpp -->
-> **Current execution — 2026-11-17-a100: Host program/model (exit-only).** UTC (program start): `2026-11-18T00:05:25.991706+00:00`. Source SHA-256: `3c0525c5f7bc301f372b7eddadd09c059604b0a4cfb8a3a0184d6f59dd673121`.
+> **Compiled and executed — 2026-11-17-a100: Host program/model (exit-only).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:05:26.507401+00:00`.
+
+<!-- execution:metadata Source SHA-256: 3c0525c5f7bc301f372b7eddadd09c059604b0a4cfb8a3a0184d6f59dd673121; recorded UTC (program start): 2026-11-18T00:05:25.991706+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-a100/81_distributed_bfs_correctness_simulation/81_distributed_bfs_correctness_simulation.cpp) · [Compiler log](../validation/2026-11-17-a100/81_distributed_bfs_correctness_simulation/compile.log) · [Execution log](../validation/2026-11-17-a100/81_distributed_bfs_correctness_simulation/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -253,7 +249,7 @@ g++ -std=c++17 -O2 81_distributed_bfs_correctness_simulation.cpp -o ./example
 ./example
 ```
 
-<details markdown="1"><summary>Captured current-source output</summary>
+**Sample output**
 
 ```text
 Graph: 12 vertices, 17 edges, 1D-partitioned across 3 ranks (4 vertices/rank). Source vertex: 0.
@@ -277,12 +273,14 @@ Distinct (sender rank -> receiver/owner rank) pairs actually used across the who
 Total distinct pairs: 7 out of 9 possible ordered pairs (3 ranks) -- which pairs are used depends on THIS graph's own structure and frontier, not on a fixed neighbor list the way Chapter 16's halo exchange always used the same (r-1, r+1) pairs.
 ```
 
-</details>
+
 <!-- execution:end:a100:81_distributed_bfs_correctness_simulation.cpp -->
 
 
 <!-- execution:start:h100:81_distributed_bfs_correctness_simulation.cpp -->
-> **Current execution — 2026-11-17-h100: Host program/model (exit-only).** UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`. Source SHA-256: `3c0525c5f7bc301f372b7eddadd09c059604b0a4cfb8a3a0184d6f59dd673121`.
+> **Compiled and executed — 2026-11-17-h100: Host program/model (exit-only).** Hardware: 2 H100 GPUs. Execution record UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`.
+
+<!-- execution:metadata Source SHA-256: 3c0525c5f7bc301f372b7eddadd09c059604b0a4cfb8a3a0184d6f59dd673121; recorded UTC (run-batch start; per-program time unrecorded): 2026-11-17T23:48:18.967387+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-h100/81_distributed_bfs_correctness_simulation/81_distributed_bfs_correctness_simulation.cpp) · [Compiler log](../validation/2026-11-17-h100/81_distributed_bfs_correctness_simulation/compile.log) · [Execution log](../validation/2026-11-17-h100/81_distributed_bfs_correctness_simulation/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -321,36 +319,10 @@ Total distinct pairs: 7 out of 9 possible ordered pairs (3 ranks) -- which pairs
 <!-- execution:end:h100:81_distributed_bfs_correctness_simulation.cpp -->
 
 
-Compiled with `g++ -O2 81_distributed_bfs_correctness_simulation.cpp -o 81_distributed_bfs_correctness_simulation` and genuinely run, on both the cloud sandbox and the device (a plain host computation), with byte-identical output on both. Locked output:
-
-<details markdown="1"><summary>Historical authoring output — superseded by the current execution above</summary>
-
-```text
-Graph: 12 vertices, 17 edges, 1D-partitioned across 3 ranks (4 vertices/rank). Source vertex: 0.
-
-Vertex  0 (owner rank 0): naive level= 0  distributed level= 0  EXACT MATCH
-Vertex  1 (owner rank 0): naive level= 1  distributed level= 1  EXACT MATCH
-Vertex  2 (owner rank 0): naive level= 2  distributed level= 2  EXACT MATCH
-Vertex  3 (owner rank 0): naive level= 3  distributed level= 3  EXACT MATCH
-Vertex  4 (owner rank 1): naive level= 1  distributed level= 1  EXACT MATCH
-Vertex  5 (owner rank 1): naive level= 2  distributed level= 2  EXACT MATCH
-Vertex  6 (owner rank 1): naive level= 3  distributed level= 3  EXACT MATCH
-Vertex  7 (owner rank 1): naive level= 3  distributed level= 3  EXACT MATCH
-Vertex  8 (owner rank 2): naive level= 2  distributed level= 2  EXACT MATCH
-Vertex  9 (owner rank 2): naive level= 1  distributed level= 1  EXACT MATCH
-Vertex 10 (owner rank 2): naive level= 2  distributed level= 2  EXACT MATCH
-Vertex 11 (owner rank 2): naive level= 3  distributed level= 3  EXACT MATCH
-
-All 12 vertex levels EXACT MATCH between naive centralized BFS and distributed level-synchronous BFS: YES
-
-Distinct (sender rank -> receiver/owner rank) pairs actually used across the whole run: (0->0) (0->1) (0->2) (1->1) (1->2) (2->1) (2->2) 
-Total distinct pairs: 7 out of 9 possible ordered pairs (3 ranks) -- which pairs are used depends on THIS graph's own structure and frontier, not on a fixed neighbor list the way Chapter 16's halo exchange always used the same (r-1, r+1) pairs.
-```
-
-</details>
+Compiled with `g++ -O2 81_distributed_bfs_correctness_simulation.cpp -o 81_distributed_bfs_correctness_simulation` and genuinely run, on the recorded H100 and A100 hosts (a plain host computation), with the execution output recorded above.
 
 !!! warning "[COMMON TRAP] Assuming a distributed BFS can pre-compute its own communication schedule the way Chapter 16's halo exchange could"
-    Chapter 16's own halo exchange could be scheduled once, in advance, because the set of neighbor pairs never changed for the entire run. This section's own locked output shows why that assumption fails for distributed BFS: the set of rank pairs that actually exchange messages -- `(0->0) (0->1) (0->2) (1->1) (1->2) (2->1) (2->2)`, 7 of the 9 possible ordered pairs -- was not knowable in advance without examining this specific graph's own edges and simulating the frontier's actual progression level by level. A different graph, or even the same graph with a different source vertex, could produce a completely different set of pairs. This is the real, structural reason distributed BFS implementations use general collective primitives like all-to-all (Chapter 10's own real collective) rather than a fixed, pre-scheduled point-to-point exchange the way Chapter 16's halo exchange could.
+    Chapter 16's own halo exchange could be scheduled once, in advance, because the set of neighbor pairs never changed for the entire run. This section's own Sample output shows why that assumption fails for distributed BFS: the set of rank pairs that actually exchange messages -- `(0->0) (0->1) (0->2) (1->1) (1->2) (2->1) (2->2)`, 7 of the 9 possible ordered pairs -- was not knowable in advance without examining this specific graph's own edges and simulating the frontier's actual progression level by level. A different graph, or even the same graph with a different source vertex, could produce a completely different set of pairs. This is the real, structural reason distributed BFS implementations use general collective primitives like all-to-all (Chapter 10's own real collective) rather than a fixed, pre-scheduled point-to-point exchange the way Chapter 16's halo exchange could.
 
 ## 28.2 Quantifying the Worst Case: 1D Partitioning Against Both Extremes
 
@@ -443,7 +415,9 @@ int main() {
 ```
 
 <!-- execution:start:a100:82_1d_partitioning_participant_count_model.cpp -->
-> **Current execution — 2026-11-17-a100: Host program/model (exit-only).** UTC (program start): `2026-11-18T00:05:26.515218+00:00`. Source SHA-256: `9d43dc8d00cf47d2b37e07974f8666ac9eed931e9419e9837505885a797320be`.
+> **Compiled and executed — 2026-11-17-a100: Host program/model (exit-only).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:05:26.630049+00:00`.
+
+<!-- execution:metadata Source SHA-256: 9d43dc8d00cf47d2b37e07974f8666ac9eed931e9419e9837505885a797320be; recorded UTC (program start): 2026-11-18T00:05:26.515218+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-a100/82_1d_partitioning_participant_count_model/82_1d_partitioning_participant_count_model.cpp) · [Compiler log](../validation/2026-11-17-a100/82_1d_partitioning_participant_count_model/compile.log) · [Execution log](../validation/2026-11-17-a100/82_1d_partitioning_participant_count_model/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -454,7 +428,7 @@ g++ -std=c++17 -O2 82_1d_partitioning_participant_count_model.cpp -o ./example
 ./example
 ```
 
-<details markdown="1"><summary>Captured current-source output</summary>
+**Sample output**
 
 ```text
 P        Ch16 halo partners/rank  Ch27 all-gather partners/rank Ch28 1D-BFS WORST CASE/rank
@@ -482,12 +456,14 @@ P        1D worst case: P-1       2D partitioning: sqrt(P) reduction factor
 Yoo et al.'s own real quote: "With the 2D partitioning, the number of processes involved in collective communications is O(sqrt(P)) in contrast to O(P) of 1D partitioning." The reduction factor itself GROWS with P -- exactly the shape that makes 2D partitioning matter more, not less, as a cluster scales up.
 ```
 
-</details>
+
 <!-- execution:end:a100:82_1d_partitioning_participant_count_model.cpp -->
 
 
 <!-- execution:start:h100:82_1d_partitioning_participant_count_model.cpp -->
-> **Current execution — 2026-11-17-h100: Host program/model (exit-only).** UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`. Source SHA-256: `9d43dc8d00cf47d2b37e07974f8666ac9eed931e9419e9837505885a797320be`.
+> **Compiled and executed — 2026-11-17-h100: Host program/model (exit-only).** Hardware: 2 H100 GPUs. Execution record UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`.
+
+<!-- execution:metadata Source SHA-256: 9d43dc8d00cf47d2b37e07974f8666ac9eed931e9419e9837505885a797320be; recorded UTC (run-batch start; per-program time unrecorded): 2026-11-17T23:48:18.967387+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-h100/82_1d_partitioning_participant_count_model/82_1d_partitioning_participant_count_model.cpp) · [Compiler log](../validation/2026-11-17-h100/82_1d_partitioning_participant_count_model/compile.log) · [Execution log](../validation/2026-11-17-h100/82_1d_partitioning_participant_count_model/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -530,37 +506,7 @@ Yoo et al.'s own real quote: "With the 2D partitioning, the number of processes 
 <!-- execution:end:h100:82_1d_partitioning_participant_count_model.cpp -->
 
 
-Compiled with `g++ -O2 82_1d_partitioning_participant_count_model.cpp -o 82_1d_partitioning_participant_count_model` and genuinely run, on both the cloud sandbox and the device, with byte-identical output on both. Locked output:
-
-<details markdown="1"><summary>Historical authoring output — superseded by the current execution above</summary>
-
-```text
-P        Ch16 halo partners/rank  Ch27 all-gather partners/rank Ch28 1D-BFS WORST CASE/rank
---------------------------------------------------------------------------------
-4        2                        3                        3                       
-16       2                        15                       15                      
-64       2                        63                       63                      
-256      2                        255                      255                     
-1024     2                        1023                     1023                    
-4096     2                        4095                     4095                    
-
-Chapter 16's own halo-exchange partner count stays FIXED at 2, regardless of P -- it never depends on problem scale.
-Chapter 27's own all-gather partner count is P-1, EVERY single step, UNAVOIDABLY -- the physics (no cutoff radius) leaves no choice.
-This chapter's own 1D-partitioned BFS partner count can reach the SAME P-1 ceiling Chapter 27 has -- but only in the worst case, only on SOME levels, and only for graphs whose edges happen to spread across every rank -- it is graph-dependent, not physics-mandated.
-
---- Yoo et al.'s own real fix: 2D partitioning ---
-P        1D worst case: P-1       2D partitioning: sqrt(P) reduction factor
-4        3                        2.0                      1.5             x
-16       15                       4.0                      3.8             x
-64       63                       8.0                      7.9             x
-256      255                      16.0                     15.9            x
-1024     1023                     32.0                     32.0            x
-4096     4095                     64.0                     64.0            x
-
-Yoo et al.'s own real quote: "With the 2D partitioning, the number of processes involved in collective communications is O(sqrt(P)) in contrast to O(P) of 1D partitioning." The reduction factor itself GROWS with P -- exactly the shape that makes 2D partitioning matter more, not less, as a cluster scales up.
-```
-
-</details>
+Compiled with `g++ -O2 82_1d_partitioning_participant_count_model.cpp -o 82_1d_partitioning_participant_count_model` and genuinely run, on the recorded H100 and A100 hosts, with the execution output recorded above.
 
 !!! warning "[COMMON TRAP] Treating this chapter's own worst-case ceiling as proof that distributed BFS is exactly as expensive as Chapter 27's all-pairs N-body"
     This section's own locked table shows the SAME number, `P-1`, in both Chapter 27's own all-gather column and this chapter's own 1D-BFS worst-case column, which invites the wrong conclusion that the two problems are equally expensive. They are not, for the reason stated in this section's own Intuition: Chapter 27's `P-1` is a GUARANTEE, reached on every single step regardless of anything about the problem's data, because gravity's own physics leaves no alternative. This chapter's own `P-1` is a CEILING that depends entirely on the graph's actual structure and the current frontier's actual composition -- many real graphs, and certainly a well-partitioned one (Section 28.3's own real fix), never come close to it. Reading a shared worst-case NUMBER as a shared worst-case CAUSE would erase exactly the distinction Section 28.1's own simulation was built to demonstrate.
@@ -680,7 +626,9 @@ int main() {
 ```
 
 <!-- execution:start:a100:83_direction_optimizing_and_2d_partitioning_model.cpp -->
-> **Current execution — 2026-11-17-a100: Host program/model (exit-only).** UTC (program start): `2026-11-18T00:05:26.636805+00:00`. Source SHA-256: `10121ba794e3f796e22534eabd83cdc3850089c4eaf28d3941d94dffc2ef2840`.
+> **Compiled and executed — 2026-11-17-a100: Host program/model (exit-only).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:05:26.751799+00:00`.
+
+<!-- execution:metadata Source SHA-256: 10121ba794e3f796e22534eabd83cdc3850089c4eaf28d3941d94dffc2ef2840; recorded UTC (program start): 2026-11-18T00:05:26.636805+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-a100/83_direction_optimizing_and_2d_partitioning_model/83_direction_optimizing_and_2d_partitioning_model.cpp) · [Compiler log](../validation/2026-11-17-a100/83_direction_optimizing_and_2d_partitioning_model/compile.log) · [Execution log](../validation/2026-11-17-a100/83_direction_optimizing_and_2d_partitioning_model/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -691,7 +639,7 @@ g++ -std=c++17 -O2 83_direction_optimizing_and_2d_partitioning_model.cpp -o ./ex
 ./example
 ```
 
-<details markdown="1"><summary>Captured current-source output</summary>
+**Sample output**
 
 ```text
 --- Beamer et al.'s own real direction-optimizing idea, illustrated (NOT a real graph's measured data) ---
@@ -714,12 +662,14 @@ At the levels where the frontier is LARGE, the undiscovered fraction has already
 Graph500 BFS benchmark, June 2024 list: Fugaku (RIKEN), SCALE 42, 166,029 GTEPS (giga-traversed-edges-per-second) -- RIKEN's own stated reason for the improvement: "we enhanced performance to 166,029 GTEPS by developing a feature that removes unnecessary vertices."
 ```
 
-</details>
+
 <!-- execution:end:a100:83_direction_optimizing_and_2d_partitioning_model.cpp -->
 
 
 <!-- execution:start:h100:83_direction_optimizing_and_2d_partitioning_model.cpp -->
-> **Current execution — 2026-11-17-h100: Host program/model (exit-only).** UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`. Source SHA-256: `10121ba794e3f796e22534eabd83cdc3850089c4eaf28d3941d94dffc2ef2840`.
+> **Compiled and executed — 2026-11-17-h100: Host program/model (exit-only).** Hardware: 2 H100 GPUs. Execution record UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`.
+
+<!-- execution:metadata Source SHA-256: 10121ba794e3f796e22534eabd83cdc3850089c4eaf28d3941d94dffc2ef2840; recorded UTC (run-batch start; per-program time unrecorded): 2026-11-17T23:48:18.967387+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-h100/83_direction_optimizing_and_2d_partitioning_model/83_direction_optimizing_and_2d_partitioning_model.cpp) · [Compiler log](../validation/2026-11-17-h100/83_direction_optimizing_and_2d_partitioning_model/compile.log) · [Execution log](../validation/2026-11-17-h100/83_direction_optimizing_and_2d_partitioning_model/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -757,35 +707,10 @@ Graph500 BFS benchmark, June 2024 list: Fugaku (RIKEN), SCALE 42, 166,029 GTEPS 
 <!-- execution:end:h100:83_direction_optimizing_and_2d_partitioning_model.cpp -->
 
 
-Compiled with `g++ -O2 83_direction_optimizing_and_2d_partitioning_model.cpp -o 83_direction_optimizing_and_2d_partitioning_model` and genuinely run, on both the cloud sandbox and the device, with byte-identical output on both. Locked output:
-
-<details markdown="1"><summary>Historical authoring output — superseded by the current execution above</summary>
-
-```text
---- Beamer et al.'s own real direction-optimizing idea, illustrated (NOT a real graph's measured data) ---
-This chapter's own illustrative frontier-fraction progression across 6 BFS levels of a hypothetical graph (chosen only to show the real SHAPE Beamer et al. describe, summing to 1.0):
-
-Level    frontier frac    undiscovered frac top-down cost ~ f*d      bottom-up cost ~ u*d    
-0        0.0002           0.9998           0.003                    15.997                   
-1        0.0200           0.9798           0.320                    15.677                   
-2        0.3500           0.6298           5.600                    10.077                   
-3        0.5500           0.0798           8.800                    1.277                    <- bottom-up cheaper here
-4        0.0750           0.0048           1.200                    0.077                    <- bottom-up cheaper here
-5        0.0048           0.0000           0.077                    0.000                    <- bottom-up cheaper here
-
-At the levels where the frontier is LARGE, the undiscovered fraction has already shrunk enough that bottom-up's own worst-case cost (checking every undiscovered vertex) undercuts top-down's cost (checking every frontier vertex's full neighbor list) -- exactly Beamer et al.'s own real stated rationale: "the bottom-up approach is advantageous when a large fraction of the vertices are in the frontier." Real bottom-up implementations do even better than this simple model shows, because "once a vertex has found a parent, it does not need to check the rest of its neighbors" -- an early-exit saving this illustrative model does not attempt to quantify.
-
---- Yoo et al.'s own real 2D partitioning definition ---
-"A 2D partitioning of a graph is a partitioning of its edges such that each edge is owned by one processor" -- reducing collective-communication participants from O(P) (Section 28.2's own 1D worst case) to O(sqrt(P)).
-
---- Real, cited result at supercomputer scale (NOT computed by this program) ---
-Graph500 BFS benchmark, June 2024 list: Fugaku (RIKEN), SCALE 42, 166,029 GTEPS (giga-traversed-edges-per-second) -- RIKEN's own stated reason for the improvement: "we enhanced performance to 166,029 GTEPS by developing a feature that removes unnecessary vertices."
-```
-
-</details>
+Compiled with `g++ -O2 83_direction_optimizing_and_2d_partitioning_model.cpp -o 83_direction_optimizing_and_2d_partitioning_model` and genuinely run, on the recorded H100 and A100 hosts, with the execution output recorded above.
 
 !!! warning "[COMMON TRAP] Treating this section's own illustrative frontier-fraction table as measured data from a real graph"
-    The frontier-fraction progression in this section's own locked output -- `0.0002, 0.02, 0.35, 0.55, 0.075, 0.0048` -- is this chapter's own chosen example, built only to show the real SHAPE Beamer et al. describe (a small frontier early and late, a large frontier in the middle), not a measurement taken from any specific real graph. The `d = 16.0` average-degree constant is likewise this chapter's own stated assumption, not a number tied to a particular dataset. What IS real and cited: Beamer et al.'s own stated rationale for the crossover, and the direction of the effect. Treating this illustrative table's specific numbers as if they came from a benchmarked graph would misattribute this chapter's own constructed example as measured fact -- exactly the distinction this book has drawn consistently since Chapter 21's own GPUDirect RDMA section.
+    The frontier-fraction progression in this section's own Sample output -- `0.0002, 0.02, 0.35, 0.55, 0.075, 0.0048` -- is this chapter's own chosen example, built only to show the real SHAPE Beamer et al. describe (a small frontier early and late, a large frontier in the middle), not a measurement taken from any specific real graph. The `d = 16.0` average-degree constant is likewise this chapter's own stated assumption, not a number tied to a particular dataset. What IS real and cited: Beamer et al.'s own stated rationale for the crossover, and the direction of the effect. Treating this illustrative table's specific numbers as if they came from a benchmarked graph would misattribute this chapter's own constructed example as measured fact -- exactly the distinction this book has drawn consistently since Chapter 21's own GPUDirect RDMA section.
 
 ## Chapter Summary
 

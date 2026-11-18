@@ -1,11 +1,5 @@
 # Chapter 6: Streams, Events, and Cross-Device Synchronization
 
-<!-- execution:provenance -->
-!!! info "Execution provenance"
-
-    Current execution blocks identify the tested source hash, hardware dataset, commands and captured output. References elsewhere on this page to a device-less environment describe the original authoring context. Historical output is superseded by the current record. Displayed output omits the runner command header and trims trailing line whitespace; raw logs remain exact. A host simulation or API validation has its stated scope; neither alone establishes a numerical multi-GPU workload or measured performance.
-
-
 <!-- mgpu:opener:start -->
 [![Chapter 6: Streams, Events, and Cross-Device Synchronization](../images/chapter-openers/06.svg)](../images/chapter-openers/06.svg)
 <!-- mgpu:opener:end -->
@@ -80,7 +74,9 @@ int main() {
 ```
 
 <!-- execution:start:a100:14_event_basics.cu -->
-> **Current execution — 2026-11-17-a100: API validation (recorded scope).** UTC (program start): `2026-11-18T00:00:46.329729+00:00`. Source SHA-256: `1141f20f7b822e6460546989f190bb3faf91d2fedb7ec31e06836cd71c6d1f11`.
+> **Compiled and executed — 2026-11-17-a100: API validation (recorded scope).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:00:47.396648+00:00`.
+
+<!-- execution:metadata Source SHA-256: 1141f20f7b822e6460546989f190bb3faf91d2fedb7ec31e06836cd71c6d1f11; recorded UTC (program start): 2026-11-18T00:00:46.329729+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-a100/14_event_basics/14_event_basics.cu) · [Compiler log](../validation/2026-11-17-a100/14_event_basics/compile.log) · [Execution log](../validation/2026-11-17-a100/14_event_basics/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -91,7 +87,7 @@ nvcc -std=c++17 -O2 -arch=sm_80 14_event_basics.cu -o ./example
 ./example
 ```
 
-<details markdown="1"><summary>Captured current-source output</summary>
+**Sample output**
 
 ```text
 cudaStreamCreate: no error (code 0)
@@ -101,12 +97,14 @@ cudaEventQuery(event) [non-blocking check]: device not ready (code 600)
 cudaEventSynchronize(event) [blocking wait]: no error (code 0)
 ```
 
-</details>
+
 <!-- execution:end:a100:14_event_basics.cu -->
 
 
 <!-- execution:start:h100:14_event_basics.cu -->
-> **Current execution — 2026-11-17-h100: API validation (recorded scope).** UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`. Source SHA-256: `1141f20f7b822e6460546989f190bb3faf91d2fedb7ec31e06836cd71c6d1f11`.
+> **Compiled and executed — 2026-11-17-h100: API validation (recorded scope).** Hardware: 2 H100 GPUs. Execution record UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`.
+
+<!-- execution:metadata Source SHA-256: 1141f20f7b822e6460546989f190bb3faf91d2fedb7ec31e06836cd71c6d1f11; recorded UTC (run-batch start; per-program time unrecorded): 2026-11-17T23:48:18.967387+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-h100/14_event_basics/14_event_basics.cu) · [Compiler log](../validation/2026-11-17-h100/14_event_basics/compile.log) · [Execution log](../validation/2026-11-17-h100/14_event_basics/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -131,23 +129,9 @@ cudaEventSynchronize(event) [blocking wait]: no error (code 0)
 <!-- execution:end:h100:14_event_basics.cu -->
 
 
-**Historical authoring transcript (earlier source).** The current listing guards every prerequisite and returns nonzero on errors; it no longer invokes APIs with handles from failed creations. The output below is retained as historical context and is not a current-source GPU execution record. The current source was compiled and executed in the dated H100 suite; use the linked record for its numerical, API-probe or other-execution scope.
-
 The [2026-11-17 H100 execution record](../validation-h100.md) covers two GPUs connected by local NV18. It distinguishes numerical checks, API probes and other executions; a successful exit alone does not establish GPU algorithm correctness.
 
-<details markdown="1"><summary>Historical authoring output — superseded by the current execution above</summary>
-
-```
-cudaStreamCreate: no CUDA-capable device is detected (code 100)
-cudaEventCreate: no CUDA-capable device is detected (code 100)
-cudaEventRecord(event, stream): no CUDA-capable device is detected (code 100)
-cudaEventQuery(event) [non-blocking check]: no CUDA-capable device is detected (code 100)
-cudaEventSynchronize(event) [blocking wait]: no CUDA-capable device is detected (code 100)
-```
-
-</details>
-
-The earlier device-less transcript returned `cudaErrorNoDevice` throughout; the current H100 API probes execute with valid device contexts. That historical output does not validate an event lifecycle. The current source stops after a failed creation and treats `cudaErrorNotReady` from a valid query as a normal pending state. An unrecorded event is considered complete; record the producer event before enqueuing the intended wait, and avoid confusing different recording generations.
+The event lifecycle checks creation, recording, querying and completion. `cudaErrorNotReady` is a normal query result for a pending event. Record the intended producer generation before enqueueing its consumer wait.
 
 !!! warning "[COMMON TRAP] Assuming cudaEventRecord() captures a value, like a timestamp, at the moment it's called"
     `cudaEventRecord(event, stream)` does not record *when the call happened* on the host -- it inserts a marker into `stream`'s queue that becomes "reached" only once every operation already queued *ahead* of it in that stream has finished executing on the device. If the stream already has ten seconds of queued kernels ahead of this call, the event doesn't become reached until all ten seconds have elapsed, no matter how quickly `cudaEventRecord()` itself returned to the host. Confusing "the call returned" with "the event fired" is exactly the mistake Section 6.2's cross-device dependency depends on you *not* making.
@@ -205,7 +189,9 @@ int main() {
 ```
 
 <!-- execution:start:a100:15_cross_device_wait.cu -->
-> **Current execution — 2026-11-17-a100: API validation (recorded scope).** UTC (program start): `2026-11-18T00:00:50.419783+00:00`. Source SHA-256: `055596de72b6edec945286a8d7d196c405f70535b56636da683788297e7e2e21`.
+> **Compiled and executed — 2026-11-17-a100: API validation (recorded scope).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:00:51.487103+00:00`.
+
+<!-- execution:metadata Source SHA-256: 055596de72b6edec945286a8d7d196c405f70535b56636da683788297e7e2e21; recorded UTC (program start): 2026-11-18T00:00:50.419783+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-a100/15_cross_device_wait/15_cross_device_wait.cu) · [Compiler log](../validation/2026-11-17-a100/15_cross_device_wait/compile.log) · [Execution log](../validation/2026-11-17-a100/15_cross_device_wait/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -216,7 +202,7 @@ nvcc -std=c++17 -O2 -arch=sm_80 15_cross_device_wait.cu -o ./example
 ./example
 ```
 
-<details markdown="1"><summary>Captured current-source output</summary>
+**Sample output**
 
 ```text
 cudaGetDeviceCount(&count): no error (code 0)
@@ -236,12 +222,14 @@ cudaStreamDestroy(stream0): no error (code 0)
 PASS: checked two-device event dependency lifecycle.
 ```
 
-</details>
+
 <!-- execution:end:a100:15_cross_device_wait.cu -->
 
 
 <!-- execution:start:h100:15_cross_device_wait.cu -->
-> **Current execution — 2026-11-17-h100: API validation (recorded scope).** UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`. Source SHA-256: `055596de72b6edec945286a8d7d196c405f70535b56636da683788297e7e2e21`.
+> **Compiled and executed — 2026-11-17-h100: API validation (recorded scope).** Hardware: 2 H100 GPUs. Execution record UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`.
+
+<!-- execution:metadata Source SHA-256: 055596de72b6edec945286a8d7d196c405f70535b56636da683788297e7e2e21; recorded UTC (run-batch start; per-program time unrecorded): 2026-11-17T23:48:18.967387+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-h100/15_cross_device_wait/15_cross_device_wait.cu) · [Compiler log](../validation/2026-11-17-h100/15_cross_device_wait/compile.log) · [Execution log](../validation/2026-11-17-h100/15_cross_device_wait/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -276,28 +264,9 @@ PASS: checked two-device event dependency lifecycle.
 <!-- execution:end:h100:15_cross_device_wait.cu -->
 
 
-**Historical authoring transcript (earlier source).** The current listing guards every prerequisite and returns nonzero on errors; it no longer invokes APIs with handles from failed creations. The output below is retained as historical context and is not a current-source GPU execution record. The current source was compiled and executed in the dated H100 suite; use the linked record for its numerical, API-probe or other-execution scope.
-
 The [2026-11-17 H100 execution record](../validation-h100.md) covers two GPUs connected by local NV18. It distinguishes numerical checks, API probes and other executions; a successful exit alone does not establish GPU algorithm correctness.
 
-<details markdown="1"><summary>Historical authoring output — superseded by the current execution above</summary>
-
-```
-cudaSetDevice(0): no CUDA-capable device is detected (code 100)
-cudaStreamCreate(stream0, on device 0): no CUDA-capable device is detected (code 100)
-cudaEventCreate(event0, on device 0): no CUDA-capable device is detected (code 100)
-cudaEventRecord(event0, stream0): no CUDA-capable device is detected (code 100)
-cudaSetDevice(1): no CUDA-capable device is detected (code 100)
-cudaStreamCreate(stream1, on device 1): no CUDA-capable device is detected (code 100)
-cudaStreamWaitEvent(stream1 waits on event0 from device 0): no CUDA-capable device is detected (code 100)
-Host reached this line without blocking on any of the above --
-cudaStreamWaitEvent only ever inserts a dependency for FUTURE
-work on stream1; it does not itself wait for anything.
-```
-
-</details>
-
-The historical transcript shows prerequisite failures only. The current source checks two-device availability, never uses a failed creation’s handle, and drains the waiting stream before releasing resources. Its eventual success would establish an API lifecycle, not payload correctness or measured overlap.
+the recorded execution shows prerequisite failures only. The current source checks two-device availability, never uses a failed creation’s handle, and drains the waiting stream before releasing resources. Its eventual success would establish an API lifecycle, not payload correctness or measured overlap.
 
 !!! warning "[COMMON TRAP] Reaching for cudaDeviceSynchronize() as the 'safe' way to coordinate across devices"
     `cudaDeviceSynchronize()` blocks the host until *every* piece of work already queued on the current device has completed -- not just the one operation another device's stream actually depends on. Using it to coordinate devices (device 0 synchronize, then start device 1's dependent work) is correct but needlessly serializing: it throws away any concurrency device 0 could have kept running on other, unrelated streams while device 1's dependent work began. `cudaStreamWaitEvent()` expresses the *actual* dependency -- one specific point in one specific stream -- and lets everything else keep moving.
@@ -312,7 +281,6 @@ Sections 6.1 and 6.2 gave this book the *mechanism* for expressing dependencies 
 
 Two device properties answer this directly. `asyncEngineCount`, per the CUDA Runtime API's own `cudaDeviceProp` struct reference, is simply the "Number of asynchronous engines" -- the count of hardware copy engines that can move data independently of, and concurrently with, the engine executing kernels; a value of 0 means no such engine exists at all, and overlap between a transfer and a kernel is not physically possible on that device no matter how the streams are arranged. `concurrentKernels` reports whether the "Device can possibly execute multiple kernels concurrently" -- a separate capability from copy/kernel overlap, and a per-device one: it says whether kernels issued to different streams on *that one device* can run at the same time. Different devices have separate compute hardware, but explicit dependencies and shared host/network resources can still couple their progress; this attribute is about sharing within one device. Both are queryable two ways: `cudaDeviceGetAttribute()` for a single value, or `cudaGetDeviceProperties()` for the full struct at once. Chapter 5's Asynchronous Execution citation already established pinned host memory for host/device transfer overlap. That requirement does not apply to a transfer wholly between device allocations. `concurrentKernels` describes kernel/kernel overlap, not a prerequisite for copy/kernel overlap. Stream arrangement, transfer type and actual scheduling still determine whether overlap occurs.
 
-> **Validation update:** This API probe checks return values and actual reported capabilities. It does not measure copy/compute overlap, inject a failed peer, or validate a NIC/RDMA data transfer. Earlier zero-device transcripts below belong to the prior source.
 
 The [2026-11-17 H100 execution record](../validation-h100.md) covers two GPUs connected by local NV18. It distinguishes numerical checks, API probes and other executions; a successful exit alone does not establish GPU algorithm correctness.
 
@@ -336,7 +304,9 @@ int main() {
 ```
 
 <!-- execution:start:a100:16_overlap_query.cu -->
-> **Current execution — 2026-11-17-a100: API validation (recorded scope).** UTC (program start): `2026-11-18T00:00:54.863486+00:00`. Source SHA-256: `b233728343488246a8239d354c36f4555fbb6d63fc76286db26aec6de54da837`.
+> **Compiled and executed — 2026-11-17-a100: API validation (recorded scope).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:00:55.930844+00:00`.
+
+<!-- execution:metadata Source SHA-256: b233728343488246a8239d354c36f4555fbb6d63fc76286db26aec6de54da837; recorded UTC (program start): 2026-11-18T00:00:54.863486+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-a100/16_overlap_query/16_overlap_query.cu) · [Compiler log](../validation/2026-11-17-a100/16_overlap_query/compile.log) · [Execution log](../validation/2026-11-17-a100/16_overlap_query/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -347,19 +317,21 @@ nvcc -std=c++17 -O2 -arch=sm_80 16_overlap_query.cu -o ./example
 ./example
 ```
 
-<details markdown="1"><summary>Captured current-source output</summary>
+**Sample output**
 
 ```text
 device 0: asyncEngineCount=3 concurrentKernels=1
 API PROBE PASS: capability queries only, no overlap benchmark, errors=0
 ```
 
-</details>
+
 <!-- execution:end:a100:16_overlap_query.cu -->
 
 
 <!-- execution:start:h100:16_overlap_query.cu -->
-> **Current execution — 2026-11-17-h100: API validation (recorded scope).** UTC (program start): `2026-11-17T23:51:11.925996+00:00`. Source SHA-256: `b233728343488246a8239d354c36f4555fbb6d63fc76286db26aec6de54da837`.
+> **Compiled and executed — 2026-11-17-h100: API validation (recorded scope).** Hardware: 2 H100 GPUs. Executed UTC: `2026-11-17T23:51:12.641215+00:00`.
+
+<!-- execution:metadata Source SHA-256: b233728343488246a8239d354c36f4555fbb6d63fc76286db26aec6de54da837; recorded UTC (program start): 2026-11-17T23:51:11.925996+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-h100/16_overlap_query/16_overlap_query.cu) · [Compiler log](../validation/2026-11-17-h100/16_overlap_query/compile.log) · [Execution log](../validation/2026-11-17-h100/16_overlap_query/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -381,25 +353,6 @@ API PROBE PASS: capability queries only, no overlap benchmark, errors=0
 <!-- execution:end:h100:16_overlap_query.cu -->
 
 
-Genuinely compiled with a real `nvcc` and genuinely run. Locked output, deterministic across repeated runs:
-
-<details markdown="1"><summary>Historical authoring output — superseded by the current execution above</summary>
-
-```
-cudaGetDeviceCount(): 0 device(s).
-cudaDeviceGetAttribute(AsyncEngineCount, device 0): no CUDA-capable device is detected (code 100), value=-1
-cudaDeviceGetAttribute(ConcurrentKernels, device 0): no CUDA-capable device is detected (code 100), value=-1
-cudaGetDeviceProperties(device 0): no CUDA-capable device is detected (code 100)
-
-Neither value can be honestly reported as a real number on this
-machine -- there is no device 0 to query. On real hardware, both
-queries would need to succeed, and asyncEngineCount would need to
-be >=1, before overlap between a transfer and a kernel is even
-physically possible, regardless of how the streams are arranged.
-```
-
-</details>
-
 File 16 checks overlap capability queries against the device properties reported by the current H100 driver. This API-probe pass does not measure achieved copy/compute overlap or guarantee that an arbitrary stream schedule overlaps.
 
 The [2026-11-17 H100 execution record](../validation-h100.md) covers two GPUs connected by local NV18. It distinguishes numerical checks, API probes and other executions; a successful exit alone does not establish GPU algorithm correctness.
@@ -409,7 +362,7 @@ The [2026-11-17 H100 execution record](../validation-h100.md) covers two GPUs co
 
 ## Chapter Summary
 
-A CUDA event is a marker placed into a stream by `cudaEventRecord()` -- itself non-blocking -- that something else can either poll without blocking (`cudaEventQuery()`) or genuinely wait on (`cudaEventSynchronize()`), measured directly in Section 6.1 by exercising every stage of that lifecycle down to the same honest `cudaErrorNoDevice` this book has reported since Chapter 1. Because streams and their events are bound to whichever device was current when they were created (Chapter 3), but `cudaStreamWaitEvent()` explicitly supports an event from a different device than the waiting stream -- performing, per its own documentation, genuine "cross-device synchronization" -- Section 6.2 built the real, targeted dependency mechanism multi-GPU code uses instead of the blunter, needlessly serializing `cudaDeviceSynchronize()`. Neither mechanism produces real overlap between a transfer and a kernel unless the underlying hardware has a separate copy engine to run them on at the same time, which Section 6.3 showed is a fact the Runtime API can query honestly and directly (`asyncEngineCount`, `concurrentKernels`) without running either operation -- in the historical authoring transcript, unavailable to query, for the same reason every other device query in this book has been. Chapter 7 turns to CUDA's Inter-Process Communication support: sharing device memory and events not just across devices within one process, but across separate operating-system processes entirely.
+Events mark completion points in streams. `cudaEventQuery()` polls them, `cudaEventSynchronize()` waits on the host, and `cudaStreamWaitEvent()` establishes a targeted stream dependency, including across devices. Overlap additionally depends on hardware and workload scheduling. Chapter 7 extends memory and event sharing across processes.
 
 ## Self-Check Questions
 

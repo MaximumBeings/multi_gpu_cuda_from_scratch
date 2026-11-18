@@ -1,11 +1,5 @@
 # Chapter 29: Distributed Jacobi Solver
 
-<!-- execution:provenance -->
-!!! info "Execution provenance"
-
-    Current execution blocks identify the tested source hash, hardware dataset, commands and captured output. References elsewhere on this page to a device-less environment describe the original authoring context. Historical output is superseded by the current record. Displayed output omits the runner command header and trims trailing line whitespace; raw logs remain exact. A host simulation or API validation has its stated scope; neither alone establishes a numerical multi-GPU workload or measured performance.
-
-
 <!-- mgpu:opener:start -->
 [![Chapter 29: Distributed Jacobi Solver](../images/chapter-openers/29.svg)](../images/chapter-openers/29.svg)
 <!-- mgpu:opener:end -->
@@ -262,7 +256,9 @@ int main() {
 ```
 
 <!-- execution:start:a100:84_distributed_jacobi_correctness_simulation.cpp -->
-> **Current execution — 2026-11-17-a100: Host program/model (exit-only).** UTC (program start): `2026-11-18T00:05:26.757466+00:00`. Source SHA-256: `bf510f914a7e0602fd1109321f6c48a7042bbbc061dbbef8cd4ae6b12a4e98b8`.
+> **Compiled and executed — 2026-11-17-a100: Host program/model (exit-only).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:05:27.272809+00:00`.
+
+<!-- execution:metadata Source SHA-256: bf510f914a7e0602fd1109321f6c48a7042bbbc061dbbef8cd4ae6b12a4e98b8; recorded UTC (program start): 2026-11-18T00:05:26.757466+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-a100/84_distributed_jacobi_correctness_simulation/84_distributed_jacobi_correctness_simulation.cpp) · [Compiler log](../validation/2026-11-17-a100/84_distributed_jacobi_correctness_simulation/compile.log) · [Execution log](../validation/2026-11-17-a100/84_distributed_jacobi_correctness_simulation/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -273,7 +269,7 @@ g++ -std=c++17 -O2 84_distributed_jacobi_correctness_simulation.cpp -o ./example
 ./example
 ```
 
-<details markdown="1"><summary>Captured current-source output</summary>
+**Sample output**
 
 ```text
 Reference (single-process) 12x8-grid Jacobi solve, 40 iterations.
@@ -288,12 +284,14 @@ P      grid EXACT match?    residual norm (per-rank sums) norm match?
 12     YES                  1.3874786747088719           NO
 ```
 
-</details>
+
 <!-- execution:end:a100:84_distributed_jacobi_correctness_simulation.cpp -->
 
 
 <!-- execution:start:h100:84_distributed_jacobi_correctness_simulation.cpp -->
-> **Current execution — 2026-11-17-h100: Host program/model (exit-only).** UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`. Source SHA-256: `bf510f914a7e0602fd1109321f6c48a7042bbbc061dbbef8cd4ae6b12a4e98b8`.
+> **Compiled and executed — 2026-11-17-h100: Host program/model (exit-only).** Hardware: 2 H100 GPUs. Execution record UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`.
+
+<!-- execution:metadata Source SHA-256: bf510f914a7e0602fd1109321f6c48a7042bbbc061dbbef8cd4ae6b12a4e98b8; recorded UTC (run-batch start; per-program time unrecorded): 2026-11-17T23:48:18.967387+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-h100/84_distributed_jacobi_correctness_simulation/84_distributed_jacobi_correctness_simulation.cpp) · [Compiler log](../validation/2026-11-17-h100/84_distributed_jacobi_correctness_simulation/compile.log) · [Execution log](../validation/2026-11-17-h100/84_distributed_jacobi_correctness_simulation/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -324,15 +322,6 @@ P      grid EXACT match?    residual norm (per-rank sums) norm match?
 
 
 Compile and run:
-
-<details markdown="1"><summary>Historical authoring output — superseded by the current execution above</summary>
-
-```
-g++ -O2 -ffp-contract=off 84_distributed_jacobi_correctness_simulation.cpp -o 84_distributed_jacobi_correctness_simulation
-./84_distributed_jacobi_correctness_simulation
-```
-
-</details>
 
 ```text
 Reference (single-process) 12x8-grid Jacobi solve, 40 iterations.
@@ -468,7 +457,9 @@ int main() {
 ```
 
 <!-- execution:start:a100:85_allreduce_check_frequency_cost_model.cpp -->
-> **Current execution — 2026-11-17-a100: Host program/model (exit-only).** UTC (program start): `2026-11-18T00:05:27.280571+00:00`. Source SHA-256: `03c2044f50834000b599c623243b2ab893061afc53070a18cc7351203f63c15b`.
+> **Compiled and executed — 2026-11-17-a100: Host program/model (exit-only).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:05:27.495466+00:00`.
+
+<!-- execution:metadata Source SHA-256: 03c2044f50834000b599c623243b2ab893061afc53070a18cc7351203f63c15b; recorded UTC (program start): 2026-11-18T00:05:27.280571+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-a100/85_allreduce_check_frequency_cost_model/85_allreduce_check_frequency_cost_model.cpp) · [Compiler log](../validation/2026-11-17-a100/85_allreduce_check_frequency_cost_model/compile.log) · [Execution log](../validation/2026-11-17-a100/85_allreduce_check_frequency_cost_model/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -479,7 +470,7 @@ g++ -std=c++17 -O2 85_allreduce_check_frequency_cost_model.cpp -o ./example
 ./example
 ```
 
-<details markdown="1"><summary>Captured current-source output</summary>
+**Sample output**
 
 ```text
 --- Per-ITERATION cost: halo exchange (Section 29.1's update step) ---
@@ -511,12 +502,14 @@ K        # convergence checks total Allreduce rounds       overhead reduction
 The reduction factor is exactly K, by construction -- the same shape as Chapter 25's own bucketing tradeoff, but for a collective's CALL FREQUENCY rather than its per-call MESSAGE SIZE. This is exactly why NVIDIA's own real repo ships a 'delayed norm execution' variant: 'GPUDirect P2P mappings for inter GPU communication with delayed norm execution' -- checking less often is a genuine, real, production optimization, not a hypothetical one.
 ```
 
-</details>
+
 <!-- execution:end:a100:85_allreduce_check_frequency_cost_model.cpp -->
 
 
 <!-- execution:start:h100:85_allreduce_check_frequency_cost_model.cpp -->
-> **Current execution — 2026-11-17-h100: Host program/model (exit-only).** UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`. Source SHA-256: `03c2044f50834000b599c623243b2ab893061afc53070a18cc7351203f63c15b`.
+> **Compiled and executed — 2026-11-17-h100: Host program/model (exit-only).** Hardware: 2 H100 GPUs. Execution record UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`.
+
+<!-- execution:metadata Source SHA-256: 03c2044f50834000b599c623243b2ab893061afc53070a18cc7351203f63c15b; recorded UTC (run-batch start; per-program time unrecorded): 2026-11-17T23:48:18.967387+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-h100/85_allreduce_check_frequency_cost_model/85_allreduce_check_frequency_cost_model.cpp) · [Compiler log](../validation/2026-11-17-h100/85_allreduce_check_frequency_cost_model/compile.log) · [Execution log](../validation/2026-11-17-h100/85_allreduce_check_frequency_cost_model/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -564,15 +557,6 @@ The reduction factor is exactly K, by construction -- the same shape as Chapter 
 
 
 Compile and run:
-
-<details markdown="1"><summary>Historical authoring output — superseded by the current execution above</summary>
-
-```
-g++ -O2 85_allreduce_check_frequency_cost_model.cpp -o 85_allreduce_check_frequency_cost_model
-./85_allreduce_check_frequency_cost_model
-```
-
-</details>
 
 ```text
 --- Per-ITERATION cost: halo exchange (Section 29.1's update step) ---
@@ -717,7 +701,9 @@ int main() {
 ```
 
 <!-- execution:start:a100:86_jacobi_convergence_rate_model.cpp -->
-> **Current execution — 2026-11-17-a100: Host program/model (exit-only).** UTC (program start): `2026-11-18T00:05:27.501508+00:00`. Source SHA-256: `195cb07d6b6200b16d232f9da4c21918ef3ebec595286234e95f8236801058e9`.
+> **Compiled and executed — 2026-11-17-a100: Host program/model (exit-only).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:05:27.716552+00:00`.
+
+<!-- execution:metadata Source SHA-256: 195cb07d6b6200b16d232f9da4c21918ef3ebec595286234e95f8236801058e9; recorded UTC (program start): 2026-11-18T00:05:27.501508+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-a100/86_jacobi_convergence_rate_model/86_jacobi_convergence_rate_model.cpp) · [Compiler log](../validation/2026-11-17-a100/86_jacobi_convergence_rate_model/compile.log) · [Execution log](../validation/2026-11-17-a100/86_jacobi_convergence_rate_model/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -728,7 +714,7 @@ g++ -std=c++17 -O2 86_jacobi_convergence_rate_model.cpp -o ./example
 ./example
 ```
 
-<details markdown="1"><summary>Captured current-source output</summary>
+**Sample output**
 
 ```text
 --- Jacobi iterations to HALVE the error, n x n grid ---
@@ -756,12 +742,14 @@ Gauss-Seidel's own real relation to Jacobi (Demmel, CS267): "converge[s] twice a
 Naumov, Arsaev, Castonguay, Cohen, Demouth, Eaton, Layton, Markovskiy, Reguly, Sakharnykh, Sellappan & Strzodka, "AmgX: A Library for GPU Accelerated Algebraic Multigrid and Preconditioned Iterative Methods," SIAM J. Sci. Comput. 37(5):S602-S626, 2015. Real cited result: "The algebraic multigrid algorithm implemented in the AmgX library achieves 2-5x speedup on a single GPU against a competitive implementation on the CPU." AmgX's own multi-GPU solves reuse the exact same two ingredients this chapter built by hand: neighbor halo exchange for the local sparse matrix-vector product, and a global Allreduce for the residual norm/inner products the method's convergence check needs -- just wrapped around Multigrid instead of Jacobi.
 ```
 
-</details>
+
 <!-- execution:end:a100:86_jacobi_convergence_rate_model.cpp -->
 
 
 <!-- execution:start:h100:86_jacobi_convergence_rate_model.cpp -->
-> **Current execution — 2026-11-17-h100: Host program/model (exit-only).** UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`. Source SHA-256: `195cb07d6b6200b16d232f9da4c21918ef3ebec595286234e95f8236801058e9`.
+> **Compiled and executed — 2026-11-17-h100: Host program/model (exit-only).** Hardware: 2 H100 GPUs. Execution record UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`.
+
+<!-- execution:metadata Source SHA-256: 195cb07d6b6200b16d232f9da4c21918ef3ebec595286234e95f8236801058e9; recorded UTC (run-batch start; per-program time unrecorded): 2026-11-17T23:48:18.967387+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-h100/86_jacobi_convergence_rate_model/86_jacobi_convergence_rate_model.cpp) · [Compiler log](../validation/2026-11-17-h100/86_jacobi_convergence_rate_model/compile.log) · [Execution log](../validation/2026-11-17-h100/86_jacobi_convergence_rate_model/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -805,15 +793,6 @@ Naumov, Arsaev, Castonguay, Cohen, Demouth, Eaton, Layton, Markovskiy, Reguly, S
 
 
 Compile and run:
-
-<details markdown="1"><summary>Historical authoring output — superseded by the current execution above</summary>
-
-```
-g++ -O2 86_jacobi_convergence_rate_model.cpp -o 86_jacobi_convergence_rate_model
-./86_jacobi_convergence_rate_model
-```
-
-</details>
 
 ```text
 --- Jacobi iterations to HALVE the error, n x n grid ---

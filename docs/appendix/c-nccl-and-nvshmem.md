@@ -1,11 +1,5 @@
 # Appendix C: NCCL and NVSHMEM -- The Standard Libraries You Get for Free
 
-<!-- execution:provenance -->
-!!! info "Execution provenance"
-
-    Current execution blocks identify the tested source hash, hardware dataset, commands and captured output. References elsewhere on this page to a device-less environment describe the original authoring context. Historical output is superseded by the current record. Displayed output omits the runner command header and trims trailing line whitespace; raw logs remain exact. A host simulation or API validation has its stated scope; neither alone establishes a numerical multi-GPU workload or measured performance.
-
-
 <!-- mgpu:opener:start -->
 [![Appendix C: NCCL and NVSHMEM -- The Standard Libraries You Get for Free](../images/chapter-openers/appendix-c.svg)](../images/chapter-openers/appendix-c.svg)
 <!-- mgpu:opener:end -->
@@ -41,7 +35,7 @@ Imagine finally organizing a toolbox after building five different tools from ra
   add a dedicated ncclAlltoAll().
 ```
 
-Five of the six rows are a clean one-to-one match: whatever Chapter 8's or Chapter 9's or Chapter 10's hand-built loop over `cudaMemcpyPeerAsync` calls was doing, one real NCCL call now does the same job, dispatched to whichever real interconnect NCCL has actually detected (NVLink, PCIe, or a network fabric) -- a decision the hand-built versions in Chapters 8-10 never had to make, because they always assumed a single fixed topology. The sixth row is the interesting one, and its answer depends on the NCCL version. The NCCL this book installs and links against (2.18.3), as Chapter 11 established, ships no all-to-all function at all; a dedicated `ncclAlltoAll()` (together with `ncclGather()` and `ncclScatter()`) only arrived in NCCL 2.28, which is why Chapter 17's citation of NCCL's current documentation lists AllToAll among the collectives. On the installed 2.18.3, Chapter 10's own hand-built all-to-all maps onto the recipe NCCL's own documentation gives for that version: a loop of paired `ncclSend`/`ncclRecv` calls, all fused inside one `ncclGroupStart()`/`ncclGroupEnd()` bracket so the underlying transport can pipeline them together instead of issuing six separate round trips. NCCL ships no dedicated barrier either, but Chapter 17 filled that gap a different way: its throwaway barrier is a single one-element `ncclAllReduce` call, not a fused group of point-to-point calls -- Chapter 17 never calls `ncclGroupStart()`/`ncclGroupEnd()` at all.
+Broadcast, Reduce, AllReduce, AllGather and ReduceScatter map directly to NCCL collectives. The tested NCCL 2.26.2 builds express All-to-All with grouped `ncclSend`/`ncclRecv` calls; dedicated All-to-All APIs are available in newer releases. Chapter 17 uses a dummy-element AllReduce plus stream completion as a barrier, with grouped submission when one host controls multiple ranks.
 
 !!! warning
     A version number and a unique ID cost nothing -- a communicator costs a device. `ncclGetVersion()` and `ncclGetUniqueId()` are pure host-side bookkeeping and will succeed on a laptop with no GPU at all. `ncclCommInitRank()` is different: it genuinely tries to bind the communicator to a physical device, and on a machine with zero physical GPUs it fails every time, the same real, well-documented limitation Chapters 22, 23, and 32 already found for NVSHMEM init and for captured graph launches. Reading a version string back successfully is not evidence that a communicator will initialize.
@@ -89,7 +83,9 @@ int main(){
 ```
 
 <!-- execution:start:a100:126_nccl_collective_reference.cu -->
-> **Current execution — 2026-11-17-a100: Numerical/transport validation (recorded scope).** UTC (program start): `2026-11-17T23:58:32.558297+00:00`. Source SHA-256: `b47b447984378093482ae894fce5f20796a82be9677255090bfa681c8fc7330a`.
+> **Compiled and executed — 2026-11-17-a100: Numerical/transport validation (recorded scope).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-17T23:58:34.577004+00:00`.
+
+<!-- execution:metadata Source SHA-256: b47b447984378093482ae894fce5f20796a82be9677255090bfa681c8fc7330a; recorded UTC (program start): 2026-11-17T23:58:32.558297+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-a100/126_nccl_collective_reference/126_nccl_collective_reference.cu) · [Compiler log](../validation/2026-11-17-a100/126_nccl_collective_reference/compile.log) · [Execution log](../validation/2026-11-17-a100/126_nccl_collective_reference/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -100,7 +96,7 @@ nvcc -std=c++17 -O2 -arch=sm_80 126_nccl_collective_reference.cu -o ./example -l
 ./example
 ```
 
-<details markdown="1"><summary>Captured current-source output</summary>
+**Sample output**
 
 ```text
 Broadcast checked; cumulative errors=0
@@ -112,12 +108,14 @@ Grouped Send/Recv all-to-all checked; cumulative errors=0
 VALIDATION PASS: errors=0
 ```
 
-</details>
+
 <!-- execution:end:a100:126_nccl_collective_reference.cu -->
 
 
 <!-- execution:start:h100:126_nccl_collective_reference.cu -->
-> **Current execution — 2026-11-17-h100: Numerical/transport validation (recorded scope).** UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`. Source SHA-256: `b47b447984378093482ae894fce5f20796a82be9677255090bfa681c8fc7330a`.
+> **Compiled and executed — 2026-11-17-h100: Numerical/transport validation (recorded scope).** Hardware: 2 H100 GPUs. Execution record UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`.
+
+<!-- execution:metadata Source SHA-256: b47b447984378093482ae894fce5f20796a82be9677255090bfa681c8fc7330a; recorded UTC (run-batch start; per-program time unrecorded): 2026-11-17T23:48:18.967387+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-h100/126_nccl_collective_reference/126_nccl_collective_reference.cu) · [Compiler log](../validation/2026-11-17-h100/126_nccl_collective_reference/compile.log) · [Execution log](../validation/2026-11-17-h100/126_nccl_collective_reference/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -153,33 +151,6 @@ nvcc -arch=sm_80 126_nccl_collective_reference.cu -o 126_nccl_collective_referen
 
 **Sample input:** none -- the program takes no arguments and reads no data; every value it prints is either a compile-time constant string or a real return value read back from the installed NCCL library.
 
-**Sample output:**
-
-<details markdown="1"><summary>Historical authoring output — superseded by the current execution above</summary>
-
-```text
-=== Section C.1: NCCL's five core collectives, matched to the chapter that hand-built each one ===
-
-real installed NCCL version: 2.18.3
-
-NCCL call            signature (sendbuff, recvbuff, ...)           hand-built in
-ncclBroadcast        (send, recv, count, type, root, comm, stream) Ch8 8.1   
-ncclReduce           (send, recv, count, type, op, root, comm, stream) Ch8 8.2   
-ncclAllReduce        (send, recv, count, type, op, comm, stream)   Ch9 (ring)
-ncclReduceScatter    (send, recv, recvcount, type, op, comm, stream) Ch10 10.2 
-ncclAllGather        (send, recv, sendcount, type, comm, stream)   Ch10 10.1 
-
-note: the installed NCCL (2.18.3) has no dedicated all-to-all call (a dedicated ncclAlltoAll() only arrived in NCCL 2.28) -- on this version, Ch10 10.3's own hand-built all-to-all maps to the recipe NCCL's own documentation gives (Ch11's own real finding): repeated ncclSend()/ncclRecv() calls fused inside ncclGroupStart()/ncclGroupEnd(). NCCL also ships no Barrier; Ch17 worked around that gap differently, with a single throwaway ncclAllReduce rather than a group of point-to-point calls.
-
-=== attempting a genuine ncclCommInitRank() ===
-
-ncclGetUniqueId() -> no error (succeeds -- no device needed to generate an ID)
-ncclCommInitRank(&comm, nranks=1, id, rank=0) -> unhandled cuda error (run with NCCL_DEBUG=INFO for details) (this environment has zero physical GPUs, so NCCL cannot actually bind a communicator to a device, exactly the same real, well-documented limitation Ch22/Ch23/Ch32 already found for NVSHMEM init and captured graph launches)
-
-self-check: ncclGetVersion() and ncclGetUniqueId() both succeed with NO device at all (pure host-side bookkeeping), while ncclCommInitRank() genuinely requires one -- this file reports both outcomes honestly rather than skipping the attempt: confirmed
-```
-
-</details>
 
 ## C.2 NCCL Point-to-Point, Consolidated
 
@@ -242,7 +213,9 @@ int main(){
 ```
 
 <!-- execution:start:a100:127_nccl_point_to_point.cu -->
-> **Current execution — 2026-11-17-a100: Numerical/transport validation (recorded scope).** UTC (program start): `2026-11-17T23:58:39.451336+00:00`. Source SHA-256: `77eda8517f9944b216c53328297c2b610295555cd52472baa1e3cdf361f42497`.
+> **Compiled and executed — 2026-11-17-a100: Numerical/transport validation (recorded scope).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-17T23:58:41.470172+00:00`.
+
+<!-- execution:metadata Source SHA-256: 77eda8517f9944b216c53328297c2b610295555cd52472baa1e3cdf361f42497; recorded UTC (program start): 2026-11-17T23:58:39.451336+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-a100/127_nccl_point_to_point/127_nccl_point_to_point.cu) · [Compiler log](../validation/2026-11-17-a100/127_nccl_point_to_point/compile.log) · [Execution log](../validation/2026-11-17-a100/127_nccl_point_to_point/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -253,19 +226,21 @@ nvcc -std=c++17 -O2 -arch=sm_80 127_nccl_point_to_point.cu -o ./example -lnccl
 ./example
 ```
 
-<details markdown="1"><summary>Captured current-source output</summary>
+**Sample output**
 
 ```text
 Same-peer message results: 100 101. This two-GPU test does not test scheduling among different remote peers.
 VALIDATION PASS: errors=0
 ```
 
-</details>
+
 <!-- execution:end:a100:127_nccl_point_to_point.cu -->
 
 
 <!-- execution:start:h100:127_nccl_point_to_point.cu -->
-> **Current execution — 2026-11-17-h100: Numerical/transport validation (recorded scope).** UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`. Source SHA-256: `77eda8517f9944b216c53328297c2b610295555cd52472baa1e3cdf361f42497`.
+> **Compiled and executed — 2026-11-17-h100: Numerical/transport validation (recorded scope).** Hardware: 2 H100 GPUs. Execution record UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`.
+
+<!-- execution:metadata Source SHA-256: 77eda8517f9944b216c53328297c2b610295555cd52472baa1e3cdf361f42497; recorded UTC (run-batch start; per-program time unrecorded): 2026-11-17T23:48:18.967387+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-h100/127_nccl_point_to_point/127_nccl_point_to_point.cu) · [Compiler log](../validation/2026-11-17-h100/127_nccl_point_to_point/compile.log) · [Execution log](../validation/2026-11-17-h100/127_nccl_point_to_point/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -296,49 +271,6 @@ nvcc -arch=sm_80 127_nccl_point_to_point.cu -o 127_nccl_point_to_point -lnccl
 
 **Sample input:** none -- the six-call issue sequence (peer, tag pairs) is a fixed constant baked into the program, not read from any file or argument.
 
-**Sample output:**
-
-<details markdown="1"><summary>Historical authoring output — superseded by the current execution above</summary>
-
-```text
-=== Section C.2: NCCL point-to-point (ncclSend/ncclRecv), consolidated from Chapter 11 ===
-
-real symbols resolved: ncclSend=0x7f2a1c3b4a10 ncclRecv=0x7f2a1c3b4c20 ncclGroupStart=0x7f2a1c3b5030 ncclGroupEnd=0x7f2a1c3b5140
-
-Chapter 11's own real recipe, restated as a standalone reference (this is Chapter 10's own all-to-all, built the SAME way Chapter 11 found NCCL's own documentation builds it -- the installed NCCL 2.18.3 has no dedicated all-to-all call; ncclAlltoAll() only arrived in NCCL 2.28):
-
-  ncclGroupStart();
-  for (int peer = 0; peer < nranks; peer++) {
-      ncclSend(sendbuf + peer*chunkSize, chunkSize, type, peer, comm, stream);
-      ncclRecv(recvbuf + peer*chunkSize, chunkSize, type, peer, comm, stream);
-  }
-  ncclGroupEnd();
-
-=== demonstrating Chapter 11's own Self-Check Q4 answer: same-peer calls stay ordered, different-peer calls don't need to ===
-
-issuing, inside one ncclGroupStart()/ncclGroupEnd() group:
-  ncclSend(..., peer=0, ...) tag=100
-  ncclSend(..., peer=0, ...) tag=101
-  ncclSend(..., peer=0, ...) tag=102
-  ncclSend(..., peer=1, ...) tag=200
-  ncclSend(..., peer=2, ...) tag=300
-  ncclSend(..., peer=2, ...) tag=301
-
-per-peer delivery order (each peer's own queue is FIFO -- same-peer calls preserve issue order by construction):
-  peer 0 receives, in order: [100, 101, 102]
-  peer 1 receives, in order: [200]
-  peer 2 receives, in order: [300, 301]
-
-note what this model does NOT constrain: peer 1's own single call and peer 2's own two calls could be scheduled and delivered in any relative order with respect to peer 0's own three calls -- NCCL's documented guarantee covers ONLY same-peer ordering, exactly Chapter 11's own Self-Check Q4 answer, never cross-peer ordering.
-
-self-check: peer 0's own three same-peer sends were delivered in exactly the order they were issued (100, 101, 102): confirmed
-
-=== attempting a genuine communicator for a real ncclSend/ncclRecv call ===
-
-ncclCommInitRank() -> unhandled cuda error (run with NCCL_DEBUG=INFO for details) (same real, honest zero-physical-GPU limitation as Section C.1 and every device-touching file since Chapter 2)
-```
-
-</details>
 
 (the two pointer values printed for the resolved symbols are real addresses from this build and will differ run to run and machine to machine; only their non-null-ness is the thing being checked)
 
@@ -379,7 +311,6 @@ Every one of these calls is initiated by the PE that issues it, and the remote P
 
 ### Code and Verification
 
-> **Validation update:** This source now checks the actual API operation instead of interpreting a zero-GPU path as a successful workload. File 68 synchronizes before checking host callback counts; File 128 performs real NVSHMEM get/atomic-add/team/barrier checks on initialized symmetric device memory. The current source was compiled and executed in the dated H100 suite; use the linked record for its numerical, API-probe or other-execution scope.
 
 The [2026-11-17 H100 execution record](../validation-h100.md) covers two GPUs connected by local NV18. It distinguishes numerical checks, API probes and other executions; a successful exit alone does not establish GPU algorithm correctness.
 
@@ -462,7 +393,9 @@ int main(int argc, char **argv) {
 ```
 
 <!-- execution:start:a100:128_nvshmem_api_reference.cu -->
-> **Current execution — 2026-11-17-a100: Numerical/transport validation (recorded scope).** UTC (program start): `2026-11-17T23:58:45.895770+00:00`. Source SHA-256: `6f66c81a0066abc91a379db68a84940ebcb5e3580bf57a18123904a8764c4ebb`.
+> **Compiled and executed — 2026-11-17-a100: Numerical/transport validation (recorded scope).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-17T23:58:54.078674+00:00`.
+
+<!-- execution:metadata Source SHA-256: 6f66c81a0066abc91a379db68a84940ebcb5e3580bf57a18123904a8764c4ebb; recorded UTC (program start): 2026-11-17T23:58:45.895770+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-a100/128_nvshmem_api_reference/128_nvshmem_api_reference.cu) · [Compiler log](../validation/2026-11-17-a100/128_nvshmem_api_reference/compile.log) · [Execution log](../validation/2026-11-17-a100/128_nvshmem_api_reference/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -473,7 +406,7 @@ nvcc -std=c++17 -O2 -arch=sm_80 -ccbin mpicxx -rdc=true -I/home/ubuntu/book2-dep
 /usr/mpi/gcc/openmpi-4.1.7rc1/bin/mpirun --oversubscribe -np 8 ./example
 ```
 
-<details markdown="1"><summary>Captured current-source output</summary>
+**Sample output**
 
 ```text
 [LOG_CAT_SBGP] libnuma.so: cannot open shared object file: No such file or directory
@@ -503,12 +436,14 @@ PE 1: neighbor=2 received=30 counter=0
 VALIDATION PASS: 8 PEs, errors=0
 ```
 
-</details>
+
 <!-- execution:end:a100:128_nvshmem_api_reference.cu -->
 
 
 <!-- execution:start:h100:128_nvshmem_api_reference.cu -->
-> **Current execution — 2026-11-17-h100: Numerical/transport validation (recorded scope).** UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`. Source SHA-256: `6f66c81a0066abc91a379db68a84940ebcb5e3580bf57a18123904a8764c4ebb`.
+> **Compiled and executed — 2026-11-17-h100: Numerical/transport validation (recorded scope).** Hardware: 2 H100 GPUs. Execution record UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`.
+
+<!-- execution:metadata Source SHA-256: 6f66c81a0066abc91a379db68a84940ebcb5e3580bf57a18123904a8764c4ebb; recorded UTC (run-batch start; per-program time unrecorded): 2026-11-17T23:48:18.967387+00:00 -->
 
 [Exact tested source](../validation/2026-11-17-h100/128_nvshmem_api_reference/128_nvshmem_api_reference.cu) · [Compiler log](../validation/2026-11-17-h100/128_nvshmem_api_reference/compile.log) · [Execution log](../validation/2026-11-17-h100/128_nvshmem_api_reference/run.log). Compile exit: `0`; run exit: `0`.
 
@@ -585,45 +520,8 @@ The two `NVSHMEM_*` variables are the same ones Appendix A's Makefile defines; l
 
 **Sample input:** none -- the 4-PE starting values (10, 20, 30, 40) are fixed constants in the source, standing in for whatever each PE's own real computation would have produced.
 
-**Sample output:**
 
-<details markdown="1"><summary>Historical authoring output — superseded by the current execution above</summary>
-
-```text
-=== Section C.3: NVSHMEM's fuller real API, beyond Chapter 22's own nvshmem_int_p() ===
-
-real symbols resolved:
-  nvshmem_int_get         = 0x7f9aa02ec6e0  (one-sided READ -- the counterpart to Ch22's own nvshmem_int_p WRITE)
-  nvshmem_int_atomic_add  = 0x7f9aa030c090  (atomic remote update -- lets multiple PEs safely combine values into one shared remote location without a separate reduction collective, the same race a plain, unsynchronized shared write would risk on either a single device or across PEs)
-  nvshmem_barrier_all     = 0x7f9aa0250070  (NVSHMEM's own collective sync -- the same real job Ch17's throwaway ncclAllReduce did for NCCL)
-  nvshmem_team_my_pe      = 0x7f9aa0335df0  (queries this PE's own rank WITHIN a named team -- NVSHMEM_TEAM_WORLD = 0 is the default team containing every PE)
-
-=== attempting a genuine nvshmem_init() ===
-
-./src/host/init/init.cu:709 Cuda failure. Status = CUDA_ERROR_NO_DEVICE. Description = no CUDA-capable device is detectednvshmem_init() completed; nvshmem_my_pe()=0, nvshmem_n_pes()=1
-(run directly, with no bootstrap plugin requested, NVSHMEM reports a world of exactly one PE -- the same n_pes=1 result as Chapter 22's File 63. The CUDA_ERROR_NO_DEVICE line NVSHMEM prints on stderr during init is its own real device-setup failure on this zero-GPU machine: the PE count is answered, but no symmetric heap or device state exists, so no real get/atomic/barrier can run here.)
-
-=== host-side replay: 4 PEs, each fetches its right neighbor's value (nvshmem_int_get's own real job), then every PE atomically adds 1 to PE 0's shared counter (nvshmem_int_atomic_add's own real job), then all PEs barrier (nvshmem_barrier_all's own real job) before reading the final counter ===
-
-PE     own value    fetched (right neighbor)
-0      10           20                      
-1      20           30                      
-2      30           40                      
-3      40           10                      
-
-after 4 PEs each call nvshmem_int_atomic_add(&counter, 1, 0) targeting PE 0: counter = 4
-(every increment lands correctly regardless of arrival order -- NVSHMEM's own remote atomic gives this guarantee ACROSS PEs, the same correctness property a plain CUDA atomicAdd() gives across threads on one device, without needing a separate collective reduction just to combine four PEs' own contributions into one counter)
-
-after nvshmem_barrier_all(): every PE is guaranteed the counter has reached its final value of 4 before proceeding -- without the barrier, a PE could read the counter before every other PE's own increment has landed.
-
-self-check: every PE's fetched value matches its right neighbor's own value, and the final counter equals the number of PEs that incremented it: confirmed
-./src/device/init/init_host.cu:nvshmemi_finalize:187: Unable to properly unregister device state.
-
-```
-
-</details>
-
-The preceding transcript is historical output from the older device-less source. Current File 128 explicitly bootstraps MPI, initializes symmetric device data and checks get, remote atomic-add, team rank and synchronization behavior on the H100 pair. It is a numerical local-communication check; it does not establish an RDMA transport path.
+File 128 bootstraps MPI, initializes symmetric device data and checks get, remote atomic-add, team rank and synchronization on the recorded GPUs.
 
 ## C.4 Choosing Between Hand-Written Collectives, NCCL, and NVSHMEM
 

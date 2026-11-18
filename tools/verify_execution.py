@@ -77,6 +77,9 @@ def verify(root, public, docs=None, summary_text=None):
             errors.append(f'Expected one displayed execution block: {rel}')
             continue
         section = sections[0]
+        run_started = row.get('run_started_utc') or row.get('run', {}).get('started_utc')
+        if run_started and f'Executed UTC: `{run_started}`' not in section:
+            errors.append(f'Displayed actual run-start timestamp differs: {rel}')
         if row['sha256'] not in section or row['captured_utc'] not in section or dataset not in section or row['timestamp_scope'] not in section:
             errors.append(f'Displayed execution metadata mismatch: {rel}')
         commands = shlex.join(normalize(row['compile_command'], rel)) + '\n' + shlex.join(normalize(row['run_command'], rel))
