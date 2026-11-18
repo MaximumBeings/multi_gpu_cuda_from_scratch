@@ -51,7 +51,7 @@ Take four 32-bit integers [2,4,6,8]: payload size S=16 bytes. Count logical payl
 
 3. After the transport completion and its required consumer-ordering protocol, validate all four received integers. A capability flag equal to 1 is not a data-integrity check.
 
-![Numeric worked example: Account for payload bytes separately from bootstrap](../images/worked/ch21.svg)
+[![Numeric worked example: Account for payload bytes separately from bootstrap](../images/worked/ch21.svg)](../images/worked/ch21.svg)
 
 **API connection and scope.** NCCL bootstrap may distribute a unique ID with MPI, while ncclSend/ncclRecv move device payloads. A CUDA-aware API alone does not prove RDMA was selected: confirm the actual transport using the stack’s diagnostic and profiling facilities. Apply visibility/flush requirements according to the actual transport contract rather than assuming arbitrary CPU synchronization makes external writes visible.
 

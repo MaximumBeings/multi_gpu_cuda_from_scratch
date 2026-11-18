@@ -44,7 +44,7 @@ This book's hand-built collectives (Ch8-10)         NCCL's real API (this chapte
 
 One host thread controls three GPUs. Map communicator ranks 0, 1, 2 to CUDA devices 2, 0, 1 respectively. Each rank contributes four FP32 values (16 bytes).
 
-![Numeric worked example: Communicator rank is not a device ordinal](../images/worked/ch11.svg)
+[![Numeric worked example: Communicator rank is not a device ordinal](../images/worked/ch11.svg)](../images/worked/ch11.svg)
 
 1. Rank 0/device 2 contributes [1, 2, 3, 4]; rank 1/device 0 contributes [10, 20, 30, 40]; rank 2/device 1 contributes [100, 200, 300, 400].
 

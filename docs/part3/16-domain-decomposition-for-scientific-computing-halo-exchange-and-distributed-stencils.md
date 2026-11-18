@@ -55,7 +55,7 @@ Use six old cells [0,1,2,3,4,5], split into three cells per rank. Fix the two ex
 
 3. Assemble [1/3,1,2,3,4,3]. In particular the interface outputs are (1+2+3)/3=2 and (2+3+4)/3=3.
 
-![Numeric worked example: Compute both sides of a halo boundary](../images/worked/ch16.svg)
+[![Numeric worked example: Compute both sides of a halo boundary](../images/worked/ch16.svg)](../images/worked/ch16.svg)
 
 **API connection and scope.** A peer-copy implementation can overlap interior computation with halo transfers, then order boundary kernels after the copy-completion events. With MPI, post matching receives and sends, complete the requests, and only then consume received boundary values. This arithmetic is a model, not additional execution evidence.
 

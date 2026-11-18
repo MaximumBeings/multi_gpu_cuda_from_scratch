@@ -24,7 +24,7 @@ Everything in Part 1 was about moving data or coordinating exactly two participa
 
 Four ranks r = 0, 1, 2, 3 each hold two int32 values [r + 1, 10(r + 1)]. Each local vector is 8 bytes. Choose root rank 2; rank numbers are communicator identities, not necessarily CUDA device IDs.
 
-![Numeric worked example: Broadcast copies; reduction combines](../images/worked/ch08.svg)
+[![Numeric worked example: Broadcast copies; reduction combines](../images/worked/ch08.svg)](../images/worked/ch08.svg)
 
 1. Write the inputs: rank 0 [1, 10], rank 1 [2, 20], rank 2 [3, 30], rank 3 [4, 40].
 

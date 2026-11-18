@@ -11,7 +11,7 @@ Chapters 8 through 10 hand-built five collectives from first principles -- broad
 
 Two processing elements (PEs) exchange four int32 values [2, 3, 5, 7], totaling 16 bytes. This is a conceptual protocol comparison; it is not a new numerical execution claim. Use the API and initialization details in the full listings later in this appendix.
 
-![Numeric worked example: Match data completion to the communication model](../images/worked/appendix-c.svg)
+[![Numeric worked example: Match data completion to the communication model](../images/worked/appendix-c.svg)](../images/worked/appendix-c.svg)
 
 1. For a matched NCCL point-to-point exchange, sender and receiver use compatible count 4 and datatype ncclInt32. Group calls where required by the multi-device/thread launch pattern.
 

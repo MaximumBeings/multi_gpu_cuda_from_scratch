@@ -11,22 +11,22 @@
 ---
 
 ```text
-+------------------------------------------------------------------+
-|  Chapters 8-31 (every collective in this book so far):           |
-|  Rank 0 data --+                                                 |
-|  Rank 1 data --+--> [ REDUCE across ALL ranks ] --> one result   |
-|  Rank 2 data --+     (order/grouping-dependent: a different P    |
-|                       can change the last bits of the result)     |
-+------------------------------------------------------------------+
-|  Chapter 32 (MoE dispatch/combine):                               |
-|  Token A --> [ gate ] --> expert 2 (on Rank 1) --+                |
-|  Token B --> [ gate ] --> expert 0 (on Rank 0)    |--> DISPATCH   |
-|  Token C --> [ gate ] --> expert 2 (on Rank 1) --+                |
++--------------------------------------------------------------------+
+|  Earlier REDUCTION example (not broadcast/all-gather/all-to-all):  |
+|  Rank 0 data --+                                                   |
+|  Rank 1 data --+--> [ REDUCE across ALL ranks ] --> one result     |
+|  Rank 2 data --+     (order/grouping-dependent: a different P      |
+|                       can change the last bits of the result)      |
++--------------------------------------------------------------------+
+|  Chapter 32 (MoE dispatch/combine):                                |
+|  Token A --> [ gate ] --> expert 2 (on Rank 1) --+                 |
+|  Token B --> [ gate ] --> expert 0 (on Rank 0)    |--> DISPATCH    |
+|  Token C --> [ gate ] --> expert 2 (on Rank 1) --+                 |
 |                                                                    |
 |  expert output --> [ weighted combine, PER TOKEN ONLY ] --> COMBINE|
-|  (but capacity is per group/rank, so P changes who overflows;     |
-|   and a top-k>=3 combine sum is grouping-dependent too)           |
-+------------------------------------------------------------------+
+|  (but capacity is per group/rank, so P changes who overflows;      |
+|   and a top-k>=3 combine sum is grouping-dependent too)            |
++--------------------------------------------------------------------+
 ```
 
 <!-- mgpu:worked:start -->
@@ -486,16 +486,16 @@ Imagine two different delivery services for the same warehouse network. One is a
 ### Background
 
 ```text
-+---------------------------------------------------------------+
-|  Normal kernels: large batch (thousands of tokens)             |
-|  bandwidth: 153-158 GB/s (intranode), 43-58 GB/s (internode)   |
-|  latency: not published -- amortized away by batch size        |
-+---------------------------------------------------------------+
-|  Low-latency kernels: small batch (128 tokens, inference decode)|
-|  bandwidth: 39-98 GB/s (lower peak, falls further as EP grows)  |
-|  latency: 77-194 us dispatch, 114-369 us combine (published,    |
-|           because at THIS batch size it is what the user feels)|
-+---------------------------------------------------------------+
++--------------------------------------------------------------------+
+|  Normal kernels: large batch (thousands of tokens)                 |
+|  bandwidth: 153-158 GB/s (intranode), 43-58 GB/s (internode)       |
+|  latency: not listed in this V1 throughput table; still nonzero    |
++--------------------------------------------------------------------+
+|  Low-latency kernels: small batch (128 tokens, inference decode)   |
+|  bandwidth: 39-98 GB/s (lower peak, falls further as EP grows)     |
+|  latency: 77-194 us dispatch, 114-369 us combine (published,       |
+|           because at THIS batch size it is what the user feels)    |
++--------------------------------------------------------------------+
 ```
 
 File 94 prints DeepEP V1's own two real published benchmark tables (from V1's `docs/legacy.md` in the `deepseek-ai/DeepEP` GitHub repository, read when this chapter was written; the current README says V1, its NVSHMEM backend and its legacy docs have since been removed, so that file now returns 404 and the tables survive only in the repository's history) side by side, then computes two pieces of honest arithmetic directly on those real numbers: a per-token dispatch latency at each expert-parallelism (EP) degree, and the bandwidth-degradation ratio from the smallest to the largest tested EP degree. No number here is measured or estimated by this book -- every input is copied verbatim from DeepEP's own documentation.

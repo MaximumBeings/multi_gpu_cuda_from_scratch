@@ -34,7 +34,7 @@ Consider independent task values A=2, B=3 and C=5. Task C has a primary attempt 
 
 3. Combine A+B+C=2+3+5=10. If both attempts contribute, the result is 15 and is wrong even though each attempt individually computed C correctly.
 
-![Numeric worked example: Deduplicate speculative completion](../images/worked/ch19.svg)
+[![Numeric worked example: Deduplicate speculative completion](../images/worked/ch19.svg)](../images/worked/ch19.svg)
 
 **API connection and scope.** This is a speculative task model, not a fault-injected NCCL measurement. ncclCommGetAsyncError can report an asynchronous communication error; it does not restore communicator membership or application state. Aborting and recreating communication must be accompanied by an explicit checkpoint/restart or task-recovery policy.
 

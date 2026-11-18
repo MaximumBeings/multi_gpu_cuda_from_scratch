@@ -48,7 +48,7 @@ Suppose W=12 independent work units and assumed target-task speeds are s=[1,2,1]
 
 3. For integral ranges, compute boundaries floor(W×cumulative_speed/4), including endpoints 0 and W. At W=12 these are [0,3,9,12], so every index belongs to exactly one rank.
 
-![Numeric worked example: Turn device speeds into an integer partition](../images/worked/ch18.svg)
+[![Numeric worked example: Turn device speeds into an integer partition](../images/worked/ch18.svg)](../images/worked/ch18.svg)
 
 **API connection and scope.** Implement this as a host-side range planner feeding per-device kernel launch ranges. Profile the actual kernel to estimate speeds: SM count alone does not establish throughput. Enforce memory-capacity limits and include transfer costs before accepting a partition.
 

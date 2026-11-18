@@ -41,7 +41,7 @@ Data parallelism (Chapter 12):        Model parallelism (this chapter):
 
 A two-layer forward pass uses row-vector X = [1, 2] on GPU 0. W0 has rows [1, 0, 2] and [0, 1, 1]. GPU 1 owns W1 with rows [1], [2], [3]. All values are FP32; omit biases and nonlinearities for this small model.
 
-![Numeric worked example: Compute an activation boundary by hand](../images/worked/ch13.svg)
+[![Numeric worked example: Compute an activation boundary by hand](../images/worked/ch13.svg)](../images/worked/ch13.svg)
 
 1. Compute the three outputs of H = XW0: 1×1 + 2×0 = 1; 1×0 + 2×1 = 2; 1×2 + 2×1 = 4. Thus H = [1, 2, 4].
 

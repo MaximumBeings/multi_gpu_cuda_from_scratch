@@ -13,16 +13,16 @@
 NVIDIA's own real American Express case study describes a production system "generating a fraud decision in milliseconds for every card transaction worldwide," for a company that "monitors more than $1.2 trillion in transaction value every year," built on "deep-learning-based models optimized with NVIDIA TensorRT and running on NVIDIA Triton Inference Server." This chapter follows the real, newer architecture NVIDIA's own Financial Fraud Detection AI Blueprint describes for this exact problem: not a model that looks at one transaction at a time, but a graph neural network that sees accounts, merchants, and transactions as a connected network, feeding its own learned embeddings into an XGBoost classifier as additional features. That hybrid design raises two real multi-GPU questions this book has not answered yet: how does a graph too large for one GPU get partitioned, and what happens when training needs a neighbor's features that live on a different GPU's own shard (Section 38.2)? And once the GNN's embeddings are ready, what does distributing the SECOND real stage -- building an XGBoost ensemble -- actually require (Section 38.3)? Both answers are grounded directly in NVIDIA's own real Financial Fraud Training documentation.
 
 ```text
-+------------------------------------------------------------------+
-| 38.1 Why a GRAPH: fraud rings hide in account/merchant/txn links  |
-|   real cited: AUPRC 0.90 with GNN embeddings vs 0.79 without      |
-+------------------------------------------------------------------+
-| 38.2 Graph too big for 1 GPU: shard nodes, fetch remote neighbors |
-|   on demand (WholeGraph) -- a THIRD graph communication shape     |
-+------------------------------------------------------------------+
-| 38.3 XGBoost on top: EVERY split is its own cross-shard reduction |
-|   -- sequential within a tree, unlike Ch36's independent T dates  |
-+------------------------------------------------------------------+
++--------------------------------------------------------------------+
+| 38.1 Why a GRAPH: fraud rings hide in account/merchant/txn links   |
+|   real cited: AUPRC 0.90 with GNN embeddings vs 0.79 without       |
++--------------------------------------------------------------------+
+| 38.2 Graph too big for 1 GPU: shard nodes, fetch remote neighbors  |
+|   on demand (WholeGraph) -- a THIRD graph communication shape      |
++--------------------------------------------------------------------+
+| 38.3 XGBoost: global histogram statistics inform split choices     |
+|   -- parent/child dependencies; sibling work may be batched        |
++--------------------------------------------------------------------+
 ```
 
 <!-- mgpu:worked:start -->
@@ -528,16 +528,16 @@ Once the GNN has produced its own embeddings, NVIDIA's own real pipeline hands t
 ### Background
 
 ```text
-+----------------------------------------------------------+
-| Ch36: T=360 independent reductions (any order, overlappable)|
-+----------------------------------------------------------+
-| Ch38: one XGBoost tree, depth 6 -- 63 splits, EACH one a    |
-|   real cross-shard reduction, SEQUENTIAL: split k+1 needs    |
-|   split k's own result first                                 |
-+----------------------------------------------------------+
-| 500 trees x 63 splits = 31,500 total reductions -- large     |
-|   count, but chained WITHIN a tree, not freely parallel       |
-+----------------------------------------------------------+
++--------------------------------------------------------------------+
+| Ch36: T=360 independent reductions (any order, overlappable)       |
++--------------------------------------------------------------------+
+| Ch38: full depth-6 binary tree -- up to 63 internal nodes          |
+|   Parent split decisions constrain descendants; histograms         |
+|   may be reused/batched; siblings can run together                 |
++--------------------------------------------------------------------+
+| 500 x 63 = 31,500 potential split nodes, NOT a measured            |
+|   collective count. Pruning/grow policy affect actual work         |
++--------------------------------------------------------------------+
 ```
 
 File 113 counts potential internal split nodes for an illustrative full binary tree. It does not execute XGBoost or establish one collective per split. Read its captured reduction-count wording as this simplified model assumption; real operation counts depend on grow policy, pruning, histogram reuse, batching and the distributed implementation. See [XGBoost GPU memory/histogram documentation](https://xgboost.readthedocs.io/en/stable/gpu/).

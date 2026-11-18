@@ -42,7 +42,7 @@ The corrected staged-MPI example (58) passed the November 18 two-H100 numerical 
 
 ## How to read this book
 
-The worked walkthrough in each chapter and appendix gives you a small problem to solve before the longer implementations. Follow its numbered steps with the illustration open beside them: identify the owner of each value, trace the messages or memory locations, calculate the intermediate result, then compare with the explained check. The exercise changes one assumption so you can test whether you understand the rule.
+The worked walkthrough in each chapter and appendix gives you a small problem to solve before the longer implementations. Follow its numbered steps with the illustration open beside them: identify the owner of each value, trace the messages or memory locations, calculate the intermediate result, then compare with the explained check. The exercise changes one assumption so you can test whether you understand the rule. Select a worked illustration to open the full-size SVG when you need a closer view; it also fits within the page column.
 
 The worked figures distinguish **logical values**, **ranks and device ordinals**, **element counts**, **payload bytes** and **time units**. A paper cost model is an arithmetic illustration; actual hardware results have their own recorded source, commands, execution date and system. This distinction lets you learn the algorithm on a small example without mistaking its numbers for a measured application.
 

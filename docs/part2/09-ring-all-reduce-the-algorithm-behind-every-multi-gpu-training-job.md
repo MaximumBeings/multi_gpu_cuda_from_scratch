@@ -55,7 +55,7 @@ RING (this chapter):
 
 Use P = 4 ranks, L = 8 int32 elements per rank, and input x_r[i] = 100r + i. Each rank contributes two elements to each chunk. The following is a logical ring schedule with chunk 0 initially at rank 0; different valid implementations can choose different rotations.
 
-![Numeric worked example: Trace one chunk through both ring phases](../images/worked/ch09.svg)
+[![Numeric worked example: Trace one chunk through both ring phases](../images/worked/ch09.svg)](../images/worked/ch09.svg)
 
 1. Chunk 0 starts as rank 0’s [0, 1]. After transmission to rank 1 and addition of [100, 101], it is [100, 102].
 

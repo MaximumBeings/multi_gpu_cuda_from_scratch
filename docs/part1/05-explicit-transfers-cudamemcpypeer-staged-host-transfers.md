@@ -25,7 +25,7 @@ Chapter 4 established *whether* two devices are allowed to touch each other's me
 
 Eight FP32 values [10, 11, 12, 13, 14, 15, 16, 17] occupy 8 × 4 = 32 bytes. Compare an explicit device-to-device copy with an explicitly staged algorithm using a pinned host buffer. These are logical byte counts, not physical bus counters or timing claims.
 
-![Numeric worked example: Count bytes at each transfer leg](../images/worked/ch05.svg)
+[![Numeric worked example: Count bytes at each transfer leg](../images/worked/ch05.svg)](../images/worked/ch05.svg)
 
 1. A direct copy operation has 32 bytes of useful payload. cudaMemcpyPeerAsync takes a byte count, so pass 32 rather than 8.
 

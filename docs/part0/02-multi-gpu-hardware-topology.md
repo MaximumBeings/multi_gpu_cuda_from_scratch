@@ -25,7 +25,7 @@ Chapter 1 established that splitting work across GPUs solves both the capacity w
 
 Consider a hypothetical chain GPU 0—1—2—3 with one-way link capacities 48, 12 and 48 GB/s. Transfer a 12 MB payload (decimal units). Ignore startup, contention and protocol overhead; the times below are arithmetic lower bounds, not measurements.
 
-![Numeric worked example: A route is constrained by its slowest link](../images/worked/ch02.svg)
+[![Numeric worked example: A route is constrained by its slowest link](../images/worked/ch02.svg)](../images/worked/ch02.svg)
 
 1. Convert 12 MB to 0.012 GB.
 
@@ -70,7 +70,7 @@ GPU0 --- PCIe switch --- GPU1                    GPU0 ======= NVLink ======= GPU
 
 ### Intuition
 
-Every GPU, however it's also connected, sits on a PCI Express link to its host system — think of it as the one road every property is guaranteed to have a driveway onto, even if a private highway also happens to connect two particular houses directly. PCIe bandwidth has roughly doubled with each generation, but the number that matters for a specific *pair* of GPUs depends on where in the PCIe road network they each sit, not just which generation the roads are paved to.
+The discrete x86-host GPU configurations modeled here use PCI Express links to the host system; other platforms can use different CPU–GPU fabrics, such as NVLink-C2C — think of it as the one road every property is guaranteed to have a driveway onto, even if a private highway also happens to connect two particular houses directly. PCIe bandwidth has roughly doubled with each generation, but the number that matters for a specific *pair* of GPUs depends on where in the PCIe road network they each sit, not just which generation the roads are paved to.
 
 ### Background
 

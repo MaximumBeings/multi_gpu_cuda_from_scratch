@@ -13,17 +13,17 @@
 NVIDIA's own real Clara Parabricks documentation reports a real, cited headline result: "over 100x faster analysis of whole-genome sequencing (WGS) compared to CPU-only solutions," and a real, specific production example of that same speedup: "Reduce germline analysis from ~16 hours to under 10 minutes on 4 NVIDIA RTX PRO 6000 Server Edition GPUs." This chapter asks the same question this book has asked of every real multi-GPU case study since Chapter 24: what structural property of the underlying computation actually makes that speedup possible? For genomics, the real answer traces back to a fact Google's own real DeepVariant documentation states directly for the variant-calling half of the pipeline, and that basic sequence-alignment theory establishes for the alignment half: unlike Chapter 16's own stencil, which fundamentally needs its neighbors' data at every step, a real production genomics pipeline can be split so that no worker ever needs another worker's data at all (Section 39.2). But NVIDIA's own real published multi-GPU benchmark table shows that real algorithmic property is necessary, not sufficient, for near-ideal real-world scaling (Section 39.3) -- a genuinely new, real lesson for this book, read directly from vendor-published numbers rather than from a host-side simulation.
 
 ```text
-+------------------------------------------------------------------+
-| 39.1 Real cited WGS speedup: >100x vs CPU-only, cross-checked     |
-|   against a real specific 16hr -> under-10min germline example   |
-+------------------------------------------------------------------+
-| 39.2 Alignment + variant calling: independent reads/regions, so   |
-|   ZERO cross-worker communication is needed at all -- unlike      |
-|   Ch16's halo exchange, for a genuinely different real reason     |
-+------------------------------------------------------------------+
-| 39.3 Real published 2-vs-4-GPU numbers: algorithm allows perfect  |
-|   scaling, but real engineering factors cap it well below ideal   |
-+------------------------------------------------------------------+
++--------------------------------------------------------------------+
+| 39.1 Real cited WGS speedup: >100x vs CPU-only, cross-checked      |
+|   against a real specific 16hr -> under-10min germline example     |
++--------------------------------------------------------------------+
+| 39.2 Selected stages: shard independent records/regions when       |
+|   reference, mate/context and boundary requirements are met;       |
+|   input distribution and result merging remain separate work       |
++--------------------------------------------------------------------+
+| 39.3 Published 2-vs-4-GPU times: measured scaling depends on       |
+|   tool, dataset, hardware and complete pipeline scope              |
++--------------------------------------------------------------------+
 ```
 
 <!-- mgpu:worked:start -->
@@ -279,19 +279,19 @@ Chapter 16's own stencil update needed its neighboring cells' data at every sing
 ### Background
 
 ```text
-+----------------------------------------------------------+
-| Ch16's stencil: cell (i,j) NEEDS its own neighbors' data --  |
-|   halo exchange is mathematically unavoidable                |
-+----------------------------------------------------------+
-| Genomics: read i's alignment, or region i's variant calls,   |
-|   depend on NOTHING outside read/region i itself             |
-+----------------------------------------------------------+
-| P-way contiguous split -> ZERO cross-worker communication,   |
-|   verified bit-exact at every tested P from 1 to 64          |
-+------------------------------------------------------------+
++--------------------------------------------------------------------+
+| Ch16's stencil: cell (i,j) NEEDS its own neighbors' data --        |
+|   halo exchange is mathematically unavoidable                      |
++--------------------------------------------------------------------+
+| Independent-record toy: per-record function uses its own ID;       |
+|   real genomics stages require shared reference/context            |
++--------------------------------------------------------------------+
+| P-way toy split -> no cross-worker reads inside this model         |
+|   Toy arithmetic checked at P=1..64; not pipeline equivalence      |
++--------------------------------------------------------------------+
 ```
 
-The following introductory ASCII diagram describes the independent-unit toy only: its phrase "nothing outside" excludes neither shared reference/index data nor algorithm-specific context in real genomics.
+The introductory ASCII diagram describes the independent-unit toy only. Real genomics stages additionally require their specified shared reference/index data and algorithm-specific context.
 
 File 115 builds a host-side correctness simulation: N independent units (standing in for reads during alignment, or genomic regions during variant calling) are split into P disjoint, contiguous slices, each worker processes only its own slice, and the assembled result is checked against a single-process reference at every tested P.
 
@@ -556,15 +556,15 @@ Section 39.2 models an independent-work stage with all required context already 
 ### Background
 
 ```text
-+----------------------------------------------------------+
-| Real published RTX PRO 6000 benchmarks, 2 GPUs -> 4 GPUs:    |
-|   FQ2BAM:      6.93 -> 4.68 min  (74.0% of ideal 2x)          |
-|   DeepVariant: 7.12 -> 4.80 min  (74.2% of ideal 2x)          |
-|   Minimap2:   15.68 -> 15.60 min (50.3% of ideal 2x)          |
-+----------------------------------------------------------+
-| Same real embarrassingly-parallel foundation (Sec 39.2) --    |
-|   real efficiency still varies 50%-84% across real tools      |
-+----------------------------------------------------------+
++--------------------------------------------------------------------+
+| Real published RTX PRO 6000 benchmarks, 2 GPUs -> 4 GPUs:          |
+|   FQ2BAM:      6.93 -> 4.68 min  (74.0% of ideal 2x)               |
+|   DeepVariant: 7.12 -> 4.80 min  (74.2% of ideal 2x)               |
+|   Minimap2:   15.68 -> 15.60 min (50.3% of ideal 2x)               |
++--------------------------------------------------------------------+
+| Different tools/stages have different dependencies --              |
+|   published doubling efficiency varies 50%-84% here                |
++--------------------------------------------------------------------+
 ```
 
 File 116 uses NVIDIA's own real published benchmark table directly -- no simulation, the primary data source for this section -- and computes each real tool's own observed speedup and percentage of ideal 2x scaling from 2 GPUs to 4 GPUs.

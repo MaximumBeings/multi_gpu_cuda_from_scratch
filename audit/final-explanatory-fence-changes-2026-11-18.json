@@ -1,0 +1,69 @@
+{
+  "baseline": "3621210",
+  "changed_explanatory_fences": [
+    {
+      "page": "docs/part6/27-n-body-simulation-at-scale.md",
+      "fence_one_based": 1,
+      "heading": "Chapter 16 (PDE stencil, halo exchange):     This chapter (N-body, all-gather):",
+      "before_sha256": "6eabeb58591b77a8fb5bb51afe2b012f4b169382a5a1c1ce0f3f3a2339ddd771",
+      "after_sha256": "ec1c811676e6d180d35af77702c7cffbf8cf10cb8b52f790448db087b77998bc"
+    },
+    {
+      "page": "docs/part6/31-multi-gpu-monte-carlo-risk-simulation.md",
+      "fence_one_based": 28,
+      "heading": "Moment-summary implementation:             Gather-based exact VaR example:",
+      "before_sha256": "0f8f77fa78a9b8291ddc88937a92bdccedcc585ae56b73ea1ef569da14b1180f",
+      "after_sha256": "3ab68ede766e1e4df988c6ac7fb79691cd5fc4e71094d1991e715b25882f3924"
+    },
+    {
+      "page": "docs/part7/32-mixture-of-experts-at-scale.md",
+      "fence_one_based": 1,
+      "heading": "+--------------------------------------------------------------------+",
+      "before_sha256": "70903fe8d14c81d4a65ce2574a630b70bca4bc398f38243516041583763c7945",
+      "after_sha256": "ae581634725a939b35fb96284798d59f2a5378829acca35ed298f8b86fd871d8"
+    },
+    {
+      "page": "docs/part7/32-mixture-of-experts-at-scale.md",
+      "fence_one_based": 11,
+      "heading": "+--------------------------------------------------------------------+",
+      "before_sha256": "6daa026f7ec1620696b693d9b9d06ca023f2c62954d841f3ad7ec6efdad0bb2d",
+      "after_sha256": "a29320d9247697f8da82645521fc53ab51f942975952ef5d087e4f2fd7286e0c"
+    },
+    {
+      "page": "docs/part7/38-real-time-fraud-detection-at-payment-scale.md",
+      "fence_one_based": 1,
+      "heading": "+--------------------------------------------------------------------+",
+      "before_sha256": "d2c4281632aac533c5e3dfea890ef16dc75a8abe4ec66c9cd7e95e8f9dd95eb0",
+      "after_sha256": "e41a67401724d86c99f99bc7355b40764f1cdac124f5a2a1e44cb4479fda4d10"
+    },
+    {
+      "page": "docs/part7/38-real-time-fraud-detection-at-payment-scale.md",
+      "fence_one_based": 20,
+      "heading": "+--------------------------------------------------------------------+",
+      "before_sha256": "f527ffb6bb3dceb1b1ff605f6c6983d95bd31ac168b553bbba649b4ad78604e2",
+      "after_sha256": "6ba613cd7d64ed45eca2569ae3425c8831c8b641423cd724a06d75174ab3ec67"
+    },
+    {
+      "page": "docs/part7/39-real-time-genomics-at-scale.md",
+      "fence_one_based": 1,
+      "heading": "+--------------------------------------------------------------------+",
+      "before_sha256": "06bfae09f866ebc2f65cfd54c249065e5e268b99e20d2069bfe45b380cd2c05e",
+      "after_sha256": "c553d34e60e47edcf301b4bded8041cfda6c651aae2cbf76457399efc8b14477"
+    },
+    {
+      "page": "docs/part7/39-real-time-genomics-at-scale.md",
+      "fence_one_based": 11,
+      "heading": "+--------------------------------------------------------------------+",
+      "before_sha256": "0198ab492af4192a40855dd7395d774b9bc7c69be787d11c6d8332163c1028db",
+      "after_sha256": "31e2e1d88f94e7ed213967b2e48f0b4a0ce601507f3accec8437c964a7d65793"
+    },
+    {
+      "page": "docs/part7/39-real-time-genomics-at-scale.md",
+      "fence_one_based": 20,
+      "heading": "+--------------------------------------------------------------------+",
+      "before_sha256": "b0a049b2b7183e573a57ed329239ec78ba9d28f0a86d45689ccfe4474bc53637",
+      "after_sha256": "772228f23a4978521a7467576d5001cab4c41a2c4b65b3b6d259c1e80b52cb22"
+    }
+  ],
+  "unchanged_fences_in_edited_pages": 974
+}

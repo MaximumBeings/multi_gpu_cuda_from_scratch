@@ -872,18 +872,20 @@ Every rank's own message size for the MEAN/VARIANCE path stays at 3 values, alwa
 The VaR values themselves match exactly at every P, because sorting integers and picking an index is exact -- there is no floating-point concern in this section at all. The real point is the *message-size column*: Chan et al.'s combination needs only 3 numbers per rank regardless of how much data that rank has, while the gather-based exact VaR example sends every local raw value. This is a property of that algorithm, not a lower bound requiring a gather for all exact quantile algorithms: distributed selection can count values relative to pivots and narrow the target rank without centralizing every sample. The example therefore contrasts a constant-size moment summary with a full-sample gather. It does not establish the traffic or synchronization cost of a different exact-selection algorithm.
 
 ```text
-Chan et al. (mean, variance):              Exact percentile (VaR):
+Moment-summary implementation:             Gather-based exact VaR example:
 
-  O(1) values per rank                       O(N/P) values per rank
-  --------------------------->               --------------------------->
-  message size independent of data size      message size grows with
-                                              this rank's own share of data
+  O(1) fields per rank                        O(N/P) samples per rank
+  -------------------------------->          ---------------------------->
+  count, mean, centered second moment         sends all local samples
+
+Other exact quantile algorithms can use distributed selection or an
+exact bounded-domain histogram; gathering every sample is not mandatory.
 ```
 
 !!! warning "[COMMON TRAP] Assuming any 'aggregate statistic' can be combined as cheaply as a mean"
     Section 31.1's small fixed-size summary per rank can produce a global mean subject to floating-point rounding; this can tempt the assumption that any final risk number will be similarly cheap to combine. Percentiles genuinely are not: unlike a sum or a count, an arbitrary exact percentile is not determined by the fixed (count,mean,M2) tuple. An exact bounded-domain histogram, distributed selection or a gather are different possible contracts; an approximate sketch trades accuracy for storage and communication. Before assuming a new risk metric can reuse Section 31.1's approach, check whether it is a *summable* statistic (mean, variance, total exposure) or an *order-dependent* one (any percentile, including VaR) -- the required representation and communication algorithm must be chosen for the statistic; the cost ratio depends on dataset size, domain and implementation.
 
-**Interpreting the captured model.** The older captured output and ASCII use a gather of all raw samples for exact VaR. That is the chosen model implementation, not a mathematical requirement that all exact percentiles gather every value. A distributed selection protocol or a bounded-domain histogram can have a different communication contract.
+**Interpreting the captured model.** The captured output uses a gather of all raw samples for exact VaR. That is the chosen model implementation, not a mathematical requirement that all exact percentiles gather every value. A distributed selection protocol or a bounded-domain histogram can have a different communication contract.
 
 ## Chapter Summary
 

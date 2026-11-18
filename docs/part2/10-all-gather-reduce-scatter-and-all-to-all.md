@@ -52,7 +52,7 @@ ALL-TO-ALL (10.3): every device sends a DIFFERENT chunk to every other
 
 Use three ranks and int32 elements. In these logical collective layouts, arrays are written in communicator-rank order. Counts below are element counts, not byte counts.
 
-![Numeric worked example: Distinguish three rank layouts](../images/worked/ch10.svg)
+[![Numeric worked example: Distinguish three rank layouts](../images/worked/ch10.svg)](../images/worked/ch10.svg)
 
 1. All-gather: rank inputs [0, 10], [1, 11], [2, 12] each contain 2 elements. Each output is [0, 10, 1, 11, 2, 12], six elements or 24 bytes.
 

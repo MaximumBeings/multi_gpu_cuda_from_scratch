@@ -41,7 +41,7 @@ before anyone updates -- so every device's weights stay identical.
 
 Two data-parallel ranks process unequal local batch sizes. Rank 0 processes n0 = 2 samples with mean gradient [2, 4]; rank 1 processes n1 = 6 with mean gradient [6, 8]. Assume both local means use the same loss normalization convention.
 
-![Numeric worked example: Weight gradients by the number of samples](../images/worked/ch12.svg)
+[![Numeric worked example: Weight gradients by the number of samples](../images/worked/ch12.svg)](../images/worked/ch12.svg)
 
 1. Recover local gradient sums: 2 × [2, 4] = [4, 8] and 6 × [6, 8] = [36, 48].
 

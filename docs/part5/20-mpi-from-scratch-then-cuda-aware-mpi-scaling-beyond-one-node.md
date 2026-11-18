@@ -38,7 +38,7 @@ Use ranks 0,1,2, each sending two host integers to its successor. Outgoing buffe
 
 3. The completed receives must be rank 0:[30,31], rank 1:[10,11], rank 2:[20,21]. Validate every element before reusing buffers.
 
-![Numeric worked example: Match every edge of a three-rank ring](../images/worked/ch20.svg)
+[![Numeric worked example: Match every edge of a three-rank ring](../images/worked/ch20.svg)](../images/worked/ch20.svg)
 
 **API connection and scope.** MPI_Sendrecv expresses the paired exchange without depending on eager buffering. This host-buffer trace does not demonstrate CUDA-aware MPI or RDMA. Passing a device pointer requires a supporting MPI stack; otherwise use explicit staging and wait for device copies before MPI consumes their host buffers.
 

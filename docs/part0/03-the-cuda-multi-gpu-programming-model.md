@@ -25,7 +25,7 @@ Chapter 2 established that GPUs are wired together in specific, uneven ways. Bef
 
 One host thread manages two GPUs. Each buffer contains three FP32 values, so its allocation is 3 × 4 = 12 bytes. Let stream s0 belong to GPU 0 and s1 to GPU 1.
 
-![Numeric worked example: Current device does not migrate existing objects](../images/worked/ch03.svg)
+[![Numeric worked example: Current device does not migrate existing objects](../images/worked/ch03.svg)](../images/worked/ch03.svg)
 
 1. Select GPU 0 with cudaSetDevice(0), allocate A and create s0 there; initialize A = [1, 2, 3].
 

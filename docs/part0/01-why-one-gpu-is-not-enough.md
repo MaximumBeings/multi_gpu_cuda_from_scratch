@@ -26,7 +26,7 @@ Every chapter after this one is about getting two or more GPUs to cooperate. Bef
 
 Use decimal GB (1 GB = 10⁹ bytes), two billion parameters, and a hypothetical usable capacity of 24 GB per GPU. Assume FP16 weights and gradients, FP32 master weights and two FP32 optimizer moments; reserve 4 GB per GPU for activations and workspace. This is a capacity model, not a measured allocation.
 
-![Numeric worked example: Capacity is a per-device constraint](../images/worked/ch01.svg)
+[![Numeric worked example: Capacity is a per-device constraint](../images/worked/ch01.svg)](../images/worked/ch01.svg)
 
 1. Add the state bytes per parameter: 2 + 2 + 4 + 4 + 4 = 16 bytes.
 

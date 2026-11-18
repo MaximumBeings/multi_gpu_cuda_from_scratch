@@ -11,7 +11,7 @@ Every chapter in this book already ends with its own Self-Check Questions and Wo
 
 Two ranks contribute int32 vectors: rank 0 [1, 10] and rank 1 [2, 20]. Keep the original buffers for each independent question. Each input has two elements or 8 bytes.
 
-![Numeric worked example: Answer by operation semantics, not by similar names](../images/worked/appendix-b.svg)
+[![Numeric worked example: Answer by operation semantics, not by similar names](../images/worked/appendix-b.svg)](../images/worked/appendix-b.svg)
 
 1. SUM all-reduce combines corresponding positions: [1+2, 10+20] = [3, 30]. Each rank receives two elements, 8 bytes.
 

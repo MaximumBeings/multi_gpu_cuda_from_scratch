@@ -7,7 +7,7 @@
 **What you will understand by the end of this chapter:**
 
 - Why N-body force calculation needs a fundamentally different communication pattern from every domain-decomposition problem this book has built so far -- a real, quoted reason gravitational and Coulomb forces cannot be handled with a halo exchange.
-- A real, verified correctness simulation showing exactly what a distributed all-pairs force calculation must do instead: an all-gather, not a neighbor exchange -- and a real closed-form model quantifying just how much worse that makes the communication shape at scale.
+- A real, verified correctness simulation showing how the selected distributed all-pairs implementation gathers source records, rather than relying on a narrow neighbor halo -- and a real closed-form model quantifying just how much worse that makes the communication shape at scale.
 - The real, named algorithmic answer to that problem, Barnes-Hut, and why it changes both compute and communication in the same direction, backed by real measured numbers from an actual GPU implementation of it.
 
 **What you need to know first:**
@@ -27,7 +27,7 @@ Chapter 16 (PDE stencil, halo exchange):     This chapter (N-body, all-gather):
   update reads ONLY adjacent cells              force needs EVERY other body
         |                                             |
   halo exchange: boundary cells only            all-gather: EVERY body's data
-  volume = O(boundary), FLAT as P grows         volume = O(N), stays near FULL
+  fixed-width row strips: flat boundary volume    O(N) replicated source data
                                                  dataset size as P grows
                        |                                |
                        +----------------+----------------+
@@ -48,7 +48,7 @@ Place three unit masses at x=[0,1,3] with G=1, distinct positions and no softeni
 
 3. The accelerations sum to 40/36−27/36−13/36=0, a useful pairwise-force conservation check for equal masses.
 
-![Numeric worked example: Verify every source contributes to every target](../images/worked/ch27.svg)
+[![Numeric worked example: Verify every source contributes to every target](../images/worked/ch27.svg)](../images/worked/ch27.svg)
 
 **API connection and scope.** An all-pairs implementation needs every source record, not only neighboring targets. An all-gather can assemble equal-sized source chunks before the local force kernel. If each packed record contains FP64 position and mass, it occupies 16 bytes: each rank holds three records (48 bytes), including two remote records (32 bytes). These are logical data sizes, not measured network traffic.
 
@@ -59,6 +59,8 @@ Place three unit masses at x=[0,1,3] with G=1, distinct positions and no softeni
     **Worked answer.** It computes 1 instead of 10/9. A nearest-neighbor halo is insufficient for this exact all-pairs force.
 
 <!-- mgpu:worked:end -->
+
+**Algorithm scope.** Every exact target force includes all source contributions, but this does not require retaining the whole source array on every GPU. The example chooses all-gather; a ring can instead stream source blocks through local force accumulators, and other decompositions exchange partial forces. The traffic formulas below describe this chosen representation, not a universal communication lower bound. The fixed halo comparison assumes the particular row-strip geometry and fixed row width of Chapter 16.
 
 ## 27.1 All-Pairs: Every Body Needs Every Other Body
 
@@ -360,7 +362,7 @@ Compiled with `g++ -O2 78_all_pairs_nbody_correctness_simulation.cpp -o 78_all_p
 
 ### Intuition
 
-Section 27.1 proved WHAT collective distributed all-pairs needs. This section quantifies HOW MUCH worse that makes things as more GPUs are added, reusing Chapter 9 and Chapter 10's own real ring all-gather formula: each of P ranks ends a ring all-gather having received `(P-1)/P` of the total K bytes being gathered. For N-body, K is the ENTIRE body dataset -- so as P grows, `(P-1)/P` approaches 1, meaning every GPU's own per-step communication volume approaches the FULL dataset size and essentially never gets smaller, no matter how many GPUs are added. Chapter 16's own halo-exchange volume depended only on a FIXED boundary size between adjacent shards -- completely independent of the total domain size and of P -- which is exactly why adding more shards there left each shard's own per-step communication FLAT: it never grew with P. This section applies the real formula to a real scale: Burtscher & Pingali's own cited "5,000,000 bodies" CUDA Barnes-Hut benchmark, reused here as a real-world body count (not itself a communication-volume citation).
+Section 27.1 checked the chosen all-gather implementation of distributed all-pairs. This section quantifies HOW MUCH worse that makes things as more GPUs are added, reusing Chapter 9 and Chapter 10's own real ring all-gather formula: each of P ranks ends a ring all-gather having received `(P-1)/P` of the total K bytes being gathered. For N-body, K is the ENTIRE body dataset -- so as P grows, `(P-1)/P` approaches 1, meaning every GPU's own per-step communication volume approaches the FULL dataset size and essentially never gets smaller, no matter how many GPUs are added. Chapter 16's own halo-exchange volume depended only on a FIXED boundary size between adjacent shards -- completely independent of the total domain size and of P -- which is exactly why adding more shards there left each shard's own per-step communication FLAT: it never grew with P. This section applies the real formula to a real scale: Burtscher & Pingali's own cited "5,000,000 bodies" CUDA Barnes-Hut benchmark, reused here as a real-world body count (not itself a communication-volume citation).
 
 ```text
 Ch16 halo exchange:  volume/shard = FIXED (boundary size only)
@@ -798,7 +800,7 @@ Compiled with `g++ -O2 80_barnes_hut_complexity_crossover_model.cpp -o 80_barnes
 
 ## Chapter Summary
 
-This chapter showed that a problem which LOOKS like Chapter 16's own domain decomposition -- splitting a large dataset across devices -- can require a completely different communication pattern once the underlying physics is examined. Section 27.1 built a real correctness simulation proving that distributed all-pairs N-body force calculation needs an all-gather, not a halo exchange, because gravity has no cutoff radius and every body genuinely needs every other body's data. Section 27.2 quantified how much worse this makes the communication shape at real scale, reusing Chapter 9/10's own ring all-gather formula: unlike Chapter 16's own halo exchange, whose per-shard volume stays flat as more shards are added, all-pairs N-body's per-GPU communication approaches the FULL dataset size and stays there, regardless of how many GPUs join. Section 27.3 closed with Barnes & Hut's own real, named 1986 algorithm, which fixes both problems at once by approximating distant clusters of bodies as single aggregate sources -- reducing compute from O(N^2) to O(N log N), with real measured numbers from an actual GPU implementation (Burtscher & Pingali) -- while being explicit about which claims are cited and which are this chapter's own reasoning about the (unmeasured, uncited) multi-GPU communication benefit.
+This chapter showed that a problem which LOOKS like Chapter 16's own domain decomposition -- splitting a large dataset across devices -- can require a completely different communication pattern once the underlying physics is examined. Section 27.1 built a real correctness simulation proving that distributed the chosen target-owner all-pairs N-body implementation uses an all-gather rather than a narrow halo exchange, because gravity has no cutoff radius and every body genuinely needs every other body's data. Section 27.2 quantified how much worse this makes the communication shape at real scale, reusing Chapter 9/10's own ring all-gather formula: unlike Chapter 16's own halo exchange, whose per-shard volume stays flat as more shards are added, all-pairs N-body's per-GPU communication approaches the FULL dataset size and stays there, regardless of how many GPUs join. Section 27.3 closed with Barnes & Hut's own real, named 1986 algorithm, which fixes both problems at once by approximating distant clusters of bodies as single aggregate sources -- reducing compute from O(N^2) to O(N log N), with real measured numbers from an actual GPU implementation (Burtscher & Pingali) -- while being explicit about which claims are cited and which are this chapter's own reasoning about the (unmeasured, uncited) multi-GPU communication benefit.
 
 ## Self-Check Questions
 

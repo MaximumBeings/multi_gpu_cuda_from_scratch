@@ -55,7 +55,7 @@ Everything above the last block was one process reaching across a device boundar
 
 An exporter process owns an IPC-exportable device allocation containing four int32 values [7, 11, 13, 17], totaling 16 bytes. An importer runs on a supported device/context configuration.
 
-![Numeric worked example: An IPC handle is not a copied pointer](../images/worked/ch07.svg)
+[![Numeric worked example: An IPC handle is not a copied pointer](../images/worked/ch07.svg)](../images/worked/ch07.svg)
 
 1. The exporter creates the allocation and obtains an opaque cudaIpcMemHandle_t with cudaIpcGetMemHandle. Send the handle through an ordinary inter-process channel.
 
@@ -741,7 +741,7 @@ importer's view reflects it immediately: PASS
 <!-- execution:end:h100:19_ipc_handoff_simulation.cpp -->
 
 
-Both checks pass, and the second one is the point of this whole section: no `transferDirectP2P()`-style call, no `cudaMemcpy()`-style call, nothing at all moved the mutated value from the exporter's reference to the importer's -- there was never a second copy to move it *to*. This is the one property that distinguishes IPC memory sharing from every other cross-process or cross-device operation this book has modeled: it doesn't transfer data faster, it removes the need to transfer data at all.
+Both checks pass, and the second one is the point of this whole section: no `transferDirectP2P()`-style call, no `cudaMemcpy()`-style call, nothing at all moved the mutated value from the exporter's reference to the importer's -- there was never a second copy to move it *to*. This is the one property that distinguishes IPC memory sharing from every other cross-process or cross-device operation this book has modeled: it shares an allocation instead of creating and explicitly copying a second allocation. Remote loads/stores can still generate interconnect traffic, and producer/consumer ordering and allocation lifetime remain essential. IPC is not zero-cost communication.
 
 !!! warning "[COMMON TRAP] Simulating -- or worse, actually invoking -- the documented undefined behavior to 'test' it"
     This section's simulation deliberately does *not* execute the exporter-frees-before-importer-closes scenario the real documentation warns about, even in simulated form. Undefined behavior has no defined result to check a simulation against -- there is no correct output to assert on, real or simulated, because the real API itself makes no promise about what happens. This book's honesty discipline extends to knowing the difference between verifying a real, defined guarantee (which Sections 7.1-7.3's other checks all do) and a real, explicitly *undefined* one, which can only be reported as a documented warning, never demonstrated as a "correct" result.

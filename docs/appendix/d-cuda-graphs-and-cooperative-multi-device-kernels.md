@@ -20,7 +20,7 @@ Take a two-node scalar model: node A computes t=x+c and node B computes y=2t. Us
 
 3. For a known kernel node, cudaGraphExecKernelNodeSetParams can update supported parameters. For a replacement graph, call cudaGraphExecUpdate and inspect both the API status and detailed update result; reinstantiate if the update is rejected.
 
-![Numeric worked example: Update a graph parameter without changing the contract](../images/worked/appendix-d.svg)
+[![Numeric worked example: Update a graph parameter without changing the contract](../images/worked/appendix-d.svg)](../images/worked/appendix-d.svg)
 
 **API connection and scope.** This arithmetic trace is not a new GPU timing result. Update compatibility depends on the actual node types and changes, not merely the number of nodes. Keep allocations and kernel argument storage valid for the required lifetime and execution context.
 

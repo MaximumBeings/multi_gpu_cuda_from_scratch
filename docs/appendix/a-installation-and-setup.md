@@ -15,7 +15,7 @@ For a fresh machine, follow the ordered [Getting Started installation recipe](..
 
 This illustrative diagnostic uses compiler release 12.8, NCCL version 2.26.2 and two visible GPUs. It is a reading exercise, not an additional execution record. The dated captured records elsewhere in the appendix remain the evidence for actual tested systems.
 
-![Numeric worked example: Read an environment check without conflating its layers](../images/worked/appendix-a.svg)
+[![Numeric worked example: Read an environment check without conflating its layers](../images/worked/appendix-a.svg)](../images/worked/appendix-a.svg)
 
 1. nvcc --version describes the selected compiler toolkit. The CUDA version shown by nvidia-smi describes driver compatibility; the two labels need not be identical.
 
@@ -167,7 +167,7 @@ Compiler identity: PASS (installation source is not inferred)
 **Sample input:** none
 
 
-Note the `__GNUC__ = 12` line: this machine's own `g++ --version` reports `13.3.0` at a plain shell prompt, and both numbers are correct, for the reasons explained above.
+The older distribution-toolkit observation used GCC 12, whereas the dated CUDA 12.8.93 runs used GCC 13.3. Read each compiler macro alongside its own captured compiler command and system record; do not mix those two environments.
 
 ## A.2 The Multi-GPU Stack, Verified: NCCL, Open MPI, and NVSHMEM
 
@@ -1409,7 +1409,7 @@ The Makefile checks five build/link recipes. Their execution records and the sep
 
 The [2026-11-17 H100 execution record](../validation-h100.md) covers two GPUs connected by local NV18. It distinguishes numerical checks, API probes and other executions; a successful exit alone does not establish GPU algorithm correctness.
 
-If a reader's own machine reaches Q4's "NO, only 1 device found" branch (Section A.3) rather than "NO, 0 devices found," every recipe above already works on real hardware; the only gap left is a second GPU. Renting a short-lived multi-GPU instance by the hour from any major cloud GPU provider is the practical way to close that gap for the length of a single chapter's own exercises, the same way the DSA book's own Appendix A.4 describes renting a single-GPU instance from Lambda Cloud -- the exact rental steps do not change based on GPU count, only the instance type selected.
+If a reader's own machine reaches Q4's "NO, only 1 device found" branch (Section A.3) rather than "NO, 0 devices found," the device-count check establishes only that one device is visible. Build recipes, dependency resolution, architecture compatibility and numerical checks still need to pass; multi-GPU examples additionally require their stated device counts/topology. Renting a short-lived multi-GPU instance by the hour from any major cloud GPU provider is the practical way to close that gap for the length of a single chapter's own exercises, the same way the DSA book's own Appendix A.4 describes renting a single-GPU instance from Lambda Cloud -- the exact rental steps do not change based on GPU count, only the instance type selected.
 
 ## Appendix Summary
 

@@ -25,7 +25,7 @@ Chapters 3 and 5 gave this book streams (an ordered queue of work bound to which
 
 GPU 0 produces three int32 values and GPU 1 consumes them. Each buffer is 12 bytes. Use a producer stream s0, a consumer stream s1, and timing-disabled dependency events.
 
-![Numeric worked example: Separate producer readiness from buffer reuse](../images/worked/ch06.svg)
+[![Numeric worked example: Separate producer readiness from buffer reuse](../images/worked/ch06.svg)](../images/worked/ch06.svg)
 
 1. GPU 0 transforms [1, 2, 3] into [2, 4, 6] in s0, then records ready in that same stream.
 

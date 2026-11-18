@@ -50,7 +50,7 @@ Use TP=2, PP=2 and rank=stage×2+lane. Here vectors are columns and each matrix 
 
 3. Rank 2 computes [1,10] dot h0=21. Rank 3 computes [100,1000] dot h1=4300. A sum inside communicator {2,3} produces 4321 on both second-stage ranks.
 
-![Numeric worked example: Keep tensor-parallel groups inside pipeline stages](../images/worked/ch26.svg)
+[![Numeric worked example: Keep tensor-parallel groups inside pipeline stages](../images/worked/ch26.svg)](../images/worked/ch26.svg)
 
 **API connection and scope.** Column-parallel output shards can feed compatible row-parallel input shards without assembling the complete intermediate vector on every rank. Match pipeline sends/receives by microbatch and shard identity; use a tensor-parallel reduction only for the partial outputs of the same layer.
 

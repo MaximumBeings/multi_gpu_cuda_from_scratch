@@ -25,7 +25,7 @@ Part 0 established device selection, contexts and stream ownership. This chapter
 
 Assume GPU 1 owns p1 = [10, 20, 30] (three int32 values, 12 bytes). A hypothetical capability query reports that GPU 0 can access GPU 1, but the reverse query reports no access.
 
-![Numeric worked example: Peer access is a directional permission](../images/worked/ch04.svg)
+[![Numeric worked example: Peer access is a directional permission](../images/worked/ch04.svg)](../images/worked/ch04.svg)
 
 1. Call cudaDeviceCanAccessPeer(&can, 0, 1): the first device is the prospective accessor and the second owns the memory. Here can = 1.
 

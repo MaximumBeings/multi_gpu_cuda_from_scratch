@@ -56,7 +56,7 @@ Use a three-PE paper trace with one symmetric integer target per PE, initialized
 
 3. Complete issuing kernels, then use the agreed cross-PE rendezvous before reading targets. Expected targets are PE 0:779, PE 1:777, PE 2:778.
 
-![Numeric worked example: Trace a symmetric ring put by receiving PE](../images/worked/ch22.svg)
+[![Numeric worked example: Trace a symmetric ring put by receiving PE](../images/worked/ch22.svg)](../images/worked/ch22.svg)
 
 **API connection and scope.** A symmetric allocation identifies corresponding objects across PEs; their numeric virtual addresses need not match. Completion at the issuer and notification of a consumer are distinct obligations. The host-coordinated protocol in this example makes those phases explicit rather than treating quiet as a universal consumer barrier.
 
@@ -539,7 +539,7 @@ With `NVSHMEM_HOME`, `LIBDIR`, and the `nvshmem_link` symlink from Section 22.1 
 
 ### Intuition
 
-Sections 22.1 and 22.2 only ever called NVSHMEM from the host -- `nvshmem_init()`, `nvshmem_malloc()`, `nvshmem_finalize()`. Every one of those calls could, in principle, be a slightly stranger `cudaMalloc()`. This section builds the one capability no earlier chapter's API could offer at all, host or device: a CUDA kernel that issues a PUT to another PE's memory itself, from device code, while that thread is still executing. NVSHMEM's own documentation is direct about this: "Device-side APIs can be called by CUDA kernel threads to efficiently access locations in symmetric memory through one-sided read (get), write (put), and atomic update API calls." File 65 uses `nvshmemx_collective_launch()`, a supported launch path. The general rule is more specific than ‘every NVSHMEM kernel requires it’: kernels using NVSHMEM synchronization or collective APIs require collective launch for its progress guarantees; communication-only kernels can also use ordinary CUDA launch interfaces. Follow the documented requirements for the APIs actually called.
+Sections 22.1 and 22.2 only ever called NVSHMEM from the host -- `nvshmem_init()`, `nvshmem_malloc()`, `nvshmem_finalize()`. Every one of those calls could, in principle, be a slightly stranger `cudaMalloc()`. This section builds a capability not exposed by the host-enqueued collective calls used in preceding examples: a CUDA kernel that issues a PUT to another PE's memory itself, from device code, while that thread is still executing. NVSHMEM's own documentation is direct about this: "Device-side APIs can be called by CUDA kernel threads to efficiently access locations in symmetric memory through one-sided read (get), write (put), and atomic update API calls." File 65 uses `nvshmemx_collective_launch()`, a supported launch path. The general rule is more specific than ‘every NVSHMEM kernel requires it’: kernels using NVSHMEM synchronization or collective APIs require collective launch for its progress guarantees; communication-only kernels can also use ordinary CUDA launch interfaces. Follow the documented requirements for the APIs actually called.
 
 ```text
 Every kernel launch since Ch3:                 This section's own launch:

@@ -48,7 +48,7 @@ Tensor parallelism, ONE MLP block, 2 devices:
 
 Use X = [1, 2]. The first weight matrix has rows [1, 2, 3, 4] and [5, 6, 7, 8]. Split its columns evenly across two ranks. A second matrix has rows [1, 0], [0, 1], [1, 1], [2, 1], split by corresponding input rows.
 
-![Numeric worked example: Add a replicated bias after reducing partial outputs](../images/worked/ch14.svg)
+[![Numeric worked example: Add a replicated bias after reducing partial outputs](../images/worked/ch14.svg)](../images/worked/ch14.svg)
 
 1. Column-parallel first multiplication gives rank 0 values [11, 14] and rank 1 values [17, 20]: for example 1×1 + 2×5 = 11.
 

@@ -18,7 +18,7 @@ Use a hypothetical shared host-clock timeline in milliseconds. GPU 0 work spans 
 
 3. Using whole-phase T=7 ms, algorithm bandwidth S/T=1.714 GB/s; modeled one-direction sent-volume bandwidth is 18/7=2.571 GB/s. State which numerator is used.
 
-![Numeric worked example: Measure the whole phase before deriving bandwidth](../images/worked/appendix-e.svg)
+[![Numeric worked example: Measure the whole phase before deriving bandwidth](../images/worked/appendix-e.svg)](../images/worked/appendix-e.svg)
 
 **API connection and scope.** Record CUDA event pairs on the same owning device/stream for local intervals. For end-to-end makespan, use a host monotonic clock before the first submission through completion of all participating work. Coordinate rank start/end scope explicitly when measuring multiple processes.
 
