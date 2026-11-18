@@ -1,0 +1,1 @@
+$ nvcc -std=c++17 -O2 -arch=sm_90 /home/ubuntu/full-gpu-rerun-20261118/mgpu/docs/part5/code/68_host_node_and_multi_process_graphs.cu -o /home/ubuntu/full-gpu-rerun-20261118/mgpu/results/68_host_node_and_multi_process_graphs/example

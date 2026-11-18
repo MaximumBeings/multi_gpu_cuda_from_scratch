@@ -1,0 +1,3 @@
+$ /usr/mpi/gcc/openmpi-4.1.7rc1/bin/mpirun --oversubscribe -np 2 /home/ubuntu/full-gpu-rerun-20261118/mgpu/results/hello_mpi/example
+hello_mpi: rank 1, linked against real libcudart (CUDA runtime 12.8)
+hello_mpi: rank 0, linked against real libcudart (CUDA runtime 12.8)

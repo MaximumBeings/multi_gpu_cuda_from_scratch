@@ -1,0 +1,26 @@
+$ /home/ubuntu/full-gpu-rerun-20261118/mgpu/results/136_ddp_bucketed_allreduce/example
+=== Section F.2: DistributedDataParallel's bucketed all-reduce, built on
+    Chapter 12's own ncclAllReduce(..., ncclAvg, ...) call ===
+
+bucket assignment (reverse of Model.parameters() order 0..5):
+param#     bucket#   
+0          2         
+1          2         
+2          1         
+3          1         
+4          0         
+5          0         
+
+simulated backward-pass hook firing order produces this bucket READY order:
+  bucket 0 (tick 1) -> bucket 2 (tick 3) -> bucket 1 (tick 5)
+
+real DDP rule (PyTorch's own docs, quoted directly): allreduce is always
+issued in BUCKET INDEX order, never actual ready order -- so despite bucket
+2 becoming ready before bucket 1 above, the real issue order is:
+  bucket 0 -> bucket 1 -> bucket 2
+
+Bucket 0: two-GPU average checked, cumulative errors=0
+Bucket 1: two-GPU average checked, cumulative errors=0
+Bucket 2: two-GPU average checked, cumulative errors=0
+Readiness is a host model; actual two-GPU averages follow bucket index order. No autograd/overlap claim.
+VALIDATION PASS: errors=0

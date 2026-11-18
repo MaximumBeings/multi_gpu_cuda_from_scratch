@@ -1,0 +1,6 @@
+$ /usr/mpi/gcc/openmpi-4.1.7rc1/bin/mpirun --oversubscribe -np 2 /home/ubuntu/full-gpu-rerun-20261118/mgpu/results/60_hybrid_mpi_nccl_bootstrap/example
+rank 0: generated the ONE ncclUniqueId every rank will share, and is about to MPI_Bcast it to all 2 ranks.
+rank 0 of 2: cudaSetDevice(localRank=0)=no error ncclCommInitRank=no error (code 0)
+
+Every rank sees the SAME honest failure code Chapter 11's single-process ncclCommInitAll() saw on its own well-formed requests (ncclUnhandledCudaError=1) -- this environment's real absence of any GPU doesn't care whether the caller was one process managing N devices or N real MPI processes each managing one. What changed is genuinely real: 2 separate operating-system processes, discovered through MPI, agreed on one shared id through MPI, and each independently called the exact same NCCL entry point every earlier chapter used.
+rank 1 of 2: cudaSetDevice(localRank=1)=no error ncclCommInitRank=no error (code 0)

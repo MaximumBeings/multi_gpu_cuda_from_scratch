@@ -1,0 +1,7 @@
+$ /home/ubuntu/full-gpu-rerun-20261118/mgpu/results/07_multi_device_loop_pattern/example
+cudaGetDeviceCount() reports 2 device(s).
+The loop below runs its body exactly 2 time(s) as a direct consequence -- not a special case, just what a correctly-guarded loop over a real count does when that count happens to be zero.
+
+Device 0: stream and buffer created while device 0 was current.
+Device 1: stream and buffer created while device 1 was current.
+Loop body executed 2 time(s) total across all three phases. On real N-GPU hardware, this exact, unmodified source runs all N devices' kernels concurrently with no code change -- that's the entire point of writing the loop this way instead of hard-coding device 0 and device 1.

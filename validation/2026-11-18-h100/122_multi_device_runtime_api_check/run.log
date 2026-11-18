@@ -1,0 +1,20 @@
+$ /home/ubuntu/full-gpu-rerun-20261118/mgpu/results/122_multi_device_runtime_api_check/example
+=== Q1: Is the CUDA toolkit installed? (cudaRuntimeGetVersion) ===
+FOUND: CUDA Runtime version 12.8
+
+=== Q2: Is a compatible driver installed? (cudaDriverGetVersion) ===
+FOUND: CUDA Driver version 13.0
+
+=== Q3: Is at least one GPU visible? (cudaGetDeviceCount) ===
+cudaGetDeviceCount reports 2 device(s) (cudaError=0, no error)
+
+=== Q4 (this book's own addition): Are there at least TWO GPUs? ===
+YES: 2 devices -- this machine can run this book's own cross-device chapters directly.
+
+=== How to read this on YOUR machine ===
+1. Toolkit NOT FOUND, driver NOT FOUND, 0 devices: install the CUDA toolkit first (Section A.1 -- apt, not pip alone).
+2. Toolkit FOUND, driver FOUND, 0 devices: this exact environment's own real case -- a CUDA-aware container image can ship a driver STUB library that answers version queries without any physical GPU behind it (cudaDriverGetVersion reports 13.0 above), so 'driver FOUND' alone does not mean a GPU is present. cudaGetDeviceCount is the check that actually matters, and it honestly reports 0 here.
+3. Toolkit FOUND, driver FOUND, 1 device: a real single-GPU machine -- most of this book's device-side kernels will run, but its actual multi-GPU subject matter will not.
+4. Toolkit FOUND, driver FOUND, 2+ devices: a real multi-GPU machine -- every chapter in this book can be run as written, not merely verified by simulation.
+
+self-check: diagnosis confirmed

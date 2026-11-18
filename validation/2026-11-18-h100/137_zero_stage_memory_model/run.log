@@ -1,0 +1,48 @@
+$ /home/ubuntu/full-gpu-rerun-20261118/mgpu/results/137_zero_stage_memory_model/example
+=== Section F.3: DeepSpeed's ZeRO stages, derived from Chapter 13's own
+    16-bytes-per-parameter breakdown, not a new formula ===
+
+Chapter 13's own real per-parameter breakdown (mixed-precision Adam):
+  2 bytes fp16 parameter   + 2 bytes fp16 gradient   = 4 bytes  (unsharded by Pos/Pos+g)
+  4 bytes fp32 parameter + 4 bytes momentum + 4 bytes variance = 12 bytes  (DeepSpeed's own "optimizer states")
+  total: 16 bytes/parameter, exactly Chapter 13's own already-locked figure
+
+DeepSpeed's own real documented stages (deepspeed.readthedocs.io, quoted):
+  stage 1 (Pos):     "optimizer states...are partitioned across the
+                      processes, so that each process updates only its
+                      partition"
+  stage 2 (Pos+g):   "the reduced 16-bit gradients...are also partitioned
+                      such that each process retains only the gradients
+                      corresponding to its portion of the optimizer states"
+  stage 3 (Pos+g+p): "the 16-bit model parameters are partitioned across
+                      the processes. ZeRO-3 will automatically collect and
+                      partition them during the forward and backward
+                      passes"
+  config: DeepSpeedZeroConfig's own "stage" field, 1/2/3, inside the
+  zero_optimization dict -- a real, documented config key, not renamed here.
+
+self-consistency check against the ZeRO paper's own published 7.5B-param,
+Nd=64 worked example (31.4 / 16.6 / 1.9 GB):
+  Pos     = 31.4 GB
+  Pos+g   = 16.6 GB
+  Pos+g+p = 1.9 GB
+  matches published figures: PASS
+
+applying the SAME validated formula to Chapter 13's own GPT-3 figure,
+sharded across Chapter 12's own REPLICAS=8 data-parallel group:
+
+configuration                GB/replica
+no ZeRO (Ch13 baseline)          2800.0
+ZeRO stage 1 (Pos)                962.5
+ZeRO stage 2 (Pos+g)              656.2
+ZeRO stage 3 (Pos+g+p)            350.0
+
+note what ZeRO does NOT change: Chapter 13's own model-parallel shard
+count (35 H100 SXM GPUs, from its own File 36) answers a different question
+-- how many devices must COOPERATE to hold one copy at all -- and ZeRO stage
+3's own 350.0 GB/replica figure above is still larger than one H100 SXM's 80
+GB, meaning GPT-3 at this size needs BOTH: Chapter 13's model parallelism to
+split the model itself, and ZeRO-style sharding within each data-parallel
+replica group -- exactly the combination real large-model training uses, and
+exactly why DeepSpeed documents ZeRO stage 3 alongside, not instead of,
+model-parallel/tensor-parallel splitting.

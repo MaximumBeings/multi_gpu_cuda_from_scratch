@@ -1,0 +1,51 @@
+[
+  {
+    "source": "docs/part5/code/59_mpi_errhandler_return.c",
+    "sha256": "104caef5326cfbba709ecba2f08b68ea6ede3a40f5a767c6f6d0846bff331145",
+    "number": 59,
+    "dependencies": [
+      "mpi"
+    ],
+    "pthread": false,
+    "cuda": false,
+    "has_main": true,
+    "minimum_gpus": 0,
+    "processes": 2,
+    "runtime_review": null,
+    "validation_oracle": "exit status only; numerical correctness unverified",
+    "timestamp_utc": "2026-11-18T11:24:44.015093+00:00",
+    "compile_command": [
+      "mpicc",
+      "-std=c11",
+      "-O2",
+      "/home/ubuntu/full-gpu-rerun-20261118/mgpu/docs/part5/code/59_mpi_errhandler_return.c",
+      "-o",
+      "/home/ubuntu/full-gpu-rerun-20261118/mgpu/rerun59-checked/59_mpi_errhandler_return/example"
+    ],
+    "compile": {
+      "exit_code": 0,
+      "timed_out": false,
+      "seconds": 0.06373292199998559,
+      "started_utc": "2026-11-18T11:24:44.015328+00:00",
+      "finished_utc": "2026-11-18T11:24:44.079064+00:00"
+    },
+    "compile_started_utc": "2026-11-18T11:24:44.015328+00:00",
+    "run_command": [
+      "/home/ubuntu/mpi-checked-20261118/root/usr/bin/mpirun",
+      "--oversubscribe",
+      "-np",
+      "2",
+      "/home/ubuntu/full-gpu-rerun-20261118/mgpu/rerun59-checked/59_mpi_errhandler_return/example"
+    ],
+    "run": {
+      "exit_code": 0,
+      "timed_out": false,
+      "seconds": 1.8170083370000611,
+      "started_utc": "2026-11-18T11:24:44.079149+00:00",
+      "finished_utc": "2026-11-18T11:24:45.896162+00:00"
+    },
+    "run_started_utc": "2026-11-18T11:24:44.079149+00:00",
+    "status": "executed_unverified",
+    "finished_utc": "2026-11-18T11:24:45.896315+00:00"
+  }
+]

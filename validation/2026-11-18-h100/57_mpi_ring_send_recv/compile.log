@@ -1,0 +1,1 @@
+$ mpicc -std=c11 -O2 /home/ubuntu/full-gpu-rerun-20261118/mgpu/docs/part5/code/57_mpi_ring_send_recv.c -o /home/ubuntu/full-gpu-rerun-20261118/mgpu/results/57_mpi_ring_send_recv/example

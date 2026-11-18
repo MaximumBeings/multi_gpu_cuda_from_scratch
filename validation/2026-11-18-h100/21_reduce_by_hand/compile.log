@@ -1,0 +1,7 @@
+$ nvcc -std=c++17 -O2 -arch=sm_90 /home/ubuntu/full-gpu-rerun-20261118/mgpu/docs/part2/code/21_reduce_by_hand.cu -o /home/ubuntu/full-gpu-rerun-20261118/mgpu/results/21_reduce_by_hand/example
+/home/ubuntu/full-gpu-rerun-20261118/mgpu/docs/part2/code/21_reduce_by_hand.cu(14): warning #177-D: variable "CHUNK" was declared but never referenced
+   const int world=std::min(count,4), CHUNK=33;
+                                      ^
+
+Remark: The warnings can be suppressed with "-diag-suppress <warning-number>"
+

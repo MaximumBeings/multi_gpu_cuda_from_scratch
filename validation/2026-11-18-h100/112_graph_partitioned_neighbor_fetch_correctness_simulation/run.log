@@ -1,0 +1,14 @@
+$ /home/ubuntu/full-gpu-rerun-20261118/mgpu/results/112_graph_partitioned_neighbor_fetch_correctness_simulation/example
+Reference (single-process): node 0's own neighbor-feature sum, dim 0..3: 117.00 62.20 46.90 106.60 
+
+P      all match  remote fetches (of total)
+1      YES        0   of 72 
+2      YES        48  of 72 
+3      YES        48  of 72 
+4      YES        60  of 72 
+6      YES        72  of 72 
+8      YES        66  of 72 
+12     YES        72  of 72 
+24     YES        72  of 72 
+
+Every P reproduces the exact same neighbor-feature sums as the single-process reference. Like Chapter 35's distributed-FFT transpose and Chapter 34's embedding all-to-all, this is correctness by construction: a feature fetch -- local or remote -- is pure RETRIEVAL of a value that is never recomputed differently by rank, never combined with another rank's own partial value at fetch time. What DOES trend upward with P (not perfectly monotonically here, an artifact of this file's own small, fixed-modulus toy graph, not a real property being claimed), visible in the "remote fetches" column above, is the FRACTION of neighbor lookups that must cross a rank boundary -- a demand-driven, per-BATCH communication pattern decided by which nodes happen to be sampled, genuinely different from Chapter 16's own fixed halo schedule and Chapter 28's own frontier expansion, though it shares Chapter 4's own real Universal Virtual Addressing idea of letting any rank transparently reach any other rank's own memory.

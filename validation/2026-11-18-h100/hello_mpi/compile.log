@@ -1,0 +1,1 @@
+$ mpicxx -std=c++17 -O2 -I/usr/include -L/usr/lib64 -Wl,-rpath,/usr/lib64 /home/ubuntu/full-gpu-rerun-20261118/mgpu/docs/appendix/code/hello_mpi.cpp -o /home/ubuntu/full-gpu-rerun-20261118/mgpu/results/hello_mpi/example -lcudart

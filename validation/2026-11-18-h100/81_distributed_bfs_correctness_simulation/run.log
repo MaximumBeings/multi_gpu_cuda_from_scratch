@@ -1,0 +1,20 @@
+$ /home/ubuntu/full-gpu-rerun-20261118/mgpu/results/81_distributed_bfs_correctness_simulation/example
+Graph: 12 vertices, 17 edges, 1D-partitioned across 3 ranks (4 vertices/rank). Source vertex: 0.
+
+Vertex  0 (owner rank 0): naive level= 0  distributed level= 0  EXACT MATCH
+Vertex  1 (owner rank 0): naive level= 1  distributed level= 1  EXACT MATCH
+Vertex  2 (owner rank 0): naive level= 2  distributed level= 2  EXACT MATCH
+Vertex  3 (owner rank 0): naive level= 3  distributed level= 3  EXACT MATCH
+Vertex  4 (owner rank 1): naive level= 1  distributed level= 1  EXACT MATCH
+Vertex  5 (owner rank 1): naive level= 2  distributed level= 2  EXACT MATCH
+Vertex  6 (owner rank 1): naive level= 3  distributed level= 3  EXACT MATCH
+Vertex  7 (owner rank 1): naive level= 3  distributed level= 3  EXACT MATCH
+Vertex  8 (owner rank 2): naive level= 2  distributed level= 2  EXACT MATCH
+Vertex  9 (owner rank 2): naive level= 1  distributed level= 1  EXACT MATCH
+Vertex 10 (owner rank 2): naive level= 2  distributed level= 2  EXACT MATCH
+Vertex 11 (owner rank 2): naive level= 3  distributed level= 3  EXACT MATCH
+
+All 12 vertex levels EXACT MATCH between naive centralized BFS and distributed level-synchronous BFS: YES
+
+Distinct (sender rank -> receiver/owner rank) pairs actually used across the whole run: (0->0) (0->1) (0->2) (1->1) (1->2) (2->1) (2->2) 
+Total distinct pairs: 7 out of 9 possible ordered pairs (3 ranks) -- which pairs are used depends on THIS graph's own structure and frontier, not on a fixed neighbor list the way Chapter 16's halo exchange always used the same (r-1, r+1) pairs.

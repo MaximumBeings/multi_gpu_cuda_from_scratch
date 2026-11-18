@@ -1,0 +1,14 @@
+$ /home/ubuntu/full-gpu-rerun-20261118/mgpu/results/90_independent_path_correctness_simulation/example
+Reference (single-process): count=24  mean=10.541666666666666  M2=3837.9583333333348
+
+P      count      combined mean  combined M2              mean match   M2 match    
+1      24         10.541667      3837.9583333333348       YES          YES         
+2      24         10.541667      3837.9583333333335       YES          NO          
+3      24         10.541667      3837.9583333333335       YES          NO          
+4      24         10.541667      3837.9583333333335       YES          NO          
+6      24         10.541667      3837.9583333333335       YES          NO          
+8      24         10.541667      3837.9583333333335       YES          NO          
+12     24         10.541667      3837.958333333333        YES          NO          
+24     24         10.541667      3837.9583333333335       YES          NO          
+
+Every combined count matches exactly (integer payoff sums are exactly associative, unlike the floating-point mean and M2). The combined MEAN matches the reference exactly at every P tested here -- Chan et al.'s own pairwise mean formula happens to reproduce this dataset's reference mean bit-for-bit. The combined M2 does NOT match at P > 1: a real, tiny (last-few-digits) floating-point difference. Note which side is off: computed exactly in rational arithmetic, this dataset's true M2 rounds to 3837.9583333333335 -- what the combined result gives at every P > 1 except P = 12 (1 ulp low). It is the single-process two-pass REFERENCE that is 3 ulp high. Pairwise combination is a genuinely different formula from the two-pass one, not a regrouping of the same additions, so a bit-for-bit match was never promised in either direction.

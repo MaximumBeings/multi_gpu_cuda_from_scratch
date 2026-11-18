@@ -1,0 +1,1 @@
+$ g++ -std=c++17 -O2 /home/ubuntu/full-gpu-rerun-20261118/mgpu/docs/part1/code/13_when_each_wins_model.cpp -o /home/ubuntu/full-gpu-rerun-20261118/mgpu/results/13_when_each_wins_model/example

@@ -1,0 +1,1 @@
+$ nvcc -std=c++17 -O2 -arch=sm_90 /home/ubuntu/full-gpu-rerun-20261118/mgpu/docs/part5/code/66_cross_device_graph_capture.cu -o /home/ubuntu/full-gpu-rerun-20261118/mgpu/results/66_cross_device_graph_capture/example

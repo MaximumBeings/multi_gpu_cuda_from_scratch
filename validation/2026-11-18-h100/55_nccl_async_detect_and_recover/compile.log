@@ -1,0 +1,1 @@
+$ nvcc -std=c++17 -O2 -arch=sm_90 /home/ubuntu/full-gpu-rerun-20261118/mgpu/docs/part4/code/55_nccl_async_detect_and_recover.cu -o /home/ubuntu/full-gpu-rerun-20261118/mgpu/results/55_nccl_async_detect_and_recover/example -lnccl

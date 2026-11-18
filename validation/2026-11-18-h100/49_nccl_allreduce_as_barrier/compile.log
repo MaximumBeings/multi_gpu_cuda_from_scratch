@@ -1,0 +1,1 @@
+$ nvcc -std=c++17 -O2 -arch=sm_90 /home/ubuntu/full-gpu-rerun-20261118/mgpu/docs/part4/code/49_nccl_allreduce_as_barrier.cu -o /home/ubuntu/full-gpu-rerun-20261118/mgpu/results/49_nccl_allreduce_as_barrier/example -lnccl

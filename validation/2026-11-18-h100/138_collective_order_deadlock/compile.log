@@ -1,0 +1,1 @@
+$ mpicc -std=c11 -O2 /home/ubuntu/full-gpu-rerun-20261118/mgpu/docs/appendix/code/138_collective_order_deadlock.c -o /home/ubuntu/full-gpu-rerun-20261118/mgpu/results/138_collective_order_deadlock/example

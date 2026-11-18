@@ -1,0 +1,6 @@
+========= COMPUTE-SANITIZER
+========= COMPUTE-SANITIZER
+CUDA-aware MPI: build=0 runtime=0; using host staging
+VALIDATION PASS: host-staged MPI, 2 ranks, 4096 values/rank, errors=0
+========= ERROR SUMMARY: 0 errors
+========= ERROR SUMMARY: 0 errors

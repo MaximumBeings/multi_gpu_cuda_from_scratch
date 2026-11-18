@@ -1,0 +1,14 @@
+$ /usr/mpi/gcc/openmpi-4.1.7rc1/bin/mpirun --oversubscribe -np 2 /home/ubuntu/full-gpu-rerun-20261118/mgpu/results/72_bucketed_gradient_allreduce/example
+step=0 bucket=0 expected=3 checked=1024
+step=0 bucket=1 expected=5 checked=1024
+step=0 bucket=2 expected=7 checked=1024
+step=0 bucket=3 expected=9 checked=1024
+step=1 bucket=0 expected=23 checked=1024
+step=1 bucket=1 expected=25 checked=1024
+step=1 bucket=2 expected=27 checked=1024
+step=1 bucket=3 expected=29 checked=1024
+step=2 bucket=0 expected=43 checked=1024
+step=2 bucket=1 expected=45 checked=1024
+step=2 bucket=2 expected=47 checked=1024
+step=2 bucket=3 expected=49 checked=1024
+VALIDATION PASS: 2 ranks, 12 buckets, errors=0

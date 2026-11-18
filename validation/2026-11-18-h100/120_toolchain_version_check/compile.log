@@ -1,0 +1,1 @@
+$ nvcc -std=c++17 -O2 -arch=sm_90 /home/ubuntu/full-gpu-rerun-20261118/mgpu/docs/appendix/code/120_toolchain_version_check.cu -o /home/ubuntu/full-gpu-rerun-20261118/mgpu/results/120_toolchain_version_check/example

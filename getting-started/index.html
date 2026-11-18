@@ -18,7 +18,7 @@
         <link rel="prev" href="..">
       
       
-        <link rel="next" href="../validation-a100/">
+        <link rel="next" href="../validation-h100-rerun/">
       
       
         
@@ -355,10 +355,198 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#connect-to-the-linux-host" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Connect to the Linux host
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#installing-a-toolchain" class="md-nav__link">
     <span class="md-ellipsis">
       
         Installing a toolchain
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Installing a toolchain">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#choose-the-installation-path" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Choose the installation path
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#install-ubuntu-prerequisites" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Install Ubuntu prerequisites
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#register-the-matching-nvidia-repository" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Register the matching NVIDIA repository
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#install-a-driver-only-when-needed" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Install a driver only when needed
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#install-cuda-128-and-cublas" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Install CUDA 12.8 and cuBLAS
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#select-the-toolkit-and-library-paths" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Select the toolkit and library paths
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#install-nccl-runtime-and-development-files" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Install NCCL runtime and development files
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#verify-files-versions-and-topology" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Verify files, versions and topology
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#obtain-the-sources" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Obtain the sources
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#add-mpi-and-nvshmem" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Add MPI and NVSHMEM
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Add MPI and NVSHMEM">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#install-or-select-one-open-mpi-stack" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Install or select one Open MPI stack
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#install-the-recorded-nvshmem-wheel-in-isolation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Install the recorded NVSHMEM wheel in isolation
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#clone-compile-and-run-a-first-gpu-check" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Clone, compile and run a first GPU check
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#multi-node-and-profiling-prerequisites" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Multi-node and profiling prerequisites
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#preview-this-website-without-a-gpu" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Preview this website without a GPU
       
     </span>
   </a>
@@ -402,6 +590,33 @@
   
 </nav>
       
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../validation-h100-rerun/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    November 18 H100 Rerun
+  
+
+    
+  </span>
+  
+  
+
+      </a>
     </li>
   
 
@@ -482,10 +697,10 @@
         
           
         
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5" >
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6" >
         
           
-          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="">
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="">
             
   
   
@@ -503,8 +718,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_5">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -627,10 +842,10 @@
         
           
         
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6" >
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_7" >
         
           
-          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="">
+          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="">
             
   
   
@@ -648,8 +863,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_6">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -800,10 +1015,10 @@
         
           
         
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_7" >
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_8" >
         
           
-          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="">
+          <label class="md-nav__link" for="__nav_8" id="__nav_8_label" tabindex="">
             
   
   
@@ -821,8 +1036,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_7">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_8">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -973,10 +1188,10 @@
         
           
         
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_8" >
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_9" >
         
           
-          <label class="md-nav__link" for="__nav_8" id="__nav_8_label" tabindex="">
+          <label class="md-nav__link" for="__nav_9" id="__nav_9_label" tabindex="">
             
   
   
@@ -994,8 +1209,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_8">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_9">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -1174,10 +1389,10 @@
         
           
         
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_9" >
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_10" >
         
           
-          <label class="md-nav__link" for="__nav_9" id="__nav_9_label" tabindex="">
+          <label class="md-nav__link" for="__nav_10" id="__nav_10_label" tabindex="">
             
   
   
@@ -1195,8 +1410,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_9_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_9">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_10_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_10">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -1319,10 +1534,10 @@
         
           
         
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_10" >
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_11" >
         
           
-          <label class="md-nav__link" for="__nav_10" id="__nav_10_label" tabindex="">
+          <label class="md-nav__link" for="__nav_11" id="__nav_11_label" tabindex="">
             
   
   
@@ -1340,8 +1555,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_10_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_10">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_11_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_11">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -1492,10 +1707,10 @@
         
           
         
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_11" >
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_12" >
         
           
-          <label class="md-nav__link" for="__nav_11" id="__nav_11_label" tabindex="">
+          <label class="md-nav__link" for="__nav_12" id="__nav_12_label" tabindex="">
             
   
   
@@ -1513,8 +1728,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_11_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_11">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_12_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_12">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -1777,10 +1992,10 @@
         
           
         
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_12" >
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_13" >
         
           
-          <label class="md-nav__link" for="__nav_12" id="__nav_12_label" tabindex="">
+          <label class="md-nav__link" for="__nav_13" id="__nav_13_label" tabindex="">
             
   
   
@@ -1798,8 +2013,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_12_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_12">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_13_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_13">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -2090,10 +2305,10 @@
         
           
         
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_13" >
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_14" >
         
           
-          <label class="md-nav__link" for="__nav_13" id="__nav_13_label" tabindex="">
+          <label class="md-nav__link" for="__nav_14" id="__nav_14_label" tabindex="">
             
   
   
@@ -2111,8 +2326,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_13_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_13">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_14_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_14">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -2352,10 +2567,198 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#connect-to-the-linux-host" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Connect to the Linux host
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#installing-a-toolchain" class="md-nav__link">
     <span class="md-ellipsis">
       
         Installing a toolchain
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Installing a toolchain">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#choose-the-installation-path" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Choose the installation path
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#install-ubuntu-prerequisites" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Install Ubuntu prerequisites
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#register-the-matching-nvidia-repository" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Register the matching NVIDIA repository
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#install-a-driver-only-when-needed" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Install a driver only when needed
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#install-cuda-128-and-cublas" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Install CUDA 12.8 and cuBLAS
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#select-the-toolkit-and-library-paths" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Select the toolkit and library paths
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#install-nccl-runtime-and-development-files" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Install NCCL runtime and development files
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#verify-files-versions-and-topology" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Verify files, versions and topology
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#obtain-the-sources" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Obtain the sources
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#add-mpi-and-nvshmem" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Add MPI and NVSHMEM
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Add MPI and NVSHMEM">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#install-or-select-one-open-mpi-stack" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Install or select one Open MPI stack
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#install-the-recorded-nvshmem-wheel-in-isolation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Install the recorded NVSHMEM wheel in isolation
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#clone-compile-and-run-a-first-gpu-check" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Clone, compile and run a first GPU check
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#multi-node-and-profiling-prerequisites" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Multi-node and profiling prerequisites
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#preview-this-website-without-a-gpu" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Preview this website without a GPU
       
     </span>
   </a>
@@ -2419,26 +2822,239 @@
 <!-- execution:overview -->
 <div class="admonition success">
 <p class="admonition-title">Recorded hardware validation</p>
-<p>All 145 recorded source revisions compiled and executed on <a href="../validation-h100/">two H100 GPUs</a> and again on <a href="../validation-a100/">eight A100 GPUs</a>. Each pass records 33 numerical/transport validations, 13 API validations and 99 other executions with limited correctness scope. The A100 pass uses eight MPI processes for multi-rank examples; individual programs retain their documented participant counts. A separate eight-device harness checks all 56 ordered peer-copy pairs, four collective patterns and three halo generations.</p>
+<p>The <a href="../validation-h100-rerun/">November 18 two-H100 rerun</a> compiled and executed all 145 current sources: 34 numerical/transport checks, 13 API checks and 98 other executions. The earlier <a href="../validation-h100/">two-H100</a> and <a href="../validation-a100/">eight-A100</a> records remain available with their original scopes. The A100 pass uses eight MPI processes for multi-rank examples; individual programs retain their documented participant counts. A separate eight-device harness checks all 56 ordered peer-copy pairs, four collective patterns and three halo generations.</p>
 </div>
 <!-- mgpu:opener:start -->
 <p><a href="../images/chapter-openers/getting-started.svg"><img alt="Getting Started" src="../images/chapter-openers/getting-started.svg" /></a></p>
 <!-- mgpu:opener:end -->
 
 <p>This book targets CUDA C++ compiled with <code>nvcc</code> for real NVIDIA GPU architectures -- the appropriate target must be selected per example -- plus MPI (OpenMPI or MPICH) for Part 5's multi-node material. A real multi-GPU machine with a matching driver is what you need to <em>run</em> the code in this book end to end; <code>nvcc</code> itself only needs a CUDA toolkit and will happily compile for architectures your current machine doesn't have, and host-only MPI programs can run as multiple local ranks without GPUs; CUDA-aware MPI examples still need CUDA devices.</p>
-<p>The final review corrected example 58’s device-buffer initialization, GPU binding and receive checks. <strong>144 current sources match their execution records; example 58 awaits GPU revalidation.</strong></p>
+<p>The corrected staged-MPI example (58) passed the November 18 two-H100 numerical rerun and memory check. <strong>All 145 current sources have successful execution records.</strong> See the <a href="../validation-h100-rerun/">additional dated H100 results</a> for commands, system information and sample outputs.</p>
 <p>Select a diagram to open its full-size SVG.</p>
+<h2 id="connect-to-the-linux-host">Connect to the Linux host<a class="headerlink" href="#connect-to-the-linux-host" title="Permanent link">&para;</a></h2>
+<p>Connect using your provider's SSH key and host address, then run the installation steps below on that Linux host. On macOS/Linux, <code>chmod 400 /path/to/key.pem</code> protects the local key, and <code>ssh -i /path/to/key.pem ubuntu@YOUR_INSTANCE_IP</code> connects to a typical Ubuntu cloud image. Verify the provider's host-key fingerprint on first connection; use the actual image's user name. Windows OpenSSH uses Windows key-file access controls instead of POSIX <code>chmod</code>.</p>
 <h2 id="installing-a-toolchain">Installing a toolchain<a class="headerlink" href="#installing-a-toolchain" title="Permanent link">&para;</a></h2>
 <!-- mgpu:figure-overview:start -->
 <p><a href="../images/technical/getting-started.svg"><img alt="Separate build checks from hardware execution" src="../images/technical/getting-started.svg" /></a></p>
 <!-- mgpu:figure-overview:end -->
 
-<p>A full NVIDIA CUDA Toolkit install (from developer.nvidia.com, or via your platform's package manager, e.g. <code>apt-get install nvidia-cuda-toolkit</code> on Debian/Ubuntu) gives you a genuine, working <code>nvcc</code>, <code>ptxas</code>, <code>cicc</code>, and CUDA headers; NCCL, NVSHMEM and MPI development packages are separate dependencies, with no GPU or driver required to <em>compile</em> -- only to run device code. The package name and supported compiler/architecture targets depend on the distribution and toolkit version. Use <a href="https://docs.nvidia.com/cuda/cuda-installation-guide-linux/">NVIDIA’s installation guide</a> for the actual host.</p>
-<p>Check that your selected toolkit provides <code>nvcc --version</code>; a Python package containing some CUDA components is not automatically a full C++ build environment. Install NCCL/NVSHMEM headers and libraries separately where required. Host-only MPI can run without CUDA devices; CUDA-aware MPI requires a compatible MPI build and real device buffers. Follow <a href="https://developer.nvidia.com/blog/introduction-cuda-aware-mpi/">NVIDIA’s CUDA-aware MPI guidance</a> and the chapter’s actual build options rather than assuming an ordinary MPI installation supports GPU pointers.</p>
-<div class="language-bash highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>nvcc<span class="w"> </span>--version<span class="w">   </span><span class="c1"># compiler, needed to build anything</span>
-<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>nvcc<span class="w"> </span>-arch<span class="o">=</span>sm_80<span class="w"> </span>hello_cuda.cu<span class="w"> </span>-o<span class="w"> </span>hello_cuda<span class="w">   </span><span class="c1"># pick the arch flag matching your GPU</span>
-<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>mpirun<span class="w"> </span>--version<span class="w">   </span><span class="c1"># for Part 5 onward</span>
+<h3 id="choose-the-installation-path">Choose the installation path<a class="headerlink" href="#choose-the-installation-path" title="Permanent link">&para;</a></h3>
+<p>The commands below target <strong>Ubuntu 22.04 or 24.04, x86-64, on a Linux GPU host</strong>, with CUDA <strong>12.8</strong>. Ubuntu 24.04 is the book's recorded host family. Run them in Bash on that host, not on an Apple Silicon laptop. For ARM/Grace, WSL, containers or another distribution, use the corresponding <a href="https://docs.nvidia.com/cuda/archive/12.8.1/cuda-installation-guide-linux/index.html">NVIDIA CUDA installation instructions</a>; the repository and driver steps differ.</p>
+<table>
+<thead>
+<tr>
+<th>Starting point</th>
+<th>Follow this path</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Provider image already runs <code>nvidia-smi</code> and <code>nvcc --version</code> reports a suitable toolkit</td>
+<td>Keep the provider's driver; install only missing libraries/tools and select the intended toolkit.</td>
+</tr>
+<tr>
+<td>Working driver, missing compiler</td>
+<td>Install the CUDA toolkit below; a toolkit-only package does not replace the driver.</td>
+</tr>
+<tr>
+<td>Fresh Ubuntu GPU host without a driver</td>
+<td>Install prerequisites, register the repository, install the driver, reboot, then install CUDA and libraries.</td>
+</tr>
+<tr>
+<td>Container</td>
+<td>Install the driver on the host; use the provider's GPU-enabled container runtime and a CUDA <strong>development</strong> image. Do not install kernel drivers inside the container.</td>
+</tr>
+</tbody>
+</table>
+<p>Record the starting environment:</p>
+<div class="language-bash highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>cat<span class="w"> </span>/etc/os-release
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>uname<span class="w"> </span>-m
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>uname<span class="w"> </span>-r
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>nvidia-smi
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="nb">command</span><span class="w"> </span>-v<span class="w"> </span>nvcc
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>nvcc<span class="w"> </span>--version
 </code></pre></div>
+<p>On a fresh host, missing <code>nvidia-smi</code> or <code>nvcc</code> at this stage is the reason to continue installation. On a managed image, first check its documented environment modules/toolkit paths. Conda activation is not a universal CUDA installation step.</p>
+<h3 id="install-ubuntu-prerequisites">Install Ubuntu prerequisites<a class="headerlink" href="#install-ubuntu-prerequisites" title="Permanent link">&para;</a></h3>
+<p>On a fresh Ubuntu host:</p>
+<div class="language-bash highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>sudo<span class="w"> </span>apt-get<span class="w"> </span>update
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>sudo<span class="w"> </span>apt-get<span class="w"> </span>install<span class="w"> </span>-y<span class="w"> </span>build-essential<span class="w"> </span>python3<span class="w"> </span>python3-venv<span class="w"> </span>python3-pip<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="w">    </span>git<span class="w"> </span>wget<span class="w"> </span>ca-certificates<span class="w"> </span>pciutils
+</code></pre></div>
+<p><code>build-essential</code> supplies GCC/G++, Make and the basic linker toolchain. CUDA also constrains supported host-compiler versions: use the selected toolkit's <a href="https://docs.nvidia.com/cuda/archive/12.8.1/cuda-installation-guide-linux/index.html#host-compiler-support-policy">host compiler support table</a>. The captured Ubuntu 24.04 runs used GCC 13.3. A generic Python CUDA wheel is not a replacement for this C++ build environment.</p>
+<h3 id="register-the-matching-nvidia-repository">Register the matching NVIDIA repository<a class="headerlink" href="#register-the-matching-nvidia-repository" title="Permanent link">&para;</a></h3>
+<p>Use this only if the matching NVIDIA APT repository is not already configured. It selects Ubuntu 22.04 versus 24.04 from the actual OS; it stops for other systems. The subshell keeps its temporary variables local.</p>
+<div class="language-bash highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="o">(</span>
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="w">    </span><span class="nb">set</span><span class="w"> </span>-eu
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="w">    </span>.<span class="w"> </span>/etc/os-release
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="w">    </span><span class="k">case</span><span class="w"> </span><span class="s2">"</span><span class="nv">$ID</span><span class="s2">:</span><span class="nv">$VERSION_ID</span><span class="s2">:</span><span class="k">$(</span>uname<span class="w"> </span>-m<span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="k">in</span>
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="w">        </span>ubuntu:22.04:x86_64<span class="o">)</span><span class="w"> </span><span class="nv">cuda_repo</span><span class="o">=</span>ubuntu2204<span class="w"> </span><span class="p">;;</span>
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a><span class="w">        </span>ubuntu:24.04:x86_64<span class="o">)</span><span class="w"> </span><span class="nv">cuda_repo</span><span class="o">=</span>ubuntu2404<span class="w"> </span><span class="p">;;</span>
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a><span class="w">        </span>*<span class="o">)</span><span class="w"> </span><span class="nb">echo</span><span class="w"> </span><span class="s2">"Use NVIDIA's instructions for this OS/CPU."</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span><span class="p">;</span><span class="w"> </span><span class="nb">exit</span><span class="w"> </span><span class="m">1</span><span class="w"> </span><span class="p">;;</span>
+<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a><span class="w">    </span><span class="k">esac</span>
+<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a><span class="w">    </span><span class="nv">keyring_dir</span><span class="o">=</span><span class="k">$(</span>mktemp<span class="w"> </span>-d<span class="k">)</span>
+<a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a><span class="w">    </span><span class="nb">trap</span><span class="w"> </span><span class="s1">'rm -rf "$keyring_dir"'</span><span class="w"> </span>EXIT
+<a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a><span class="w">    </span>wget<span class="w"> </span>-O<span class="w"> </span><span class="s2">"</span><span class="nv">$keyring_dir</span><span class="s2">/cuda-keyring.deb"</span><span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a><span class="w">        </span><span class="s2">"https://developer.download.nvidia.com/compute/cuda/repos/</span><span class="nv">$cuda_repo</span><span class="s2">/x86_64/cuda-keyring_1.1-1_all.deb"</span>
+<a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a><span class="w">    </span>sudo<span class="w"> </span>dpkg<span class="w"> </span>-i<span class="w"> </span><span class="s2">"</span><span class="nv">$keyring_dir</span><span class="s2">/cuda-keyring.deb"</span>
+<a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a><span class="w">    </span>sudo<span class="w"> </span>apt-get<span class="w"> </span>update
+<a id="__codelineno-2-15" name="__codelineno-2-15" href="#__codelineno-2-15"></a><span class="o">)</span>
+</code></pre></div>
+<p>Stop if this block fails. Do not continue with a repository for a different Ubuntu release, or mix a runfile driver installation with unrelated package-manager driver packages. NVIDIA documents the <a href="https://docs.nvidia.com/datacenter/tesla/driver-installation-guide/latest/ubuntu.html#network-repository-enablement-amd64">keyring and repository setup</a>.</p>
+<h3 id="install-a-driver-only-when-needed">Install a driver only when needed<a class="headerlink" href="#install-a-driver-only-when-needed" title="Permanent link">&para;</a></h3>
+<p><strong>Preconfigured cloud image:</strong> retain its working, compatible driver. If it needs an upgrade, use the provider's supported procedure. The recorded driver was 580.105.08. For the CUDA 12.8 Update 1 toolchain, this guide uses a driver meeting the release's corresponding <strong>570.124.06 or newer</strong> requirement; do not assume the general CUDA 12.x minor-compatibility minimum supports every PTX/JIT feature used here. See <a href="https://docs.nvidia.com/cuda/archive/12.8.1/cuda-toolkit-release-notes/index.html#cuda-driver">NVIDIA's release compatibility tables</a>.</p>
+<p><strong>Fresh Ubuntu host you administer:</strong> after repository setup, install kernel headers and NVIDIA's open-module driver package. H100 and A100 are supported by the open-module driver family. These commands are for the host, not a container:</p>
+<div class="language-bash highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>sudo<span class="w"> </span>apt-get<span class="w"> </span>install<span class="w"> </span>-y<span class="w"> </span><span class="s2">"linux-headers-</span><span class="k">$(</span>uname<span class="w"> </span>-r<span class="k">)</span><span class="s2">"</span>
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>sudo<span class="w"> </span>apt-get<span class="w"> </span>install<span class="w"> </span>-y<span class="w"> </span>nvidia-open
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>sudo<span class="w"> </span>reboot
+</code></pre></div>
+<p>The reboot disconnects SSH. Reconnect with your original SSH command, then run:</p>
+<div class="language-bash highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>nvidia-smi
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>nvidia-smi<span class="w"> </span>--query-gpu<span class="o">=</span>name,driver_version<span class="w"> </span>--format<span class="o">=</span>csv
+</code></pre></div>
+<p>Continue only when the driver sees the intended GPU(s). A custom cloud kernel may need provider-specific headers. With Secure Boot, follow the distribution's module-signing/key-enrollment prompts, which can require console access; do not bypass a failed module load by blindly reinstalling CUDA. The <code>nvidia-open</code> package follows the repository's selected driver branch; it does not pin the recorded 580.105.08 patch. See <a href="https://docs.nvidia.com/datacenter/tesla/driver-installation-guide/latest/ubuntu.html#driver-installation">NVIDIA's driver installation and reboot steps</a>.</p>
+<h3 id="install-cuda-128-and-cublas">Install CUDA 12.8 and cuBLAS<a class="headerlink" href="#install-cuda-128-and-cublas" title="Permanent link">&para;</a></h3>
+<p>Skip installation if this toolkit and its development libraries already work. Otherwise:</p>
+<div class="language-bash highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>sudo<span class="w"> </span>apt-get<span class="w"> </span>install<span class="w"> </span>-y<span class="w"> </span>cuda-toolkit-12-8
+</code></pre></div>
+<p>This versioned <strong>toolkit-only</strong> package supplies <code>nvcc</code>, CUDA Runtime development files, the Driver API headers/link stubs, cuBLAS headers/libraries, Compute Sanitizer and CUDA tools. It does not install a kernel driver. NCCL is separate. Avoid the unversioned <code>cuda</code> meta-package when you intend to keep the 12.8 toolkit and the provider's driver. The distribution package <code>nvidia-cuda-toolkit</code> can be a different CUDA release; it is not this recipe.</p>
+<p>APT may install newer patches within the 12.8 line; inspect actual versions rather than expecting an exact historical environment. NVIDIA's <a href="https://docs.nvidia.com/cuda/archive/12.8.1/cuda-installation-guide-linux/index.html#meta-packages">toolkit package definitions</a> distinguish toolkit, runtime and driver bundles.</p>
+<h3 id="select-the-toolkit-and-library-paths">Select the toolkit and library paths<a class="headerlink" href="#select-the-toolkit-and-library-paths" title="Permanent link">&para;</a></h3>
+<p>Choose <strong>one</strong> layout; these are alternatives, not consecutive export blocks.</p>
+<div class="tabbed-set tabbed-alternate" data-tabs="1:2"><input checked="checked" id="__tabbed_1_1" name="__tabbed_1" type="radio" /><input id="__tabbed_1_2" name="__tabbed_1" type="radio" /><div class="tabbed-labels"><label for="__tabbed_1_1">NVIDIA APT toolkit</label><label for="__tabbed_1_2">Provider toolkit under /usr</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
+<div class="language-bash highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="nb">export</span><span class="w"> </span><span class="nv">CUDA_HOME</span><span class="o">=</span>/usr/local/cuda-12.8
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="nb">export</span><span class="w"> </span><span class="nv">CUDA_INCDIR</span><span class="o">=</span><span class="s2">"</span><span class="nv">$CUDA_HOME</span><span class="s2">/include"</span>
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="nb">export</span><span class="w"> </span><span class="nv">CUDA_LIBDIR</span><span class="o">=</span><span class="s2">"</span><span class="nv">$CUDA_HOME</span><span class="s2">/lib64"</span>
+<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="nb">export</span><span class="w"> </span><span class="nv">PATH</span><span class="o">=</span><span class="s2">"</span><span class="nv">$CUDA_HOME</span><span class="s2">/bin:</span><span class="nv">$PATH</span><span class="s2">"</span>
+<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a><span class="nb">export</span><span class="w"> </span><span class="nv">LD_LIBRARY_PATH</span><span class="o">=</span><span class="s2">"</span><span class="nv">$CUDA_LIBDIR</span><span class="si">${</span><span class="nv">LD_LIBRARY_PATH</span><span class="p">:+:</span><span class="nv">$LD_LIBRARY_PATH</span><span class="si">}</span><span class="s2">"</span>
+<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a><span class="nb">hash</span><span class="w"> </span>-r
+<a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a><span class="nb">command</span><span class="w"> </span>-v<span class="w"> </span>nvcc
+<a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a>nvcc<span class="w"> </span>--version
+</code></pre></div>
+</div>
+<div class="tabbed-block">
+<p>Use this layout when the provider's working <code>nvcc</code> is <code>/usr/bin/nvcc</code> and its CUDA headers/libraries are under <code>/usr/include</code> and <code>/usr/lib/x86_64-linux-gnu</code>, as on the recorded Lambda image.</p>
+<div class="language-bash highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="nb">export</span><span class="w"> </span><span class="nv">CUDA_HOME</span><span class="o">=</span>/usr
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="nb">export</span><span class="w"> </span><span class="nv">CUDA_INCDIR</span><span class="o">=</span>/usr/include
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a><span class="nb">export</span><span class="w"> </span><span class="nv">CUDA_LIBDIR</span><span class="o">=</span>/usr/lib/x86_64-linux-gnu
+<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a><span class="nb">export</span><span class="w"> </span><span class="nv">PATH</span><span class="o">=</span><span class="s2">"</span><span class="nv">$CUDA_HOME</span><span class="s2">/bin:</span><span class="nv">$PATH</span><span class="s2">"</span>
+<a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a><span class="nb">export</span><span class="w"> </span><span class="nv">LD_LIBRARY_PATH</span><span class="o">=</span><span class="s2">"</span><span class="nv">$CUDA_LIBDIR</span><span class="si">${</span><span class="nv">LD_LIBRARY_PATH</span><span class="p">:+:</span><span class="nv">$LD_LIBRARY_PATH</span><span class="si">}</span><span class="s2">"</span>
+<a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a><span class="nb">hash</span><span class="w"> </span>-r
+<a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a><span class="nb">command</span><span class="w"> </span>-v<span class="w"> </span>nvcc
+<a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a>nvcc<span class="w"> </span>--version
+</code></pre></div>
+</div>
+</div>
+</div>
+<p>For another layout, use the site's module or its real install prefix. Confirm the selected headers and libraries belong to the intended compiler; the multi-GPU collector accepts <code>CUDA_HOME</code>, <code>CUDA_INCDIR</code> and <code>CUDA_LIBDIR</code> explicitly.</p>
+<p>APT normally registers its shared libraries with the loader; the explicit toolkit path above also makes the intended 12.8 libraries visible for this shell. For a custom install, substitute its real path. <strong>Never add <code>$CUDA_HOME/lib64/stubs</code> to the runtime library path</strong>: <code>libcuda.so.1</code> at execution time must come from the installed host driver, not a link-time stub.</p>
+<p>To persist this selection in interactive Bash sessions, add these exports once to <code>~/.bashrc</code>, then run <code>source ~/.bashrc</code> or open a new shell. In scheduler jobs and noninteractive SSH sessions, load the site's module or set these exports explicitly in the job script; those sessions may not read <code>~/.bashrc</code>. The conditional expansion avoids an empty trailing library-path entry.</p>
+<h3 id="install-nccl-runtime-and-development-files">Install NCCL runtime and development files<a class="headerlink" href="#install-nccl-runtime-and-development-files" title="Permanent link">&para;</a></h3>
+<p>NCCL is needed by the collective examples. Install <strong>both</strong> the runtime and development package with the same CUDA-compatible version. For the recorded NCCL 2.26.2/CUDA 12.8 combination, first confirm package availability:</p>
+<div class="language-bash highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>apt-cache<span class="w"> </span>madison<span class="w"> </span>libnccl2<span class="w"> </span>libnccl-dev
+</code></pre></div>
+<p>When both list <code>2.26.2-1+cuda12.8</code>:</p>
+<div class="language-bash highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>sudo<span class="w"> </span>apt-get<span class="w"> </span>install<span class="w"> </span>-y<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a><span class="w">    </span><span class="nv">libnccl2</span><span class="o">=</span><span class="m">2</span>.26.2-1+cuda12.8<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a><span class="w">    </span>libnccl-dev<span class="o">=</span><span class="m">2</span>.26.2-1+cuda12.8
+</code></pre></div>
+<p>These versions were present in NVIDIA's Ubuntu 22.04 and 24.04 x86-64 repositories when this guide was checked on <strong>November 18, 2026</strong>. If unavailable, select a matching pair built for CUDA 12.x from NVIDIA's repository/archive and record the actual version. Do not silently install the default CUDA 13 build or pass <code>--allow-downgrades</code> over a provider-managed stack. An existing compatible NCCL installation can be retained; its headers and runtime must resolve consistently. NVIDIA's <a href="https://docs.nvidia.com/deeplearning/nccl/install-guide/index.html#ubuntu">NCCL installation guide</a> explains explicit package-version selection.</p>
+<h3 id="verify-files-versions-and-topology">Verify files, versions and topology<a class="headerlink" href="#verify-files-versions-and-topology" title="Permanent link">&para;</a></h3>
+<div class="language-bash highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>nvcc<span class="w"> </span>--version
+<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>gcc<span class="w"> </span>--version
+<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>python3<span class="w"> </span>--version
+<a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a>nvidia-smi
+<a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a>nvidia-smi<span class="w"> </span>topo<span class="w"> </span>-m
+<a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a>ls<span class="w"> </span><span class="s2">"</span><span class="nv">$CUDA_INCDIR</span><span class="s2">/cuda_runtime.h"</span><span class="w"> </span><span class="s2">"</span><span class="nv">$CUDA_INCDIR</span><span class="s2">/cuda.h"</span>
+<a id="__codelineno-10-7" name="__codelineno-10-7" href="#__codelineno-10-7"></a>ls<span class="w"> </span><span class="s2">"</span><span class="nv">$CUDA_INCDIR</span><span class="s2">/cublas_v2.h"</span>
+<a id="__codelineno-10-8" name="__codelineno-10-8" href="#__codelineno-10-8"></a>dpkg-query<span class="w"> </span>-W<span class="w"> </span>libnccl2<span class="w"> </span>libnccl-dev
+<a id="__codelineno-10-9" name="__codelineno-10-9" href="#__codelineno-10-9"></a>dpkg<span class="w"> </span>-L<span class="w"> </span>libnccl-dev<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span><span class="s1">'/nccl.h$'</span>
+</code></pre></div>
+<p>The driver supplies GPU access; the toolkit supplies compilation; cuBLAS and NCCL supply libraries. <code>nvidia-smi</code>'s “CUDA Version” is driver compatibility, not the installed <code>nvcc</code> version. A topology listing describes connectivity, not a measured bandwidth or a successful peer-transfer test. Finish with the book's actual compile, launch and numerical checks below.</p>
+<h2 id="obtain-the-sources">Obtain the sources<a class="headerlink" href="#obtain-the-sources" title="Permanent link">&para;</a></h2>
+<p>After installing Git through the prerequisites above, clone once and enter the repository:</p>
+<div class="language-bash highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>git<span class="w"> </span>clone<span class="w"> </span>https://github.com/MaximumBeings/multi_gpu_cuda_from_scratch.git
+<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a><span class="nb">cd</span><span class="w"> </span>multi_gpu_cuda_from_scratch
+</code></pre></div>
+<p>Use an existing checkout if already cloned. The remaining relative paths and <code>.venv-gpu-deps</code> environment belong in this repository directory.</p>
+<h2 id="add-mpi-and-nvshmem">Add MPI and NVSHMEM<a class="headerlink" href="#add-mpi-and-nvshmem" title="Permanent link">&para;</a></h2>
+<h3 id="install-or-select-one-open-mpi-stack">Install or select one Open MPI stack<a class="headerlink" href="#install-or-select-one-open-mpi-stack" title="Permanent link">&para;</a></h3>
+<p>The book's <code>mpi-ext.h</code>/<code>MPIX_Query_cuda_support</code> probes use <strong>Open MPI</strong> extensions. On a fresh Ubuntu host, install its launcher and development headers together:</p>
+<div class="language-bash highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>sudo<span class="w"> </span>apt-get<span class="w"> </span>install<span class="w"> </span>-y<span class="w"> </span>openmpi-bin<span class="w"> </span>libopenmpi-dev
+<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a><span class="nb">command</span><span class="w"> </span>-v<span class="w"> </span>mpicc<span class="w"> </span>mpicxx<span class="w"> </span>mpirun
+<a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a>mpicxx<span class="w"> </span>--showme:version
+<a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a>mpirun<span class="w"> </span>--version
+</code></pre></div>
+<p>On a provider/HPC image, use its existing Open MPI module or installation instead. Select the matching <code>bin</code> and library directories together; do not mix a vendor launcher with another MPI's headers or <code>libmpi</code>. Do not replace a managed UCX/HPC stack merely to match an example path. The recorded hosts used Open MPI 4.1.x. MPICH is not a drop-in compiler for source files using these Open MPI-specific extensions.</p>
+<p>From the repository root, check CPU process launch first:</p>
+<div class="language-bash highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a>mkdir<span class="w"> </span>-p<span class="w"> </span>build/setup
+<a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a>mpicc<span class="w"> </span>-std<span class="o">=</span>c11<span class="w"> </span>-O2<span class="w"> </span>docs/part5/code/57_mpi_ring_send_recv.c<span class="w"> </span>-o<span class="w"> </span>build/setup/mpi-ring
+<a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a>mpirun<span class="w"> </span>--oversubscribe<span class="w"> </span>-np<span class="w"> </span><span class="m">2</span><span class="w"> </span>./build/setup/mpi-ring<span class="w"> </span><span class="m">1024</span><span class="w"> </span>sendrecv
+</code></pre></div>
+<p>Use <code>sendrecv</code> for this startup check: the example's alternate large blocking-send mode deliberately demonstrates a deadlock. Run as your ordinary user. <code>--oversubscribe</code> permits a local demonstration on a host with fewer CPU slots; it is not a performance setting. The launcher working with host buffers does not establish CUDA-aware MPI support.</p>
+<p>Check the installed Open MPI's reported CUDA capability:</p>
+<div class="language-bash highlight"><pre><span></span><code><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a>ompi_info<span class="w"> </span>--parsable<span class="w"> </span>--all<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>mpi_built_with_cuda_support
+</code></pre></div>
+<p>The intentional invalid-rank error-handling demonstration (example 59) additionally requires MPI argument checking. Inspect <code>ompi_info --all --parsable | grep mpi_param_check</code>. Some vendor performance builds compile checking out: <code>MPI_ERRORS_RETURN</code> cannot turn it back on, and <code>--mca mpi_param_check 1</code> is then ignored. Use a parameter-checking Open MPI build for that diagnostic, in a separate environment if necessary; leave the provider's transport stack intact. The November 18 rerun records the vendor failure and a successful isolated Ubuntu Open MPI 4.1.6 run.</p>
+<p>If device-buffer MPI is needed and support is absent, use the site's GPU-aware MPI/UCX distribution or build a CUDA-enabled stack following <a href="https://www.open-mpi.org/faq/?category=runcuda">Open MPI's CUDA guidance</a>. Installing <code>libopenmpi-dev</code> alone does not guarantee CUDA-aware transfers. Host-staged examples can still operate without that capability; only pass a device pointer to MPI after checking the actual implementation and validating the transfer.</p>
+<h3 id="install-the-recorded-nvshmem-wheel-in-isolation">Install the recorded NVSHMEM wheel in isolation<a class="headerlink" href="#install-the-recorded-nvshmem-wheel-in-isolation" title="Permanent link">&para;</a></h3>
+<p>For the numbered NVSHMEM examples, one reproducible route is the <strong>NVSHMEM 3.8.0 CUDA 12 wheel</strong>, installed separately from the system toolkit:</p>
+<div class="language-bash highlight"><pre><span></span><code><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a>python3<span class="w"> </span>-m<span class="w"> </span>venv<span class="w"> </span>.venv-gpu-deps
+<a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a>.venv-gpu-deps/bin/python<span class="w"> </span>-m<span class="w"> </span>pip<span class="w"> </span>install<span class="w"> </span>nvidia-nvshmem-cu12<span class="o">==</span><span class="m">3</span>.8.0
+<a id="__codelineno-15-3" name="__codelineno-15-3" href="#__codelineno-15-3"></a><span class="nb">export</span><span class="w"> </span><span class="nv">NVSHMEM_HOME</span><span class="o">=</span><span class="k">$(</span>.venv-gpu-deps/bin/python<span class="w"> </span>-c<span class="w"> </span><span class="s1">'import nvidia.nvshmem; print(list(nvidia.nvshmem.__path__)[0])'</span><span class="k">)</span>
+<a id="__codelineno-15-4" name="__codelineno-15-4" href="#__codelineno-15-4"></a><span class="nb">export</span><span class="w"> </span><span class="nv">NVSHMEM_LIB</span><span class="o">=</span><span class="s2">"</span><span class="nv">$NVSHMEM_HOME</span><span class="s2">/lib"</span>
+<a id="__codelineno-15-5" name="__codelineno-15-5" href="#__codelineno-15-5"></a><span class="nb">export</span><span class="w"> </span><span class="nv">NVSHMEM_BOOTSTRAP</span><span class="o">=</span>MPI
+<a id="__codelineno-15-6" name="__codelineno-15-6" href="#__codelineno-15-6"></a><span class="nb">export</span><span class="w"> </span><span class="nv">LD_LIBRARY_PATH</span><span class="o">=</span><span class="s2">"</span><span class="nv">$NVSHMEM_LIB</span><span class="si">${</span><span class="nv">LD_LIBRARY_PATH</span><span class="p">:+:</span><span class="nv">$LD_LIBRARY_PATH</span><span class="si">}</span><span class="s2">"</span>
+</code></pre></div>
+<p>The wheel supplies NVSHMEM headers and libraries; it does not install the NVIDIA kernel driver, a complete <code>nvcc</code> toolkit, or Open MPI. Its Python namespace package can have <code>__file__ == None</code>; <code>__path__</code> locates the real directory. Using the explicit virtual-environment Python also works when the website's separate <code>.venv</code> is active.</p>
+<p>The 3.8.0 wheel supplies the versioned host library. If the unversioned linker name is missing, create it <strong>only inside this user-owned dependency environment</strong>:</p>
+<div class="language-bash highlight"><pre><span></span><code><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a><span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span>!<span class="w"> </span>-e<span class="w"> </span><span class="s2">"</span><span class="nv">$NVSHMEM_LIB</span><span class="s2">/libnvshmem_host.so"</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<a id="__codelineno-16-2" name="__codelineno-16-2" href="#__codelineno-16-2"></a><span class="w">    </span><span class="nb">test</span><span class="w"> </span>-f<span class="w"> </span><span class="s2">"</span><span class="nv">$NVSHMEM_LIB</span><span class="s2">/libnvshmem_host.so.3"</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-16-3" name="__codelineno-16-3" href="#__codelineno-16-3"></a><span class="w">        </span>ln<span class="w"> </span>-s<span class="w"> </span>libnvshmem_host.so.3<span class="w"> </span><span class="s2">"</span><span class="nv">$NVSHMEM_LIB</span><span class="s2">/libnvshmem_host.so"</span>
+<a id="__codelineno-16-4" name="__codelineno-16-4" href="#__codelineno-16-4"></a><span class="k">fi</span>
+<a id="__codelineno-16-5" name="__codelineno-16-5" href="#__codelineno-16-5"></a>ls<span class="w"> </span><span class="s2">"</span><span class="nv">$NVSHMEM_HOME</span><span class="s2">/include/nvshmem.h"</span>
+<a id="__codelineno-16-6" name="__codelineno-16-6" href="#__codelineno-16-6"></a>ls<span class="w"> </span><span class="s2">"</span><span class="nv">$NVSHMEM_LIB</span><span class="s2">/libnvshmem_device.a"</span><span class="w"> </span><span class="s2">"</span><span class="nv">$NVSHMEM_LIB</span><span class="s2">/libnvshmem_host.so.3"</span>
+<a id="__codelineno-16-7" name="__codelineno-16-7" href="#__codelineno-16-7"></a>ldd<span class="w"> </span><span class="s2">"</span><span class="nv">$NVSHMEM_LIB</span><span class="s2">/nvshmem_bootstrap_mpi.so.3"</span>
+</code></pre></div>
+<p>Resolve every <code>not found</code> entry before launching MPI. The bootstrap plugin must resolve the Open MPI library compatible with the selected launcher. Reapply these exports in new shells/jobs. Alternatively, use NVIDIA's <a href="https://docs.nvidia.com/nvshmem/release-notes-install-guide/install-guide/nvshmem-install-proc.html">NVSHMEM runtime and development packages</a> and set <code>NVSHMEM_HOME</code>/<code>NVSHMEM_LIB</code> to their actual installation paths; do not combine both installations accidentally.</p>
+<h2 id="clone-compile-and-run-a-first-gpu-check">Clone, compile and run a first GPU check<a class="headerlink" href="#clone-compile-and-run-a-first-gpu-check" title="Permanent link">&para;</a></h2>
+<p>From the repository root after the earlier checkout:</p>
+<div class="language-bash highlight"><pre><span></span><code><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a>mkdir<span class="w"> </span>-p<span class="w"> </span>build/setup
+<a id="__codelineno-17-2" name="__codelineno-17-2" href="#__codelineno-17-2"></a>nvidia-smi<span class="w"> </span>--query-gpu<span class="o">=</span>name,uuid<span class="w"> </span>--format<span class="o">=</span>csv
+<a id="__codelineno-17-3" name="__codelineno-17-3" href="#__codelineno-17-3"></a>nvidia-smi<span class="w"> </span>topo<span class="w"> </span>-m
+</code></pre></div>
+<p>If already cloned, use that checkout rather than cloning into it again. Select the target for the <strong>actual GPU</strong>: A100 <code>sm_80</code>, H100/H200 <code>sm_90</code>, B200 <code>sm_100</code> with an appropriate toolkit. This book's ordinary CUDA examples differ from the H100 companion's architecture-specific WGMMA <code>sm_90a</code> programs. B200 results remain a separate validation target.</p>
+<p>For an H100 host with at least two CUDA-visible GPUs, build the existing full-buffer peer-transfer check:</p>
+<div class="language-bash highlight"><pre><span></span><code><a id="__codelineno-18-1" name="__codelineno-18-1" href="#__codelineno-18-1"></a>nvcc<span class="w"> </span>-std<span class="o">=</span>c++17<span class="w"> </span>-arch<span class="o">=</span>sm_90<span class="w"> </span>-O2<span class="w"> </span>docs/part1/code/11_memcpy_peer.cu<span class="w"> </span>-o<span class="w"> </span>build/setup/peer-copy
+<a id="__codelineno-18-2" name="__codelineno-18-2" href="#__codelineno-18-2"></a>./build/setup/peer-copy
+</code></pre></div>
+<p>Use <code>-arch=sm_80</code> on A100. Check the actual PASS/error count and exit status. A topology label alone does not establish peer access or transfer correctness; use the chapter's staged alternative if direct access is unavailable.</p>
+<p>After MPI, NCCL and NVSHMEM are configured, the collector can build selected dependency checks. From the repository root, use a <strong>new output directory for each run</strong>:</p>
+<div class="language-bash highlight"><pre><span></span><code><a id="__codelineno-19-1" name="__codelineno-19-1" href="#__codelineno-19-1"></a>python3<span class="w"> </span>tools/validate_examples.py<span class="w"> </span>--arch<span class="w"> </span>sm_90<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-19-2" name="__codelineno-19-2" href="#__codelineno-19-2"></a><span class="w">    </span>--match<span class="w"> </span>121_multi_gpu_stack_version_check<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-19-3" name="__codelineno-19-3" href="#__codelineno-19-3"></a><span class="w">    </span>--match<span class="w"> </span>64_nvshmem_mpi_bootstrap<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-19-4" name="__codelineno-19-4" href="#__codelineno-19-4"></a><span class="w">    </span>--output<span class="w"> </span>artifacts/setup-link-check
+</code></pre></div>
+<p>This command is a compile/link check; add <code>--execute</code> in a fresh output directory to run the selected checks on a suitable GPU host. For a complete two-H100 pass:</p>
+<div class="language-bash highlight"><pre><span></span><code><a id="__codelineno-20-1" name="__codelineno-20-1" href="#__codelineno-20-1"></a>python3<span class="w"> </span>tools/validate_examples.py<span class="w"> </span>--execute<span class="w"> </span>--arch<span class="w"> </span>sm_90<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-20-2" name="__codelineno-20-2" href="#__codelineno-20-2"></a><span class="w">    </span>--output<span class="w"> </span>artifacts/local-h100-rerun
+</code></pre></div>
+<p>The default MPI demonstrations use two ranks (single-PE example 63 uses one). For an eight-GPU host, <code>--mpi-ranks 8</code> changes the multi-rank MPI examples; it does not rewrite non-MPI examples' documented participant counts. Each local GPU rank must be able to select a distinct device as its source requires; launching extra ranks on one device is not a substitute.</p>
+<h2 id="multi-node-and-profiling-prerequisites">Multi-node and profiling prerequisites<a class="headerlink" href="#multi-node-and-profiling-prerequisites" title="Permanent link">&para;</a></h2>
+<p>A same-node MPI/NCCL/NVSHMEM success does not configure a cluster. For multiple nodes, provision matching binaries/libraries and MPI launch access on every node, scheduler allocations, working network interfaces and the site's supported RDMA/UCX/NVSHMEM transport stack. Use <a href="https://docs.nvidia.com/nvshmem/release-notes-install-guide/install-guide/abstract.html#software-requirements">NVIDIA's NVSHMEM prerequisites</a> for GPUDirect RDMA, GDRCopy and transport-specific requirements; these are not mandatory packages for every same-node NVLink exercise. Do not change network or driver security settings as a generic setup workaround.</p>
+<p>Check optional tools with <code>compute-sanitizer --version</code> and <code>ncu --version</code>. With the CUDA 12.8 repository, <code>cuda-sanitizer-12-8</code> and <code>cuda-nsight-compute-12-8</code> select matching tool packages. Profiling may require administrator-approved performance-counter access. A sanitizer/profiler run is not a normal bandwidth benchmark.</p>
+<h2 id="preview-this-website-without-a-gpu">Preview this website without a GPU<a class="headerlink" href="#preview-this-website-without-a-gpu" title="Permanent link">&para;</a></h2>
+<p>From the repository root, use a separate documentation environment:</p>
+<div class="language-bash highlight"><pre><span></span><code><a id="__codelineno-21-1" name="__codelineno-21-1" href="#__codelineno-21-1"></a>python3<span class="w"> </span>-m<span class="w"> </span>venv<span class="w"> </span>.venv
+<a id="__codelineno-21-2" name="__codelineno-21-2" href="#__codelineno-21-2"></a><span class="nb">source</span><span class="w"> </span>.venv/bin/activate
+<a id="__codelineno-21-3" name="__codelineno-21-3" href="#__codelineno-21-3"></a>python3<span class="w"> </span>-m<span class="w"> </span>pip<span class="w"> </span>install<span class="w"> </span>-r<span class="w"> </span>requirements.txt
+<a id="__codelineno-21-4" name="__codelineno-21-4" href="#__codelineno-21-4"></a>mkdocs<span class="w"> </span>build<span class="w"> </span>--strict
+<a id="__codelineno-21-5" name="__codelineno-21-5" href="#__codelineno-21-5"></a>python3<span class="w"> </span>tools/verify_site_links.py
+<a id="__codelineno-21-6" name="__codelineno-21-6" href="#__codelineno-21-6"></a>mkdocs<span class="w"> </span>serve
+</code></pre></div>
+<p>Open <a href="http://127.0.0.1:8000">http://127.0.0.1:8000</a> on the same machine. For a remote preview, keep the server on localhost and use SSH port forwarding (<code>ssh -L 8000:127.0.0.1:8000 ...</code>). The website environment and the NVSHMEM dependency environment serve different purposes.</p>
 <h2 id="the-honesty-discipline-this-book-follows">The honesty discipline this book follows<a class="headerlink" href="#the-honesty-discipline-this-book-follows" title="Permanent link">&para;</a></h2>
 <p>All 145 programs were compiled and executed on two H100 GPUs and eight A100 GPUs. Current validation distinguishes numerical/transport checks, API checks and host models:</p>
 <ul>
@@ -2512,13 +3128,13 @@
         
         
           
-          <a href="../validation-a100/" class="md-footer__link md-footer__link--next" aria-label="Next: A100 Execution Validation">
+          <a href="../validation-h100-rerun/" class="md-footer__link md-footer__link--next" aria-label="Next: November 18 H100 Rerun">
             <div class="md-footer__title">
               <span class="md-footer__direction">
                 Next
               </span>
               <div class="md-ellipsis">
-                A100 Execution Validation
+                November 18 H100 Rerun
               </div>
             </div>
             <div class="md-footer__button md-icon">

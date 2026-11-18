@@ -1,0 +1,1 @@
+$ g++ -std=c++17 -O2 /home/ubuntu/full-gpu-rerun-20261118/mgpu/docs/part6/code/73_distributed_sgd_convergence_simulation.cpp -o /home/ubuntu/full-gpu-rerun-20261118/mgpu/results/73_distributed_sgd_convergence_simulation/example

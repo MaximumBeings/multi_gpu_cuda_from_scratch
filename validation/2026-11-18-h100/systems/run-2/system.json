@@ -1,0 +1,69 @@
+{
+  "utc": "2026-11-18T11:24:43.890383+00:00",
+  "arch": "sm_90",
+  "execute": true,
+  "mpi_ranks": null,
+  "CUDA_HOME": "/usr",
+  "CUDA_INCDIR": "/usr/include",
+  "CUDA_LIBDIR": "/usr/lib64",
+  "NVSHMEM_HOME": "/opt/nvshmem",
+  "NVSHMEM_LIB": "/opt/nvshmem/lib",
+  "host": "192-222-55-107",
+  "uname": {
+    "exit_code": 0,
+    "timed_out": false,
+    "seconds": 0.001467607999984466,
+    "started_utc": "2026-11-18T11:24:43.890410+00:00",
+    "finished_utc": "2026-11-18T11:24:43.891880+00:00"
+  },
+  "git": {
+    "exit_code": 128,
+    "timed_out": false,
+    "seconds": 0.001576350999926035,
+    "started_utc": "2026-11-18T11:24:43.891915+00:00",
+    "finished_utc": "2026-11-18T11:24:43.893492+00:00"
+  },
+  "git-status": {
+    "exit_code": 128,
+    "timed_out": false,
+    "seconds": 0.0013568939999686336,
+    "started_utc": "2026-11-18T11:24:43.893511+00:00",
+    "finished_utc": "2026-11-18T11:24:43.894868+00:00"
+  },
+  "nvcc": {
+    "exit_code": 0,
+    "timed_out": false,
+    "seconds": 0.003367945000036343,
+    "started_utc": "2026-11-18T11:24:43.894880+00:00",
+    "finished_utc": "2026-11-18T11:24:43.898248+00:00"
+  },
+  "mpi": {
+    "exit_code": 0,
+    "timed_out": false,
+    "seconds": 0.0033585759999823495,
+    "started_utc": "2026-11-18T11:24:43.898259+00:00",
+    "finished_utc": "2026-11-18T11:24:43.901618+00:00"
+  },
+  "gpus": {
+    "exit_code": 0,
+    "timed_out": false,
+    "seconds": 0.03157788999999411,
+    "started_utc": "2026-11-18T11:24:43.901631+00:00",
+    "finished_utc": "2026-11-18T11:24:43.933210+00:00"
+  },
+  "topology": {
+    "exit_code": 0,
+    "timed_out": false,
+    "seconds": 0.06370814100000644,
+    "started_utc": "2026-11-18T11:24:43.933238+00:00",
+    "finished_utc": "2026-11-18T11:24:43.996948+00:00"
+  },
+  "libraries": {
+    "exit_code": 0,
+    "timed_out": false,
+    "seconds": 0.0014708129999689845,
+    "started_utc": "2026-11-18T11:24:43.996983+00:00",
+    "finished_utc": "2026-11-18T11:24:43.998454+00:00"
+  },
+  "visible_gpu_count": 2
+}

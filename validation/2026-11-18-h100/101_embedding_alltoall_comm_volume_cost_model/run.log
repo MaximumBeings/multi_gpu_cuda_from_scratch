@@ -1,0 +1,14 @@
+$ /home/ubuntu/full-gpu-rerun-20261118/mgpu/results/101_embedding_alltoall_comm_volume_cost_model/example
+Per-step embedding payload: batch=65536 x slots=26 x dim=128 x 2 bytes = 436207616 bytes (0.436 GB) that must be FULLY reassembled into batch-parallel shards every single training step.
+
+P      Fraction off-rank  Total bytes on network Bytes sent PER GPU     Per-GPU emb. shard (GB, 10TB total)
+1      0.0000             0                      0                      10240.000         
+2      0.5000             218103808              109051904              5120.000          
+4      0.7500             327155712              81788928               2560.000          
+8      0.8750             381681664              47710208               1280.000          
+16     0.9375             408944640              25559040               640.000           
+32     0.9688             422576128              13205504               320.000           
+64     0.9844             429391872              6709248                160.000           
+128    0.9922             432799744              3381248                80.000            
+
+Two different quantities, two different trends. The FRACTION of the per-step payload that must cross the network rises from 0% (P=1) toward 100% and saturates -- already over 87% at P=8 -- so the TOTAL bytes on the network approach the whole payload and stop growing. But the bytes EACH GPU must send keep falling roughly as 1/P (exactly payload*(P-1)/P^2), because each GPU holds a smaller slice to begin with. So more GPUs DO keep shrinking each GPU's per-step all-to-all traffic; what they cannot do is shrink the aggregate traffic below (nearly) the whole payload, which matters when a shared resource -- a switch's bisection bandwidth, the inter-node fabric -- carries all of it. Real all-to-all time also has a per-message latency term that grows with P, which this volume-only model omits.

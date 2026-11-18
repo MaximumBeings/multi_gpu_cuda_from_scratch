@@ -1,0 +1,1 @@
+$ g++ -std=c++17 -O2 /home/ubuntu/full-gpu-rerun-20261118/mgpu/docs/part7/code/100_embedding_alltoall_resharding_correctness_simulation.cpp -o /home/ubuntu/full-gpu-rerun-20261118/mgpu/results/100_embedding_alltoall_resharding_correctness_simulation/example

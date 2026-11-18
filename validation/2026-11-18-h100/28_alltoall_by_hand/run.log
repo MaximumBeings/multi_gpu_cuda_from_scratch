@@ -1,0 +1,2 @@
+$ /home/ubuntu/full-gpu-rerun-20261118/mgpu/results/28_alltoall_by_hand/example
+PASS: destination-specific all-to-all on 2 GPUs, all nonuniform output values checked.

@@ -1,0 +1,1 @@
+$ mpicxx -std=c++17 -O2 /home/ubuntu/full-gpu-rerun-20261118/mgpu/docs/appendix/code/121_multi_gpu_stack_version_check.cpp -o /home/ubuntu/full-gpu-rerun-20261118/mgpu/results/121_multi_gpu_stack_version_check/example -lnccl

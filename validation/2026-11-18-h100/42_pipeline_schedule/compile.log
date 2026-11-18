@@ -1,0 +1,1 @@
+$ g++ -std=c++17 -O2 /home/ubuntu/full-gpu-rerun-20261118/mgpu/docs/part3/code/42_pipeline_schedule.cpp -o /home/ubuntu/full-gpu-rerun-20261118/mgpu/results/42_pipeline_schedule/example

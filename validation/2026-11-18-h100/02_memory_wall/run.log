@@ -1,0 +1,6 @@
+$ /home/ubuntu/full-gpu-rerun-20261118/mgpu/results/02_memory_wall/example
+Model                Params  Inference(fp16) Training(Adam,mp) H100 SXM x H100 NVL x
+7B-class model        7.0B          14.0 GB         112.0 GB          2          2
+GPT-3 (175B)        175.0B         350.0 GB        2800.0 GB         35         30
+
+Minimum H100 SXM (80 GB) GPUs to hold GPT-3's training state (params+grads+Adam state only, no activations): 35

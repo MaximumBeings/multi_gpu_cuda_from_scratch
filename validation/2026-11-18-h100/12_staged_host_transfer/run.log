@@ -1,0 +1,2 @@
+$ /home/ubuntu/full-gpu-rerun-20261118/mgpu/results/12_staged_host_transfer/example
+PASS: 4096 nonuniform values verified through explicit pinned-host staging.

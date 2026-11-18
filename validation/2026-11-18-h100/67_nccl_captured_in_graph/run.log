@@ -1,0 +1,2 @@
+$ /usr/mpi/gcc/openmpi-4.1.7rc1/bin/mpirun --oversubscribe -np 2 /home/ubuntu/full-gpu-rerun-20261118/mgpu/results/67_nccl_captured_in_graph/example
+VALIDATION PASS: 2 ranks, 3 graph replays, errors=0

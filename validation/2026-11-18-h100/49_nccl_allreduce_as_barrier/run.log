@@ -1,0 +1,2 @@
+$ /home/ubuntu/full-gpu-rerun-20261118/mgpu/results/49_nccl_allreduce_as_barrier/example
+PASS: dummy-element AllReduce plus host completion wait on 2 GPUs; all reference values checked.

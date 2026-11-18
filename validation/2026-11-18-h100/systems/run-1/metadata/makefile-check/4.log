@@ -1,0 +1,2 @@
+hello_mpi: rank 0, linked against real libcudart (CUDA runtime 12.8)
+hello_mpi: rank 1, linked against real libcudart (CUDA runtime 12.8)

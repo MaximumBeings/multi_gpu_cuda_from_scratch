@@ -1,0 +1,3 @@
+$ /home/ubuntu/full-gpu-rerun-20261118/mgpu/results/11_memcpy_peer/example
+PASS: 4096 nonuniform values verified in both peer-copy directions.
+Copy success does not identify the physical transfer route or bandwidth.

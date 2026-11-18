@@ -1,0 +1,3492 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="From Peer-to-Peer Memory to Distributed Training Across the Cluster">
+      
+      
+        <meta name="author" content="Oluwaseyi Awoga">
+      
+      
+        <link rel="canonical" href="https://maximumbeings.github.io/multi_gpu_cuda_from_scratch/validation-h100-rerun/">
+      
+      
+        <link rel="prev" href="../getting-started/">
+      
+      
+        <link rel="next" href="../validation-a100/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.8.1">
+    
+    
+      
+        <title>November 18 H100 Rerun - Multi-GPU Programming in CUDA C++ -- Under Development</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.57a0d79d.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.fb2fffe2.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CJetBrains+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"JetBrains Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../stylesheets/illustrations.css">
+    
+      <link rel="stylesheet" href="../stylesheets/code.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="deep-purple" data-md-color-accent="purple">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#november-18-h100-rerun" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="Multi-GPU Programming in CUDA C++ -- Under Development" class="md-header__button md-logo" aria-label="Multi-GPU Programming in CUDA C++ -- Under Development" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 19h1a1 1 0 0 1 1 1h7v2h-7a1 1 0 0 1-1 1h-4a1 1 0 0 1-1-1H2v-2h7a1 1 0 0 1 1-1h1v-2H4a1 1 0 0 1-1-1v-4a1 1 0 0 1 1-1h16a1 1 0 0 1 1 1v4a1 1 0 0 1-1 1h-7zM4 3h16a1 1 0 0 1 1 1v4a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1m5 4h1V5H9zm0 8h1v-2H9zM5 5v2h2V5zm0 8v2h2v-2z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Multi-GPU Programming in CUDA C++ -- Under Development
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              November 18 H100 Rerun
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="deep-purple" data-md-color-accent="purple"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m17.75 4.09-2.53 1.94.91 3.06-2.63-1.81-2.63 1.81.91-3.06-2.53-1.94L12.44 4l1.06-3 1.06 3zm3.5 6.91-1.64 1.25.59 1.98-1.7-1.17-1.7 1.17.59-1.98L15.75 11l2.06-.05L18.5 9l.69 1.95zm-2.28 4.95c.83-.08 1.72 1.1 1.19 1.85-.32.45-.66.87-1.08 1.27C15.17 23 8.84 23 4.94 19.07c-3.91-3.9-3.91-10.24 0-14.14.4-.4.82-.76 1.27-1.08.75-.53 1.93.36 1.85 1.19-.27 2.86.69 5.83 2.89 8.02a9.96 9.96 0 0 0 8.02 2.89m-1.64 2.02a12.08 12.08 0 0 1-7.8-3.47c-2.17-2.19-3.33-5-3.49-7.82-2.81 3.14-2.7 7.96.31 10.98 3.02 3.01 7.84 3.12 10.98.31"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="deep-purple" data-md-color-accent="purple"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 7a5 5 0 0 1 5 5 5 5 0 0 1-5 5 5 5 0 0 1-5-5 5 5 0 0 1 5-5m0 2a3 3 0 0 0-3 3 3 3 0 0 0 3 3 3 3 0 0 0 3-3 3 3 0 0 0-3-3m0-7 2.39 3.42C13.65 5.15 12.84 5 12 5s-1.65.15-2.39.42zM3.34 7l4.16-.35A7.2 7.2 0 0 0 5.94 8.5c-.44.74-.69 1.5-.83 2.29zm.02 10 1.76-3.77a7.131 7.131 0 0 0 2.38 4.14zM20.65 7l-1.77 3.79a7.02 7.02 0 0 0-2.38-4.15zm-.01 10-4.14.36c.59-.51 1.12-1.14 1.54-1.86.42-.73.69-1.5.83-2.29zM12 22l-2.41-3.44c.74.27 1.55.44 2.41.44.82 0 1.63-.17 2.37-.44z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/MaximumBeings/multi_gpu_cuda_from_scratch" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    MaximumBeings/multi_gpu_cuda_from_scratch
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="Multi-GPU Programming in CUDA C++ -- Under Development" class="md-nav__button md-logo" aria-label="Multi-GPU Programming in CUDA C++ -- Under Development" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 19h1a1 1 0 0 1 1 1h7v2h-7a1 1 0 0 1-1 1h-4a1 1 0 0 1-1-1H2v-2h7a1 1 0 0 1 1-1h1v-2H4a1 1 0 0 1-1-1v-4a1 1 0 0 1 1-1h16a1 1 0 0 1 1 1v4a1 1 0 0 1-1 1h-7zM4 3h16a1 1 0 0 1 1 1v4a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1m5 4h1V5H9zm0 8h1v-2H9zM5 5v2h2V5zm0 8v2h2v-2z"/></svg>
+
+    </a>
+    Multi-GPU Programming in CUDA C++ -- Under Development
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/MaximumBeings/multi_gpu_cuda_from_scratch" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    MaximumBeings/multi_gpu_cuda_from_scratch
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../getting-started/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    November 18 H100 Rerun
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    November 18 H100 Rerun
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#captured-system-and-supplemental-checks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Captured system and supplemental checks
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#additional-setup-and-correction-checks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Additional setup and correction checks
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Additional setup and correction checks">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#mpi-error-handling-diagnostic-failed-attempt-and-successful-rerun" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        MPI error-handling diagnostic: failed attempt and successful rerun
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#programs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Programs
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../validation-a100/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    A100 Execution Validation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../validation-h100/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    H100 Execution Validation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Part 0 -- Why Multi-GPU, and the Hardware Underneath It
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Part 0 -- Why Multi-GPU, and the Hardware Underneath It
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../part0/01-why-one-gpu-is-not-enough/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    1. Why One GPU Is Not Enough
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../part0/02-multi-gpu-hardware-topology/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    2. Multi-GPU Hardware Topology: PCIe, NVLink, and NVSwitch
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../part0/03-the-cuda-multi-gpu-programming-model/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    3. The CUDA Multi-GPU Programming Model: Devices, Contexts, and Streams Across Them
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_7" >
+        
+          
+          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Part 1 -- Getting Data Between GPUs
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Part 1 -- Getting Data Between GPUs
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../part1/04-peer-to-peer-memory-access-and-uva/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    4. Peer-to-Peer Memory Access and Unified Virtual Addressing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../part1/05-explicit-transfers-cudamemcpypeer-staged-host-transfers/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    5. Explicit Transfers: cudaMemcpyPeer, Staged Host Transfers, and When Each Wins
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../part1/06-streams-events-and-cross-device-synchronization/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    6. Streams, Events, and Cross-Device Synchronization
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../part1/07-cuda-inter-process-communication/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    7. CUDA Inter-Process Communication: Sharing Memory and Events Across Processes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_8" >
+        
+          
+          <label class="md-nav__link" for="__nav_8" id="__nav_8_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Part 2 -- Collective Communication, Built From Scratch
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_8">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Part 2 -- Collective Communication, Built From Scratch
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../part2/08-broadcast-and-reduce-the-first-two-collectives-by-hand/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    8. Broadcast and Reduce: The First Two Collectives, By Hand
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../part2/09-ring-all-reduce-the-algorithm-behind-every-multi-gpu-training-job/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    9. Ring All-Reduce: The Algorithm Behind Every Multi-GPU Training Job
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../part2/10-all-gather-reduce-scatter-and-all-to-all/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    10. All-Gather, Reduce-Scatter, and All-to-All
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../part2/11-nccl-what-it-actually-does-differently/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    11. NCCL: What It Actually Does Differently From What You Just Built
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_9" >
+        
+          
+          <label class="md-nav__link" for="__nav_9" id="__nav_9_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Part 3 -- Parallelization Strategies
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_9">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Part 3 -- Parallelization Strategies
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../part3/12-data-parallelism-replicated-model-sharded-data/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    12. Data Parallelism: Replicated Model, Sharded Data
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../part3/13-model-parallelism-when-one-gpu-cant-hold-the-weights/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    13. Model Parallelism: When One GPU Can't Hold the Weights
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../part3/14-tensor-parallelism-splitting-a-single-matrix-multiply-across-devices/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    14. Tensor Parallelism: Splitting a Single Matrix Multiply Across Devices
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../part3/15-pipeline-parallelism-splitting-layers-across-devices-and-the-bubble-that-costs-you/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    15. Pipeline Parallelism: Splitting Layers Across Devices, and the Bubble That Costs You
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../part3/16-domain-decomposition-for-scientific-computing-halo-exchange-and-distributed-stencils/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    16. Domain Decomposition for Scientific Computing: Halo Exchange and Distributed Stencils
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_10" >
+        
+          
+          <label class="md-nav__link" for="__nav_10" id="__nav_10_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Part 4 -- Synchronization, Load Balancing, and Failure
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_10_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_10">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Part 4 -- Synchronization, Load Balancing, and Failure
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../part4/17-barriers-and-global-synchronization-across-devices/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    17. Barriers and Global Synchronization Across Devices
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../part4/18-load-balancing-across-heterogeneous-gpus/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    18. Load Balancing Across Heterogeneous GPUs
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../part4/19-stragglers-failures-and-fault-tolerant-collectives/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    19. Stragglers, Failures, and Fault-Tolerant Collectives
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_11" >
+        
+          
+          <label class="md-nav__link" for="__nav_11" id="__nav_11_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Part 5 -- Scaling Beyond One Node
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_11_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_11">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Part 5 -- Scaling Beyond One Node
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../part5/20-mpi-from-scratch-then-cuda-aware-mpi-scaling-beyond-one-node/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    20. MPI From Scratch, Then CUDA-Aware MPI: Scaling Beyond One Node
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../part5/21-gpudirect-rdma-bypassing-the-host-entirely/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    21. GPUDirect RDMA: Bypassing the Host Entirely
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../part5/22-nvshmem-and-gpu-initiated-communication/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    22. NVSHMEM and GPU-Initiated Communication
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../part5/23-cuda-graphs-across-multiple-gpus-and-multiple-nodes/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    23. CUDA Graphs Across Multiple GPUs and Multiple Nodes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_12" >
+        
+          
+          <label class="md-nav__link" for="__nav_12" id="__nav_12_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Part 6 -- Case Studies
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_12_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_12">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Part 6 -- Case Studies
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../part6/24-multi-gpu-dense-matrix-multiplication-at-scale/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    24. Multi-GPU Dense Matrix Multiplication at Scale
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../part6/25-distributed-training-of-a-neural-network-data-parallelism-and-ring-all-reduce/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    25. Distributed Training of a Neural Network: Data Parallelism and Ring All-Reduce
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../part6/26-multi-gpu-llm-inference-tensor-and-pipeline-parallelism-in-practice/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    26. Multi-GPU LLM Inference: Tensor and Pipeline Parallelism in Practice
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../part6/27-n-body-simulation-at-scale/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    27. N-Body Simulation at Scale
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../part6/28-distributed-breadth-first-search/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    28. Distributed Breadth-First Search
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../part6/29-distributed-jacobi-solver/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    29. Distributed Jacobi Solver
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../part6/30-multi-gpu-ray-tracing-and-rendering/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    30. Multi-GPU Ray Tracing and Rendering
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../part6/31-multi-gpu-monte-carlo-risk-simulation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    31. Multi-GPU Monte Carlo Risk Simulation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_13" >
+        
+          
+          <label class="md-nav__link" for="__nav_13" id="__nav_13_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Part 7 -- Cutting-Edge Industrial Case Studies
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_13_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_13">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Part 7 -- Cutting-Edge Industrial Case Studies
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../part7/32-mixture-of-experts-at-scale/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    32. Mixture-of-Experts at Scale: Expert Parallelism and GPU-Initiated All-to-All (DeepEP)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../part7/33-disaggregated-llm-inference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    33. Disaggregated LLM Inference: Prefill/Decode Splitting (DistServe)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../part7/34-gpu-recommendation-systems/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    34. GPU Recommendation Systems: Hybrid Data-Parallel and Model-Parallel Embeddings (HugeCTR)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../part7/35-ai-weather-forecasting-at-scale/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    35. AI Weather Forecasting at Scale (NVIDIA Earth-2 / FourCastNet)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../part7/36-multi-gpu-xva-and-portfolio-risk/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    36. Multi-GPU XVA and Portfolio Risk
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../part7/37-gpudirect-rdma-in-capital-markets/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    37. GPUDirect RDMA in Capital Markets
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../part7/38-real-time-fraud-detection-at-payment-scale/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    38. Real-Time Fraud Detection at Payment Scale
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../part7/39-real-time-genomics-at-scale/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    39. Real-Time Genomics at Scale
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../part7/40-medical-imaging-reconstruction-at-scale/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    40. Medical Imaging Reconstruction at Scale
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_14" >
+        
+          
+          <label class="md-nav__link" for="__nav_14" id="__nav_14_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Appendices
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_14_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_14">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Appendices
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../appendix/a-installation-and-setup/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    A. Installation and Setup
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../appendix/b-practice-quiz/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    B. Practice Quiz
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../appendix/c-nccl-and-nvshmem/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    C. NCCL and NVSHMEM: The Standard Libraries You Get for Free
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../appendix/d-cuda-graphs-and-cooperative-multi-device-kernels/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    D. CUDA Graphs and Cooperative Multi-Device Kernels
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../appendix/e-profiling-and-benchmarking-multi-gpu-communication/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    E. Profiling and Benchmarking Multi-GPU Communication
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../appendix/f-pytorch-distributed-and-deepspeed-to-cpp-rosetta-stone/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    F. From PyTorch Distributed and DeepSpeed to C++: A Rosetta Stone
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../appendix/g-common-failure-modes-deadlocks-silent-corruption-topology-mismatches/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    G. Common Failure Modes: Deadlocks, Silent Corruption From Missed Synchronization, and Topology Mismatches
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#captured-system-and-supplemental-checks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Captured system and supplemental checks
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#additional-setup-and-correction-checks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Additional setup and correction checks
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Additional setup and correction checks">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#mpi-error-handling-diagnostic-failed-attempt-and-successful-rerun" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        MPI error-handling diagnostic: failed attempt and successful rerun
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#programs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Programs
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="november-18-h100-rerun">November 18 H100 rerun<a class="headerlink" href="#november-18-h100-rerun" title="Permanent link">&para;</a></h1>
+<p>Dataset: <strong>2026-11-18-h100</strong>. All <strong>145 current sources compiled and executed with exit status zero</strong>. The categories below describe evidence scope; an API probe or a host model is not a successful numerical GPU workload.</p>
+<table>
+<thead>
+<tr>
+<th>Evidence category</th>
+<th style="text-align: right;">Programs</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>API validation (recorded scope)</td>
+<td style="text-align: right;">13</td>
+</tr>
+<tr>
+<td>API/host demonstration (exit-only)</td>
+<td style="text-align: right;">21</td>
+</tr>
+<tr>
+<td>Host program/model (exit-only)</td>
+<td style="text-align: right;">77</td>
+</tr>
+<tr>
+<td>Numerical/transport validation (recorded scope)</td>
+<td style="text-align: right;">34</td>
+</tr>
+</tbody>
+</table>
+<p><a href="../validation/2026-11-18-h100/results.json">Execution manifest</a> · <a href="../validation/2026-11-18-h100/environments.json">System records</a> · <a href="../validation/2026-11-18-h100/integrity.json">Integrity inventory</a>. Each program’s chapter contains normalized commands, timestamp scope, source hash and captured output.</p>
+<p>Rows without a per-program timestamp explicitly use their recorded run-batch start UTC. Hardware and tool metadata remain attached to each original run; combining matching sources from reruns does not redate earlier executions.</p>
+<p>This dataset covers the captured hardware and single-node configurations. Host-only models validate their own modeled arithmetic, not real network performance. It does not establish multi-node behavior, failure recovery under physical faults, or benchmark throughput. H100, A100 and B200 evidence are published separately. A100 execution does not establish B200 compatibility or results.</p>
+<h2 id="captured-system-and-supplemental-checks">Captured system and supplemental checks<a class="headerlink" href="#captured-system-and-supplemental-checks" title="Permanent link">&para;</a></h2>
+<p>GPU inventory: <strong>2× NVIDIA H100 80GB HBM3</strong>. Reported driver: <strong>580.105.08</strong>; memory per listed device: <strong>81559 MiB</strong>. <a href="../validation/2026-11-18-h100/systems/run-1/gpus.log">GPU inventory log</a>.</p>
+<p>Topology query reports <strong>NV18</strong> peer paths. This identifies the recorded topology, not measured bandwidth. <a href="../validation/2026-11-18-h100/systems/run-1/topology.log">Topology log</a>.</p>
+<p>Host compiler macros: <strong>13.3.0</strong>. <a href="../validation/2026-11-18-h100/120_toolchain_version_check/run.log">Captured version output</a>.</p>
+<p>CUDA compiler: <strong>12.8.93</strong>. <a href="../validation/2026-11-18-h100/120_toolchain_version_check/run.log">Captured version output</a>.</p>
+<p>NCCL headers: <strong>2.26.2</strong>. <a href="../validation/2026-11-18-h100/121_multi_gpu_stack_version_check/run.log">Captured version output</a>.</p>
+<p>Open MPI headers: <strong>4.1.7</strong>. <a href="../validation/2026-11-18-h100/121_multi_gpu_stack_version_check/run.log">Captured version output</a>.</p>
+<p>NVSHMEM: <strong>3.8.0</strong>. <a href="../validation/2026-11-18-h100/hello_nvshmem/run.log">Captured version output</a>.</p>
+<h2 id="additional-setup-and-correction-checks">Additional setup and correction checks<a class="headerlink" href="#additional-setup-and-correction-checks" title="Permanent link">&para;</a></h2>
+<p>All five Makefile recipes built and their stub programs exited successfully. These are build/link smoke checks, separate from the numerical workloads. <a href="../validation/2026-11-18-h100/systems/run-1/metadata/makefile-check/manifest.json">Commands, dates and exits</a> · <a href="../validation/2026-11-18-h100/systems/run-1/metadata/makefile-check/Makefile.txt">Captured Makefile</a>.</p>
+<p>The corrected staged MPI program passed with two distinct H100 devices and <strong>4096 nonuniform values per rank, zero errors</strong>. Compute Sanitizer memcheck returned zero and reported <strong>two zero-error summaries</strong>, one per rank. <a href="../validation/2026-11-18-h100/systems/run-1/metadata/correction-memcheck/memcheck.log">Memcheck log</a> · <a href="../validation/2026-11-18-h100/systems/run-1/metadata/correction-memcheck/memcheck.json">Memcheck command/times</a>.</p>
+<h3 id="mpi-error-handling-diagnostic-failed-attempt-and-successful-rerun">MPI error-handling diagnostic: failed attempt and successful rerun<a class="headerlink" href="#mpi-error-handling-diagnostic-failed-attempt-and-successful-rerun" title="Permanent link">&para;</a></h3>
+<p>The vendor Open MPI 4.1.7rc1 build compiled argument checking out. Example 59 intentionally sends to an invalid rank; that stack crashed inside its UCX send path instead of returning <code>MPI_ERR_RANK</code>. The source was unchanged. An isolated Ubuntu Open MPI 4.1.6 installation with argument checking enabled returned the expected error and exited normally. This is a CPU/MPI error-handler demonstration, not a numerical GPU workload or an RDMA test.</p>
+<p><a href="../validation/2026-11-18-h100/systems/run-1/metadata/mpi-parameter-check/vendor-failure.log">Original failed run</a> · <a href="../validation/2026-11-18-h100/systems/run-1/metadata/mpi-parameter-check/vendor-ompi-info.log">Vendor MPI configuration</a> · <a href="../validation/2026-11-18-h100/59_mpi_errhandler_return/run.log">Successful checked-MPI output</a> · <a href="../validation/2026-11-18-h100/systems/run-2/system.json">Checked-MPI system record</a>.</p>
+<p>The final dataset selects 144 successful first-run records plus the successful, separately identified example-59 rerun. The failed attempt remains in the raw first-run records above; it is not counted as a successful execution.</p>
+<h2 id="programs">Programs<a class="headerlink" href="#programs" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Source</th>
+<th>Evidence category</th>
+<th>UTC</th>
+<th>Output</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="../appendix/a-installation-and-setup/">120_toolchain_version_check.cu</a></td>
+<td>API/host demonstration (exit-only)</td>
+<td><code>2026-11-18T11:20:04.271271+00:00</code></td>
+<td><a href="../validation/2026-11-18-h100/120_toolchain_version_check/run.log">Log</a></td>
+</tr>
+<tr>
+<td><a href="../appendix/a-installation-and-setup/">121_multi_gpu_stack_version_check.cpp</a></td>
+<td>API/host demonstration (exit-only)</td>
+<td><code>2026-11-18T11:20:04.888461+00:00</code></td>
+<td><a href="../validation/2026-11-18-h100/121_multi_gpu_stack_version_check/run.log">Log</a></td>
+</tr>
+<tr>
+<td><a href="../appendix/a-installation-and-setup/">122_multi_device_runtime_api_check.cu</a></td>
+<td>API/host demonstration (exit-only)</td>
+<td><code>2026-11-18T11:20:05.134860+00:00</code></td>
+<td><a href="../validation/2026-11-18-h100/122_multi_device_runtime_api_check/run.log">Log</a></td>
+</tr>
+<tr>
+<td><a href="../appendix/b-practice-quiz/">123_quiz_ring_allreduce_phases.cpp</a></td>
+<td>Host program/model (exit-only)</td>
+<td><code>2026-11-18T11:20:06.265321+00:00</code></td>
+<td><a href="../validation/2026-11-18-h100/123_quiz_ring_allreduce_phases/run.log">Log</a></td>
+</tr>
+<tr>
+<td><a href="../appendix/b-practice-quiz/">124_quiz_reassociation_cancellation.cpp</a></td>
+<td>Host program/model (exit-only)</td>
+<td><code>2026-11-18T11:20:06.531697+00:00</code></td>
+<td><a href="../validation/2026-11-18-h100/124_quiz_reassociation_cancellation/run.log">Log</a></td>
+</tr>
+<tr>
+<td><a href="../appendix/b-practice-quiz/">125_quiz_ghost_cell_trap.cpp</a></td>
+<td>Host program/model (exit-only)</td>
+<td><code>2026-11-18T11:20:06.597694+00:00</code></td>
+<td><a href="../validation/2026-11-18-h100/125_quiz_ghost_cell_trap/run.log">Log</a></td>
+</tr>
+<tr>
+<td><a href="../appendix/c-nccl-and-nvshmem/">126_nccl_collective_reference.cu</a></td>
+<td>Numerical/transport validation (recorded scope)</td>
+<td><code>2026-11-18T11:20:06.763562+00:00</code></td>
+<td><a href="../validation/2026-11-18-h100/126_nccl_collective_reference/run.log">Log</a></td>
+</tr>
+<tr>
+<td><a href="../appendix/c-nccl-and-nvshmem/">127_nccl_point_to_point.cu</a></td>
+<td>Numerical/transport validation (recorded scope)</td>
+<td><code>2026-11-18T11:20:09.697849+00:00</code></td>
+<td><a href="../validation/2026-11-18-h100/127_nccl_point_to_point/run.log">Log</a></td>
+</tr>
+<tr>
+<td><a href="../appendix/c-nccl-and-nvshmem/">128_nvshmem_api_reference.cu</a></td>
+<td>Numerical/transport validation (recorded scope)</td>
+<td><code>2026-11-18T11:20:12.381663+00:00</code></td>
+<td><a href="../validation/2026-11-18-h100/128_nvshmem_api_reference/run.log">Log</a></td>
+</tr>
+<tr>
+<td><a href="../appendix/d-cuda-graphs-and-cooperative-multi-device-kernels/">129_graph_exec_update.cu</a></td>
+<td>Numerical/transport validation (recorded scope)</td>
+<td><code>2026-11-18T11:20:22.728144+00:00</code></td>
+<td><a href="../validation/2026-11-18-h100/129_graph_exec_update/run.log">Log</a></td>
+</tr>
+<tr>
+<td><a href="../appendix/d-cuda-graphs-and-cooperative-multi-device-kernels/">130_cooperative_multi_device.cu</a></td>
+<td>API validation (recorded scope)</td>
+<td><code>2026-11-18T11:20:23.808757+00:00</code></td>
+<td><a href="../validation/2026-11-18-h100/130_cooperative_multi_device/run.log">Log</a></td>
+</tr>
+<tr>
+<td><a href="../appendix/d-cuda-graphs-and-cooperative-multi-device-kernels/">131_modern_composed_equivalent.cu</a></td>
+<td>Numerical/transport validation (recorded scope)</td>
+<td><code>2026-11-18T11:20:24.739318+00:00</code></td>
+<td><a href="../validation/2026-11-18-h100/131_modern_composed_equivalent/run.log">Log</a></td>
+</tr>
+<tr>
+<td><a href="../appendix/e-profiling-and-benchmarking-multi-gpu-communication/">132_round_count_vs_timing.cpp</a></td>
+<td>Host program/model (exit-only)</td>
+<td><code>2026-11-18T11:20:27.573668+00:00</code></td>
+<td><a href="../validation/2026-11-18-h100/132_round_count_vs_timing/run.log">Log</a></td>
+</tr>
+<tr>
+<td><a href="../appendix/e-profiling-and-benchmarking-multi-gpu-communication/">133_multi_device_timing.cu</a></td>
+<td>Numerical/transport validation (recorded scope)</td>
+<td><code>2026-11-18T11:20:27.740179+00:00</code></td>
+<td><a href="../validation/2026-11-18-h100/133_multi_device_timing/run.log">Log</a></td>
+</tr>
+<tr>
+<td><a href="../appendix/e-profiling-and-benchmarking-multi-gpu-communication/">134_nccl_debug_and_nsys.cu</a></td>
+<td>API validation (recorded scope)</td>
+<td><code>2026-11-18T11:20:29.421864+00:00</code></td>
+<td><a href="../validation/2026-11-18-h100/134_nccl_debug_and_nsys/run.log">Log</a></td>
+</tr>
+<tr>
+<td><a href="../appendix/f-pytorch-distributed-and-deepspeed-to-cpp-rosetta-stone/">135_torch_distributed_collectives_mapped.cu</a></td>
+<td>API validation (recorded scope)</td>
+<td><code>2026-11-18T11:20:31.754790+00:00</code></td>
+<td><a href="../validation/2026-11-18-h100/135_torch_distributed_collectives_mapped/run.log">Log</a></td>
+</tr>
+<tr>
+<td><a href="../appendix/f-pytorch-distributed-and-deepspeed-to-cpp-rosetta-stone/">136_ddp_bucketed_allreduce.cu</a></td>
+<td>Numerical/transport validation (recorded scope)</td>
+<td><code>2026-11-18T11:20:34.138026+00:00</code></td>
+<td><a href="../validation/2026-11-18-h100/136_ddp_bucketed_allreduce/run.log">Log</a></td>
+</tr>
+<tr>
+<td><a href="../appendix/f-pytorch-distributed-and-deepspeed-to-cpp-rosetta-stone/">137_zero_stage_memory_model.cpp</a></td>
+<td>Host program/model (exit-only)</td>
+<td><code>2026-11-18T11:20:37.223063+00:00</code></td>
+<td><a href="../validation/2026-11-18-h100/137_zero_stage_memory_model/run.log">Log</a></td>
+</tr>
+<tr>
+<td><a href="../appendix/g-common-failure-modes-deadlocks-silent-corruption-topology-mismatches/">138_collective_order_deadlock.c</a></td>
+<td>API/host demonstration (exit-only)</td>
+<td><code>2026-11-18T11:20:37.389876+00:00</code></td>
+<td><a href="../validation/2026-11-18-h100/138_collective_order_deadlock/run.log">Log</a></td>
+</tr>
+<tr>
+<td><a href="../appendix/g-common-failure-modes-deadlocks-silent-corruption-topology-mismatches/">139_stream_wait_enqueue_order.cu</a></td>
+<td>Numerical/transport validation (recorded scope)</td>
+<td><code>2026-11-18T11:20:37.869042+00:00</code></td>
+<td><a href="../validation/2026-11-18-h100/139_stream_wait_enqueue_order/run.log">Log</a></td>
+</tr>
+<tr>
+<td><a href="../appendix/g-common-failure-modes-deadlocks-silent-corruption-topology-mismatches/">140_topology_assumption_cost.cpp</a></td>
+<td>Host program/model (exit-only)</td>
+<td><code>2026-11-18T11:20:39.300777+00:00</code></td>
+<td><a href="../validation/2026-11-18-h100/140_topology_assumption_cost/run.log">Log</a></td>
+</tr>
+<tr>
+<td><a href="../appendix/a-installation-and-setup/">hello_host.cpp</a></td>
+<td>Host program/model (exit-only)</td>
+<td><code>2026-11-18T11:20:39.467331+00:00</code></td>
+<td><a href="../validation/2026-11-18-h100/hello_host/run.log">Log</a></td>
+</tr>
+<tr>
+<td><a href="../appendix/a-installation-and-setup/">hello_kernel.cu</a></td>
+<td>API/host demonstration (exit-only)</td>
+<td><code>2026-11-18T11:20:39.533396+00:00</code></td>
+<td><a href="../validation/2026-11-18-h100/hello_kernel/run.log">Log</a></td>
+</tr>
+<tr>
+<td><a href="../appendix/a-installation-and-setup/">hello_mpi.cpp</a></td>
+<td>API/host demonstration (exit-only)</td>
+<td><code>2026-11-18T11:20:40.150686+00:00</code></td>
+<td><a href="../validation/2026-11-18-h100/hello_mpi/run.log">Log</a></td>
+</tr>
+<tr>
+<td><a href="../appendix/a-installation-and-setup/">hello_nccl.cu</a></td>
+<td>API/host demonstration (exit-only)</td>
+<td><code>2026-11-18T11:20:40.630111+00:00</code></td>
+<td><a href="../validation/2026-11-18-h100/hello_nccl/run.log">Log</a></td>
+</tr>
+<tr>
+<td><a href="../appendix/a-installation-and-setup/">hello_nvshmem.cu</a></td>
+<td>API/host demonstration (exit-only)</td>
+<td><code>2026-11-18T11:20:41.598263+00:00</code></td>
+<td><a href="../validation/2026-11-18-h100/hello_nvshmem/run.log">Log</a></td>
+</tr>
+<tr>
+<td><a href="../part0/01-why-one-gpu-is-not-enough/">01_device_query.cu</a></td>
+<td>API/host demonstration (exit-only)</td>
+<td><code>2026-11-18T11:20:46.736995+00:00</code></td>
+<td><a href="../validation/2026-11-18-h100/01_device_query/run.log">Log</a></td>
+</tr>
+<tr>
+<td><a href="../part0/01-why-one-gpu-is-not-enough/">02_memory_wall.cpp</a></td>
+<td>Host program/model (exit-only)</td>
+<td><code>2026-11-18T11:20:48.118691+00:00</code></td>
+<td><a href="../validation/2026-11-18-h100/02_memory_wall/run.log">Log</a></td>
+</tr>
+<tr>
+<td><a href="../part0/01-why-one-gpu-is-not-enough/">03_compute_wall.cpp</a></td>
+<td>Host program/model (exit-only)</td>
+<td><code>2026-11-18T11:20:48.235220+00:00</code></td>
+<td><a href="../validation/2026-11-18-h100/03_compute_wall/run.log">Log</a></td>
+</tr>
+<tr>
+<td><a href="../part0/02-multi-gpu-hardware-topology/">04_topology_bandwidth_model.cpp</a></td>
+<td>Host program/model (exit-only)</td>
+<td><code>2026-11-18T11:20:48.301420+00:00</code></td>
+<td><a href="../validation/2026-11-18-h100/04_topology_bandwidth_model/run.log">Log</a></td>
+</tr>
+<tr>
+<td><a href="../part0/02-multi-gpu-hardware-topology/">05_peer_access_query.cu</a></td>
+<td>API/host demonstration (exit-only)</td>
+<td><code>2026-11-18T11:20:48.568081+00:00</code></td>
+<td><a href="../validation/2026-11-18-h100/05_peer_access_query/run.log">Log</a></td>
+</tr>
+<tr>
+<td><a href="../part0/03-the-cuda-multi-gpu-programming-model/">06_single_device_setup.cu</a></td>
+<td>API/host demonstration (exit-only)</td>
+<td><code>2026-11-18T11:20:49.448365+00:00</code></td>
+<td><a href="../validation/2026-11-18-h100/06_single_device_setup/run.log">Log</a></td>
+</tr>
+<tr>
+<td><a href="../part0/03-the-cuda-multi-gpu-programming-model/">07_multi_device_loop_pattern.cu</a></td>
+<td>API/host demonstration (exit-only)</td>
+<td><code>2026-11-18T11:20:50.729469+00:00</code></td>
+<td><a href="../validation/2026-11-18-h100/07_multi_device_loop_pattern/run.log">Log</a></td>
+</tr>
+<tr>
+<td><a href="../part1/04-peer-to-peer-memory-access-and-uva/">08_pointer_attributes.cu</a></td>
+<td>API/host demonstration (exit-only)</td>
+<td><code>2026-11-18T11:20:52.211361+00:00</code></td>
+<td><a href="../validation/2026-11-18-h100/08_pointer_attributes/run.log">Log</a></td>
+</tr>
+<tr>
+<td><a href="../part1/04-peer-to-peer-memory-access-and-uva/">09_peer_access_setup.cu</a></td>
+<td>API/host demonstration (exit-only)</td>
+<td><code>2026-11-18T11:20:53.242272+00:00</code></td>
+<td><a href="../validation/2026-11-18-h100/09_peer_access_setup/run.log">Log</a></td>
+</tr>
+<tr>
+<td><a href="../part1/04-peer-to-peer-memory-access-and-uva/">10_p2p_simulation.cpp</a></td>
+<td>Host program/model (exit-only)</td>
+<td><code>2026-11-18T11:20:54.523374+00:00</code></td>
+<td><a href="../validation/2026-11-18-h100/10_p2p_simulation/run.log">Log</a></td>
+</tr>
+<tr>
+<td><a href="../part1/05-explicit-transfers-cudamemcpypeer-staged-host-transfers/">11_memcpy_peer.cu</a></td>
+<td>Numerical/transport validation (recorded scope)</td>
+<td><code>2026-11-18T11:20:54.740446+00:00</code></td>
+<td><a href="../validation/2026-11-18-h100/11_memcpy_peer/run.log">Log</a></td>
+</tr>
+<tr>
+<td><a href="../part1/05-explicit-transfers-cudamemcpypeer-staged-host-transfers/">12_staged_host_transfer.cu</a></td>
+<td>Numerical/transport validation (recorded scope)</td>
+<td><code>2026-11-18T11:20:56.372417+00:00</code></td>
+<td><a href="../validation/2026-11-18-h100/12_staged_host_transfer/run.log">Log</a></td>
+</tr>
+<tr>
+<td><a href="../part1/05-explicit-transfers-cudamemcpypeer-staged-host-transfers/">13_when_each_wins_model.cpp</a></td>
+<td>Host program/model (exit-only)</td>
+<td><code>2026-11-18T11:20:57.804518+00:00</code></td>
+<td><a href="../validation/2026-11-18-h100/13_when_each_wins_model/run.log">Log</a></td>
+</tr>
+<tr>
+<td><a href="../part1/06-streams-events-and-cross-device-synchronization/">14_event_basics.cu</a></td>
+<td>API validation (recorded scope)</td>
+<td><code>2026-11-18T11:20:57.871201+00:00</code></td>
+<td><a href="../validation/2026-11-18-h100/14_event_basics/run.log">Log</a></td>
+</tr>
+<tr>
+<td><a href="../part1/06-streams-events-and-cross-device-synchronization/">15_cross_device_wait.cu</a></td>
+<td>API validation (recorded scope)</td>
+<td><code>2026-11-18T11:20:58.901875+00:00</code></td>
+<td><a href="../validation/2026-11-18-h100/15_cross_device_wait/run.log">Log</a></td>
+</tr>
+<tr>
+<td><a href="../part1/06-streams-events-and-cross-device-synchronization/">16_overlap_query.cu</a></td>
+<td>API validation (recorded scope)</td>
+<td><code>2026-11-18T11:21:00.183600+00:00</code></td>
+<td><a href="../validation/2026-11-18-h100/16_overlap_query/run.log">Log</a></td>
+</tr>
+<tr>
+<td><a href="../part1/07-cuda-inter-process-communication/">17_ipc_mem_handle.cu</a></td>
+<td>Numerical/transport validation (recorded scope)</td>
+<td><code>2026-11-18T11:21:01.064167+00:00</code></td>
+<td><a href="../validation/2026-11-18-h100/17_ipc_mem_handle/run.log">Log</a></td>
+</tr>
+<tr>
+<td><a href="../part1/07-cuda-inter-process-communication/">18_ipc_event_handle.cu</a></td>
+<td>Numerical/transport validation (recorded scope)</td>
+<td><code>2026-11-18T11:21:02.746693+00:00</code></td>
+<td><a href="../validation/2026-11-18-h100/18_ipc_event_handle/run.log">Log</a></td>
+</tr>
+<tr>
+<td><a href="../part1/07-cuda-inter-process-communication/">19_ipc_handoff_simulation.cpp</a></td>
+<td>Host program/model (exit-only)</td>
+<td><code>2026-11-18T11:21:04.278703+00:00</code></td>
+<td><a href="../validation/2026-11-18-h100/19_ipc_handoff_simulation/run.log">Log</a></td>
+</tr>
+<tr>
+<td><a href="../part2/08-broadcast-and-reduce-the-first-two-collectives-by-hand/">20_broadcast_by_hand.cu</a></td>
+<td>Numerical/transport validation (recorded scope)</td>
+<td><code>2026-11-18T11:21:04.495840+00:00</code></td>
+<td><a href="../validation/2026-11-18-h100/20_broadcast_by_hand/run.log">Log</a></td>
+</tr>
+<tr>
+<td><a href="../part2/08-broadcast-and-reduce-the-first-two-collectives-by-hand/">21_reduce_by_hand.cu</a></td>
+<td>Numerical/transport validation (recorded scope)</td>
+<td><code>2026-11-18T11:21:05.978002+00:00</code></td>
+<td><a href="../validation/2026-11-18-h100/21_reduce_by_hand/run.log">Log</a></td>
+</tr>
+<tr>
+<td><a href="../part2/08-broadcast-and-reduce-the-first-two-collectives-by-hand/">22_collectives_simulation.cpp</a></td>
+<td>Host program/model (exit-only)</td>
+<td><code>2026-11-18T11:21:07.460225+00:00</code></td>
+<td><a href="../validation/2026-11-18-h100/22_collectives_simulation/run.log">Log</a></td>
+</tr>
+<tr>
+<td><a href="../part2/09-ring-all-reduce-the-algorithm-behind-every-multi-gpu-training-job/">23_naive_allreduce.cu</a></td>
+<td>Numerical/transport validation (recorded scope)</td>
+<td><code>2026-11-18T11:21:07.727710+00:00</code></td>
+<td><a href="../validation/2026-11-18-h100/23_naive_allreduce/run.log">Log</a></td>
+</tr>
+<tr>
+<td><a href="../part2/09-ring-all-reduce-the-algorithm-behind-every-multi-gpu-training-job/">24_ring_step_by_hand.cu</a></td>
+<td>Numerical/transport validation (recorded scope)</td>
+<td><code>2026-11-18T11:21:09.410295+00:00</code></td>
+<td><a href="../validation/2026-11-18-h100/24_ring_step_by_hand/run.log">Log</a></td>
+</tr>
+<tr>
+<td><a href="../part2/09-ring-all-reduce-the-algorithm-behind-every-multi-gpu-training-job/">25_ring_allreduce_simulation.cpp</a></td>
+<td>Host program/model (exit-only)</td>
+<td><code>2026-11-18T11:21:10.892615+00:00</code></td>
+<td><a href="../validation/2026-11-18-h100/25_ring_allreduce_simulation/run.log">Log</a></td>
+</tr>
+<tr>
+<td><a href="../part2/10-all-gather-reduce-scatter-and-all-to-all/">26_allgather_by_hand.cu</a></td>
+<td>Numerical/transport validation (recorded scope)</td>
+<td><code>2026-11-18T11:21:11.109799+00:00</code></td>
+<td><a href="../validation/2026-11-18-h100/26_allgather_by_hand/run.log">Log</a></td>
+</tr>
+<tr>
+<td><a href="../part2/10-all-gather-reduce-scatter-and-all-to-all/">27_reducescatter_by_hand.cu</a></td>
+<td>Numerical/transport validation (recorded scope)</td>
+<td><code>2026-11-18T11:21:12.592029+00:00</code></td>
+<td><a href="../validation/2026-11-18-h100/27_reducescatter_by_hand/run.log">Log</a></td>
+</tr>
+<tr>
+<td><a href="../part2/10-all-gather-reduce-scatter-and-all-to-all/">28_alltoall_by_hand.cu</a></td>
+<td>Numerical/transport validation (recorded scope)</td>
+<td><code>2026-11-18T11:21:14.124459+00:00</code></td>
+<td><a href="../validation/2026-11-18-h100/28_alltoall_by_hand/run.log">Log</a></td>
+</tr>
+<tr>
+<td><a href="../part2/10-all-gather-reduce-scatter-and-all-to-all/">29_collectives_simulation.cpp</a></td>
+<td>Host program/model (exit-only)</td>
+<td><code>2026-11-18T11:21:15.607188+00:00</code></td>
+<td><a href="../validation/2026-11-18-h100/29_collectives_simulation/run.log">Log</a></td>
+</tr>
+<tr>
+<td><a href="../part2/11-nccl-what-it-actually-does-differently/">30_nccl_comm_init.cu</a></td>
+<td>API validation (recorded scope)</td>
+<td><code>2026-11-18T11:21:15.874665+00:00</code></td>
+<td><a href="../validation/2026-11-18-h100/30_nccl_comm_init/run.log">Log</a></td>
+</tr>
+<tr>
+<td><a href="../part2/11-nccl-what-it-actually-does-differently/">31_nccl_collectives_mapped.cu</a></td>
+<td>API validation (recorded scope)</td>
+<td><code>2026-11-18T11:21:19.310597+00:00</code></td>
+<td><a href="../validation/2026-11-18-h100/31_nccl_collectives_mapped/run.log">Log</a></td>
+</tr>
+<tr>
+<td><a href="../part2/11-nccl-what-it-actually-does-differently/">32_ring_vs_tree_model.cpp</a></td>
+<td>Host program/model (exit-only)</td>
+<td><code>2026-11-18T11:21:20.331710+00:00</code></td>
+<td><a href="../validation/2026-11-18-h100/32_ring_vs_tree_model/run.log">Log</a></td>
+</tr>
+<tr>
+<td><a href="../part3/12-data-parallelism-replicated-model-sharded-data/">33_replica_setup.cu</a></td>
+<td>Numerical/transport validation (recorded scope)</td>
+<td><code>2026-11-18T11:21:20.498995+00:00</code></td>
+<td><a href="../validation/2026-11-18-h100/33_replica_setup/run.log">Log</a></td>
+</tr>
+<tr>
+<td><a href="../part3/12-data-parallelism-replicated-model-sharded-data/">34_gradient_allreduce.cu</a></td>
+<td>Numerical/transport validation (recorded scope)</td>
+<td><code>2026-11-18T11:21:23.584321+00:00</code></td>
+<td><a href="../validation/2026-11-18-h100/34_gradient_allreduce/run.log">Log</a></td>
+</tr>
+<tr>
+<td><a href="../part3/12-data-parallelism-replicated-model-sharded-data/">35_data_parallel_consistency_simulation.cpp</a></td>
+<td>Host program/model (exit-only)</td>
+<td><code>2026-11-18T11:21:26.670423+00:00</code></td>
+<td><a href="../validation/2026-11-18-h100/35_data_parallel_consistency_simulation/run.log">Log</a></td>
+</tr>
+<tr>
+<td><a href="../part3/13-model-parallelism-when-one-gpu-cant-hold-the-weights/">36_model_shard_memory_model.cpp</a></td>
+<td>Host program/model (exit-only)</td>
+<td><code>2026-11-18T11:21:26.737484+00:00</code></td>
+<td><a href="../validation/2026-11-18-h100/36_model_shard_memory_model/run.log">Log</a></td>
+</tr>
+<tr>
+<td><a href="../part3/13-model-parallelism-when-one-gpu-cant-hold-the-weights/">37_layer_partition_activation_handoff.cu</a></td>
+<td>Numerical/transport validation (recorded scope)</td>
+<td><code>2026-11-18T11:21:26.904506+00:00</code></td>
+<td><a href="../validation/2026-11-18-h100/37_layer_partition_activation_handoff/run.log">Log</a></td>
+</tr>
+<tr>
+<td><a href="../part3/13-model-parallelism-when-one-gpu-cant-hold-the-weights/">38_model_parallel_forward_simulation.cpp</a></td>
+<td>Host program/model (exit-only)</td>
+<td><code>2026-11-18T11:21:28.587587+00:00</code></td>
+<td><a href="../validation/2026-11-18-h100/38_model_parallel_forward_simulation/run.log">Log</a></td>
+</tr>
+<tr>
+<td><a href="../part3/14-tensor-parallelism-splitting-a-single-matrix-multiply-across-devices/">39_column_parallel_linear.cu</a></td>
+<td>API/host demonstration (exit-only)</td>
+<td><code>2026-11-18T11:21:28.754980+00:00</code></td>
+<td><a href="../validation/2026-11-18-h100/39_column_parallel_linear/run.log">Log</a></td>
+</tr>
+<tr>
+<td><a href="../part3/14-tensor-parallelism-splitting-a-single-matrix-multiply-across-devices/">40_row_parallel_allreduce.cu</a></td>
+<td>Numerical/transport validation (recorded scope)</td>
+<td><code>2026-11-18T11:21:29.686149+00:00</code></td>
+<td><a href="../validation/2026-11-18-h100/40_row_parallel_allreduce/run.log">Log</a></td>
+</tr>
+<tr>
+<td><a href="../part3/14-tensor-parallelism-splitting-a-single-matrix-multiply-across-devices/">41_tensor_parallel_mlp_simulation.cpp</a></td>
+<td>Host program/model (exit-only)</td>
+<td><code>2026-11-18T11:21:32.821569+00:00</code></td>
+<td><a href="../validation/2026-11-18-h100/41_tensor_parallel_mlp_simulation/run.log">Log</a></td>
+</tr>
+<tr>
+<td><a href="../part3/15-pipeline-parallelism-splitting-layers-across-devices-and-the-bubble-that-costs-you/">42_pipeline_schedule.cpp</a></td>
+<td>Host program/model (exit-only)</td>
+<td><code>2026-11-18T11:21:32.989253+00:00</code></td>
+<td><a href="../validation/2026-11-18-h100/42_pipeline_schedule/run.log">Log</a></td>
+</tr>
+<tr>
+<td><a href="../part3/15-pipeline-parallelism-splitting-layers-across-devices-and-the-bubble-that-costs-you/">43_pipeline_stage_sync.cu</a></td>
+<td>API validation (recorded scope)</td>
+<td><code>2026-11-18T11:21:33.056093+00:00</code></td>
+<td><a href="../validation/2026-11-18-h100/43_pipeline_stage_sync/run.log">Log</a></td>
+</tr>
+<tr>
+<td><a href="../part3/15-pipeline-parallelism-splitting-layers-across-devices-and-the-bubble-that-costs-you/">44_bubble_and_pipelined_correctness.cpp</a></td>
+<td>Host program/model (exit-only)</td>
+<td><code>2026-11-18T11:21:34.287982+00:00</code></td>
+<td><a href="../validation/2026-11-18-h100/44_bubble_and_pipelined_correctness/run.log">Log</a></td>
+</tr>
+<tr>
+<td><a href="../part3/16-domain-decomposition-for-scientific-computing-halo-exchange-and-distributed-stencils/">45_domain_decomposition_row_range.cu</a></td>
+<td>API/host demonstration (exit-only)</td>
+<td><code>2026-11-18T11:21:34.405255+00:00</code></td>
+<td><a href="../validation/2026-11-18-h100/45_domain_decomposition_row_range/run.log">Log</a></td>
+</tr>
+<tr>
+<td><a href="../part3/16-domain-decomposition-for-scientific-computing-halo-exchange-and-distributed-stencils/">46_halo_exchange.cu</a></td>
+<td>Numerical/transport validation (recorded scope)</td>
+<td><code>2026-11-18T11:21:35.286565+00:00</code></td>
+<td><a href="../validation/2026-11-18-h100/46_halo_exchange/run.log">Log</a></td>
+</tr>
+<tr>
+<td><a href="../part3/16-domain-decomposition-for-scientific-computing-halo-exchange-and-distributed-stencils/">47_stencil_decomposition_simulation.cpp</a></td>
+<td>Host program/model (exit-only)</td>
+<td><code>2026-11-18T11:21:36.969833+00:00</code></td>
+<td><a href="../validation/2026-11-18-h100/47_stencil_decomposition_simulation/run.log">Log</a></td>
+</tr>
+<tr>
+<td><a href="../part4/17-barriers-and-global-synchronization-across-devices/">48_per_device_sync_is_not_a_barrier.cu</a></td>
+<td>API/host demonstration (exit-only)</td>
+<td><code>2026-11-18T11:21:37.287927+00:00</code></td>
+<td><a href="../validation/2026-11-18-h100/48_per_device_sync_is_not_a_barrier/run.log">Log</a></td>
+</tr>
+<tr>
+<td><a href="../part4/17-barriers-and-global-synchronization-across-devices/">49_nccl_allreduce_as_barrier.cu</a></td>
+<td>Numerical/transport validation (recorded scope)</td>
+<td><code>2026-11-18T11:21:38.470031+00:00</code></td>
+<td><a href="../validation/2026-11-18-h100/49_nccl_allreduce_as_barrier/run.log">Log</a></td>
+</tr>
+<tr>
+<td><a href="../part4/17-barriers-and-global-synchronization-across-devices/">50_barrier_consistency_simulation.cpp</a></td>
+<td>Host program/model (exit-only)</td>
+<td><code>2026-11-18T11:21:41.506769+00:00</code></td>
+<td><a href="../validation/2026-11-18-h100/50_barrier_consistency_simulation/run.log">Log</a></td>
+</tr>
+<tr>
+<td><a href="../part4/18-load-balancing-across-heterogeneous-gpus/">51_heterogeneous_capability_query.cu</a></td>
+<td>API/host demonstration (exit-only)</td>
+<td><code>2026-11-18T11:21:41.724546+00:00</code></td>
+<td><a href="../validation/2026-11-18-h100/51_heterogeneous_capability_query/run.log">Log</a></td>
+</tr>
+<tr>
+<td><a href="../part4/18-load-balancing-across-heterogeneous-gpus/">52_weighted_shard_partition.cpp</a></td>
+<td>Host program/model (exit-only)</td>
+<td><code>2026-11-18T11:21:42.605940+00:00</code></td>
+<td><a href="../validation/2026-11-18-h100/52_weighted_shard_partition/run.log">Log</a></td>
+</tr>
+<tr>
+<td><a href="../part4/18-load-balancing-across-heterogeneous-gpus/">53_makespan_simulation.cpp</a></td>
+<td>Host program/model (exit-only)</td>
+<td><code>2026-11-18T11:21:42.823548+00:00</code></td>
+<td><a href="../validation/2026-11-18-h100/53_makespan_simulation/run.log">Log</a></td>
+</tr>
+<tr>
+<td><a href="../part4/19-stragglers-failures-and-fault-tolerant-collectives/">54_blocking_vs_nonblocking_comm.cu</a></td>
+<td>API validation (recorded scope)</td>
+<td><code>2026-11-18T11:21:43.091186+00:00</code></td>
+<td><a href="../validation/2026-11-18-h100/54_blocking_vs_nonblocking_comm/run.log">Log</a></td>
+</tr>
+<tr>
+<td><a href="../part4/19-stragglers-failures-and-fault-tolerant-collectives/">55_nccl_async_detect_and_recover.cu</a></td>
+<td>API validation (recorded scope)</td>
+<td><code>2026-11-18T11:21:46.828244+00:00</code></td>
+<td><a href="../validation/2026-11-18-h100/55_nccl_async_detect_and_recover/run.log">Log</a></td>
+</tr>
+<tr>
+<td><a href="../part4/19-stragglers-failures-and-fault-tolerant-collectives/">56_backup_workers_simulation.cpp</a></td>
+<td>Host program/model (exit-only)</td>
+<td><code>2026-11-18T11:21:49.914909+00:00</code></td>
+<td><a href="../validation/2026-11-18-h100/56_backup_workers_simulation/run.log">Log</a></td>
+</tr>
+<tr>
+<td><a href="../part5/20-mpi-from-scratch-then-cuda-aware-mpi-scaling-beyond-one-node/">57_mpi_ring_send_recv.c</a></td>
+<td>API/host demonstration (exit-only)</td>
+<td><code>2026-11-18T11:21:50.233277+00:00</code></td>
+<td><a href="../validation/2026-11-18-h100/57_mpi_ring_send_recv/run.log">Log</a></td>
+</tr>
+<tr>
+<td><a href="../part5/20-mpi-from-scratch-then-cuda-aware-mpi-scaling-beyond-one-node/">58_mpi_cuda_aware_query_and_fallback.cpp</a></td>
+<td>Numerical/transport validation (recorded scope)</td>
+<td><code>2026-11-18T11:21:50.663586+00:00</code></td>
+<td><a href="../validation/2026-11-18-h100/58_mpi_cuda_aware_query_and_fallback/run.log">Log</a></td>
+</tr>
+<tr>
+<td><a href="../part5/20-mpi-from-scratch-then-cuda-aware-mpi-scaling-beyond-one-node/">59_mpi_errhandler_return.c</a></td>
+<td>API/host demonstration (exit-only)</td>
+<td><code>2026-11-18T11:24:44.015093+00:00</code></td>
+<td><a href="../validation/2026-11-18-h100/59_mpi_errhandler_return/run.log">Log</a></td>
+</tr>
+<tr>
+<td><a href="../part5/21-gpudirect-rdma-bypassing-the-host-entirely/">60_hybrid_mpi_nccl_bootstrap.cpp</a></td>
+<td>API/host demonstration (exit-only)</td>
+<td><code>2026-11-18T11:21:53.378850+00:00</code></td>
+<td><a href="../validation/2026-11-18-h100/60_hybrid_mpi_nccl_bootstrap/run.log">Log</a></td>
+</tr>
+<tr>
+<td><a href="../part5/21-gpudirect-rdma-bypassing-the-host-entirely/">61_gpudirect_rdma_query.cu</a></td>
+<td>API validation (recorded scope)</td>
+<td><code>2026-11-18T11:21:55.111950+00:00</code></td>
+<td><a href="../validation/2026-11-18-h100/61_gpudirect_rdma_query/run.log">Log</a></td>
+</tr>
+<tr>
+<td><a href="../part5/21-gpudirect-rdma-bypassing-the-host-entirely/">62_staged_vs_rdma_cost_model.cpp</a></td>
+<td>Host program/model (exit-only)</td>
+<td><code>2026-11-18T11:21:56.144065+00:00</code></td>
+<td><a href="../validation/2026-11-18-h100/62_staged_vs_rdma_cost_model/run.log">Log</a></td>
+</tr>
+<tr>
+<td><a href="../part5/22-nvshmem-and-gpu-initiated-communication/">63_nvshmem_init_single_pe.cu</a></td>
+<td>Numerical/transport validation (recorded scope)</td>
+<td><code>2026-11-18T11:21:56.211540+00:00</code></td>
+<td><a href="../validation/2026-11-18-h100/63_nvshmem_init_single_pe/run.log">Log</a></td>
+</tr>
+<tr>
+<td><a href="../part5/22-nvshmem-and-gpu-initiated-communication/">64_nvshmem_mpi_bootstrap.cu</a></td>
+<td>Numerical/transport validation (recorded scope)</td>
+<td><code>2026-11-18T11:22:04.009384+00:00</code></td>
+<td><a href="../validation/2026-11-18-h100/64_nvshmem_mpi_bootstrap/run.log">Log</a></td>
+</tr>
+<tr>
+<td><a href="../part5/22-nvshmem-and-gpu-initiated-communication/">65_gpu_initiated_put.cu</a></td>
+<td>Numerical/transport validation (recorded scope)</td>
+<td><code>2026-11-18T11:22:14.258052+00:00</code></td>
+<td><a href="../validation/2026-11-18-h100/65_gpu_initiated_put/run.log">Log</a></td>
+</tr>
+<tr>
+<td><a href="../part5/23-cuda-graphs-across-multiple-gpus-and-multiple-nodes/">66_cross_device_graph_capture.cu</a></td>
+<td>Numerical/transport validation (recorded scope)</td>
+<td><code>2026-11-18T11:22:24.005233+00:00</code></td>
+<td><a href="../validation/2026-11-18-h100/66_cross_device_graph_capture/run.log">Log</a></td>
+</tr>
+<tr>
+<td><a href="../part5/23-cuda-graphs-across-multiple-gpus-and-multiple-nodes/">67_nccl_captured_in_graph.cu</a></td>
+<td>Numerical/transport validation (recorded scope)</td>
+<td><code>2026-11-18T11:22:25.237532+00:00</code></td>
+<td><a href="../validation/2026-11-18-h100/67_nccl_captured_in_graph/run.log">Log</a></td>
+</tr>
+<tr>
+<td><a href="../part5/23-cuda-graphs-across-multiple-gpus-and-multiple-nodes/">68_host_node_and_multi_process_graphs.cu</a></td>
+<td>API validation (recorded scope)</td>
+<td><code>2026-11-18T11:22:28.624350+00:00</code></td>
+<td><a href="../validation/2026-11-18-h100/68_host_node_and_multi_process_graphs/run.log">Log</a></td>
+</tr>
+<tr>
+<td><a href="../part6/24-multi-gpu-dense-matrix-multiplication-at-scale/">69_gemm_memory_wall_model.cpp</a></td>
+<td>Host program/model (exit-only)</td>
+<td><code>2026-11-18T11:22:29.656652+00:00</code></td>
+<td><a href="../validation/2026-11-18-h100/69_gemm_memory_wall_model/run.log">Log</a></td>
+</tr>
+<tr>
+<td><a href="../part6/24-multi-gpu-dense-matrix-multiplication-at-scale/">70_summa_correctness_simulation.cpp</a></td>
+<td>Host program/model (exit-only)</td>
+<td><code>2026-11-18T11:22:29.824706+00:00</code></td>
+<td><a href="../validation/2026-11-18-h100/70_summa_correctness_simulation/run.log">Log</a></td>
+</tr>
+<tr>
+<td><a href="../part6/24-multi-gpu-dense-matrix-multiplication-at-scale/">71_cublasxt_multi_gpu_gemm.cu</a></td>
+<td>Numerical/transport validation (recorded scope)</td>
+<td><code>2026-11-18T11:22:30.242999+00:00</code></td>
+<td><a href="../validation/2026-11-18-h100/71_cublasxt_multi_gpu_gemm/run.log">Log</a></td>
+</tr>
+<tr>
+<td><a href="../part6/25-distributed-training-of-a-neural-network-data-parallelism-and-ring-all-reduce/">72_bucketed_gradient_allreduce.cu</a></td>
+<td>Numerical/transport validation (recorded scope)</td>
+<td><code>2026-11-18T11:22:32.277218+00:00</code></td>
+<td><a href="../validation/2026-11-18-h100/72_bucketed_gradient_allreduce/run.log">Log</a></td>
+</tr>
+<tr>
+<td><a href="../part6/25-distributed-training-of-a-neural-network-data-parallelism-and-ring-all-reduce/">73_distributed_sgd_convergence_simulation.cpp</a></td>
+<td>Host program/model (exit-only)</td>
+<td><code>2026-11-18T11:22:35.663638+00:00</code></td>
+<td><a href="../validation/2026-11-18-h100/73_distributed_sgd_convergence_simulation/run.log">Log</a></td>
+</tr>
+<tr>
+<td><a href="../part6/25-distributed-training-of-a-neural-network-data-parallelism-and-ring-all-reduce/">74_ring_allreduce_communication_cost_model.cpp</a></td>
+<td>Host program/model (exit-only)</td>
+<td><code>2026-11-18T11:22:36.032739+00:00</code></td>
+<td><a href="../validation/2026-11-18-h100/74_ring_allreduce_communication_cost_model/run.log">Log</a></td>
+</tr>
+<tr>
+<td><a href="../part6/26-multi-gpu-llm-inference-tensor-and-pipeline-parallelism-in-practice/">75_tp_pp_combined_correctness_simulation.cpp</a></td>
+<td>Host program/model (exit-only)</td>
+<td><code>2026-11-18T11:22:36.100355+00:00</code></td>
+<td><a href="../validation/2026-11-18-h100/75_tp_pp_combined_correctness_simulation/run.log">Log</a></td>
+</tr>
+<tr>
+<td><a href="../part6/26-multi-gpu-llm-inference-tensor-and-pipeline-parallelism-in-practice/">76_tp_pp_scale_cost_model.cpp</a></td>
+<td>Host program/model (exit-only)</td>
+<td><code>2026-11-18T11:22:36.368527+00:00</code></td>
+<td><a href="../validation/2026-11-18-h100/76_tp_pp_scale_cost_model/run.log">Log</a></td>
+</tr>
+<tr>
+<td><a href="../part6/26-multi-gpu-llm-inference-tensor-and-pipeline-parallelism-in-practice/">77_kv_cache_tp_scaling_model.cpp</a></td>
+<td>Host program/model (exit-only)</td>
+<td><code>2026-11-18T11:22:36.436091+00:00</code></td>
+<td><a href="../validation/2026-11-18-h100/77_kv_cache_tp_scaling_model/run.log">Log</a></td>
+</tr>
+<tr>
+<td><a href="../part6/27-n-body-simulation-at-scale/">78_all_pairs_nbody_correctness_simulation.cpp</a></td>
+<td>Host program/model (exit-only)</td>
+<td><code>2026-11-18T11:22:36.503422+00:00</code></td>
+<td><a href="../validation/2026-11-18-h100/78_all_pairs_nbody_correctness_simulation/run.log">Log</a></td>
+</tr>
+<tr>
+<td><a href="../part6/27-n-body-simulation-at-scale/">79_nbody_vs_halo_communication_model.cpp</a></td>
+<td>Host program/model (exit-only)</td>
+<td><code>2026-11-18T11:22:36.771809+00:00</code></td>
+<td><a href="../validation/2026-11-18-h100/79_nbody_vs_halo_communication_model/run.log">Log</a></td>
+</tr>
+<tr>
+<td><a href="../part6/27-n-body-simulation-at-scale/">80_barnes_hut_complexity_crossover_model.cpp</a></td>
+<td>Host program/model (exit-only)</td>
+<td><code>2026-11-18T11:22:36.839490+00:00</code></td>
+<td><a href="../validation/2026-11-18-h100/80_barnes_hut_complexity_crossover_model/run.log">Log</a></td>
+</tr>
+<tr>
+<td><a href="../part6/28-distributed-breadth-first-search/">81_distributed_bfs_correctness_simulation.cpp</a></td>
+<td>Host program/model (exit-only)</td>
+<td><code>2026-11-18T11:22:37.007276+00:00</code></td>
+<td><a href="../validation/2026-11-18-h100/81_distributed_bfs_correctness_simulation/run.log">Log</a></td>
+</tr>
+<tr>
+<td><a href="../part6/28-distributed-breadth-first-search/">82_1d_partitioning_participant_count_model.cpp</a></td>
+<td>Host program/model (exit-only)</td>
+<td><code>2026-11-18T11:22:37.375722+00:00</code></td>
+<td><a href="../validation/2026-11-18-h100/82_1d_partitioning_participant_count_model/run.log">Log</a></td>
+</tr>
+<tr>
+<td><a href="../part6/28-distributed-breadth-first-search/">83_direction_optimizing_and_2d_partitioning_model.cpp</a></td>
+<td>Host program/model (exit-only)</td>
+<td><code>2026-11-18T11:22:37.443503+00:00</code></td>
+<td><a href="../validation/2026-11-18-h100/83_direction_optimizing_and_2d_partitioning_model/run.log">Log</a></td>
+</tr>
+<tr>
+<td><a href="../part6/29-distributed-jacobi-solver/">84_distributed_jacobi_correctness_simulation.cpp</a></td>
+<td>Host program/model (exit-only)</td>
+<td><code>2026-11-18T11:22:37.511043+00:00</code></td>
+<td><a href="../validation/2026-11-18-h100/84_distributed_jacobi_correctness_simulation/run.log">Log</a></td>
+</tr>
+<tr>
+<td><a href="../part6/29-distributed-jacobi-solver/">85_allreduce_check_frequency_cost_model.cpp</a></td>
+<td>Host program/model (exit-only)</td>
+<td><code>2026-11-18T11:22:37.879499+00:00</code></td>
+<td><a href="../validation/2026-11-18-h100/85_allreduce_check_frequency_cost_model/run.log">Log</a></td>
+</tr>
+<tr>
+<td><a href="../part6/29-distributed-jacobi-solver/">86_jacobi_convergence_rate_model.cpp</a></td>
+<td>Host program/model (exit-only)</td>
+<td><code>2026-11-18T11:22:38.047459+00:00</code></td>
+<td><a href="../validation/2026-11-18-h100/86_jacobi_convergence_rate_model/run.log">Log</a></td>
+</tr>
+<tr>
+<td><a href="../part6/30-multi-gpu-ray-tracing-and-rendering/">87_independent_tile_rendering_correctness_simulation.cpp</a></td>
+<td>Host program/model (exit-only)</td>
+<td><code>2026-11-18T11:22:38.165165+00:00</code></td>
+<td><a href="../validation/2026-11-18-h100/87_independent_tile_rendering_correctness_simulation/run.log">Log</a></td>
+</tr>
+<tr>
+<td><a href="../part6/30-multi-gpu-ray-tracing-and-rendering/">88_rendering_comm_and_load_balance_model.cpp</a></td>
+<td>Host program/model (exit-only)</td>
+<td><code>2026-11-18T11:22:38.383395+00:00</code></td>
+<td><a href="../validation/2026-11-18-h100/88_rendering_comm_and_load_balance_model/run.log">Log</a></td>
+</tr>
+<tr>
+<td><a href="../part6/30-multi-gpu-ray-tracing-and-rendering/">89_out_of_core_scene_scale_model.cpp</a></td>
+<td>Host program/model (exit-only)</td>
+<td><code>2026-11-18T11:22:38.551664+00:00</code></td>
+<td><a href="../validation/2026-11-18-h100/89_out_of_core_scene_scale_model/run.log">Log</a></td>
+</tr>
+<tr>
+<td><a href="../part6/31-multi-gpu-monte-carlo-risk-simulation/">90_independent_path_correctness_simulation.cpp</a></td>
+<td>Host program/model (exit-only)</td>
+<td><code>2026-11-18T11:22:38.619513+00:00</code></td>
+<td><a href="../validation/2026-11-18-h100/90_independent_path_correctness_simulation/run.log">Log</a></td>
+</tr>
+<tr>
+<td><a href="../part6/31-multi-gpu-monte-carlo-risk-simulation/">91_rng_independence_and_reduction_topology_model.cpp</a></td>
+<td>Host program/model (exit-only)</td>
+<td><code>2026-11-18T11:22:38.887936+00:00</code></td>
+<td><a href="../validation/2026-11-18-h100/91_rng_independence_and_reduction_topology_model/run.log">Log</a></td>
+</tr>
+<tr>
+<td><a href="../part6/31-multi-gpu-monte-carlo-risk-simulation/">92_var_percentile_and_allgather_cost_model.cpp</a></td>
+<td>Host program/model (exit-only)</td>
+<td><code>2026-11-18T11:22:39.206515+00:00</code></td>
+<td><a href="../validation/2026-11-18-h100/92_var_percentile_and_allgather_cost_model/run.log">Log</a></td>
+</tr>
+<tr>
+<td><a href="../part7/34-gpu-recommendation-systems/">100_embedding_alltoall_resharding_correctness_simulation.cpp</a></td>
+<td>Host program/model (exit-only)</td>
+<td><code>2026-11-18T11:22:39.474924+00:00</code></td>
+<td><a href="../validation/2026-11-18-h100/100_embedding_alltoall_resharding_correctness_simulation/run.log">Log</a></td>
+</tr>
+<tr>
+<td><a href="../part7/34-gpu-recommendation-systems/">101_embedding_alltoall_comm_volume_cost_model.cpp</a></td>
+<td>Host program/model (exit-only)</td>
+<td><code>2026-11-18T11:22:39.793528+00:00</code></td>
+<td><a href="../validation/2026-11-18-h100/101_embedding_alltoall_comm_volume_cost_model/run.log">Log</a></td>
+</tr>
+<tr>
+<td><a href="../part7/35-ai-weather-forecasting-at-scale/">102_fourcastnet_data_parallel_training_model.cpp</a></td>
+<td>Host program/model (exit-only)</td>
+<td><code>2026-11-18T11:22:39.861610+00:00</code></td>
+<td><a href="../validation/2026-11-18-h100/102_fourcastnet_data_parallel_training_model/run.log">Log</a></td>
+</tr>
+<tr>
+<td><a href="../part7/35-ai-weather-forecasting-at-scale/">103_distributed_fft_transpose_correctness_simulation.cpp</a></td>
+<td>Host program/model (exit-only)</td>
+<td><code>2026-11-18T11:22:39.929296+00:00</code></td>
+<td><a href="../validation/2026-11-18-h100/103_distributed_fft_transpose_correctness_simulation/run.log">Log</a></td>
+</tr>
+<tr>
+<td><a href="../part7/35-ai-weather-forecasting-at-scale/">104_distributed_fft_communication_cost_model.cpp</a></td>
+<td>Host program/model (exit-only)</td>
+<td><code>2026-11-18T11:22:40.348065+00:00</code></td>
+<td><a href="../validation/2026-11-18-h100/104_distributed_fft_communication_cost_model/run.log">Log</a></td>
+</tr>
+<tr>
+<td><a href="../part7/36-multi-gpu-xva-and-portfolio-risk/">105_exposure_profile_reduction_cost_model.cpp</a></td>
+<td>Host program/model (exit-only)</td>
+<td><code>2026-11-18T11:22:40.415993+00:00</code></td>
+<td><a href="../validation/2026-11-18-h100/105_exposure_profile_reduction_cost_model/run.log">Log</a></td>
+</tr>
+<tr>
+<td><a href="../part7/36-multi-gpu-xva-and-portfolio-risk/">106_netting_set_exposure_order_simulation.cpp</a></td>
+<td>Host program/model (exit-only)</td>
+<td><code>2026-11-18T11:22:40.484027+00:00</code></td>
+<td><a href="../validation/2026-11-18-h100/106_netting_set_exposure_order_simulation/run.log">Log</a></td>
+</tr>
+<tr>
+<td><a href="../part7/36-multi-gpu-xva-and-portfolio-risk/">107_multi_gpu_exposure_profile_correctness_simulation.cpp</a></td>
+<td>Host program/model (exit-only)</td>
+<td><code>2026-11-18T11:22:40.652418+00:00</code></td>
+<td><a href="../validation/2026-11-18-h100/107_multi_gpu_exposure_profile_correctness_simulation/run.log">Log</a></td>
+</tr>
+<tr>
+<td><a href="../part7/37-gpudirect-rdma-in-capital-markets/">108_kernel_bypass_market_data_baseline_model.cpp</a></td>
+<td>Host program/model (exit-only)</td>
+<td><code>2026-11-18T11:22:40.971038+00:00</code></td>
+<td><a href="../validation/2026-11-18-h100/108_kernel_bypass_market_data_baseline_model/run.log">Log</a></td>
+</tr>
+<tr>
+<td><a href="../part7/37-gpudirect-rdma-in-capital-markets/">109_gpudirect_rdma_market_data_projection_model.cpp</a></td>
+<td>Host program/model (exit-only)</td>
+<td><code>2026-11-18T11:22:41.039096+00:00</code></td>
+<td><a href="../validation/2026-11-18-h100/109_gpudirect_rdma_market_data_projection_model/run.log">Log</a></td>
+</tr>
+<tr>
+<td><a href="../part7/37-gpudirect-rdma-in-capital-markets/">110_gdrcopy_fixed_overhead_vs_latency_budget_model.cpp</a></td>
+<td>Host program/model (exit-only)</td>
+<td><code>2026-11-18T11:22:41.107068+00:00</code></td>
+<td><a href="../validation/2026-11-18-h100/110_gdrcopy_fixed_overhead_vs_latency_budget_model/run.log">Log</a></td>
+</tr>
+<tr>
+<td><a href="../part7/38-real-time-fraud-detection-at-payment-scale/">111_gnn_embedding_fraud_accuracy_model.cpp</a></td>
+<td>Host program/model (exit-only)</td>
+<td><code>2026-11-18T11:22:41.174917+00:00</code></td>
+<td><a href="../validation/2026-11-18-h100/111_gnn_embedding_fraud_accuracy_model/run.log">Log</a></td>
+</tr>
+<tr>
+<td><a href="../part7/38-real-time-fraud-detection-at-payment-scale/">112_graph_partitioned_neighbor_fetch_correctness_simulation.cpp</a></td>
+<td>Host program/model (exit-only)</td>
+<td><code>2026-11-18T11:22:41.242817+00:00</code></td>
+<td><a href="../validation/2026-11-18-h100/112_graph_partitioned_neighbor_fetch_correctness_simulation/run.log">Log</a></td>
+</tr>
+<tr>
+<td><a href="../part7/38-real-time-fraud-detection-at-payment-scale/">113_distributed_tree_building_sequential_reduction_model.cpp</a></td>
+<td>Host program/model (exit-only)</td>
+<td><code>2026-11-18T11:22:41.461226+00:00</code></td>
+<td><a href="../validation/2026-11-18-h100/113_distributed_tree_building_sequential_reduction_model/run.log">Log</a></td>
+</tr>
+<tr>
+<td><a href="../part7/39-real-time-genomics-at-scale/">114_wgs_multi_gpu_motivation_model.cpp</a></td>
+<td>Host program/model (exit-only)</td>
+<td><code>2026-11-18T11:22:41.579273+00:00</code></td>
+<td><a href="../validation/2026-11-18-h100/114_wgs_multi_gpu_motivation_model/run.log">Log</a></td>
+</tr>
+<tr>
+<td><a href="../part7/39-real-time-genomics-at-scale/">115_embarrassingly_parallel_genomics_correctness_simulation.cpp</a></td>
+<td>Host program/model (exit-only)</td>
+<td><code>2026-11-18T11:22:41.647340+00:00</code></td>
+<td><a href="../validation/2026-11-18-h100/115_embarrassingly_parallel_genomics_correctness_simulation/run.log">Log</a></td>
+</tr>
+<tr>
+<td><a href="../part7/39-real-time-genomics-at-scale/">116_real_benchmark_scaling_efficiency_analysis.cpp</a></td>
+<td>Host program/model (exit-only)</td>
+<td><code>2026-11-18T11:22:41.815509+00:00</code></td>
+<td><a href="../validation/2026-11-18-h100/116_real_benchmark_scaling_efficiency_analysis/run.log">Log</a></td>
+</tr>
+<tr>
+<td><a href="../part7/40-medical-imaging-reconstruction-at-scale/">117_zslab_ghost_cell_correctness_simulation.cpp</a></td>
+<td>Host program/model (exit-only)</td>
+<td><code>2026-11-18T11:22:41.883373+00:00</code></td>
+<td><a href="../validation/2026-11-18-h100/117_zslab_ghost_cell_correctness_simulation/run.log">Log</a></td>
+</tr>
+<tr>
+<td><a href="../part7/40-medical-imaging-reconstruction-at-scale/">118_backprojection_zero_comm_and_real_scaling_arithmetic.cpp</a></td>
+<td>Host program/model (exit-only)</td>
+<td><code>2026-11-18T11:22:42.001337+00:00</code></td>
+<td><a href="../validation/2026-11-18-h100/118_backprojection_zero_comm_and_real_scaling_arithmetic/run.log">Log</a></td>
+</tr>
+<tr>
+<td><a href="../part7/40-medical-imaging-reconstruction-at-scale/">119_forward_projection_communication_wall_cost_model.cpp</a></td>
+<td>Host program/model (exit-only)</td>
+<td><code>2026-11-18T11:22:42.119363+00:00</code></td>
+<td><a href="../validation/2026-11-18-h100/119_forward_projection_communication_wall_cost_model/run.log">Log</a></td>
+</tr>
+<tr>
+<td><a href="../part7/32-mixture-of-experts-at-scale/">93_moe_dispatch_combine_correctness_simulation.cpp</a></td>
+<td>Host program/model (exit-only)</td>
+<td><code>2026-11-18T11:22:42.237435+00:00</code></td>
+<td><a href="../validation/2026-11-18-h100/93_moe_dispatch_combine_correctness_simulation/run.log">Log</a></td>
+</tr>
+<tr>
+<td><a href="../part7/32-mixture-of-experts-at-scale/">94_normal_vs_lowlatency_kernel_cost_model.cpp</a></td>
+<td>Host program/model (exit-only)</td>
+<td><code>2026-11-18T11:22:42.768905+00:00</code></td>
+<td><a href="../validation/2026-11-18-h100/94_normal_vs_lowlatency_kernel_cost_model/run.log">Log</a></td>
+</tr>
+<tr>
+<td><a href="../part7/32-mixture-of-experts-at-scale/">95_gpu_initiated_alltoall_and_put_demo.cu</a></td>
+<td>Numerical/transport validation (recorded scope)</td>
+<td><code>2026-11-18T11:22:42.838435+00:00</code></td>
+<td><a href="../validation/2026-11-18-h100/95_gpu_initiated_alltoall_and_put_demo/run.log">Log</a></td>
+</tr>
+<tr>
+<td><a href="../part7/33-disaggregated-llm-inference/">96_prefill_vs_decode_cost_model.cpp</a></td>
+<td>Host program/model (exit-only)</td>
+<td><code>2026-11-18T11:22:52.936146+00:00</code></td>
+<td><a href="../validation/2026-11-18-h100/96_prefill_vs_decode_cost_model/run.log">Log</a></td>
+</tr>
+<tr>
+<td><a href="../part7/33-disaggregated-llm-inference/">97_phase_specific_tensor_parallelism_correctness_simulation.cpp</a></td>
+<td>Host program/model (exit-only)</td>
+<td><code>2026-11-18T11:22:53.004636+00:00</code></td>
+<td><a href="../validation/2026-11-18-h100/97_phase_specific_tensor_parallelism_correctness_simulation/run.log">Log</a></td>
+</tr>
+<tr>
+<td><a href="../part7/33-disaggregated-llm-inference/">98_kv_cache_handoff_transfer_cost_model.cpp</a></td>
+<td>Host program/model (exit-only)</td>
+<td><code>2026-11-18T11:22:53.223148+00:00</code></td>
+<td><a href="../validation/2026-11-18-h100/98_kv_cache_handoff_transfer_cost_model/run.log">Log</a></td>
+</tr>
+<tr>
+<td><a href="../part7/34-gpu-recommendation-systems/">99_embedding_capacity_and_parallelism_choice_model.cpp</a></td>
+<td>Host program/model (exit-only)</td>
+<td><code>2026-11-18T11:22:53.291318+00:00</code></td>
+<td><a href="../validation/2026-11-18-h100/99_embedding_capacity_and_parallelism_choice_model/run.log">Log</a></td>
+</tr>
+</tbody>
+</table>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+    
+      
+      <nav class="md-footer__inner md-grid" aria-label="Footer" >
+        
+          
+          <a href="../getting-started/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Getting Started">
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+            </div>
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Previous
+              </span>
+              <div class="md-ellipsis">
+                Getting Started
+              </div>
+            </div>
+          </a>
+        
+        
+          
+          <a href="../validation-a100/" class="md-footer__link md-footer__link--next" aria-label="Next: A100 Execution Validation">
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Next
+              </span>
+              <div class="md-ellipsis">
+                A100 Execution Validation
+              </div>
+            </div>
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11z"/></svg>
+            </div>
+          </a>
+        
+      </nav>
+    
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      Copyright &copy; 2026 Oluwaseyi Awoga
+    </div>
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.instant", "navigation.tracking", "navigation.sections", "navigation.expand", "navigation.top", "navigation.footer", "toc.follow", "search.suggest", "search.highlight", "content.code.copy", "content.code.annotate"], "search": "../assets/javascripts/workers/search.a7633da7.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.a5f9d56c.min.js"></script>
+      
+    
+  </body>
+</html>

@@ -1,0 +1,1 @@
+$ nvcc -std=c++17 -O2 -arch=sm_90 /home/ubuntu/full-gpu-rerun-20261118/mgpu/docs/part3/code/43_pipeline_stage_sync.cu -o /home/ubuntu/full-gpu-rerun-20261118/mgpu/results/43_pipeline_stage_sync/example

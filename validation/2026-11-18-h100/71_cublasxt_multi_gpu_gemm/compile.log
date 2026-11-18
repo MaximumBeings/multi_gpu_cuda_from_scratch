@@ -1,0 +1,1 @@
+$ nvcc -std=c++17 -O2 -arch=sm_90 /home/ubuntu/full-gpu-rerun-20261118/mgpu/docs/part6/code/71_cublasxt_multi_gpu_gemm.cu -o /home/ubuntu/full-gpu-rerun-20261118/mgpu/results/71_cublasxt_multi_gpu_gemm/example -lcublas

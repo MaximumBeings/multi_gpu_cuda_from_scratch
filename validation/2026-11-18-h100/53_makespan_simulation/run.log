@@ -1,0 +1,23 @@
+$ /home/ubuntu/full-gpu-rerun-20261118/mgpu/results/53_makespan_simulation/example
+Part A: continuous (infinitely divisible) ideal, 4 ranks, speeds 1.0x/1.0x/1.5x/0.5x, 900 total work units.
+
+  equal split:    every rank gets 225.0000 units; slowest rank (speed 0.5x) finishes at t=450.0000 -- every OTHER rank sits idle at Chapter 17's barrier until then.
+  weighted split: EVERY rank finishes at t=225.0000 -- the algebra says this is exact, for any speeds, in the continuous case.
+  ideal speedup: 2.00x
+
+Part B: the same comparison using REAL integer-quantized shares from Section 18.2's own computeWeightedShard().
+
+rank   speed    equal share    equal finish   weighted share weighted finish
+0      1.0      225            225.000        225            225.000       
+1      1.0      225            225.000        225            225.000       
+2      1.5      225            150.000        337            224.667       
+3      0.5      225            450.000        113            226.000       
+
+  equal split makespan (real bottleneck rank's finish time): 450.000
+  weighted split makespan:                                    226.000
+  real speedup from weighted partitioning:                    1.99x
+  weighted split's own finish-time spread (max - min):        1.333 (the continuous ideal predicts exactly 0.0)
+
+  weighted split's spread (1.333) is below the worst-case rounding bound (N-1)/speed_last + 1/min(other speeds) = 7.000 time units: PASS
+
+The continuous ideal's EXACT equality doesn't survive rounding to whole work units -- the fastest- and slowest-finishing ranks under the weighted split finish 1.333 apart, not identically -- but the gap is small relative to every rank's own share, because computeWeightedShard() rounds every rank but the last DOWN (each loses less than one whole unit) and hands the last rank the leftover remainder (less than N-1 = 3 whole units). This is the same honest distinction this book drew in Chapter 13 vs. Chapter 14: an exact algebraic guarantee (Chapter 13's relocation, this section's continuous ideal) is a different, stronger claim than an empirically-checked, epsilon-bounded one (Chapter 14's reduce, this section's real integer-quantized shares) -- and this section's own result belongs to the second kind, checked, not assumed.

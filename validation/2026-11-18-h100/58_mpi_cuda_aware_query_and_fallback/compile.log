@@ -1,0 +1,1 @@
+$ mpicxx -std=c++17 -O2 -I/usr/include -L/usr/lib64 -Wl,-rpath,/usr/lib64 /home/ubuntu/full-gpu-rerun-20261118/mgpu/docs/part5/code/58_mpi_cuda_aware_query_and_fallback.cpp -o /home/ubuntu/full-gpu-rerun-20261118/mgpu/results/58_mpi_cuda_aware_query_and_fallback/example -lcudart

@@ -1,0 +1,4 @@
+$ /usr/mpi/gcc/openmpi-4.1.7rc1/bin/mpirun --oversubscribe -np 2 /home/ubuntu/full-gpu-rerun-20261118/mgpu/results/64_nvshmem_mpi_bootstrap/example
+PE 1 of 2: MPI bootstrap, allocation and CUDA copy checked
+PE 0 of 2: MPI bootstrap, allocation and CUDA copy checked
+VALIDATION PASS: 2 PEs, errors=0

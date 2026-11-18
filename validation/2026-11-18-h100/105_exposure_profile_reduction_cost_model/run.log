@@ -1,0 +1,10 @@
+$ /home/ubuntu/full-gpu-rerun-20261118/mgpu/results/105_exposure_profile_reduction_cost_model/example
+Real cited exposure-profile structure (Oracle Financial Services Analytics documentation): "30Y:1M" -> one observation date per month for 30 years -> T=360 real future observation dates, each needing its own EPE/PFE reduction across all simulated paths.
+
+P      Off-rank fraction  Bytes/date on network  Unbatched: T reductions  Batched: 1 reduction  
+8      0.8750             168.0                  360 x 24 B msgs/rank     1 x 8640 B msg/rank   
+16     0.9375             360.0                  360 x 24 B msgs/rank     1 x 8640 B msg/rank   
+32     0.9688             744.0                  360 x 24 B msgs/rank     1 x 8640 B msg/rank   
+64     0.9844             1512.0                 360 x 24 B msgs/rank     1 x 8640 B msg/rank   
+
+Two things this table shows. First, the bytes on the network per date grow LINEARLY with P (24 x (P-1): 168 B at P=8, 1512 B at P=64), because every additional rank contributes its own tuple. Second, the T dates are independent reductions over the same P ranks, so nothing forces them to be separate collectives: packing all T=360 (count, mean, M2) tuples into one 8640-byte vector per rank turns the profile into ONE reduction. Issued one date at a time, the profile pays the per-collective latency T=360 times; batched, it pays it once, and the extra bytes are still tiny. So a full exposure profile is not "T times Chapter 31's cost" in any implementation that batches the dates -- the real cost of XVA is the T-fold larger SIMULATION work, not the reduction.

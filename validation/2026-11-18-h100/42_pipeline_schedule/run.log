@@ -1,0 +1,16 @@
+$ /home/ubuntu/full-gpu-rerun-20261118/mgpu/results/42_pipeline_schedule/example
+Pipeline schedule, K=4 devices, M=6 micro-batches (totalTimeSteps = M+K-1 = 9):
+
+device \ t   0  1  2  3  4  5  6  7  8
+dev 0        0  1  2  3  4  5  .  .  .
+dev 1        .  0  1  2  3  4  5  .  .
+dev 2        .  .  0  1  2  3  4  5  .
+dev 3        .  .  .  0  1  2  3  4  5
+
+Counted directly from the schedule above:
+  total device-time slots (K x totalTimeSteps): 36
+  busy slots (every device's M real micro-batches):  24
+  idle slots ('.' above):                             12
+
+Self-check: busySlots == K*M (24): PASS
+Self-check: idleSlots == K*(K-1) (12): PASS

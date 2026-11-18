@@ -1,0 +1,1 @@
+$ nvcc -std=c++17 -O2 -arch=sm_90 -ccbin mpicxx /home/ubuntu/full-gpu-rerun-20261118/mgpu/docs/part5/code/67_nccl_captured_in_graph.cu -o /home/ubuntu/full-gpu-rerun-20261118/mgpu/results/67_nccl_captured_in_graph/example -lnccl

@@ -1,0 +1,2 @@
+$ /home/ubuntu/full-gpu-rerun-20261118/mgpu/results/68_host_node_and_multi_process_graphs/example
+API PROBE PASS: local graph host callbacks=3 expected=3, errors=0
