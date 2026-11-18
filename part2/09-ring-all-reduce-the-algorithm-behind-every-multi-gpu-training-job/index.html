@@ -2774,7 +2774,7 @@
 <!-- mgpu:worked:start -->
 <h2 id="worked-example-trace-one-chunk-through-both-ring-phases">Worked example — Trace one chunk through both ring phases<a class="headerlink" href="#worked-example-trace-one-chunk-through-both-ring-phases" title="Permanent link">&para;</a></h2>
 <p>Use P = 4 ranks, L = 8 int32 elements per rank, and input x_r[i] = 100r + i. Each rank contributes two elements to each chunk. The following is a logical ring schedule with chunk 0 initially at rank 0; different valid implementations can choose different rotations.</p>
-<p><img alt="Numeric worked example: Trace one chunk through both ring phases" src="../../images/worked/ch09.svg" /></p>
+<p><a href="../../images/worked/ch09.svg"><img alt="Numeric worked example: Trace one chunk through both ring phases" src="../../images/worked/ch09.svg" /></a></p>
 <ol>
 <li>
 <p>Chunk 0 starts as rank 0’s [0, 1]. After transmission to rank 1 and addition of [100, 101], it is [100, 102].</p>

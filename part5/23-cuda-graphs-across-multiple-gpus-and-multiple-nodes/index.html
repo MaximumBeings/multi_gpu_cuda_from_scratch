@@ -2777,7 +2777,7 @@
 <p>Wait for the replay’s completion before checking results or freeing allocations. A graph replay repeats operations and edges; it does not restore initial memory contents automatically.</p>
 </li>
 </ol>
-<p><img alt="Numeric worked example: Track persistent state across graph replays" src="../../images/worked/ch23.svg" /></p>
+<p><a href="../../images/worked/ch23.svg"><img alt="Numeric worked example: Track persistent state across graph replays" src="../../images/worked/ch23.svg" /></a></p>
 <p><strong>API connection and scope.</strong> The concrete API chain is cudaStreamBeginCapture, dependency events, cudaStreamEndCapture, cudaGraphInstantiate and cudaGraphLaunch. For a captured NCCL operation, capture participation must be uniform over its participating ranks, and each collective replay must use graphs derived from that matching capture. All ranks must replay the compatible sequence; matching capture alone is insufficient. The NCCL guide recommends one GPU per process for reliability because multi-GPU, single-threaded graph launch can deadlock in some cases. A local graph does not automatically create a multi-node global execution graph.</p>
 <p><strong>Expected check and pitfall.</strong> Keep peer access, pointer lifetimes and rank-to-device mapping explicit. All-GPUs-visible local-rank selection and launcher-masked visible-device-0 selection are different policies because CUDA_VISIBLE_DEVICES renumbers ordinals. Do not mix them when reproducing the recorded run.</p>
 <details class="question">

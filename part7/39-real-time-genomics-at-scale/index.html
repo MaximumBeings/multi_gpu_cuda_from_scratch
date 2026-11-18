@@ -2734,17 +2734,17 @@
 <p><strong>What you need to know first:</strong> Chapter 9 (the round-count/cost-model discipline reused in Section 39.1), Chapter 16 (domain decomposition and halo exchange, this chapter's point of contrast in Section 39.2), Chapter 18 (load imbalance, reused for a different, much smaller reason in Section 39.2), Chapter 30 (ray tracing's own zero-communication-during-computation shape, this chapter's other point of contrast), and Chapter 34 (the "more ranks is not free" saturation lesson Section 39.3 rediscovers from real published data).</p>
 <hr />
 <p>NVIDIA's own real Clara Parabricks documentation reports a real, cited headline result: "over 100x faster analysis of whole-genome sequencing (WGS) compared to CPU-only solutions," and a real, specific production example of that same speedup: "Reduce germline analysis from ~16 hours to under 10 minutes on 4 NVIDIA RTX PRO 6000 Server Edition GPUs." This chapter asks the same question this book has asked of every real multi-GPU case study since Chapter 24: what structural property of the underlying computation actually makes that speedup possible? For genomics, the real answer traces back to a fact Google's own real DeepVariant documentation states directly for the variant-calling half of the pipeline, and that basic sequence-alignment theory establishes for the alignment half: unlike Chapter 16's own stencil, which fundamentally needs its neighbors' data at every step, a real production genomics pipeline can be split so that no worker ever needs another worker's data at all (Section 39.2). But NVIDIA's own real published multi-GPU benchmark table shows that real algorithmic property is necessary, not sufficient, for near-ideal real-world scaling (Section 39.3) -- a genuinely new, real lesson for this book, read directly from vendor-published numbers rather than from a host-side simulation.</p>
-<div class="language-text highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>+------------------------------------------------------------------+
-<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>| 39.1 Real cited WGS speedup: &gt;100x vs CPU-only, cross-checked     |
-<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>|   against a real specific 16hr -&gt; under-10min germline example   |
-<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>+------------------------------------------------------------------+
-<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>| 39.2 Alignment + variant calling: independent reads/regions, so   |
-<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>|   ZERO cross-worker communication is needed at all -- unlike      |
-<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>|   Ch16's halo exchange, for a genuinely different real reason     |
-<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>+------------------------------------------------------------------+
-<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>| 39.3 Real published 2-vs-4-GPU numbers: algorithm allows perfect  |
-<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>|   scaling, but real engineering factors cap it well below ideal   |
-<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>+------------------------------------------------------------------+
+<div class="language-text highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>+--------------------------------------------------------------------+
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>| 39.1 Real cited WGS speedup: &gt;100x vs CPU-only, cross-checked      |
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>|   against a real specific 16hr -&gt; under-10min germline example     |
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>+--------------------------------------------------------------------+
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>| 39.2 Selected stages: shard independent records/regions when       |
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>|   reference, mate/context and boundary requirements are met;       |
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>|   input distribution and result merging remain separate work       |
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>+--------------------------------------------------------------------+
+<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>| 39.3 Published 2-vs-4-GPU times: measured scaling depends on       |
+<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>|   tool, dataset, hardware and complete pipeline scope              |
+<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>+--------------------------------------------------------------------+
 </code></pre></div>
 <!-- mgpu:worked:start -->
 <h2 id="worked-walkthrough-partition-read-or-region-work-without-dropping-boundaries">Worked walkthrough — Partition read or region work without dropping boundaries<a class="headerlink" href="#worked-walkthrough-partition-read-or-region-work-without-dropping-boundaries" title="Permanent link">&para;</a></h2>
@@ -2975,18 +2975,18 @@
 <p>Both the rendering and independent-record models avoid communication during a narrowly defined phase because every worker already has its required context. File 115 tests a deterministic per-record function and disjoint ranges, not real alignment or calling. DeepVariant's sharding guarantee applies to its documented make_examples stage, not every genomics stage or arbitrary byte-sliced reads. See <a href="https://github.com/google/deepvariant/blob/r1.10/docs/deepvariant-details.md">DeepVariant stage and sharding contracts</a>.</p>
 </div>
 <h3 id="background_1">Background<a class="headerlink" href="#background_1" title="Permanent link">&para;</a></h3>
-<div class="language-text highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>+----------------------------------------------------------+
-<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>| Ch16's stencil: cell (i,j) NEEDS its own neighbors' data --  |
-<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>|   halo exchange is mathematically unavoidable                |
-<a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a>+----------------------------------------------------------+
-<a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a>| Genomics: read i's alignment, or region i's variant calls,   |
-<a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a>|   depend on NOTHING outside read/region i itself             |
-<a id="__codelineno-10-7" name="__codelineno-10-7" href="#__codelineno-10-7"></a>+----------------------------------------------------------+
-<a id="__codelineno-10-8" name="__codelineno-10-8" href="#__codelineno-10-8"></a>| P-way contiguous split -&gt; ZERO cross-worker communication,   |
-<a id="__codelineno-10-9" name="__codelineno-10-9" href="#__codelineno-10-9"></a>|   verified bit-exact at every tested P from 1 to 64          |
-<a id="__codelineno-10-10" name="__codelineno-10-10" href="#__codelineno-10-10"></a>+------------------------------------------------------------+
+<div class="language-text highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>+--------------------------------------------------------------------+
+<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>| Ch16's stencil: cell (i,j) NEEDS its own neighbors' data --        |
+<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>|   halo exchange is mathematically unavoidable                      |
+<a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a>+--------------------------------------------------------------------+
+<a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a>| Independent-record toy: per-record function uses its own ID;       |
+<a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a>|   real genomics stages require shared reference/context            |
+<a id="__codelineno-10-7" name="__codelineno-10-7" href="#__codelineno-10-7"></a>+--------------------------------------------------------------------+
+<a id="__codelineno-10-8" name="__codelineno-10-8" href="#__codelineno-10-8"></a>| P-way toy split -&gt; no cross-worker reads inside this model         |
+<a id="__codelineno-10-9" name="__codelineno-10-9" href="#__codelineno-10-9"></a>|   Toy arithmetic checked at P=1..64; not pipeline equivalence      |
+<a id="__codelineno-10-10" name="__codelineno-10-10" href="#__codelineno-10-10"></a>+--------------------------------------------------------------------+
 </code></pre></div>
-<p>The following introductory ASCII diagram describes the independent-unit toy only: its phrase "nothing outside" excludes neither shared reference/index data nor algorithm-specific context in real genomics.</p>
+<p>The introductory ASCII diagram describes the independent-unit toy only. Real genomics stages additionally require their specified shared reference/index data and algorithm-specific context.</p>
 <p>File 115 builds a host-side correctness simulation: N independent units (standing in for reads during alignment, or genomic regions during variant calling) are split into P disjoint, contiguous slices, each worker processes only its own slice, and the assembled result is checked against a single-process reference at every tested P.</p>
 <div class="language-cpp highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="c1">// Chapter 39: Real-Time Genomics at Scale</span>
 <a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a><span class="c1">// 115_embarrassingly_parallel_genomics_correctness_simulation.cpp</span>
@@ -3244,15 +3244,15 @@
 <p>'Embarrassingly parallel' is a statement about the ALGORITHM -- that no cross-worker communication is mathematically required. It says nothing about real engineering costs that do not shrink when the GPU count grows: fixed per-run setup time, file I/O, or a host-side bottleneck feeding the GPUs. File 116 computes real observed efficiency directly from NVIDIA's own published numbers and finds it ranges from about 50% to about 84% of ideal doubling across real tools that are ALL, by Section 39.2's own finding, equally free of required communication -- proof that the algorithmic property alone does not decide the real-world outcome.</p>
 </div>
 <h3 id="background_2">Background<a class="headerlink" href="#background_2" title="Permanent link">&para;</a></h3>
-<div class="language-text highlight"><pre><span></span><code><a id="__codelineno-19-1" name="__codelineno-19-1" href="#__codelineno-19-1"></a>+----------------------------------------------------------+
-<a id="__codelineno-19-2" name="__codelineno-19-2" href="#__codelineno-19-2"></a>| Real published RTX PRO 6000 benchmarks, 2 GPUs -&gt; 4 GPUs:    |
-<a id="__codelineno-19-3" name="__codelineno-19-3" href="#__codelineno-19-3"></a>|   FQ2BAM:      6.93 -&gt; 4.68 min  (74.0% of ideal 2x)          |
-<a id="__codelineno-19-4" name="__codelineno-19-4" href="#__codelineno-19-4"></a>|   DeepVariant: 7.12 -&gt; 4.80 min  (74.2% of ideal 2x)          |
-<a id="__codelineno-19-5" name="__codelineno-19-5" href="#__codelineno-19-5"></a>|   Minimap2:   15.68 -&gt; 15.60 min (50.3% of ideal 2x)          |
-<a id="__codelineno-19-6" name="__codelineno-19-6" href="#__codelineno-19-6"></a>+----------------------------------------------------------+
-<a id="__codelineno-19-7" name="__codelineno-19-7" href="#__codelineno-19-7"></a>| Same real embarrassingly-parallel foundation (Sec 39.2) --    |
-<a id="__codelineno-19-8" name="__codelineno-19-8" href="#__codelineno-19-8"></a>|   real efficiency still varies 50%-84% across real tools      |
-<a id="__codelineno-19-9" name="__codelineno-19-9" href="#__codelineno-19-9"></a>+----------------------------------------------------------+
+<div class="language-text highlight"><pre><span></span><code><a id="__codelineno-19-1" name="__codelineno-19-1" href="#__codelineno-19-1"></a>+--------------------------------------------------------------------+
+<a id="__codelineno-19-2" name="__codelineno-19-2" href="#__codelineno-19-2"></a>| Real published RTX PRO 6000 benchmarks, 2 GPUs -&gt; 4 GPUs:          |
+<a id="__codelineno-19-3" name="__codelineno-19-3" href="#__codelineno-19-3"></a>|   FQ2BAM:      6.93 -&gt; 4.68 min  (74.0% of ideal 2x)               |
+<a id="__codelineno-19-4" name="__codelineno-19-4" href="#__codelineno-19-4"></a>|   DeepVariant: 7.12 -&gt; 4.80 min  (74.2% of ideal 2x)               |
+<a id="__codelineno-19-5" name="__codelineno-19-5" href="#__codelineno-19-5"></a>|   Minimap2:   15.68 -&gt; 15.60 min (50.3% of ideal 2x)               |
+<a id="__codelineno-19-6" name="__codelineno-19-6" href="#__codelineno-19-6"></a>+--------------------------------------------------------------------+
+<a id="__codelineno-19-7" name="__codelineno-19-7" href="#__codelineno-19-7"></a>| Different tools/stages have different dependencies --              |
+<a id="__codelineno-19-8" name="__codelineno-19-8" href="#__codelineno-19-8"></a>|   published doubling efficiency varies 50%-84% here                |
+<a id="__codelineno-19-9" name="__codelineno-19-9" href="#__codelineno-19-9"></a>+--------------------------------------------------------------------+
 </code></pre></div>
 <p>File 116 uses NVIDIA's own real published benchmark table directly -- no simulation, the primary data source for this section -- and computes each real tool's own observed speedup and percentage of ideal 2x scaling from 2 GPUs to 4 GPUs.</p>
 <div class="language-cpp highlight"><pre><span></span><code><a id="__codelineno-20-1" name="__codelineno-20-1" href="#__codelineno-20-1"></a><span class="c1">// Chapter 39: Real-Time Genomics at Scale</span>

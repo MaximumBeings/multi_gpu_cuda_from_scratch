@@ -2762,7 +2762,7 @@
 <p>The completed receives must be rank 0:[30,31], rank 1:[10,11], rank 2:[20,21]. Validate every element before reusing buffers.</p>
 </li>
 </ol>
-<p><img alt="Numeric worked example: Match every edge of a three-rank ring" src="../../images/worked/ch20.svg" /></p>
+<p><a href="../../images/worked/ch20.svg"><img alt="Numeric worked example: Match every edge of a three-rank ring" src="../../images/worked/ch20.svg" /></a></p>
 <p><strong>API connection and scope.</strong> MPI_Sendrecv expresses the paired exchange without depending on eager buffering. This host-buffer trace does not demonstrate CUDA-aware MPI or RDMA. Passing a device pointer requires a supporting MPI stack; otherwise use explicit staging and wait for device copies before MPI consumes their host buffers.</p>
 <p><strong>Expected check and pitfall.</strong> World rank is not a CUDA ordinal. CUDA_VISIBLE_DEVICES renumbers visible devices. An all-node-GPUs-visible one-process-per-GPU launch can select a valid local rank; a launcher exposing only one GPU to each process requires visible device 0. The recorded MPI example uses its stated localRank%device_count policy; check the launch mapping independently.</p>
 <details class="question">

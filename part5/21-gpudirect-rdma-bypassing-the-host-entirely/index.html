@@ -2776,7 +2776,7 @@
 <p>After the transport completion and its required consumer-ordering protocol, validate all four received integers. A capability flag equal to 1 is not a data-integrity check.</p>
 </li>
 </ol>
-<p><img alt="Numeric worked example: Account for payload bytes separately from bootstrap" src="../../images/worked/ch21.svg" /></p>
+<p><a href="../../images/worked/ch21.svg"><img alt="Numeric worked example: Account for payload bytes separately from bootstrap" src="../../images/worked/ch21.svg" /></a></p>
 <p><strong>API connection and scope.</strong> NCCL bootstrap may distribute a unique ID with MPI, while ncclSend/ncclRecv move device payloads. A CUDA-aware API alone does not prove RDMA was selected: confirm the actual transport using the stack’s diagnostic and profiling facilities. Apply visibility/flush requirements according to the actual transport contract rather than assuming arbitrary CPU synchronization makes external writes visible.</p>
 <p><strong>Expected check and pitfall.</strong> Zero staging bytes is not a latency claim. Small-message overhead, topology and fallback routing can dominate. Keep control traffic, payload traffic and numerical correctness separate.</p>
 <details class="question">

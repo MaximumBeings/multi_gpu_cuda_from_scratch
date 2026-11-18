@@ -2775,7 +2775,7 @@
 <p>Rank 2 computes [1,10] dot h0=21. Rank 3 computes [100,1000] dot h1=4300. A sum inside communicator {2,3} produces 4321 on both second-stage ranks.</p>
 </li>
 </ol>
-<p><img alt="Numeric worked example: Keep tensor-parallel groups inside pipeline stages" src="../../images/worked/ch26.svg" /></p>
+<p><a href="../../images/worked/ch26.svg"><img alt="Numeric worked example: Keep tensor-parallel groups inside pipeline stages" src="../../images/worked/ch26.svg" /></a></p>
 <p><strong>API connection and scope.</strong> Column-parallel output shards can feed compatible row-parallel input shards without assembling the complete intermediate vector on every rank. Match pipeline sends/receives by microbatch and shard identity; use a tensor-parallel reduction only for the partial outputs of the same layer.</p>
 <p><strong>Expected check and pitfall.</strong> A world all-reduce across all four ranks mixes pipeline stages and changes the computation. Real transformer blocks add normalization, nonlinearities, attention and cache-layout contracts; the linear example isolates only ownership and reduction.</p>
 <details class="question">

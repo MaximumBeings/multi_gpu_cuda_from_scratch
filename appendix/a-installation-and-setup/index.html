@@ -2836,7 +2836,7 @@
 <!-- mgpu:worked:start -->
 <h2 id="worked-example-read-an-environment-check-without-conflating-its-layers">Worked example — Read an environment check without conflating its layers<a class="headerlink" href="#worked-example-read-an-environment-check-without-conflating-its-layers" title="Permanent link">&para;</a></h2>
 <p>This illustrative diagnostic uses compiler release 12.8, NCCL version 2.26.2 and two visible GPUs. It is a reading exercise, not an additional execution record. The dated captured records elsewhere in the appendix remain the evidence for actual tested systems.</p>
-<p><img alt="Numeric worked example: Read an environment check without conflating its layers" src="../../images/worked/appendix-a.svg" /></p>
+<p><a href="../../images/worked/appendix-a.svg"><img alt="Numeric worked example: Read an environment check without conflating its layers" src="../../images/worked/appendix-a.svg" /></a></p>
 <ol>
 <li>
 <p>nvcc --version describes the selected compiler toolkit. The CUDA version shown by nvidia-smi describes driver compatibility; the two labels need not be identical.</p>
@@ -2968,7 +2968,7 @@
 
 <p><strong>Compile and run:</strong> <code>nvcc -std=c++17 -arch=sm_90 120_toolchain_version_check.cu -o 120_toolchain_version_check &amp;&amp; ./120_toolchain_version_check</code></p>
 <p><strong>Sample input:</strong> none</p>
-<p>Note the <code>__GNUC__ = 12</code> line: this machine's own <code>g++ --version</code> reports <code>13.3.0</code> at a plain shell prompt, and both numbers are correct, for the reasons explained above.</p>
+<p>The older distribution-toolkit observation used GCC 12, whereas the dated CUDA 12.8.93 runs used GCC 13.3. Read each compiler macro alongside its own captured compiler command and system record; do not mix those two environments.</p>
 <h2 id="a2-the-multi-gpu-stack-verified-nccl-open-mpi-and-nvshmem">A.2 The Multi-GPU Stack, Verified: NCCL, Open MPI, and NVSHMEM<a class="headerlink" href="#a2-the-multi-gpu-stack-verified-nccl-open-mpi-and-nvshmem" title="Permanent link">&para;</a></h2>
 <!-- mgpu:figure-2:start -->
 <p><a href="../../images/technical/appendix-a/2-layers.svg"><img alt="Libraries form a communication stack" src="../../images/technical/appendix-a/2-layers.svg" /></a></p>
@@ -4066,7 +4066,7 @@
 <p><strong>Sample input:</strong> none</p>
 <p>The Makefile checks five build/link recipes. Their execution records and the separate numerical examples show what each program checks.</p>
 <p>The <a href="../../validation-h100/">2026-11-17 H100 execution record</a> covers two GPUs connected by local NV18. It distinguishes numerical checks, API probes and other executions; a successful exit alone does not establish GPU algorithm correctness.</p>
-<p>If a reader's own machine reaches Q4's "NO, only 1 device found" branch (Section A.3) rather than "NO, 0 devices found," every recipe above already works on real hardware; the only gap left is a second GPU. Renting a short-lived multi-GPU instance by the hour from any major cloud GPU provider is the practical way to close that gap for the length of a single chapter's own exercises, the same way the DSA book's own Appendix A.4 describes renting a single-GPU instance from Lambda Cloud -- the exact rental steps do not change based on GPU count, only the instance type selected.</p>
+<p>If a reader's own machine reaches Q4's "NO, only 1 device found" branch (Section A.3) rather than "NO, 0 devices found," the device-count check establishes only that one device is visible. Build recipes, dependency resolution, architecture compatibility and numerical checks still need to pass; multi-GPU examples additionally require their stated device counts/topology. Renting a short-lived multi-GPU instance by the hour from any major cloud GPU provider is the practical way to close that gap for the length of a single chapter's own exercises, the same way the DSA book's own Appendix A.4 describes renting a single-GPU instance from Lambda Cloud -- the exact rental steps do not change based on GPU count, only the instance type selected.</p>
 <h2 id="appendix-summary">Appendix Summary<a class="headerlink" href="#appendix-summary" title="Permanent link">&para;</a></h2>
 <p>Verify the compiler, runtime, driver and visible GPUs separately. Record the exact CUDA, NCCL, MPI and NVSHMEM versions used by each run. Compiler macros identify the compiler that built a program; they do not prove how it was installed. The setup recipes exercise distinct build/link paths, while the chapter workloads test actual transfers and communication. Consult the current validation report for captured commands, system information and execution limits.</p>
 <p>For the recorded host, source the saved MPI/NVSHMEM environment before building. Debian-packaged CUDA can place headers in /usr/include and libraries in /usr/lib/x86_64-linux-gnu; the Makefile exposes both paths instead of assuming every installation uses CUDA_HOME/include and CUDA_HOME/lib64.</p>

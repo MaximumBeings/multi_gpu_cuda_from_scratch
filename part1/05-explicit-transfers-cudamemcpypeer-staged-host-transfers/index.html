@@ -2747,7 +2747,7 @@
 <!-- mgpu:worked:start -->
 <h2 id="worked-example-count-bytes-at-each-transfer-leg">Worked example — Count bytes at each transfer leg<a class="headerlink" href="#worked-example-count-bytes-at-each-transfer-leg" title="Permanent link">&para;</a></h2>
 <p>Eight FP32 values [10, 11, 12, 13, 14, 15, 16, 17] occupy 8 × 4 = 32 bytes. Compare an explicit device-to-device copy with an explicitly staged algorithm using a pinned host buffer. These are logical byte counts, not physical bus counters or timing claims.</p>
-<p><img alt="Numeric worked example: Count bytes at each transfer leg" src="../../images/worked/ch05.svg" /></p>
+<p><a href="../../images/worked/ch05.svg"><img alt="Numeric worked example: Count bytes at each transfer leg" src="../../images/worked/ch05.svg" /></a></p>
 <ol>
 <li>
 <p>A direct copy operation has 32 bytes of useful payload. cudaMemcpyPeerAsync takes a byte count, so pass 32 rather than 8.</p>

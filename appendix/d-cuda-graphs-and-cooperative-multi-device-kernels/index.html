@@ -2825,7 +2825,7 @@
 <p>For a known kernel node, cudaGraphExecKernelNodeSetParams can update supported parameters. For a replacement graph, call cudaGraphExecUpdate and inspect both the API status and detailed update result; reinstantiate if the update is rejected.</p>
 </li>
 </ol>
-<p><img alt="Numeric worked example: Update a graph parameter without changing the contract" src="../../images/worked/appendix-d.svg" /></p>
+<p><a href="../../images/worked/appendix-d.svg"><img alt="Numeric worked example: Update a graph parameter without changing the contract" src="../../images/worked/appendix-d.svg" /></a></p>
 <p><strong>API connection and scope.</strong> This arithmetic trace is not a new GPU timing result. Update compatibility depends on the actual node types and changes, not merely the number of nodes. Keep allocations and kernel argument storage valid for the required lifetime and execution context.</p>
 <p><strong>Expected check and pitfall.</strong> A per-device cooperative grid synchronization is not a cross-device barrier. Do not infer modern portability from the legacy deprecated multi-device cooperative launch API. Cross-device dependencies need a supported explicit protocol.</p>
 <details class="question">

@@ -2748,7 +2748,7 @@
 <!-- mgpu:worked:start -->
 <h2 id="worked-example-capacity-is-a-per-device-constraint">Worked example — Capacity is a per-device constraint<a class="headerlink" href="#worked-example-capacity-is-a-per-device-constraint" title="Permanent link">&para;</a></h2>
 <p>Use decimal GB (1 GB = 10⁹ bytes), two billion parameters, and a hypothetical usable capacity of 24 GB per GPU. Assume FP16 weights and gradients, FP32 master weights and two FP32 optimizer moments; reserve 4 GB per GPU for activations and workspace. This is a capacity model, not a measured allocation.</p>
-<p><img alt="Numeric worked example: Capacity is a per-device constraint" src="../../images/worked/ch01.svg" /></p>
+<p><a href="../../images/worked/ch01.svg"><img alt="Numeric worked example: Capacity is a per-device constraint" src="../../images/worked/ch01.svg" /></a></p>
 <ol>
 <li>
 <p>Add the state bytes per parameter: 2 + 2 + 4 + 4 + 4 = 16 bytes.</p>

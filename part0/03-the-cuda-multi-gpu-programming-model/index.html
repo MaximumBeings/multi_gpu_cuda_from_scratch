@@ -2825,7 +2825,7 @@
 <!-- mgpu:worked:start -->
 <h2 id="worked-example-current-device-does-not-migrate-existing-objects">Worked example — Current device does not migrate existing objects<a class="headerlink" href="#worked-example-current-device-does-not-migrate-existing-objects" title="Permanent link">&para;</a></h2>
 <p>One host thread manages two GPUs. Each buffer contains three FP32 values, so its allocation is 3 × 4 = 12 bytes. Let stream s0 belong to GPU 0 and s1 to GPU 1.</p>
-<p><img alt="Numeric worked example: Current device does not migrate existing objects" src="../../images/worked/ch03.svg" /></p>
+<p><a href="../../images/worked/ch03.svg"><img alt="Numeric worked example: Current device does not migrate existing objects" src="../../images/worked/ch03.svg" /></a></p>
 <ol>
 <li>
 <p>Select GPU 0 with cudaSetDevice(0), allocate A and create s0 there; initialize A = [1, 2, 3].</p>

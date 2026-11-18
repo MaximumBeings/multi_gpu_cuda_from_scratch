@@ -2760,7 +2760,7 @@
 <p>Combine A+B+C=2+3+5=10. If both attempts contribute, the result is 15 and is wrong even though each attempt individually computed C correctly.</p>
 </li>
 </ol>
-<p><img alt="Numeric worked example: Deduplicate speculative completion" src="../../images/worked/ch19.svg" /></p>
+<p><a href="../../images/worked/ch19.svg"><img alt="Numeric worked example: Deduplicate speculative completion" src="../../images/worked/ch19.svg" /></a></p>
 <p><strong>API connection and scope.</strong> This is a speculative task model, not a fault-injected NCCL measurement. ncclCommGetAsyncError can report an asynchronous communication error; it does not restore communicator membership or application state. Aborting and recreating communication must be accompanied by an explicit checkpoint/restart or task-recovery policy.</p>
 <p><strong>Expected check and pitfall.</strong> Deduplication must occur before irreversible side effects. An optimizer update or external write cannot safely be repeated merely because the task result is deterministic.</p>
 <details class="question">

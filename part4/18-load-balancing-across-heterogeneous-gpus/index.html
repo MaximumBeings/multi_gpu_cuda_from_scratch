@@ -2773,7 +2773,7 @@
 <p>For integral ranges, compute boundaries floor(W×cumulative_speed/4), including endpoints 0 and W. At W=12 these are [0,3,9,12], so every index belongs to exactly one rank.</p>
 </li>
 </ol>
-<p><img alt="Numeric worked example: Turn device speeds into an integer partition" src="../../images/worked/ch18.svg" /></p>
+<p><a href="../../images/worked/ch18.svg"><img alt="Numeric worked example: Turn device speeds into an integer partition" src="../../images/worked/ch18.svg" /></a></p>
 <p><strong>API connection and scope.</strong> Implement this as a host-side range planner feeding per-device kernel launch ranges. Profile the actual kernel to estimate speeds: SM count alone does not establish throughput. Enforce memory-capacity limits and include transfer costs before accepting a partition.</p>
 <p><strong>Expected check and pitfall.</strong> Check monotone boundaries, total count W, no overlap and identical numerical results to the unsplit workload. Rounding can erase a theoretical balance improvement for tiny jobs.</p>
 <details class="question">

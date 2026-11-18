@@ -2824,7 +2824,7 @@
 <p>Using whole-phase T=7 ms, algorithm bandwidth S/T=1.714 GB/s; modeled one-direction sent-volume bandwidth is 18/7=2.571 GB/s. State which numerator is used.</p>
 </li>
 </ol>
-<p><img alt="Numeric worked example: Measure the whole phase before deriving bandwidth" src="../../images/worked/appendix-e.svg" /></p>
+<p><a href="../../images/worked/appendix-e.svg"><img alt="Numeric worked example: Measure the whole phase before deriving bandwidth" src="../../images/worked/appendix-e.svg" /></a></p>
 <p><strong>API connection and scope.</strong> Record CUDA event pairs on the same owning device/stream for local intervals. For end-to-end makespan, use a host monotonic clock before the first submission through completion of all participating work. Coordinate rank start/end scope explicitly when measuring multiple processes.</p>
 <p><strong>Expected check and pitfall.</strong> Do not take the maximum of differently started local durations as global elapsed time. These ring byte formulas are accounting models, not measured link utilization; topology, implementation and NCCL-tests bandwidth conventions require their own stated interpretation.</p>
 <details class="question">

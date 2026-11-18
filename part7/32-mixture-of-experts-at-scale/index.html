@@ -2733,22 +2733,22 @@
 <p><strong>What you will understand after this chapter:</strong> why a Mixture-of-Experts (MoE) layer needs a genuinely different communication pattern than anything Part 2 through Part 6 built -- a per-TOKEN dispatch/combine all-to-all, not a per-RANK reduction -- and why MoE outputs are nevertheless NOT independent of how many ranks the batch is split across: GShard-style per-group expert capacity makes which tokens overflow depend on the partition, and once a token is routed to three or more experts, the grouping of its combine sum matters too; what DeepSeek-AI's own real, open-source DeepEP library actually is, why it ships two entirely separate all-to-all kernel families (one tuned for training throughput, one for inference latency) rather than a single "best" kernel, and how its own real V1 design used NVIDIA's NVSHMEM (this book's own Chapter 22) with GPU-initiated RDMA to let the GPU drive the network directly, bypassing the CPU per dispatch -- plus a candid look at DeepEP's later releases, which moved away from that NVSHMEM foundation and have since removed V1 from the repository entirely, a reminder that even a cutting-edge production library's transport layer keeps changing.</p>
 <p><strong>What you need to know first:</strong> Chapter 10 (all-to-all, this chapter's direct ancestor), Chapter 14 (tensor parallelism -- MoE is a different way of sharding work within a layer), and Chapter 22 (NVSHMEM and GPU-initiated communication, which this chapter's real GPU-initiated all-to-all API calls build on directly).</p>
 <hr />
-<div class="language-text highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>+------------------------------------------------------------------+
-<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>|  Chapters 8-31 (every collective in this book so far):           |
-<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>|  Rank 0 data --+                                                 |
-<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>|  Rank 1 data --+--&gt; [ REDUCE across ALL ranks ] --&gt; one result   |
-<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>|  Rank 2 data --+     (order/grouping-dependent: a different P    |
-<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>|                       can change the last bits of the result)     |
-<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>+------------------------------------------------------------------+
-<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>|  Chapter 32 (MoE dispatch/combine):                               |
-<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>|  Token A --&gt; [ gate ] --&gt; expert 2 (on Rank 1) --+                |
-<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>|  Token B --&gt; [ gate ] --&gt; expert 0 (on Rank 0)    |--&gt; DISPATCH   |
-<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>|  Token C --&gt; [ gate ] --&gt; expert 2 (on Rank 1) --+                |
+<div class="language-text highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>+--------------------------------------------------------------------+
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>|  Earlier REDUCTION example (not broadcast/all-gather/all-to-all):  |
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>|  Rank 0 data --+                                                   |
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>|  Rank 1 data --+--&gt; [ REDUCE across ALL ranks ] --&gt; one result     |
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>|  Rank 2 data --+     (order/grouping-dependent: a different P      |
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>|                       can change the last bits of the result)      |
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>+--------------------------------------------------------------------+
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>|  Chapter 32 (MoE dispatch/combine):                                |
+<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>|  Token A --&gt; [ gate ] --&gt; expert 2 (on Rank 1) --+                 |
+<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>|  Token B --&gt; [ gate ] --&gt; expert 0 (on Rank 0)    |--&gt; DISPATCH    |
+<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>|  Token C --&gt; [ gate ] --&gt; expert 2 (on Rank 1) --+                 |
 <a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>|                                                                    |
 <a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>|  expert output --&gt; [ weighted combine, PER TOKEN ONLY ] --&gt; COMBINE|
-<a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>|  (but capacity is per group/rank, so P changes who overflows;     |
-<a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a>|   and a top-k&gt;=3 combine sum is grouping-dependent too)           |
-<a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a>+------------------------------------------------------------------+
+<a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>|  (but capacity is per group/rank, so P changes who overflows;      |
+<a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a>|   and a top-k&gt;=3 combine sum is grouping-dependent too)            |
+<a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a>+--------------------------------------------------------------------+
 </code></pre></div>
 <!-- mgpu:worked:start -->
 <h2 id="worked-walkthrough-route-four-tokens-and-invert-the-dispatch">Worked walkthrough — Route four tokens and invert the dispatch<a class="headerlink" href="#worked-walkthrough-route-four-tokens-and-invert-the-dispatch" title="Permanent link">&para;</a></h2>
@@ -3236,16 +3236,16 @@
 <p>The name says what the kernel optimizes, not that it beats the other kernel on every number -- and comparing the two tables needs care. The normal kernel's headline 153-158 GB/s is its INTRANODE (NVLink) figure; the low-latency kernel is pure RDMA, so the like-for-like comparison is against the normal kernel's INTERNODE numbers, 43-58 GB/s. On that comparison the low-latency kernel's 98 GB/s at EP=8 is actually HIGHER, not lower, and it stays in the same 39-63 GB/s range as the internode normal kernel at larger EP. So "low-latency kernels have lower bandwidth" is not what the data says. What the data does say is that the two kernels were benchmarked at different operating points -- the low-latency table at a fixed 128 tokens per batch, the normal table at training-sized batches -- and that the low-latency kernel's bandwidth falls steeply as EP grows. A team that swaps one for the other should benchmark at its own batch size and EP degree rather than read a winner off either table.</p>
 </div>
 <h3 id="background_1">Background<a class="headerlink" href="#background_1" title="Permanent link">&para;</a></h3>
-<div class="language-text highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>+---------------------------------------------------------------+
-<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>|  Normal kernels: large batch (thousands of tokens)             |
-<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>|  bandwidth: 153-158 GB/s (intranode), 43-58 GB/s (internode)   |
-<a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a>|  latency: not published -- amortized away by batch size        |
-<a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a>+---------------------------------------------------------------+
-<a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a>|  Low-latency kernels: small batch (128 tokens, inference decode)|
-<a id="__codelineno-10-7" name="__codelineno-10-7" href="#__codelineno-10-7"></a>|  bandwidth: 39-98 GB/s (lower peak, falls further as EP grows)  |
-<a id="__codelineno-10-8" name="__codelineno-10-8" href="#__codelineno-10-8"></a>|  latency: 77-194 us dispatch, 114-369 us combine (published,    |
-<a id="__codelineno-10-9" name="__codelineno-10-9" href="#__codelineno-10-9"></a>|           because at THIS batch size it is what the user feels)|
-<a id="__codelineno-10-10" name="__codelineno-10-10" href="#__codelineno-10-10"></a>+---------------------------------------------------------------+
+<div class="language-text highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>+--------------------------------------------------------------------+
+<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>|  Normal kernels: large batch (thousands of tokens)                 |
+<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>|  bandwidth: 153-158 GB/s (intranode), 43-58 GB/s (internode)       |
+<a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a>|  latency: not listed in this V1 throughput table; still nonzero    |
+<a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a>+--------------------------------------------------------------------+
+<a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a>|  Low-latency kernels: small batch (128 tokens, inference decode)   |
+<a id="__codelineno-10-7" name="__codelineno-10-7" href="#__codelineno-10-7"></a>|  bandwidth: 39-98 GB/s (lower peak, falls further as EP grows)     |
+<a id="__codelineno-10-8" name="__codelineno-10-8" href="#__codelineno-10-8"></a>|  latency: 77-194 us dispatch, 114-369 us combine (published,       |
+<a id="__codelineno-10-9" name="__codelineno-10-9" href="#__codelineno-10-9"></a>|           because at THIS batch size it is what the user feels)    |
+<a id="__codelineno-10-10" name="__codelineno-10-10" href="#__codelineno-10-10"></a>+--------------------------------------------------------------------+
 </code></pre></div>
 <p>File 94 prints DeepEP V1's own two real published benchmark tables (from V1's <code>docs/legacy.md</code> in the <code>deepseek-ai/DeepEP</code> GitHub repository, read when this chapter was written; the current README says V1, its NVSHMEM backend and its legacy docs have since been removed, so that file now returns 404 and the tables survive only in the repository's history) side by side, then computes two pieces of honest arithmetic directly on those real numbers: a per-token dispatch latency at each expert-parallelism (EP) degree, and the bandwidth-degradation ratio from the smallest to the largest tested EP degree. No number here is measured or estimated by this book -- every input is copied verbatim from DeepEP's own documentation.</p>
 <div class="language-cpp highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="c1">// Chapter 32: Mixture-of-Experts at Scale</span>

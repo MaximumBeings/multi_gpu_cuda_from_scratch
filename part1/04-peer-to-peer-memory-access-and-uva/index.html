@@ -2747,7 +2747,7 @@
 <!-- mgpu:worked:start -->
 <h2 id="worked-example-peer-access-is-a-directional-permission">Worked example — Peer access is a directional permission<a class="headerlink" href="#worked-example-peer-access-is-a-directional-permission" title="Permanent link">&para;</a></h2>
 <p>Assume GPU 1 owns p1 = [10, 20, 30] (three int32 values, 12 bytes). A hypothetical capability query reports that GPU 0 can access GPU 1, but the reverse query reports no access.</p>
-<p><img alt="Numeric worked example: Peer access is a directional permission" src="../../images/worked/ch04.svg" /></p>
+<p><a href="../../images/worked/ch04.svg"><img alt="Numeric worked example: Peer access is a directional permission" src="../../images/worked/ch04.svg" /></a></p>
 <ol>
 <li>
 <p>Call cudaDeviceCanAccessPeer(&amp;can, 0, 1): the first device is the prospective accessor and the second owns the memory. Here can = 1.</p>

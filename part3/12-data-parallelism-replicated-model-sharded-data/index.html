@@ -2761,7 +2761,7 @@
 <!-- mgpu:worked:start -->
 <h2 id="worked-example-weight-gradients-by-the-number-of-samples">Worked example — Weight gradients by the number of samples<a class="headerlink" href="#worked-example-weight-gradients-by-the-number-of-samples" title="Permanent link">&para;</a></h2>
 <p>Two data-parallel ranks process unequal local batch sizes. Rank 0 processes n0 = 2 samples with mean gradient [2, 4]; rank 1 processes n1 = 6 with mean gradient [6, 8]. Assume both local means use the same loss normalization convention.</p>
-<p><img alt="Numeric worked example: Weight gradients by the number of samples" src="../../images/worked/ch12.svg" /></p>
+<p><a href="../../images/worked/ch12.svg"><img alt="Numeric worked example: Weight gradients by the number of samples" src="../../images/worked/ch12.svg" /></a></p>
 <ol>
 <li>
 <p>Recover local gradient sums: 2 × [2, 4] = [4, 8] and 6 × [6, 8] = [36, 48].</p>

@@ -2734,16 +2734,16 @@
 <p><strong>What you need to know first:</strong> Chapter 4 (Universal Virtual Addressing, reused by name in Section 38.2's own real citation), Chapter 9 (the reduction primitive reused throughout this book, including Section 38.3's own per-split reductions), Chapter 16 (domain decomposition, this chapter's point of contrast for Section 38.2's own graph partitioning), Chapter 28 (distributed BFS, the book's other graph-shaped communication pattern), and Chapter 36 (the T-independent-reductions structure Section 38.3 directly contrasts against).</p>
 <hr />
 <p>NVIDIA's own real American Express case study describes a production system "generating a fraud decision in milliseconds for every card transaction worldwide," for a company that "monitors more than $1.2 trillion in transaction value every year," built on "deep-learning-based models optimized with NVIDIA TensorRT and running on NVIDIA Triton Inference Server." This chapter follows the real, newer architecture NVIDIA's own Financial Fraud Detection AI Blueprint describes for this exact problem: not a model that looks at one transaction at a time, but a graph neural network that sees accounts, merchants, and transactions as a connected network, feeding its own learned embeddings into an XGBoost classifier as additional features. That hybrid design raises two real multi-GPU questions this book has not answered yet: how does a graph too large for one GPU get partitioned, and what happens when training needs a neighbor's features that live on a different GPU's own shard (Section 38.2)? And once the GNN's embeddings are ready, what does distributing the SECOND real stage -- building an XGBoost ensemble -- actually require (Section 38.3)? Both answers are grounded directly in NVIDIA's own real Financial Fraud Training documentation.</p>
-<div class="language-text highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>+------------------------------------------------------------------+
-<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>| 38.1 Why a GRAPH: fraud rings hide in account/merchant/txn links  |
-<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>|   real cited: AUPRC 0.90 with GNN embeddings vs 0.79 without      |
-<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>+------------------------------------------------------------------+
-<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>| 38.2 Graph too big for 1 GPU: shard nodes, fetch remote neighbors |
-<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>|   on demand (WholeGraph) -- a THIRD graph communication shape     |
-<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>+------------------------------------------------------------------+
-<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>| 38.3 XGBoost on top: EVERY split is its own cross-shard reduction |
-<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>|   -- sequential within a tree, unlike Ch36's independent T dates  |
-<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>+------------------------------------------------------------------+
+<div class="language-text highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>+--------------------------------------------------------------------+
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>| 38.1 Why a GRAPH: fraud rings hide in account/merchant/txn links   |
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>|   real cited: AUPRC 0.90 with GNN embeddings vs 0.79 without       |
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>+--------------------------------------------------------------------+
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>| 38.2 Graph too big for 1 GPU: shard nodes, fetch remote neighbors  |
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>|   on demand (WholeGraph) -- a THIRD graph communication shape      |
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>+--------------------------------------------------------------------+
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>| 38.3 XGBoost: global histogram statistics inform split choices     |
+<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>|   -- parent/child dependencies; sibling work may be batched        |
+<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>+--------------------------------------------------------------------+
 </code></pre></div>
 <!-- mgpu:worked:start -->
 <h2 id="worked-walkthrough-deduplicate-remote-features-without-losing-graph-semantics">Worked walkthrough — Deduplicate remote features without losing graph semantics<a class="headerlink" href="#worked-walkthrough-deduplicate-remote-features-without-losing-graph-semantics" title="Permanent link">&para;</a></h2>
@@ -3210,16 +3210,16 @@
 <p>A depth-six full binary tree has at most 63 internal split nodes, and 500 such trees have at most 31,500 split nodes. These are structural counts, not a measured number of MPI/NCCL calls. Histogram implementations can batch multiple nodes, cache histograms and derive a sibling by subtraction. Parent splits constrain descendants; independent sibling work can overlap. Successive boosting rounds usually depend on prior predictions, unlike independent date-statistic reductions.</p>
 </div>
 <h3 id="background_2">Background<a class="headerlink" href="#background_2" title="Permanent link">&para;</a></h3>
-<div class="language-text highlight"><pre><span></span><code><a id="__codelineno-19-1" name="__codelineno-19-1" href="#__codelineno-19-1"></a>+----------------------------------------------------------+
-<a id="__codelineno-19-2" name="__codelineno-19-2" href="#__codelineno-19-2"></a>| Ch36: T=360 independent reductions (any order, overlappable)|
-<a id="__codelineno-19-3" name="__codelineno-19-3" href="#__codelineno-19-3"></a>+----------------------------------------------------------+
-<a id="__codelineno-19-4" name="__codelineno-19-4" href="#__codelineno-19-4"></a>| Ch38: one XGBoost tree, depth 6 -- 63 splits, EACH one a    |
-<a id="__codelineno-19-5" name="__codelineno-19-5" href="#__codelineno-19-5"></a>|   real cross-shard reduction, SEQUENTIAL: split k+1 needs    |
-<a id="__codelineno-19-6" name="__codelineno-19-6" href="#__codelineno-19-6"></a>|   split k's own result first                                 |
-<a id="__codelineno-19-7" name="__codelineno-19-7" href="#__codelineno-19-7"></a>+----------------------------------------------------------+
-<a id="__codelineno-19-8" name="__codelineno-19-8" href="#__codelineno-19-8"></a>| 500 trees x 63 splits = 31,500 total reductions -- large     |
-<a id="__codelineno-19-9" name="__codelineno-19-9" href="#__codelineno-19-9"></a>|   count, but chained WITHIN a tree, not freely parallel       |
-<a id="__codelineno-19-10" name="__codelineno-19-10" href="#__codelineno-19-10"></a>+----------------------------------------------------------+
+<div class="language-text highlight"><pre><span></span><code><a id="__codelineno-19-1" name="__codelineno-19-1" href="#__codelineno-19-1"></a>+--------------------------------------------------------------------+
+<a id="__codelineno-19-2" name="__codelineno-19-2" href="#__codelineno-19-2"></a>| Ch36: T=360 independent reductions (any order, overlappable)       |
+<a id="__codelineno-19-3" name="__codelineno-19-3" href="#__codelineno-19-3"></a>+--------------------------------------------------------------------+
+<a id="__codelineno-19-4" name="__codelineno-19-4" href="#__codelineno-19-4"></a>| Ch38: full depth-6 binary tree -- up to 63 internal nodes          |
+<a id="__codelineno-19-5" name="__codelineno-19-5" href="#__codelineno-19-5"></a>|   Parent split decisions constrain descendants; histograms         |
+<a id="__codelineno-19-6" name="__codelineno-19-6" href="#__codelineno-19-6"></a>|   may be reused/batched; siblings can run together                 |
+<a id="__codelineno-19-7" name="__codelineno-19-7" href="#__codelineno-19-7"></a>+--------------------------------------------------------------------+
+<a id="__codelineno-19-8" name="__codelineno-19-8" href="#__codelineno-19-8"></a>| 500 x 63 = 31,500 potential split nodes, NOT a measured            |
+<a id="__codelineno-19-9" name="__codelineno-19-9" href="#__codelineno-19-9"></a>|   collective count. Pruning/grow policy affect actual work         |
+<a id="__codelineno-19-10" name="__codelineno-19-10" href="#__codelineno-19-10"></a>+--------------------------------------------------------------------+
 </code></pre></div>
 <p>File 113 counts potential internal split nodes for an illustrative full binary tree. It does not execute XGBoost or establish one collective per split. Read its captured reduction-count wording as this simplified model assumption; real operation counts depend on grow policy, pruning, histogram reuse, batching and the distributed implementation. See <a href="https://xgboost.readthedocs.io/en/stable/gpu/">XGBoost GPU memory/histogram documentation</a>.</p>
 <div class="language-cpp highlight"><pre><span></span><code><a id="__codelineno-20-1" name="__codelineno-20-1" href="#__codelineno-20-1"></a><span class="c1">// Chapter 38: Real-Time Fraud Detection at Payment Scale</span>

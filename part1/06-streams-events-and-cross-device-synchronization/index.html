@@ -2747,7 +2747,7 @@
 <!-- mgpu:worked:start -->
 <h2 id="worked-example-separate-producer-readiness-from-buffer-reuse">Worked example — Separate producer readiness from buffer reuse<a class="headerlink" href="#worked-example-separate-producer-readiness-from-buffer-reuse" title="Permanent link">&para;</a></h2>
 <p>GPU 0 produces three int32 values and GPU 1 consumes them. Each buffer is 12 bytes. Use a producer stream s0, a consumer stream s1, and timing-disabled dependency events.</p>
-<p><img alt="Numeric worked example: Separate producer readiness from buffer reuse" src="../../images/worked/ch06.svg" /></p>
+<p><a href="../../images/worked/ch06.svg"><img alt="Numeric worked example: Separate producer readiness from buffer reuse" src="../../images/worked/ch06.svg" /></a></p>
 <ol>
 <li>
 <p>GPU 0 transforms [1, 2, 3] into [2, 4, 6] in s0, then records ready in that same stream.</p>
