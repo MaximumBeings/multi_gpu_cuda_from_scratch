@@ -58,7 +58,7 @@ Every GPU, however it's also connected, sits on a PCI Express link to its host s
 | PCIe 4.0 | 31.5 GB/s |
 | PCIe 5.0 | 63.0 GB/s |
 
-Two GPUs sharing the same PCIe switch get the full per-generation bandwidth between them. Two GPUs on different CPU sockets have to cross both PCIe switches *and* whatever link joins the two sockets (a NUMA interconnect such as Intel's UPI or AMD's Infinity Fabric) — a shared, finite resource every other cross-socket transfer on the machine is also competing for:
+Two GPUs sharing a PCIe switch may communicate without crossing a CPU socket; the negotiated link widths and speeds set an upper bound, rather than a guaranteed transfer rate. Two GPUs on different CPU sockets have to cross both PCIe switches *and* whatever link joins the two sockets (a NUMA interconnect such as Intel's UPI or AMD's Infinity Fabric) — a shared, finite resource every other cross-socket transfer on the machine is also competing for:
 
 ```text
 CPU0 -- PCIe switch -- GPU0, GPU1, GPU2, GPU3   (same-switch pairs: full x16 bandwidth)
@@ -110,13 +110,13 @@ some fall back to PCIe):
 NVSwitch provides switched peer paths, but H100 SXM’s 900 GB/s bidirectional budget (450 GB/s each direction) belongs to each GPU and is shared across its peer flows. The matrix below assigns ideal pairwise ceilings for a simple model; it does not allocate a separate 450 GB/s to every simultaneous pair. See [NVIDIA’s Hopper architecture description](https://developer.nvidia.com/blog/nvidia-hopper-architecture-in-depth/).
 
 !!! warning "[COMMON TRAP] Assuming a GPU's total NVLink bandwidth means every pair gets that much"
-    An H100's "900 GB/s of NVLink" describes the total across all 18 of its links, not a guarantee that any two specific H100s in a system share that much. On a partial-mesh system, a directly-wired pair can approach that figure; a non-wired pair gets ordinary PCIe speed instead, a difference Section 2.4's model makes concrete. NVSwitch improves reachability and path symmetry; concurrent flows still share endpoint and fabric resources.
+    An H100's "900 GB/s of NVLink" describes the total across all 18 of its links, not a guarantee that any two specific H100s in a system share that much. A directly wired pair is limited by the links allocated to that pair, which can be only part of the GPU’s aggregate budget. Other pairs use a supported fallback route, represented as PCIe in Section 2.4’s illustrative model. NVSwitch improves reachability and path symmetry; concurrent flows still share endpoint and fabric resources.
 
 ## 2.4 What Topology Costs a Real Communication Pattern
 
 ### Intuition
 
-Imagine a relay race where the runners are connected pairwise by roads of different speeds. The team's overall time is decided entirely by its *slowest* leg, no matter how fast the other legs are — a blazing final stretch cannot undo a bottleneck earlier in the chain. A ring of communicating GPUs works the same way: the ring's throughput is exactly its slowest link's bandwidth, not an average of all the links.
+Imagine a relay race where the runners are connected pairwise by roads of different speeds. The team's overall time is decided entirely by its *slowest* leg, no matter how fast the other legs are — a blazing final stretch cannot undo a bottleneck earlier in the chain. In the idealized steady-state model used here, the slowest edge bounds a ring’s throughput. Real collectives also incur latency, protocol overhead and contention; the minimum link rate is an upper bound, not a measured throughput prediction.
 
 ### Background
 
