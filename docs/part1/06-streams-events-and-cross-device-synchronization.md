@@ -20,6 +20,28 @@
 
 Chapters 3 and 5 gave this book streams (an ordered queue of work bound to whichever device was current when the stream was created) and real cross-device copies. What's been missing is a way for work on *one* stream -- possibly on a different device entirely -- to depend on work in *another* stream, without forcing the host to stop and wait, and without forcing an entire device to drain before continuing. That's what events are for. This chapter builds the real dependency-tracking mechanism multi-GPU CUDA code actually uses, and closes with the one thing that has to be true about the hardware itself before any of it can produce real overlap: whether the device has an async copy engine and concurrent-kernel support at all.
 
+<!-- mgpu:worked:start -->
+## Worked example — Separate producer readiness from buffer reuse
+
+GPU 0 produces three int32 values and GPU 1 consumes them. Each buffer is 12 bytes. Use a producer stream s0, a consumer stream s1, and timing-disabled dependency events.
+
+![Numeric worked example: Separate producer readiness from buffer reuse](../images/worked/ch06.svg)
+
+1. GPU 0 transforms [1, 2, 3] into [2, 4, 6] in s0, then records ready in that same stream.
+
+2. GPU 1 enqueues cudaStreamWaitEvent(s1, ready, 0), followed by the supported peer copy into its own destination buffer.
+
+3. GPU 1 adds one in s1, producing [3, 5, 7], and records done after the dependent work.
+
+4. Before GPU 0 overwrites a source still read by an in-flight transfer, establish the corresponding copy-read completion dependency. Waiting until done is sufficient here, although it can be more conservative than necessary.
+
+**Expected result and pitfall.** The expected result is [3, 5, 7]. cudaStreamWaitEvent can express a cross-device dependency; it does not make the host wait for device completion. Create and record events on their appropriate owning devices. Never infer readiness from host launch order alone.
+
+**Exercise.** What race remains if the ready wait exists but GPU 0 immediately overwrites the source?
+
+**Worked answer.** The copy can read the next generation instead of [2, 4, 6]. Readiness protects the consumer’s start; reuse needs a separate completion condition.
+<!-- mgpu:worked:end -->
+
 ## 6.1 Events: Markers, Polling, and Completion
 
 <!-- mgpu:figure-1:start -->
@@ -343,7 +365,7 @@ Sections 6.1 and 6.2 gave this book the *mechanism* for expressing dependencies 
 
 ### Background
 
-Two device properties answer this directly. `asyncEngineCount`, per the CUDA Runtime API's own `cudaDeviceProp` struct reference, is simply the "Number of asynchronous engines" -- the count of hardware copy engines that can move data independently of, and concurrently with, the engine executing kernels; a value of 0 means no such engine exists at all, and overlap between a transfer and a kernel is not physically possible on that device no matter how the streams are arranged. `concurrentKernels` reports whether the "Device can possibly execute multiple kernels concurrently" -- a separate capability from copy/kernel overlap, and a per-device one: it says whether kernels issued to different streams on *that one device* can run at the same time. Different devices have separate compute hardware, but explicit dependencies and shared host/network resources can still couple their progress; this attribute is about sharing within one device. Both are queryable two ways: `cudaDeviceGetAttribute()` for a single value, or `cudaGetDeviceProperties()` for the full struct at once. Chapter 5's Asynchronous Execution citation already established pinned host memory for host/device transfer overlap. That requirement does not apply to a transfer wholly between device allocations. `concurrentKernels` describes kernel/kernel overlap, not a prerequisite for copy/kernel overlap. Stream arrangement, transfer type and actual scheduling still determine whether overlap occurs.
+Two device properties answer this directly. `asyncEngineCount`, per the CUDA Runtime API's own `cudaDeviceProp` struct reference, is simply the "Number of asynchronous engines" -- the count of hardware copy engines that can move data independently of, and concurrently with, the engine executing kernels; a value of zero reports no support for the conventional asynchronous copy-engine/kernel overlap considered here. This does not classify every possible SM-initiated memory-access or communication mechanism. `concurrentKernels` reports whether the "Device can possibly execute multiple kernels concurrently" -- a separate capability from copy/kernel overlap, and a per-device one: it says whether kernels issued to different streams on *that one device* can run at the same time. Different devices have separate compute hardware, but explicit dependencies and shared host/network resources can still couple their progress; this attribute is about sharing within one device. Both are queryable two ways: `cudaDeviceGetAttribute()` for a single value, or `cudaGetDeviceProperties()` for the full struct at once. Chapter 5's Asynchronous Execution citation already established pinned host memory for host/device transfer overlap. That requirement does not apply to a transfer wholly between device allocations. `concurrentKernels` describes kernel/kernel overlap, not a prerequisite for copy/kernel overlap. Stream arrangement, transfer type and actual scheduling still determine whether overlap occurs.
 
 
 The [2026-11-17 H100 execution record](../validation-h100.md) covers two GPUs connected by local NV18. It distinguishes numerical checks, API probes and other executions; a successful exit alone does not establish GPU algorithm correctness.
@@ -445,8 +467,8 @@ File 16 checks overlap capability queries against the device properties reported
 
 The [2026-11-17 H100 execution record](../validation-h100.md) covers two GPUs connected by local NV18. It distinguishes numerical checks, API probes and other executions; a successful exit alone does not establish GPU algorithm correctness.
 
-!!! warning "[COMMON TRAP] Assuming two non-default streams automatically produce overlap"
-    Placing a transfer and a kernel on two separate, non-default streams removes the *artificial* serialization the CUDA Programming Guide describes for the default stream ("it will wait for all other blocking streams to complete before it can execute") -- but it does not create hardware that doesn't exist. If the device's `asyncEngineCount` is 0, the device has no engine able to run a copy while a kernel is executing, so the transfer and the kernel still run one after the other, no matter which streams they're issued on. Streams remove a *software* obstacle to concurrency; `asyncEngineCount` and `concurrentKernels` report whether the *hardware* obstacle is also absent.
+!!! warning "[COMMON TRAP] Assuming separate streams guarantee overlap"
+    Independent stream order permits concurrency; it does not prove it occurred. For the conventional host/device copy-engine path, use suitable pinned host storage and query the device's asynchronous-copy capability. Shared resources and dependencies may still serialize work. Legacy default-stream synchronization can introduce additional ordering, while per-thread default streams and streams created with `cudaStreamNonBlocking` have different rules. `concurrentKernels` concerns kernel/kernel concurrency and is not an additional prerequisite for copy/kernel overlap. See [CUDA's stream and asynchronous-execution rules](https://docs.nvidia.com/cuda/cuda-programming-guide/02-basics/asynchronous-execution.html).
 
 ## Chapter Summary
 
@@ -458,8 +480,8 @@ Events mark completion points in streams. `cudaEventQuery()` polls them, `cudaEv
 2. `cudaEventQuery()` and `cudaEventSynchronize()` both ask "has this event been reached?" What is the behavioral difference between them when the answer is currently "no"?
 3. Section 6.2's code calls `cudaStreamWaitEvent(stream1, event0, 0)` where `event0` was recorded on device 0's stream and `stream1` belongs to device 1. Quote the specific documented behavior that makes this cross-device call legal, rather than an error.
 4. A programmer replaces Section 6.2's `cudaStreamWaitEvent()` call with `cudaSetDevice(0); cudaDeviceSynchronize();` immediately before starting device 1's dependent work. Explain concretely what this change costs, using the definition of `cudaDeviceSynchronize()` from Section 6.2's Common Trap.
-5. Section 6.3 states that `asyncEngineCount == 0` makes transfer/kernel overlap "not physically possible... no matter how the streams are arranged." Explain in your own words why placing the transfer and kernel on two different streams cannot fix this.
-6. Combine Chapter 5's pinned-memory requirement with this chapter's `asyncEngineCount` requirement: list all the conditions that must simultaneously hold for a real transfer and a real kernel to genuinely overlap on real hardware.
+5. Why do separate streams alone not establish that a conventional asynchronous host/device copy overlaps a kernel, even after checking device capabilities?
+6. For this chapter's conventional host/device asynchronous-copy pattern, which memory, ordering and hardware conditions permit overlap, and why must actual overlap still be measured?
 7. Why must overlap capabilities be queried from the actual device, and why does a successful capability probe not measure achieved overlap?
 8. Suppose a future chapter needs device 1's kernel to depend on TWO separate pieces of device 0's work, completed at different points in device 0's stream. Based on this chapter's model, would that require one event or two? Explain.
 
@@ -477,9 +499,9 @@ Chapter 7 extends synchronization and shared memory access beyond a single proce
 
 **4.** `cudaDeviceSynchronize()` on device 0 blocks the host until *every* piece of work already queued on device 0 has completed -- not just the specific event device 1's work actually depends on. If device 0 has other, unrelated streams with their own queued work, this change forces the host to wait for all of that unrelated work to finish too, before device 1's dependent work can even begin, throwing away concurrency that `cudaStreamWaitEvent()`'s single, targeted dependency would have preserved.
 
-**5.** Placing the transfer and kernel on two different streams removes the *default-stream* serialization the CUDA Programming Guide describes -- an artificial, software-level ordering rule that only exists because both operations were being funneled through the same stream. It does nothing about the underlying hardware: an `asyncEngineCount` of 0 means the device has no copy engine that can move data while a kernel is executing, so the device can only perform the transfer before or after the kernel, not during it, regardless of which software queues the two were issued from -- streams schedule work, they don't create additional physical engines.
+**5.** Separate queues remove an ordering obstacle only when their actual stream semantics and dependencies allow independent execution. They do not add copy-engine capability, eliminate shared-resource contention or force simultaneous scheduling. For the conventional host/device path, check asynchronous-copy support and the pinned-buffer contract, then measure the stream timeline. This is distinct from SM-initiated copies or other communication mechanisms, whose execution resources and ordering must be analyzed separately.
 
-**6.** All three: (a) the host-side buffer involved in the transfer must be pinned (Chapter 5's Asynchronous Execution citation: unpinned memory makes the copy "revert to a synchronous behavior which will not overlap with other work"), (b) the transfer and the kernel must be issued to separate, non-default streams so software-level serialization from the default stream doesn't apply, and (c) the device must report `asyncEngineCount >= 1` (Section 6.3), meaning it has hardware capable of running the copy and the kernel at the same time in the first place. All three must hold simultaneously -- any one missing means no real overlap, regardless of the other two.
+**6.** For the conventional asynchronous host/device transfer-and-kernel pattern described here, use suitable pinned host memory, independent stream ordering and hardware supporting concurrent copying/execution. Check for dependencies and resource contention, then measure actual overlap. Separate explicit streams are the straightforward teaching pattern; “both must be non-default” is not a universal CUDA rule, because per-thread default-stream and nonblocking-stream semantics differ from legacy NULL-stream synchronization. A wholly device-to-device transfer has no host buffer to pin. Capability queries and successful API returns remain distinct from an overlap measurement.
 
 **7.** Report the actual capability queries and their statuses instead of guessing device properties. File 16’s current H100 API probe compares attribute and property results. This establishes reported capabilities, not achieved asynchronous overlap.
 

@@ -165,7 +165,7 @@ def main():
         short=re.sub(r'^(Chapter \d+|Appendix [A-Z]|\d+\.):?\s*','',title)
         key=('APPENDIX '+ident.upper()) if appendix else ('CHAPTER '+ident)
         opath=f'chapter-openers/{"appendix-" if appendix else ""}{ident}.svg'
-        opener(opath,key,short,specs[0][1],specs[0][3])
+        opener(opath,key,short,'ring' if not appendix and int(ident)==9 else specs[0][1],specs[0][3])
         items=[]
         for sec,kind,ftitle,labels,note in specs:
             prefix=ident.upper() if appendix else str(int(ident))

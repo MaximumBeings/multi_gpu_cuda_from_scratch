@@ -10,6 +10,28 @@ The [2026-11-17 H100 execution record](../validation-h100.md) covers two GPUs co
 
 For a fresh machine, follow the ordered [Getting Started installation recipe](../getting-started.md#choose-the-installation-path): driver, CUDA 12.8, cuBLAS, NCCL, Open MPI and NVSHMEM. This appendix explains toolchain checks and the existing Makefile recipes; the old distribution-package observations below are not an instruction to replace a working provider stack.
 
+<!-- mgpu:worked:start -->
+## Worked example — Read an environment check without conflating its layers
+
+This illustrative diagnostic uses compiler release 12.8, NCCL version 2.26.2 and two visible GPUs. It is a reading exercise, not an additional execution record. The dated captured records elsewhere in the appendix remain the evidence for actual tested systems.
+
+![Numeric worked example: Read an environment check without conflating its layers](../images/worked/appendix-a.svg)
+
+1. nvcc --version describes the selected compiler toolkit. The CUDA version shown by nvidia-smi describes driver compatibility; the two labels need not be identical.
+
+2. Decode an NCCL version integer using its documented encoding: 2×10000 + 26×100 + 2 = 22602 means version 2.26.2.
+
+3. A visible-device count of two proves only that the process enumerated two devices. It does not establish peer access, NVLink, RDMA, or numerical collective correctness.
+
+4. A four-element FP32 transfer uses 4 × 4 = 16 bytes. Test allocation, kernel execution, transfer and numerical output before progressing to an appropriate multi-rank collective test.
+
+**Expected result and pitfall.** The expected result is a layered diagnosis: driver visibility, compiler selection, libraries and real execution are separate checkpoints. Use the installation sections below for your distribution and toolkit version rather than treating these illustrative labels as universal installation targets.
+
+**Exercise.** If nvidia-smi works but nvcc is missing, is the driver necessarily broken?
+
+**Worked answer.** No. The toolkit compiler may be absent or outside PATH. Check the selected toolkit installation; reinstalling a functioning driver is not the first diagnosis.
+<!-- mgpu:worked:end -->
+
 ## A.1 Confirming nvcc and g++, and Why apt Beats pip for a Working nvcc
 
 <!-- mgpu:figure-1:start -->
@@ -459,7 +481,6 @@ g++ -std=c++17 -Wall -Wextra -O2 -I/usr/lib/x86_64-linux-gnu/openmpi/include -I$
 
 **Sample input:** none
 
-
 ## A.3 The CUDA Runtime API, Checked for Multiple Devices
 
 ### Intuition
@@ -699,7 +720,6 @@ self-check: diagnosis confirmed
 **Compile and run:** `nvcc -arch=sm_80 122_multi_device_runtime_api_check.cu -o 122_multi_device_runtime_api_check && ./122_multi_device_runtime_api_check`
 
 **Sample input:** none
-
 
 ## A.4 A Minimal Makefile for This Book's Five Real Compile Recipes
 

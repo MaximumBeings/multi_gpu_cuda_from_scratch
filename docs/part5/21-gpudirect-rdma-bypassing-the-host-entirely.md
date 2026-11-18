@@ -7,7 +7,7 @@
 **What you will understand by the end of this chapter:**
 
 - Why a real multi-node NCCL communicator still needs MPI (or something like it) underneath it, and how to build the real hybrid bootstrap -- `ncclGetUniqueId()` on one rank, `MPI_Bcast()` to every other rank, then `ncclCommInitRank()` on all of them -- that every real multi-node NCCL job actually uses.
-- What GPUDirect RDMA actually is: a network adapter's DMA engine reading and writing GPU memory directly over PCI Express BAR addresses, with no host memory touched at any point -- the real alternative to Chapter 20's own staged fallback.
+- What GPUDirect RDMA actually is: a network adapter's DMA engine reading and writing GPU memory directly over PCI Express BAR addresses, without host staging of that payload; bootstrap and control traffic can still involve host memory -- the real alternative to Chapter 20's own staged fallback.
 - How to query, for real, whether a specific GPU supports GPUDirect RDMA and what its write-ordering guarantees are (`cudaDevAttrGPUDirectRDMASupported`, `cudaDeviceFlushGPUDirectRDMAWrites()`).
 - Why "GPUDirect RDMA capable" is necessary but not sufficient: real cited numbers showing PCIe topology alone can swing bandwidth between the same two capable devices by more than 40x.
 
@@ -38,6 +38,30 @@ Chapter 20 alone:                          This chapter (Ch21):
                                                -> real cited latency/BW
                                                    numbers, real topology risk
 ```
+
+<!-- mgpu:worked:start -->
+
+## Worked example — Account for payload bytes separately from bootstrap
+
+Take four 32-bit integers [2,4,6,8]: payload size S=16 bytes. Count logical payload copies, not PCIe transactions or measured bandwidth.
+
+1. A staged GPU-to-GPU transfer copies 16 bytes from source GPU to host, carries 16 payload bytes across the network, then copies 16 bytes from host to destination GPU. Local host-staging traffic totals 32 bytes.
+
+2. A supported GPUDirect RDMA path avoids those host payload staging copies while still carrying the 16-byte network payload. Bootstrap/control metadata is separate.
+
+3. After the transport completion and its required consumer-ordering protocol, validate all four received integers. A capability flag equal to 1 is not a data-integrity check.
+
+![Numeric worked example: Account for payload bytes separately from bootstrap](../images/worked/ch21.svg)
+
+**API connection and scope.** NCCL bootstrap may distribute a unique ID with MPI, while ncclSend/ncclRecv move device payloads. A CUDA-aware API alone does not prove RDMA was selected: confirm the actual transport using the stack’s diagnostic and profiling facilities. Apply visibility/flush requirements according to the actual transport contract rather than assuming arbitrary CPU synchronization makes external writes visible.
+
+**Expected check and pitfall.** Zero staging bytes is not a latency claim. Small-message overhead, topology and fallback routing can dominate. Keep control traffic, payload traffic and numerical correctness separate.
+
+??? question "Guided exercise: How do the byte counts change for eight 32-bit integers?"
+
+    **Worked answer.** Payload is 32 bytes; staged local traffic is 64 bytes and network payload is 32 bytes. The ideal RDMA payload-staging count remains zero.
+
+<!-- mgpu:worked:end -->
 
 ## 21.1 The Hybrid Bootstrap: MPI for Rank, NCCL for Data
 
@@ -717,7 +741,7 @@ Compiled with `g++ -Wall -Wextra -O2 62_staged_vs_rdma_cost_model.cpp -o 62_stag
 
 ## Chapter Summary
 
-This chapter opened Part 5's second real building block. Section 21.1 built the hybrid bootstrap every real multi-node NCCL job actually uses: MPI (Chapter 20's own real multi-process model) generates and distributes NCCL's `ncclUniqueId`, and NCCL (every collective since Chapter 11) takes over from there -- verified against NCCL's own installed-header comment and NCCL's own official documentation, with the real, distributed-id-required trap named directly. Section 21.2 queried, honestly and for real, whether a GPU supports GPUDirect RDMA (`cudaDevAttrGPUDirectRDMASupported`) and how its write-ordering guarantee works (`cudaDevAttrGPUDirectRDMAWritesOrdering`, `cudaDeviceFlushGPUDirectRDMAWrites()`) -- checked API probes on the H100 host, not actual NIC-to-GPU data transfer. Section 21.3 quantified what bypassing the host in Section 20.2's own staged fallback is worth using NVIDIA's own cited benchmark numbers: roughly 8.9x lower GPU-to-GPU latency for small messages (17us staged vs 1.9us direct, this book's own arithmetic -- the post states no single factor), but a real, topology-driven bandwidth swing of roughly 24x when single-rail is compared with single-rail (not the 46x a dual-rail headline would suggest), and an honestly-reported real crossover this book's own simple model correctly predicts it cannot reproduce.
+This chapter opened Part 5's second real building block. Section 21.1 built one common MPI-based hybrid bootstrap for multi-node NCCL jobs: a rank calls NCCL to generate a `ncclUniqueId`, and MPI distributes it, and NCCL (every collective since Chapter 11) takes over from there -- verified against NCCL's own installed-header comment and NCCL's own official documentation, with the real, distributed-id-required trap named directly. Section 21.2 queried, honestly and for real, whether a GPU supports GPUDirect RDMA (`cudaDevAttrGPUDirectRDMASupported`) and how its write-ordering guarantee works (`cudaDevAttrGPUDirectRDMAWritesOrdering`, `cudaDeviceFlushGPUDirectRDMAWrites()`) -- checked API probes on the H100 host, not actual NIC-to-GPU data transfer. Section 21.3 quantified what bypassing the host in Section 20.2's own staged fallback is worth using NVIDIA's own cited benchmark numbers: roughly 8.9x lower GPU-to-GPU latency for small messages (17us staged vs 1.9us direct, this book's own arithmetic -- the post states no single factor), but a real, topology-driven bandwidth swing of roughly 24x when single-rail is compared with single-rail (not the 46x a dual-rail headline would suggest), and an honestly-reported real crossover this book's own simple model correctly predicts it cannot reproduce.
 
 The [2026-11-17 H100 execution record](../validation-h100.md) covers two GPUs connected by local NV18. It distinguishes numerical checks, API probes and other executions; a successful exit alone does not establish GPU algorithm correctness.
 

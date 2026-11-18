@@ -20,6 +20,28 @@
 
 Part 0 established device selection, contexts and stream ownership. This chapter adds Unified Virtual Addressing and ordered-pair peer permissions, then checks how pointers and transfers cross device boundaries.
 
+<!-- mgpu:worked:start -->
+## Worked example — Peer access is a directional permission
+
+Assume GPU 1 owns p1 = [10, 20, 30] (three int32 values, 12 bytes). A hypothetical capability query reports that GPU 0 can access GPU 1, but the reverse query reports no access.
+
+![Numeric worked example: Peer access is a directional permission](../images/worked/ch04.svg)
+
+1. Call cudaDeviceCanAccessPeer(&can, 0, 1): the first device is the prospective accessor and the second owns the memory. Here can = 1.
+
+2. Select GPU 0, then call cudaDeviceEnablePeerAccess(1, 0). This enables the supported access direction from the current device to peer 1.
+
+3. After GPU 1 has produced p1 and the consumer dependency is established, a GPU 0 kernel may read p1[1] = 20. Adding a local value 100 gives 120.
+
+4. Querying (1, 0) is a separate question. The successful first direction establishes no permission for the reverse direction.
+
+**Expected result and pitfall.** The expected value is 120. Enabling access does not copy the 12 bytes, establish producer completion, or extend the allocation lifetime. UVA identifies addresses; accessibility and ordering still need their own checks.
+
+**Exercise.** How many payload bytes are copied merely by enabling peer access?
+
+**Worked answer.** Zero in this example. A subsequent remote read or explicit copy moves data; the enable call grants permission.
+<!-- mgpu:worked:end -->
+
 ## 4.1 Unified Virtual Addressing: One Address Space, Many Memories
 
 <!-- mgpu:figure-1:start -->

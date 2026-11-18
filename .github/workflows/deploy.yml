@@ -28,6 +28,8 @@ jobs:
         run: python3 tools/verify_host_corrections.py
       - name: Verify illustrations
         run: python3 tools/illustrations/validate.py
+      - name: Verify worked lessons throughout the book
+        run: python3 tools/illustrations/validate_worked.py
       - name: Build documentation strictly
         run: mkdocs build --strict
       - name: Check internal links and anchors

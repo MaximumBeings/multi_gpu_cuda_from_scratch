@@ -34,6 +34,30 @@ Chapter 13 (ONE micro-batch, K=4 devices):     This chapter (M micro-batches, PI
                                                    corners above) -- but far less of it.
 ```
 
+<!-- mgpu:worked:start -->
+
+## Worked example — Trace the pipeline before optimizing it
+
+Let P=3 stages and B=4 microbatches. Each stage takes one abstract slot; transfer and backward work are excluded. Stages apply f0(x)=x+1, f1(x)=2x and f2(x)=x−3, in that order. Inputs are [1,2,3,4].
+
+1. Stage 0 produces [2,3,4,5] in slots 0–3. Stage 1 starts one slot later and produces [4,6,8,10] in slots 1–4.
+
+2. Stage 2 starts in slot 2 and produces [1,3,5,7] in slots 2–5. Every microbatch crosses both dependencies before its final output exists.
+
+3. The makespan is B+P−1=6 slots. There are P×B=12 useful stage-slots out of P×6=18 available: utilization is 2/3.
+
+![Numeric worked example: Trace the pipeline before optimizing it](../images/worked/ch15.svg)
+
+**API connection and scope.** Connect each producer to its transfer and consumer with stream ordering and completion events, for example cudaEventRecord and cudaStreamWaitEvent where supported. Reusing a microbatch buffer requires its last reader to finish. The figure is a forward-only scheduling model, not a measured trace or a 1F1B training schedule.
+
+**Expected check and pitfall.** Check all four outputs in their original order. A fast final event with swapped microbatch identities is still wrong. Unequal stage costs and communication change the timeline.
+
+??? question "Guided exercise: What changes with one microbatch?"
+
+    **Worked answer.** The stages occupy three successive slots, only three of nine stage-slots do useful work, and utilization is 1/3. Input 1 still produces 1.
+
+<!-- mgpu:worked:end -->
+
 ## 15.1 Micro-Batching: Filling the Bubble Chapter 13 Left Empty
 
 <!-- mgpu:figure-1:start -->

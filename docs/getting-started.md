@@ -368,3 +368,7 @@ From the repository root, `python3 tools/validate_examples.py --output artifacts
 ## Prerequisites
 
 This book assumes working knowledge of C++ (structs, templates, pointers, RAII) and prior single-GPU CUDA experience at the level of "you have written and launched a kernel before" -- it does not re-derive the CUDA execution and memory model from nothing the way a first CUDA book would, though Part 0 does rebuild everything specific to *multiple* devices from scratch. No prior MPI experience is assumed; Part 5's own Chapter 20 builds plain MPI from nothing before it ever adds CUDA to the picture.
+
+## Work through the setup before the larger examples
+
+The [worked setup example in Appendix A](appendix/a-installation-and-setup.md) separates host tools, device discovery, rank/device mapping and the first checked result. After setup, follow the numerical walkthrough in each chapter before copying its longer implementation. Preserve the exact compile command and compare complete results with the documented reference; a successful launch alone does not establish the intended multi-GPU computation.

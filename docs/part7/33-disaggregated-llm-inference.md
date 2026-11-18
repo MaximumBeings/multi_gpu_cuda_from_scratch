@@ -27,6 +27,29 @@ Chapter 32 showed that Mixture-of-Experts needs a communication shape keyed by w
 +------------------------------------------------------------------+
 ```
 
+<!-- mgpu:worked:start -->
+## Worked walkthrough — Size a KV handoff and reshard it explicitly
+
+[![Size a KV handoff and reshard it explicitly: numerical ownership, intermediate values and checks](../images/worked/ch33.svg)](../images/worked/ch33.svg)
+
+Use a schematic request with prompt length S=8 tokens, L=2 layers, two KV heads, head dimension d=4 and two-byte KV elements. These intentionally tiny values illustrate storage, not a particular deployed model. Count both keys and values.
+
+1. **Count the complete request cache.** `2*S*L*heads*d*2=512` bytes: the first factor two is K plus V, and the final two is bytes per element. Model weights, block metadata, scales and allocator padding are excluded.
+2. **Name the prefill ownership.** Suppose two prefill ranks each hold one complete KV head at all layers/tokens: 256 bytes each. Tensor-parallel rank number is not a substitute for this explicit ownership description; some real models replicate KV heads.
+3. **Name the decode ownership.** One decode worker now requires both heads, so it must receive both 256-byte pieces, yielding 512 logical bytes. The receiver places data by layer/token/head coordinates. Concatenating packets in arbitrary completion order does not establish the correct tensor layout.
+4. **Separate handoff from readiness.** Decode must wait for every needed cache segment's transfer completion before reading it. An RPC acknowledgement that work was enqueued is not necessarily device completion. Transport APIs and framework streams determine the actual dependency mechanism.
+5. **Account for later growth.** One generated token adds `2*L*heads*d*2=64` bytes under this representation. Four generated tokens add 256 bytes, giving 768 bytes of logical KV data if all tokens are retained. Sliding windows, quantization and page allocation change that contract.
+
+**Expected check:** every KV coordinate at the receiver equals the sender's reference, and the first decode step uses the same attention mask, positions and model state. This arithmetic does not demonstrate DistServe execution or any time-to-first-token improvement. Prefill/decode splitting introduces queueing and network costs whose effect must be measured under a declared workload.
+
+??? question "Exercise: split decode ownership instead"
+
+    Two decode workers each require one head, but their head IDs are swapped relative to prefill owners. How much logical data moves if no cache is replicated?
+
+    **Worked answer:** exchange two 256-byte shards, 512 bytes total sender payload. Each receiver gets only its required head. An all-gather that replicates both heads changes ownership and memory use; it is not implied by this head-wise exchange.
+
+<!-- mgpu:worked:end -->
+
 ## 33.1 Why Prefill and Decode Need Different Resources
 
 <!-- mgpu:figure-1:start -->
@@ -154,7 +177,6 @@ DistServe's own real cited numbers (not derived by this book):
 
 <!-- execution:end:h100-rerun:96_prefill_vs_decode_cost_model.cpp -->
 
-
 <!-- execution:start:a100:96_prefill_vs_decode_cost_model.cpp -->
 > **Compiled and executed — 2026-11-17-a100: Host program/model (exit-only).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:06:17.735554+00:00`.
 
@@ -190,7 +212,6 @@ DistServe's own real cited numbers (not derived by this book):
 
 <!-- execution:end:a100:96_prefill_vs_decode_cost_model.cpp -->
 
-
 <!-- execution:start:h100:96_prefill_vs_decode_cost_model.cpp -->
 > **Compiled and executed — 2026-11-17-h100: Host program/model (exit-only).** Hardware: 2 H100 GPUs. Execution record UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`.
 
@@ -225,7 +246,6 @@ DistServe's own real cited numbers (not derived by this book):
 
 </details>
 <!-- execution:end:h100:96_prefill_vs_decode_cost_model.cpp -->
-
 
 Compile and run (a plain host `.cpp` file with no CUDA/NCCL/MPI/NVSHMEM linkage, executed on the recorded H100 and A100 hosts):
 
@@ -421,7 +441,6 @@ Every single (Tp, Td) combination matches the Tp=1/Td=1 reference exactly, wheth
 
 <!-- execution:end:h100-rerun:97_phase_specific_tensor_parallelism_correctness_simulation.cpp -->
 
-
 <!-- execution:start:a100:97_phase_specific_tensor_parallelism_correctness_simulation.cpp -->
 > **Compiled and executed — 2026-11-17-a100: Host program/model (exit-only).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:06:18.058542+00:00`.
 
@@ -465,7 +484,6 @@ Every single (Tp, Td) combination matches the Tp=1/Td=1 reference exactly, wheth
 
 <!-- execution:end:a100:97_phase_specific_tensor_parallelism_correctness_simulation.cpp -->
 
-
 <!-- execution:start:h100:97_phase_specific_tensor_parallelism_correctness_simulation.cpp -->
 > **Compiled and executed — 2026-11-17-h100: Host program/model (exit-only).** Hardware: 2 H100 GPUs. Execution record UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`.
 
@@ -508,7 +526,6 @@ Every single (Tp, Td) combination matches the Tp=1/Td=1 reference exactly, wheth
 
 </details>
 <!-- execution:end:h100:97_phase_specific_tensor_parallelism_correctness_simulation.cpp -->
-
 
 Compile and run (plain host `.cpp`, executed on the recorded H100 and A100 hosts):
 
@@ -570,7 +587,6 @@ int main() {
 }
 ```
 
-
 !!! note "Corrected host model — November 18, 2026"
 
     The listing above corrects the earlier model's directional bandwidth calculation. Its [new local compile/run record](../host-model-corrections.md#98) contains the current source hash, system, date, commands and output. The H100/A100 blocks below retain the earlier revision's actual output; their model claims are superseded by this correction.
@@ -605,7 +621,6 @@ NVIDIA's own real Dynamo documentation adds one further real design point this a
 
 <!-- execution:end:h100-rerun:98_kv_cache_handoff_transfer_cost_model.cpp -->
 
-
 <!-- execution:start:a100:98_kv_cache_handoff_transfer_cost_model.cpp -->
 > **Compiled and executed — 2026-11-17-a100: Host program/model (exit-only).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:06:18.182317+00:00`.
 
@@ -636,7 +651,6 @@ NVIDIA's own real Dynamo documentation adds one further real design point this a
 
 
 <!-- execution:end:a100:98_kv_cache_handoff_transfer_cost_model.cpp -->
-
 
 <!-- execution:start:h100:98_kv_cache_handoff_transfer_cost_model.cpp -->
 > **Compiled and executed — 2026-11-17-h100: Host program/model (exit-only).** Hardware: 2 H100 GPUs. Execution record UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`.
@@ -669,7 +683,6 @@ NVIDIA's own real Dynamo documentation adds one further real design point this a
 </details>
 <!-- execution:end:h100:98_kv_cache_handoff_transfer_cost_model.cpp -->
 
-
 Compile and run (plain host `.cpp`, executed on the recorded H100 and A100 hosts):
 
 ```bash
@@ -699,13 +712,13 @@ Chapter 34 turns to another real, deployed industrial system with its own distin
 
 ## Worked Solutions
 
-1. Producing one new token still requires reading the model's ENTIRE running memory of the conversation so far -- the KV cache -- which grows with every step. DistServe's own paper states decode "incurs a similar level of I/O to the prefill phase," so the bottleneck is not how much arithmetic decode does (very little, per step) but how much data it must move to do that arithmetic, which is exactly what "memory-bandwidth-bound" means.
+1. In the full-context dense-attention serving model discussed here, generating a token reads the retained KV cache needed by that attention layer. Sliding-window attention, pruning, cache quantization and other architectures change the retained set and byte volume. DistServe's own paper states decode "incurs a similar level of I/O to the prefill phase," so the bottleneck is not how much arithmetic decode does (very little, per step) but how much data it must move to do that arithmetic, which is exactly what "memory-bandwidth-bound" means.
 2. Goodput measures "the maximum request rate that can be served adhering to the SLO attainment goal... for each GPU provisioned." Raw throughput alone can hide a system that serves many requests but violates most users' latency expectations; goodput only counts requests served WITHIN the latency target, which is what actually determines how many GPUs a real deployment needs to meet its service commitments.
-3. Prefill is compute-bound, so once each device has enough arithmetic work to stay busy, adding more devices has diminishing returns (the same principle behind any compute-bound workload's parallel scaling limit) -- a smaller TP suffices. Decode is memory-bandwidth-bound, so each additional GPU added to the TP group contributes more AGGREGATE memory bandwidth for reading the growing KV cache, which is the actual bottleneck -- so a larger TP genuinely helps more.
+3. Under the cited serving workload, different tensor-parallel degrees can help prefill and decode differently. More TP ranks can add aggregate memory bandwidth and reduce per-rank weight/cache storage, but also add collective latency and layout costs. The best degree depends on batch size, model, attention/cache policy, topology and SLO; neither a larger decode TP nor a smaller prefill TP is a universal optimum.
 4. Yes, every Tp > Td combination in File 97's own Sample output still matched the reference exactly. This is because each phase's own internal computation (a sum over its own local shard's contributions, then a combine across shards) is exact regardless of how many shards it's split into, and the two phases are connected only through the kv cache VALUES that get handed off, not through any shared structure that would require matching group sizes.
-5. Every collective this book built from Chapter 8 (broadcast/reduce) through Chapter 32 (MoE dispatch/combine) moves data among every member of some group of ranks, even when that "combining" happens per-token as in Chapter 32. The KV cache handoff instead moves data between exactly one sender and one receiver, a single one-time bulk transfer -- structurally closest to Chapter 5's explicit `cudaMemcpyPeer()` transfer and Chapter 21's GPUDirect RDMA, both of which are also point-to-point rather than collective.
+5. Every collective this book built from Chapter 8 (broadcast/reduce) through Chapter 32 (MoE dispatch/combine) moves data among every member of some group of ranks, even when that "combining" happens per-token as in Chapter 32. The simplest KV cache handoff moves data between one sender and one receiver; differing prefill/decode ownership can require multiple senders, receivers and a resharding -- structurally closest to Chapter 5's explicit `cudaMemcpyPeer()` transfer and Chapter 21's GPUDirect RDMA, both of which are also point-to-point rather than collective.
 6. Bidirectional aggregate counts both directions; the ideal one-direction endpoint ceiling is 300 GB/s. Thus 1.13 / 300 × 1000 ≈ 3.77 ms. For 800 Gbps, divide by eight to obtain 100 GB/s, giving 11.3 ms. Protocol overhead, packing and contention increase elapsed time; group-level striping must be modeled separately.
-7. "Non-blocking" means the GPU that just finished prefill does not have to sit idle waiting for the KV cache transfer to complete before doing other useful work -- per Dynamo's own documentation, "GPU forward passes... continue serving other requests during the transfer." It matters even though the transfer is already fast (single-digit-to-low-double-digit milliseconds) because at high request volume, even a small mandatory wait repeated across every single request adds up; overlapping it removes that wait entirely rather than merely shrinking it.
+7. "Non-blocking" means the GPU that just finished prefill does not have to sit idle waiting for the KV cache transfer to complete before doing other useful work -- per Dynamo's own documentation, "GPU forward passes... continue serving other requests during the transfer." It matters even though the transfer is already fast (single-digit-to-low-double-digit milliseconds) because at high request volume, even a small mandatory wait repeated across every single request adds up; overlapping can hide some transfer time behind other requests. The receiving request still waits for its own cache readiness; contention or insufficient independent work can leave transfer time exposed.
 8. Because this section's own question -- does splitting a request's two phases onto independently-sized device groups (different TP degrees) preserve correctness -- is a genuinely different question from whether floating-point summation is associative under different groupings, which Chapter 8, 25, 29, 31, and 32 already investigated thoroughly. Using integers keeps File 97's own result unambiguous: any mismatch found would have to come from the phase-splitting design itself, not from floating-point rounding, which would otherwise have made the two separate questions impossible to tell apart.
 
 ---

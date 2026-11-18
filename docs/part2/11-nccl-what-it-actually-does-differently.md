@@ -39,6 +39,28 @@ This book's hand-built collectives (Ch8-10)         NCCL's real API (this chapte
                                                           arrived in NCCL 2.28)
 ```
 
+<!-- mgpu:worked:start -->
+## Worked example — Communicator rank is not a device ordinal
+
+One host thread controls three GPUs. Map communicator ranks 0, 1, 2 to CUDA devices 2, 0, 1 respectively. Each rank contributes four FP32 values (16 bytes).
+
+![Numeric worked example: Communicator rank is not a device ordinal](../images/worked/ch11.svg)
+
+1. Rank 0/device 2 contributes [1, 2, 3, 4]; rank 1/device 0 contributes [10, 20, 30, 40]; rank 2/device 1 contributes [100, 200, 300, 400].
+
+2. Select the appropriate current device before its stream and NCCL call. Inside the multi-device launch group, each rank calls ncclAllReduce with count 4, ncclFloat and ncclSum.
+
+3. End the group before waiting for stream completion. Group submission alone is not permission to read an unfinished device result.
+
+4. After each relevant stream completes, every rank holds [111, 222, 333, 444]. In a rooted operation, root = 1 would refer to device 0 under this mapping.
+
+**Expected result and pitfall.** The expected result follows communicator rank membership, independently of the numeric CUDA ordinals. Compatible operation, datatype, counts and call order are required across participants. Check CUDA and NCCL return values and asynchronous errors using the chapter’s full examples.
+
+**Exercise.** Does root = 2 select CUDA device 2 in this mapping?
+
+**Worked answer.** No. Root rank 2 maps to CUDA device 1. Keep an explicit rank-to-device mapping rather than conflating the two spaces.
+<!-- mgpu:worked:end -->
+
 ## 11.1 A Real Communicator: `ncclCommInitAll` and the World This Book Has Called `deviceCount`
 
 <!-- mgpu:figure-1:start -->

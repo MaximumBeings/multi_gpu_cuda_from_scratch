@@ -36,6 +36,30 @@ Chapter 16 (PDE stencil, halo exchange):     This chapter (N-body, all-gather):
                     real reason these two shapes genuinely differ
 ```
 
+<!-- mgpu:worked:start -->
+
+## Worked example — Verify every source contributes to every target
+
+Place three unit masses at x=[0,1,3] with G=1, distinct positions and no softening. Rank i owns target i. Acceleration is the sum over j≠i of (xj−xi)/|xj−xi|³.
+
+1. Rank 0 receives source positions 1 and 3 and obtains +1+1/9=10/9.
+
+2. Rank 1 receives positions 0 and 3 and obtains −1+1/4=−3/4. Rank 2 receives positions 0 and 1 and obtains −1/9−1/4=−13/36.
+
+3. The accelerations sum to 40/36−27/36−13/36=0, a useful pairwise-force conservation check for equal masses.
+
+![Numeric worked example: Verify every source contributes to every target](../images/worked/ch27.svg)
+
+**API connection and scope.** An all-pairs implementation needs every source record, not only neighboring targets. An all-gather can assemble equal-sized source chunks before the local force kernel. If each packed record contains FP64 position and mass, it occupies 16 bytes: each rank holds three records (48 bytes), including two remote records (32 bytes). These are logical data sizes, not measured network traffic.
+
+**Expected check and pitfall.** Exclude self interaction. Softening changes the denominator and Barnes–Hut changes the approximation contract, so compare against a reference using the same force definition. Momentum checks alone cannot establish every force is correct.
+
+??? question "Guided exercise: What does rank 0 compute if it mistakenly receives only its nearest source?"
+
+    **Worked answer.** It computes 1 instead of 10/9. A nearest-neighbor halo is insufficient for this exact all-pairs force.
+
+<!-- mgpu:worked:end -->
+
 ## 27.1 All-Pairs: Every Body Needs Every Other Body
 
 <!-- mgpu:figure-1:start -->

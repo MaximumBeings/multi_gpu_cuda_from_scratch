@@ -36,6 +36,30 @@ Equal split (every chapter since Ch12):    Weighted split (this chapter):
                                                wait for.
 ```
 
+<!-- mgpu:worked:start -->
+
+## Worked example — Turn device speeds into an integer partition
+
+Suppose W=12 independent work units and assumed target-task speeds are s=[1,2,1] units/s. These chosen numbers define a planning model, not a hardware benchmark.
+
+1. An equal split [4,4,4] gives times [4,2,4] seconds, so the modeled makespan is 4 seconds.
+
+2. The speed sum is 4. Ideal counts W×s/4 are [3,6,3], giving [3,3,3] seconds and a 3-second makespan.
+
+3. For integral ranges, compute boundaries floor(W×cumulative_speed/4), including endpoints 0 and W. At W=12 these are [0,3,9,12], so every index belongs to exactly one rank.
+
+![Numeric worked example: Turn device speeds into an integer partition](../images/worked/ch18.svg)
+
+**API connection and scope.** Implement this as a host-side range planner feeding per-device kernel launch ranges. Profile the actual kernel to estimate speeds: SM count alone does not establish throughput. Enforce memory-capacity limits and include transfer costs before accepting a partition.
+
+**Expected check and pitfall.** Check monotone boundaries, total count W, no overlap and identical numerical results to the unsplit workload. Rounding can erase a theoretical balance improvement for tiny jobs.
+
+??? question "Guided exercise: Use the same speeds with W=11. What ranges result?"
+
+    **Worked answer.** Boundaries are [0,2,8,11], giving counts [2,6,3] and times [2,3,3] seconds. Coverage remains exact, and the modeled makespan is 3 seconds.
+
+<!-- mgpu:worked:end -->
+
 ## 18.1 The Problem: Real Clusters Are Not Homogeneous
 
 <!-- mgpu:figure-1:start -->
@@ -828,7 +852,7 @@ The continuous ideal's own algebra checks out exactly: every rank finishes at `t
 
 ## Chapter Summary
 
-This chapter addressed a gap every one of Part 3's own partitioning functions left open: `computeShard()`, `computeLayerRange()`, and `computeRowRange()` all divide a total by the number of ranks, and none of them has ever asked how fast any given rank actually is. Section 18.1 established why that matters in practice -- real clusters mix GPU generations and suffer real thermal throttling, and a real, cited paper on heterogeneous GPU clusters states the direct consequence: training is bottlenecked by the slowest device, leaving faster ones idle, which is exactly Chapter 17's barrier guarantee turned into wasted time. Section 18.2 built the fix real systems actually use -- `computeWeightedShard()`, splitting work proportionally to each rank's own relative speed instead of evenly -- while being careful to flag a real, documented pitfall: a compute-proportional split is not automatically a memory-proportional one, since the two constraints can move independently, most visibly on a throttled device whose memory capacity never changed at all. Section 18.3 quantified what the fix buys: a continuous, algebraically exact 2x reduction in makespan for this chapter's own example cluster, and a real, empirically checked 1.99x reduction once the split is rounded to whole work units -- an honest, small gap between the ideal and the measured result, not an assumption papered over. Chapter 19 asks the question a barrier's own definition raises but this chapter didn't answer: what happens when a rank doesn't just run slow, but doesn't arrive at all.
+This chapter addressed a gap every one of Part 3's own partitioning functions left open: `computeShard()`, `computeLayerRange()`, and `computeRowRange()` all divide a total by the number of ranks, and none of them has ever asked how fast any given rank actually is. Section 18.1 established why that matters in practice -- real clusters mix GPU generations and suffer real thermal throttling, and a real, cited paper on heterogeneous GPU clusters states the direct consequence: training is bottlenecked by the slowest device, leaving faster ones idle, which is exactly Chapter 17's barrier guarantee turned into wasted time. Section 18.2 built the fix real systems actually use -- `computeWeightedShard()`, splitting work proportionally to each rank's own relative speed instead of evenly -- while being careful to flag a real, documented pitfall: a compute-proportional split is not automatically a memory-proportional one, since the two constraints can move independently, most visibly on a throttled device whose memory capacity never changed at all. Section 18.3 quantified what the fix buys: a continuous, algebraically exact 2x reduction in makespan for this chapter's own example cluster, and a 1.99x reduction calculated and checked by the host simulation after rounding to whole work units -- a small gap between the continuous and integer planning models, not a measured GPU speedup, not an assumption papered over. Chapter 19 asks the question a barrier's own definition raises but this chapter didn't answer: what happens when a rank doesn't just run slow, but doesn't arrive at all.
 
 ## Self-Check Questions
 

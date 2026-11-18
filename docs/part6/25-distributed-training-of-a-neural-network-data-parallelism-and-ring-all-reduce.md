@@ -36,6 +36,30 @@ Chapter 12's own demonstration:              This chapter's own case study:
                                          +--------------------------+
 ```
 
+<!-- mgpu:worked:start -->
+
+## Worked example — Check the gradient normalization numerically
+
+Use scalar weight w=2, target y=x and per-sample loss (wx−y)^2/2. Rank 0 has x=[1,2]; rank 1 has x=[3,4]. Both local batches have two samples.
+
+1. The derivative is (wx−y)x=x² at w=2. Rank 0’s mean derivative is (1+4)/2=2.5; rank 1’s is (9+16)/2=12.5.
+
+2. Sum the local means to 15 and divide by the two ranks, obtaining 7.5. This equals the global four-sample mean (1+4+9+16)/4.
+
+3. With learning rate 0.1, both replicas update to 2−0.1×7.5=1.25 after the reduction completes.
+
+![Numeric worked example: Check the gradient normalization numerically](../images/worked/ch25.svg)
+
+**API connection and scope.** A common implementation uses ncclAllReduce with ncclSum and then scales by the world size, or a supported average reduction with the same intended normalization. The optimizer must consume the completed reduction in the correct stream. This scalar model explains normalization; it is not a newly measured training workload.
+
+**Expected check and pitfall.** Summing without the division yields gradient 15 and weight 0.5, a different update convention. Equal-rank averaging is only equal-sample averaging when local batch sizes match or weighting is handled explicitly.
+
+??? question "Guided exercise: Local sample counts are [1,3] and local mean gradients are [2,6]. What is the global sample mean?"
+
+    **Worked answer.** (1×2+3×6)/(1+3)=5. The unweighted rank mean is 4 and is incorrect for this sample-mean objective.
+
+<!-- mgpu:worked:end -->
+
 ## 25.1 The Real Loop Shape: Steps, Buckets, and Overlap
 
 <!-- mgpu:figure-1:start -->
@@ -661,7 +685,6 @@ Compiled with `g++ -O2 -ffp-contract=off 73_distributed_sgd_convergence_simulati
 
 !!! warning "[COMMON TRAP] Hand-rolling an all-reduce in which every replica adds up all N values itself"
     The first two blocks of the Sample output above are the real result: with Chapter 9's genuine two-phase ring, all four replicas are bit-identical, and that is not luck. In the scatter-reduce phase, each chunk of the gradient buffer is summed by exactly ONE chain of additions that travels around the ring and finishes on exactly one owner replica; in the all-gather phase, that finished chunk is only ever COPIED onward, never re-added. Every replica therefore ends up holding the very same bits for every chunk -- whatever floating-point rounding happened inside that one chain happened once, and everyone receives its result. This is the same reason a production NCCL ring all-reduce leaves every rank with identical output. The trap is a tempting shortcut that looks equivalent on paper: circulate every replica's FULL local value around the ring and have each replica add all N of them into its own accumulator, starting from its own value. That shape (the program's `everyReplicaSumsItself()` contrast) gives each replica its own summation order over the same four partial sums, and fp32 addition is not associative -- so, as the last block of the Sample output shows, replica 3 lands on `w=3.221214771` while replicas 0-2 land on `w=3.221214533`, one bit apart, reproducibly. Chapter 8's non-associativity caution is real; a correct ring all-reduce simply never gives it a chance to make replicas disagree. Two separate questions are worth keeping apart here. Replica-to-replica agreement is guaranteed by the algorithm's structure. Agreement with the single-process reference is NOT guaranteed by anything: the distributed version adds per-shard partial sums, a different grouping from the reference's one flat pass. It happens to match bit-for-bit for this N=4, M=8 configuration; re-running the same file with N=3, 5 or 8 (with M scaled to divide evenly) still gives bit-identical replicas every time, but a result that differs from the reference in the last bits.
-
 
 ## 25.3 Why Ring All-Reduce, Not Naive Gather-and-Broadcast: A Closed-Form Cost Model
 

@@ -22,6 +22,30 @@
 A slow rank can delay a collective; a failed rank can prevent completion. This chapter separates communicator progress, error polling and application recovery, then models backup workers as a way to tolerate stragglers. The API probes check their declared cases; the timing models explain the scheduling tradeoff.
 
 
+<!-- mgpu:worked:start -->
+
+## Worked example — Deduplicate speculative completion
+
+Consider independent task values A=2, B=3 and C=5. Task C has a primary attempt starting at time 0 with duration 9, and a backup starting at time 5 with duration 3. Times use a hypothetical common clock.
+
+1. At time 6 a timeout fires, but the primary may simply be slow; a timeout does not prove failure.
+
+2. The backup finishes at 8, ahead of the primary at 9. Accept the first valid result for logical task C, recording its task and iteration identity.
+
+3. Combine A+B+C=2+3+5=10. If both attempts contribute, the result is 15 and is wrong even though each attempt individually computed C correctly.
+
+![Numeric worked example: Deduplicate speculative completion](../images/worked/ch19.svg)
+
+**API connection and scope.** This is a speculative task model, not a fault-injected NCCL measurement. ncclCommGetAsyncError can report an asynchronous communication error; it does not restore communicator membership or application state. Aborting and recreating communication must be accompanied by an explicit checkpoint/restart or task-recovery policy.
+
+**Expected check and pitfall.** Deduplication must occur before irreversible side effects. An optimizer update or external write cannot safely be repeated merely because the task result is deterministic.
+
+??? question "Guided exercise: What value exposes an accidental double acceptance of C?"
+
+    **Worked answer.** 15. The expected value is 10; checking only that both attempts exited successfully would miss the error.
+
+<!-- mgpu:worked:end -->
+
 ## 19.1 The Problem: A Failed Peer Can Cause Errors or Hangs
 
 <!-- mgpu:figure-1:start -->
@@ -53,7 +77,7 @@ Non-blocking communicator (this section names it; 19.2 builds the real escape):
 
 ### Background
 
-Every communicator this book has built through Chapter 18 -- Chapter 11's `ncclCommInitAll()`, and every direct `ncclCommInitRank()`-style call implicit since -- is *blocking* by default: `config.blocking = 1`, whether or not any code ever set that field explicitly. This section builds both the default blocking communicator every earlier chapter used, and the real, documented alternative -- a non-blocking one, `config.blocking = 0` -- side by side, using NCCL's real `ncclConfig_t` struct and `NCCL_CONFIG_INITIALIZER` macro, confirmed present in the actual installed NCCL header (libnccl 2.18.3). Section 19.2 is what a non-blocking communicator like the second one below actually makes possible.
+Every communicator this book has built through Chapter 18 -- Chapter 11's `ncclCommInitAll()`, and every direct `ncclCommInitRank()`-style call implicit since -- is *blocking* by default: `config.blocking = 1`, whether or not any code ever set that field explicitly. This section builds both the default blocking communicator every earlier chapter used, and the real, documented alternative -- a non-blocking one, `config.blocking = 0` -- side by side, using NCCL's real `ncclConfig_t` struct and `NCCL_CONFIG_INITIALIZER` macro, confirmed present in the actual installed NCCL header (the tested libnccl 2.26.2). Section 19.2 is what a non-blocking communicator like the second one below actually makes possible.
 
 
 The [2026-11-17 H100 execution record](../validation-h100.md) covers two GPUs connected by local NV18. It distinguishes numerical checks, API probes and other executions; a successful exit alone does not establish GPU algorithm correctness.
@@ -313,7 +337,7 @@ File 55 uses a valid one-rank nonblocking communicator, bounded polling and chec
 The [2026-11-17 H100 execution record](../validation-h100.md) covers two GPUs connected by local NV18. It distinguishes numerical checks, API probes and other executions; a successful exit alone does not establish GPU algorithm correctness.
 
 !!! warning "[COMMON TRAP] Treating `ncclCommAbort()` as recovery instead of just an escape"
-    It's tempting to read `ncclCommAbort()`'s clean `ncclSuccess` return and treat the problem as solved. It isn't. NVIDIA's own documentation is explicit that abort's whole job is narrower: it "will exit any operation currently in progress, and destroy the communicator" -- stopping the hang, and nothing more. After `ncclCommAbort()` returns, there is no working communicator at all; every rank that was part of it needs a brand-new `ncclCommInitRankConfig()` call, Section 19.1's own call, run again from scratch, almost always with the dead rank's slot removed from the membership list and a fresh `ncclUniqueId`. Skipping that rebuild and trying to keep using the aborted handle, or assuming the abort itself somehow restored connectivity, leaves an application with no communicator, not a repaired one -- exactly the gap MPI's ULFM `Comm_shrink()` closes, by producing the smaller, still-working communicator directly instead of leaving that rebuild step to the caller.
+    It's tempting to read `ncclCommAbort()`'s clean `ncclSuccess` return and treat the problem as solved. It isn't. NVIDIA's own documentation is explicit that abort's whole job is narrower: it "will exit any operation currently in progress, and destroy the communicator" -- stopping the hang, and nothing more. For the tested NCCL 2.26.2 abort-and-rebuild path, the aborted handle cannot be reused; surviving participants need an agreed new membership and a brand-new `ncclCommInitRankConfig()` call, Section 19.1's own call, run again from scratch, almost always with the dead rank's slot removed from the membership list and a fresh `ncclUniqueId`. Skipping that rebuild and trying to keep using the aborted handle, or assuming the abort itself somehow restored connectivity, leaves an application with no communicator, not a repaired one -- exactly the gap MPI's ULFM `Comm_shrink()` closes, by producing the smaller, still-working communicator directly instead of leaving that rebuild step to the caller.
 
 ## 19.3 Stragglers Are Not Failures: Backup Workers
 
@@ -631,8 +655,8 @@ This chapter completes Part 4 with communicator error handling and straggler-tol
 
 1. Quote NVIDIA's own documented distinction between an ordinary NCCL error and what a genuinely dead peer causes on a *blocking* communicator, and explain in your own words why checking a call's `ncclResult_t` cannot catch the second case.
 2. What does setting `config.blocking = 0` actually change about when `ncclCommInitRankConfig()` returns, and what does it *not* change about whether initialization has actually finished?
-3. In Section 19.2's own Sample output, `ncclCommAbort()` reports `no error (code 0)` even though initialization failed. What handle was it actually called on, and why does that make the success code uninformative rather than evidence of a real cleanup?
-4. Name the one real capability Open MPI's ULFM extension offers (via `MPIX_Comm_shrink()`) that the `ncclCommAbort()` + rebuild cycle available on the installed NCCL 2.18.3 does not. Which later NCCL version adds a counterpart?
+3. What does File 55’s successful one-rank initialization, bounded polling and abort check establish, and what multi-rank failure behavior does it leave untested?
+4. Name the one real capability Open MPI's ULFM extension offers (via `MPIX_Comm_shrink()`) that the `ncclCommAbort()` + rebuild cycle available on the tested NCCL 2.26.2 does not. Which later NCCL version adds a counterpart?
 5. Using Section 19.3's own `withBackupsWait()` function, explain in your own words why pooling N+b candidates and taking the N-th smallest can never produce a *worse* (larger) result than `withoutBackupsWait()`'s max of one fixed set of N, for any input timings at all.
 6. Section 19.3's third scenario makes the backup workers themselves the slowest of all 6 candidates, and the "with backups" result is unchanged from the baseline. Why does that happen, and what does it say about the actual cost of adding backup workers when no one straggles?
 7. Explain the COMMON TRAP in Section 19.3 in your own words: why can't a fixed budget of `b` backup workers substitute for Section 19.2's detect-and-recover machinery when a required worker is genuinely, permanently dead rather than merely slow?
@@ -648,9 +672,9 @@ Chapter 20 opens Part 5 by leaving single-node NCCL behind for the first time in
 
 **2.** Setting `config.blocking = 0` changes *when the call returns*: a non-blocking `ncclCommInitRankConfig()` is allowed to return control to the caller before initialization has actually finished, instead of blocking until it's done (or never returning, if a peer is dead). It does *not* change whether initialization has actually completed by the time the call returns -- that's a separate fact, which the caller has to check afterward, in a loop, via `ncclCommGetAsyncError()`.
 
-**3.** Check whether a communicator is valid before querying or aborting it. The expected-error probe checks NULL-handle rejection; successful cleanup of a valid communicator is a separate case.
+**3.** The current probe initializes a valid one-rank nonblocking communicator, polls its asynchronous state within a bounded interval, and aborts that valid handle. Its successful result checks that API lifecycle only. It does not inject a failed peer, reproduce a stalled multi-rank collective, or establish recovery of lost application state.
 
-**4.** ULFM's `MPIX_Comm_shrink()` produces a new, smaller communicator that excludes the dead process directly, letting survivors continue without a full rebuild. NCCL's own `ncclCommAbort()` only stops the hang -- it destroys the communicator entirely, requiring every surviving rank to call `ncclCommInitRankConfig()` again from scratch (a new rank count, a new `ncclUniqueId`) to get back to a workable state, which is a strictly heavier-weight recovery than ULFM's shrink-in-place. That is a statement about the installed NCCL 2.18.3, not NCCL in general: NCCL 2.27 introduced `ncclCommShrink()`, its own counterpart to ULFM's shrink.
+**4.** ULFM's `MPIX_Comm_shrink()` produces a new, smaller communicator that excludes the dead process directly, letting survivors continue without a full rebuild. NCCL's own `ncclCommAbort()` only stops the hang -- it destroys the communicator entirely, requiring every surviving rank to call `ncclCommInitRankConfig()` again from scratch (a new rank count, a new `ncclUniqueId`) to get back to a workable state, whereas ULFM shrink creates a new communicator from the surviving membership. This is an API-contract distinction, not a measured recovery-time comparison. That is a statement about the tested NCCL 2.26.2, not NCCL in general: NCCL 2.27 introduced `ncclCommShrink()`, its own counterpart to ULFM's shrink.
 
 **5.** `withBackupsWait()` computes the N-th smallest value out of a pool of N+b candidates (the required workers plus the backups), while `withoutBackupsWait()` computes the max -- which is the N-th smallest -- of the N required workers alone, a *subset* of that same pool. For any superset, the N-th smallest value can only be less than or equal to the subset's N-th smallest: the subset already contains N values no larger than its own max, so the superset contains at least those same N values, and its N-th smallest cannot exceed that max. This is pure combinatorics -- no distribution, probability, or measured result from Chen et al.'s paper is involved -- which is why it holds for every input timing, not just the three scenarios simulated.
 
@@ -665,7 +689,7 @@ Chapter 20 opens Part 5 by leaving single-node NCCL behind for the first time in
 **Sources cited in this chapter:**
 
 - ["Building Scalable and Fault-Tolerant NCCL Applications" (NVIDIA Technical Blog)](https://developer.nvidia.com/blog/building-scalable-and-fault-tolerant-nccl-applications/) -- the exact quotes "even healthy ranks should expect NCCL to either return an error or hang on any collective operation," "enable non-blocking NCCL communicator so that we may detect and react to timeouts," the `ncclCommGetAsyncError()` polling pattern (`while (asyncError == ncclInProgress)`), and "typical recovery for the healthy ranks starts with `ncclCommAbort` on the existing communicator," "`ncclCommAbort` will exit any operation currently in progress, and destroy the communicator." The same post also states "NCCL 2.27 introduced `ncclCommShrink`," cited in Section 19.2 for NCCL's own later counterpart to ULFM's shrink.
-- NCCL's own installed header (`/usr/include/nccl.h`, libnccl 2.18.3) -- `ncclConfig_t`, `NCCL_CONFIG_INITIALIZER`, `ncclCommInitRankConfig()`, `ncclCommGetAsyncError()`, `ncclCommAbort()`, `ncclGetUniqueId()`, confirmed present and used genuinely in this chapter's own code; the same header exports `ncclCommSplit()` but no `ncclCommShrink()`.
+- NCCL's own installed header (`/usr/include/nccl.h`, tested libnccl 2.26.2) -- `ncclConfig_t`, `NCCL_CONFIG_INITIALIZER`, `ncclCommInitRankConfig()`, `ncclCommGetAsyncError()`, `ncclCommAbort()`, `ncclGetUniqueId()`, confirmed present and used genuinely in this chapter's own code; the same header exports `ncclCommSplit()` but no `ncclCommShrink()`.
 - Chen, J. et al., ["Revisiting Distributed Synchronous SGD"](https://arxiv.org/abs/1604.00981) (arXiv 1604.00981, 2016) -- the exact quote "instead of having only N workers, we add b extra workers, but as soon as the parameter servers receive gradients from any N workers, they stop waiting and update their parameters using the N gradients," and their own real configuration, `N=96, b=4` out of 100 total machines.
 - [Open MPI's ULFM (User-Level Failure Mitigation) documentation](https://docs.open-mpi.org/en/v5.0.2/features/ulfm.html) -- the exact quotes describing `MPIX_Comm_revoke()` ("interrupts any communication pending on the communicator at all ranks") and `MPIX_Comm_shrink()` ("creates a new communicator where dead processes in comm were removed, and the remaining processes are renamed to cover all the gaps"); Chapter 20 confirms the installed Open MPI 4.1.6 predates ULFM.
 - This book's own Chapter 11 (`ncclCommInitAll()`, the real communicator this chapter's `ncclCommInitRankConfig()` extends), Chapter 17 (the real barrier this chapter's hangs would occur at, and MPI's `MPI_Barrier()` as a first real MPI contrast), and Chapter 18 (the makespan framing this chapter's "catastrophic straggler" scenario deliberately pushes to an extreme).

@@ -28,6 +28,29 @@ Real banks do not compute a single Value-at-Risk number and stop -- regulators a
 +------------------------------------------------------------------+
 ```
 
+<!-- mgpu:worked:start -->
+## Worked walkthrough — Net trades before flooring and keep the date axis
+
+[![Net trades before flooring and keep the date axis: numerical ownership, intermediate values and checks](../images/worked/ch36.svg)](../images/worked/ch36.svg)
+
+Use two trades in one netting set, two equally weighted simulated paths and two observation dates. Values are toy monetary units; no calibration, discounting or default model is implied. Rank 0 owns path A, rank 1 path B.
+
+1. **Value every trade on its path.** At date 1, path A has trade values `[10,-8]`; path B `[-4,6]`. At date 2, path A has `[3,-5]`; path B `[7,-1]`.
+2. **Net within each path/date.** Net portfolio values are `[2,2]` across paths at date 1, and `[-2,6]` at date 2. Trades must be in the same legally modeled netting set for this operation; the numerical example does not establish legal netting eligibility.
+3. **Apply the positive floor after netting.** Exposure samples become `[2,2]` and `[0,6]`. The per-date means are `EE(t1)=2`, `EE(t2)=3`. Averaging date-1 positive trade values before netting would yield `(10+6)/2=8`, a different quantity.
+4. **Reduce each date's sum and count.** The ranks contribute vectors `[2,0]` and `[2,6]`. Elementwise sum gives `[4,6]`; divide by global path count two. A raw sum of rank means would require correction for unequal path counts.
+5. **Keep time aggregation explicit.** If the two dates represent intervals of lengths one and three, a stated time-weighted EPE approximation is `(1*2+3*3)/4=2.75`. This differs from the unweighted mean 2.5. CVA additionally needs default probabilities, discounting and other specified assumptions; EE alone is not CVA.
+
+**Expected check:** each date's distributed EE matches direct pathwise netting/flooring/averaging. Quantiles of exposures need sample or distribution information, not only means/M2. The toy dates and paths are not a financial recommendation or a validated portfolio model.
+
+??? question "Exercise: unequal path counts"
+
+    One rank owns one exposure sample 2; another owns three samples 0,2,8 at a date. What is global EE?
+
+    **Worked answer:** `(2+0+2+8)/4=3`. Averaging the rank means gives `(2+10/3)/2=8/3`, which is wrong because the ranks have unequal counts. Combine sums/counts or weighted means.
+
+<!-- mgpu:worked:end -->
+
 ## 36.1 From One Reduction to a Full Exposure Profile
 
 <!-- mgpu:figure-1:start -->
@@ -56,7 +79,6 @@ Chapter 31's own Monte Carlo risk simulation asked one question of its paths: wh
 ```
 
 File 105 compares issuing one small reduction per date with batching the per-date tuples into a vector reduction. T=360 increases the payload and simulation work, but need not multiply collective startup latency by 360.
-
 
 ```cpp
 // Chapter 36: Multi-GPU XVA and Portfolio Risk
@@ -156,7 +178,6 @@ Two things this table shows. First, the bytes on the network per date grow LINEA
 
 <!-- execution:end:h100-rerun:105_exposure_profile_reduction_cost_model.cpp -->
 
-
 <!-- execution:start:a100:105_exposure_profile_reduction_cost_model.cpp -->
 > **Compiled and executed — 2026-11-17-a100: Host program/model (exit-only).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:05:31.183626+00:00`.
 
@@ -188,7 +209,6 @@ Two things this table shows. First, the bytes on the network per date grow LINEA
 
 <!-- execution:end:a100:105_exposure_profile_reduction_cost_model.cpp -->
 
-
 <!-- execution:start:h100:105_exposure_profile_reduction_cost_model.cpp -->
 > **Compiled and executed — 2026-11-17-h100: Host program/model (exit-only).** Hardware: 2 H100 GPUs. Execution record UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`.
 
@@ -219,7 +239,6 @@ Two things this table shows. First, the bytes on the network per date grow LINEA
 
 </details>
 <!-- execution:end:h100:105_exposure_profile_reduction_cost_model.cpp -->
-
 
 Compile and run (a plain host `.cpp` file with no CUDA/NCCL/MPI/NVSHMEM linkage, executed on the recorded H100 and A100 hosts):
 
@@ -258,7 +277,6 @@ Picture a bank and one counterparty holding five separate derivative contracts w
 ```
 
 File 106 generates 500 random netting sets of five trades each, computes both the gross (floor-then-sum) and netted (sum-then-floor) exposure for every set, and checks that the positive-part subadditivity inequality never once reverses.
-
 
 ```cpp
 // Chapter 36: Multi-GPU XVA and Portfolio Risk
@@ -413,7 +431,6 @@ This confirms, by direct simulation rather than assumption, the real economic cl
 
 <!-- execution:end:h100-rerun:106_netting_set_exposure_order_simulation.cpp -->
 
-
 <!-- execution:start:a100:106_netting_set_exposure_order_simulation.cpp -->
 > **Compiled and executed — 2026-11-17-a100: Host program/model (exit-only).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:05:31.454474+00:00`.
 
@@ -456,7 +473,6 @@ This confirms, by direct simulation rather than assumption, the real economic cl
 
 
 <!-- execution:end:a100:106_netting_set_exposure_order_simulation.cpp -->
-
 
 <!-- execution:start:h100:106_netting_set_exposure_order_simulation.cpp -->
 > **Compiled and executed — 2026-11-17-h100: Host program/model (exit-only).** Hardware: 2 H100 GPUs. Execution record UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`.
@@ -501,7 +517,6 @@ This confirms, by direct simulation rather than assumption, the real economic cl
 </details>
 <!-- execution:end:h100:106_netting_set_exposure_order_simulation.cpp -->
 
-
 Compile and run (plain host `.cpp`, executed on the recorded H100 and A100 hosts):
 
 ```bash
@@ -535,7 +550,6 @@ Section 36.1 models reductions across observation dates; batching dates can amor
 ```
 
 File 107 combines Sections 36.1 and 36.2 into one simulation: 24 paths, 5 trades per netting set, 6 observation dates (illustrative, for a readable printed profile -- Section 36.1's own cost model already exercised the real cited T=360 at scale), split across P in {1, 2, 3, 4, 6, 8, 12, 24}, checked against a P=1 reference built from the exact same real combination formula.
-
 
 ```cpp
 // Chapter 36: Multi-GPU XVA and Portfolio Risk
@@ -773,7 +787,6 @@ Method B rules out continuity as the cause: whole-cent integer exposures still g
 
 <!-- execution:end:h100-rerun:107_multi_gpu_exposure_profile_correctness_simulation.cpp -->
 
-
 <!-- execution:start:a100:107_multi_gpu_exposure_profile_correctness_simulation.cpp -->
 > **Compiled and executed — 2026-11-17-a100: Host program/model (exit-only).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:05:31.926251+00:00`.
 
@@ -814,7 +827,6 @@ Method B rules out continuity as the cause: whole-cent integer exposures still g
 
 <!-- execution:end:a100:107_multi_gpu_exposure_profile_correctness_simulation.cpp -->
 
-
 <!-- execution:start:h100:107_multi_gpu_exposure_profile_correctness_simulation.cpp -->
 > **Compiled and executed — 2026-11-17-h100: Host program/model (exit-only).** Hardware: 2 H100 GPUs. Execution record UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`.
 
@@ -854,7 +866,6 @@ Method B rules out continuity as the cause: whole-cent integer exposures still g
 
 </details>
 <!-- execution:end:h100:107_multi_gpu_exposure_profile_correctness_simulation.cpp -->
-
 
 Compile and run (plain host `.cpp`, executed on the recorded H100 and A100 hosts):
 

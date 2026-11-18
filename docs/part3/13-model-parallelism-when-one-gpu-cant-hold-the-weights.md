@@ -36,6 +36,28 @@ Data parallelism (Chapter 12):        Model parallelism (this chapter):
                                           device-to-device transfer.
 ```
 
+<!-- mgpu:worked:start -->
+## Worked example — Compute an activation boundary by hand
+
+A two-layer forward pass uses row-vector X = [1, 2] on GPU 0. W0 has rows [1, 0, 2] and [0, 1, 1]. GPU 1 owns W1 with rows [1], [2], [3]. All values are FP32; omit biases and nonlinearities for this small model.
+
+![Numeric worked example: Compute an activation boundary by hand](../images/worked/ch13.svg)
+
+1. Compute the three outputs of H = XW0: 1×1 + 2×0 = 1; 1×0 + 2×1 = 2; 1×2 + 2×1 = 4. Thus H = [1, 2, 4].
+
+2. Transfer the activation H to GPU 1 after GPU 0 finishes producing it. Three FP32 elements occupy 12 bytes.
+
+3. Compute Y = HW1 = 1×1 + 2×2 + 4×3 = 17 on GPU 1.
+
+4. W0 stores 2×3×4 = 24 bytes; W1 stores 3×1×4 = 12 bytes. Sharding these weights does not remove the activation dependency between layers.
+
+**Expected result and pitfall.** The expected scalar output is 17. This is a forward-only mathematical model, not a training-memory estimate: backward activation storage, gradients, optimizer state and reverse communication are additional costs.
+
+**Exercise.** What activation crosses the boundary for input [2, 1]?
+
+**Worked answer.** H = [2, 1, 5], so 12 bytes still cross. The output becomes 2 + 2 + 15 = 19.
+<!-- mgpu:worked:end -->
+
 ## 13.1 Why Split the Model Itself: Memory Capacity, Revisited
 
 <!-- mgpu:figure-1:start -->

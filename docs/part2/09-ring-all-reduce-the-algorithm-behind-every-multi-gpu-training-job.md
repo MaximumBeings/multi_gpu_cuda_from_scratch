@@ -1,14 +1,16 @@
-# Chapter 9: Ring All-Reduce: The Algorithm Behind Every Multi-GPU Training Job
+# Chapter 9: Ring All-Reduce: Reduce-Scatter and All-Gather by Hand
+
+<span id="chapter-9-ring-all-reduce-the-algorithm-behind-every-multi-gpu-training-job"></span>
 
 <!-- mgpu:opener:start -->
-[![Chapter 9: Ring All-Reduce: The Algorithm Behind Every Multi-GPU Training Job](../images/chapter-openers/09.svg)](../images/chapter-openers/09.svg)
+[![Chapter 9: Ring All-Reduce: Reduce-Scatter and All-Gather by Hand](../images/chapter-openers/09.svg)](../images/chapter-openers/09.svg)
 <!-- mgpu:opener:end -->
 
 **What you will understand by the end of this chapter:**
 
 - Why all-reduce -- every device ending up with the *same* combined result, not just one root -- is a genuinely different goal from Chapter 8's reduce, and why the simplest way to get there (chain Chapter 8's two collectives together) concentrates all the real work on a single central hub.
 - How ring all-reduce spreads that same work evenly across every device by having each one talk only to its immediate ring-neighbor, in two phases: scatter-reduce, then all-gather.
-- The real, closed-form reason this algorithm is the one essentially every real multi-GPU training job actually uses for gradient synchronization: it moves a fixed, bounded amount of data per device, no matter how large the group of devices grows.
+- The closed-form bandwidth argument that makes ring all-reduce useful for large-message gradient synchronization: it moves a fixed, bounded amount of data per device, no matter how large the group of devices grows.
 
 **What you need to know first:**
 
@@ -18,7 +20,7 @@
 
 ---
 
-Chapter 8 built reduce -- every device's data combined into one correct result, on one root device. All-reduce asks for something related but distinct: every device ending up holding that *same* combined result, not just the root. Getting there is easy in principle -- reduce to a root, then broadcast the root's result back out, using nothing but Chapter 8's own two collectives, one after the other. It's also exactly the wrong way to do it at scale, because every byte of that approach passes through one central hub on the way in and again on the way out -- in this chapter's by-hand version, the host during the reduce and the root device during the broadcast. Ring all-reduce fixes this by rethinking who talks to whom: instead of a star with one root at the center, every device sits in a ring and only ever exchanges data with its two immediate neighbors. This is the algorithm underneath essentially every real multi-GPU training job's gradient synchronization step, and this chapter builds it, by hand, directly on top of what Chapters 2 and 8 already gave this book.
+Chapter 8 built reduce -- every device's data combined into one correct result, on one root device. All-reduce asks for something related but distinct: every device ending up holding that *same* combined result, not just the root. Getting there is easy in principle -- reduce to a root, then broadcast the root's result back out, using nothing but Chapter 8's own two collectives, one after the other. The simple centralized implementation in Chapter 8 creates a hub bottleneck: the host during its reduce and the root device during its broadcast. This does not mean all reduce-then-broadcast implementations are centralized; tree and hierarchical implementations distribute communication differently. Ring all-reduce fixes this by rethinking who talks to whom: instead of a star with one root at the center, every device sits in a ring and only ever exchanges data with its two immediate neighbors. Ring all-reduce is one important gradient-synchronization algorithm; production libraries also select trees and other algorithms according to message size, topology and configuration, and this chapter builds it, by hand, directly on top of what Chapters 2 and 8 already gave this book.
 
 ```text
 NAIVE (Chapter 8's two collectives, chained):
@@ -47,6 +49,30 @@ RING (this chapter):
   Every device only ever talks to its two ring neighbors -- no device
   is ever singled out, and the per-device load stays bounded.
 ```
+
+<!-- mgpu:worked:start -->
+## Worked example — Trace one chunk through both ring phases
+
+Use P = 4 ranks, L = 8 int32 elements per rank, and input x_r[i] = 100r + i. Each rank contributes two elements to each chunk. The following is a logical ring schedule with chunk 0 initially at rank 0; different valid implementations can choose different rotations.
+
+![Numeric worked example: Trace one chunk through both ring phases](../images/worked/ch09.svg)
+
+1. Chunk 0 starts as rank 0’s [0, 1]. After transmission to rank 1 and addition of [100, 101], it is [100, 102].
+
+2. At rank 2, add [200, 201] to obtain [300, 303]. At rank 3, add [300, 301] to obtain [600, 604]. Chunk 0 is now fully reduced.
+
+3. All-gather forwards that completed chunk from rank 3 to ranks 0, 1 and 2 without further addition. Adding during this phase would count contributors again.
+
+4. For every element i, sum_r(100r + i) = 600 + 4i. The final vector is [600, 604, 608, 612, 616, 620, 624, 628].
+
+5. Each rank sends (P − 1) × (L/P) elements in each phase: 3 × 2 × 2 = 12 elements = 48 bytes sent. It also receives 48 bytes; counting both directions gives 96 bytes.
+
+**Expected result and pitfall.** The expected all-reduce result is identical at all ranks. The byte formula assumes equal chunks and this ring algorithm; it is not a performance measurement or a claim that every NCCL collective selects a ring.
+
+**Exercise.** What is element i = 5, and does all-gather change it?
+
+**Worked answer.** 600 + 4 × 5 = 620. All-gather copies the completed value; it must not reduce it again.
+<!-- mgpu:worked:end -->
 
 ## 9.1 The Naive Baseline: Reduce-to-Root, Then Broadcast
 

@@ -6,6 +6,28 @@
 
 Chapters 8 through 10 hand-built five collectives from first principles -- broadcast, reduce, ring all-reduce, all-gather, and reduce-scatter -- plus a genuinely new all-to-all. Chapter 11 then matched every one of them to its real NCCL call, and Chapters 17, 20, and 22 went on to use NCCL and NVSHMEM as working tools throughout the rest of the book: a throwaway `ncclAllReduce` as a barrier in Chapter 17, `MPI_Sendrecv` fixing a real ring deadlock in Chapter 20, and NVSHMEM's device-initiated `nvshmem_int_p()` in Chapter 22. Unlike a book meeting NCCL or NVSHMEM for the first time here, this book has already put both to work. This appendix does not introduce them again -- it gathers their fuller real API surface into one consolidated reference, section by section citing the exact chapter that already established each idea, and closes with the decision framework this book has been applying implicitly since Chapter 11: when to hand-write a collective, when to reach for NCCL, and when the job genuinely needs NVSHMEM's one-sided, device-initiated model instead.
 
+<!-- mgpu:worked:start -->
+## Worked example — Match data completion to the communication model
+
+Two processing elements (PEs) exchange four int32 values [2, 3, 5, 7], totaling 16 bytes. This is a conceptual protocol comparison; it is not a new numerical execution claim. Use the API and initialization details in the full listings later in this appendix.
+
+![Numeric worked example: Match data completion to the communication model](../images/worked/appendix-c.svg)
+
+1. For a matched NCCL point-to-point exchange, sender and receiver use compatible count 4 and datatype ncclInt32. Group calls where required by the multi-device/thread launch pattern.
+
+2. The receiving CUDA stream must reach transfer completion before its consumer reads [2, 3, 5, 7]. Host submission alone is insufficient.
+
+3. For an NVSHMEM host-issued put example, the remote target is a valid corresponding symmetric allocation. Initialize the source before issuing the put; use the required completion operation such as host nvshmem_quiet for that host-issued communication.
+
+4. Use an appropriate matching synchronization protocol before the remote consumer. For this simple host-controlled example, all PEs can enter the matching host barrier before launching consumers. Do not substitute this for a device-issued-operation completion protocol.
+
+**Expected result and pitfall.** The expected received payload is [2, 3, 5, 7]. NCCL expresses matched communication in stream order; NVSHMEM exposes remote-memory operations with symmetric-allocation and completion rules. A raw pointer from another process is not automatically a valid remote address.
+
+**Exercise.** Does successful issuance of a put prove the remote GPU kernel may immediately read the final values?
+
+**Worked answer.** No. Complete and order the relevant communication, then establish consumer readiness using the protocol appropriate to the issuing context and API.
+<!-- mgpu:worked:end -->
+
 ## C.1 NCCL's Full Collective Reference
 
 <!-- mgpu:figure-1:start -->
@@ -180,7 +202,6 @@ nvcc -arch=sm_80 126_nccl_collective_reference.cu -o 126_nccl_collective_referen
 
 **Sample input:** none -- the program takes no arguments and reads no data; every value it prints is either a compile-time constant string or a real return value read back from the installed NCCL library.
 
-
 ## C.2 NCCL Point-to-Point, Consolidated
 
 ### Intuition
@@ -209,7 +230,7 @@ Chapter 11 already handed you the two functions this section is built around, `n
 Picture each peer as running its own private mail slot. NCCL treats every peer's slot as a FIFO queue: three `ncclSend()` calls aimed at peer 0, issued in that order inside the group, are guaranteed to be delivered to peer 0 in that same order -- tag 100 before 101 before 102. That guarantee stops exactly at the slot's own edge. The single call aimed at peer 1 and the two calls aimed at peer 2 are free to complete before, after, or interleaved with peer 0's three calls, because NCCL's ordering promise is scoped per destination, not to the group as a whole. This is precisely the recipe Chapter 11 already used to build Chapter 10's own hand-built all-to-all: the loop issues one `ncclSend`/`ncclRecv` pair per peer, all inside a single `ncclGroupStart()`/`ncclGroupEnd()` bracket, relying on exactly this per-peer ordering and nothing stronger.
 
 !!! warning
-    "Inside one group" is not the same promise as "in one order." It is tempting to read `ncclGroupStart()`/`ncclGroupEnd()` as a barrier that serializes everything inside it -- it does the opposite. The group exists so the underlying transport can batch and pipeline the calls together for throughput, and the only ordering it actually guarantees is per-peer FIFO. Code that depends on call number 3 (to peer 1) happening before call number 5 (to peer 2) is relying on a guarantee NCCL never made, and it can break the moment the transport or peer count changes, even though it may happen to pass on today's hardware.
+    `ncclGroupStart()`/`ncclGroupEnd()` aggregate work; they are not permission to ignore operation order or a host-side completion barrier. Participants must issue compatible collective order, including across communicators as required by the NCCL launch-order contract. Point-to-point matching has its own per-peer ordering rules. When a group uses multiple CUDA streams, NCCL also establishes the documented synchronization among those streams before the grouped work begins and blocks them until that work completes; it is not correct to describe the group's only guarantee as per-peer FIFO. Do not rely on source-code call order alone for an arbitrary cross-peer producer/consumer dependency. Follow [NCCL's group and stream-ordering rules](https://docs.nvidia.com/deeplearning/nccl/user-guide/docs/usage/groups.html), submit the complete group, then establish the required completion before consuming or reusing buffers.
 
 ### Code and Verification
 
@@ -360,7 +381,7 @@ Chapter 22 handed you exactly one NVSHMEM call, `nvshmem_int_p()`, a device-init
 Every one of these calls is initiated by the PE that issues it, and the remote PE plays no active role -- it does not call a matching "receive" function, the way an `ncclRecv()` or an `MPI_Recv()` would. `nvshmem_int_get()` is `nvshmem_int_p()`'s mirror image: instead of pushing a value into a remote PE's memory, it pulls one out. `nvshmem_int_atomic_add()` solves a problem neither `p` nor `get` can: if several PEs all target the same remote counter at once, plain writes would race exactly the way an unsynchronized shared write races between threads on a single device, and NVSHMEM's remote atomic gives the same correctness guarantee across PEs that a plain CUDA `atomicAdd()` already gives across threads. None of the three needs every PE to participate -- a single PE can call `nvshmem_int_get()` while every other PE does something else entirely. `nvshmem_barrier_all()` is the one call on this list that every PE must reach before any of them can proceed past it, and it does for NVSHMEM's device-initiated model the same job Chapter 17's throwaway `ncclAllReduce` did for NCCL's host-initiated one: it is NVSHMEM's own collective, not a one-sided operation at all.
 
 !!! warning
-    A one-sided write with no matching receive is easy to reason about wrong. Because `nvshmem_int_p()` and `nvshmem_int_get()` need no cooperation from the target PE, it is tempting to assume they also need no synchronization at all. They still do: nothing stops a PE from reading a remote value before the PE that was supposed to write it has actually gotten there, exactly the stale-read failure Chapters 16 and 40 already documented for a skipped halo exchange. `nvshmem_barrier_all()` (or NVSHMEM's own finer-grained fence and quiet operations, not shown here) is still required wherever one PE's write must be visible to another PE's read -- one-sided means no acknowledgment protocol, not no ordering requirement.
+    A one-sided write still needs a publication/completion protocol. `nvshmem_fence` orders its specified prior operations but does not by itself complete them or announce readiness to a receiver. `nvshmem_quiet` completes the relevant issuing context's operations; the consumer still needs the matching synchronization or notification. CPU-side ordering APIs order CPU-issued communication, while GPU-side ordering APIs order GPU-issued communication. A host `nvshmem_barrier_all` alone does not drain pending device/stream-issued operations. The device kernel below performs device `nvshmem_quiet`, and the host waits for kernel completion before entering its host barrier. Preserve that sequence or use a documented appropriate on-stream/device protocol. See [NVSHMEM ordering and collective scope](https://docs.nvidia.com/nvshmem/api/latest/gen/api/collectives.html). One-sided means no matching receive call for each data operation, not an absence of ordering or lifetime obligations.
 
 ### Code and Verification
 
@@ -627,7 +648,7 @@ Every multi-GPU program this book has built from Chapter 8 onward made this choi
   teaching the algorithm itself -- hand-write it (Ch8-10, Ch16)
 ```
 
-Hand-writing a collective, the way Chapters 8 through 10 and Chapter 16's halo exchange did, is never the fastest option in a production program -- it exists in this book to teach the algorithm the library later hides. Once the algorithm is understood, NCCL is almost always the right real choice for anything shaped like Chapter 8, 9, or 10's own collectives: it detects the real interconnect topology Chapter 2 spent an entire chapter laying out by hand, and it is what Chapter 11 onward actually used from then on. NVSHMEM is not a faster NCCL -- it is a different execution model entirely. Every NCCL call in this book, from Chapter 11 (where NCCL first appears) through Chapter 20, is issued from host code and operates on a whole buffer at a time. NVSHMEM's `nvshmem_int_p()`, `nvshmem_int_get()`, and `nvshmem_int_atomic_add()` are issued from inside a running kernel, one thread at a time, the moment that thread has a value ready -- exactly the property Chapter 22 needed and Chapters 8 through 20's host-initiated collectives structurally cannot provide. Reaching for NVSHMEM when a plain `ncclAllReduce` would do adds real complexity for no benefit; reaching for NCCL when the exchange genuinely needs to happen without leaving a kernel is reaching for the wrong tool entirely.
+The hand-built collectives in Chapters 8–10 expose algorithms and correctness obligations that a library can package and tune. NCCL is a useful production baseline for supported buffer collectives because it selects topology-aware implementations; it is not a theorem that a custom or fused implementation can never be faster for a particular workload. Compare complete, equivalent operations under the actual topology and message distribution. NVSHMEM supplies a different one-sided model with both host and device APIs; the kernel example here and Chapter 22 demonstrate device-initiated operations. Its benefit depends on the workload's communication granularity and dependencies, not a universal ranking against NCCL. The book's captured NCCL examples use host-side submission. Other library interfaces and releases must be checked separately rather than inferred from those examples.
 
 ## Appendix Summary
 

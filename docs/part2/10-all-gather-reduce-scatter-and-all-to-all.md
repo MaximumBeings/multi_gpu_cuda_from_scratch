@@ -47,6 +47,28 @@ ALL-TO-ALL (10.3): every device sends a DIFFERENT chunk to every other
   dev0 holds "10" (from dev1), and so on -- a full transpose, no combining.
 ```
 
+<!-- mgpu:worked:start -->
+## Worked example — Distinguish three rank layouts
+
+Use three ranks and int32 elements. In these logical collective layouts, arrays are written in communicator-rank order. Counts below are element counts, not byte counts.
+
+![Numeric worked example: Distinguish three rank layouts](../images/worked/ch10.svg)
+
+1. All-gather: rank inputs [0, 10], [1, 11], [2, 12] each contain 2 elements. Each output is [0, 10, 1, 11, 2, 12], six elements or 24 bytes.
+
+2. Reduce-scatter: rank r contributes six values 10r + i for i = 0…5. Their elementwise sum is [30, 33, 36, 39, 42, 45].
+
+3. With receive count 2, reduce-scatter returns [30, 33] at rank 0, [36, 39] at rank 1 and [42, 45] at rank 2. Each input must contain P × recvcount = 6 elements.
+
+4. All-to-all: source rank r sends value 10r + d to destination d. Destination 0 receives [0, 10, 20]; destination 1 [1, 11, 21]; destination 2 [2, 12, 22].
+
+**Expected result and pitfall.** The expected distinction is concatenation, reduction followed by partition, and exchange by destination. For the book’s recorded NCCL version, grouped ncclSend/ncclRecv calls implement the all-to-all exchange; newer API availability must be checked against the installed version.
+
+**Exercise.** For reduce-scatter receive count 2 and three ranks, is a two-element send buffer sufficient?
+
+**Worked answer.** No. Each rank contributes the full six-element reduction input; the operation returns only its two-element result shard.
+<!-- mgpu:worked:end -->
+
 ## 10.1 All-Gather: Collecting Without Reducing
 
 <!-- mgpu:figure-1:start -->

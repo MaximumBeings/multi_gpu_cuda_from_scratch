@@ -19,6 +19,28 @@
 
 Everything in Part 1 was about moving data or coordinating exactly two participants at a time -- one source device and one destination, one device's stream waiting on another's event, one process's memory shared with one other process's. A collective operation involves an entire group of devices at once, all participating in a single, coordinated communication pattern. Broadcast and reduce are the two simplest collectives, and this chapter builds both by hand, directly on top of Part 1's primitives: broadcast is one device's data reaching every other device, and reduce is every device's data being combined into one. Because correctness here is inherently a question about *multiple* devices' data ending up in the *right relationship to each other*, this chapter also marks a shift in how this book verifies itself: from here through the rest of Part 2, the host-side simulation technique introduced in Chapter 4 stops being an occasional tool and becomes the primary way this book proves a multi-device algorithm is actually correct.
 
+<!-- mgpu:worked:start -->
+## Worked example — Broadcast copies; reduction combines
+
+Four ranks r = 0, 1, 2, 3 each hold two int32 values [r + 1, 10(r + 1)]. Each local vector is 8 bytes. Choose root rank 2; rank numbers are communicator identities, not necessarily CUDA device IDs.
+
+![Numeric worked example: Broadcast copies; reduction combines](../images/worked/ch08.svg)
+
+1. Write the inputs: rank 0 [1, 10], rank 1 [2, 20], rank 2 [3, 30], rank 3 [4, 40].
+
+2. Broadcast root 2’s two elements: every rank receives [3, 30]. With NCCL, the element count is 2 and datatype ncclInt32; every rank participates.
+
+3. For SUM reduction instead, add the first coordinates: 1 + 2 + 3 + 4 = 10. Add the second: 10 + 20 + 30 + 40 = 100.
+
+4. The reduce result [10, 100] is defined at root rank 2. Receiving that result on every rank would require all-reduce or a subsequent broadcast.
+
+**Expected result and pitfall.** The expected broadcast output is [3, 30] everywhere; the expected reduce output is [10, 100] at the root. These are separate operations on the original inputs, not reduce applied after overwriting them with broadcast output.
+
+**Exercise.** What would SUM reduce produce if you first broadcast and then reduced those overwritten buffers?
+
+**Worked answer.** Four copies of [3, 30] sum to [12, 120]. Preserve or reconstruct the original inputs when comparing the two operations.
+<!-- mgpu:worked:end -->
+
 ## 8.1 Broadcast, By Hand: One-to-Many, Correctly
 
 <!-- mgpu:figure-1:start -->
@@ -159,7 +181,7 @@ Reduce is broadcast's mirror image: instead of one device's data reaching everyo
 
 ### Background
 
-The loop first makes the source device current with `cudaSetDevice(src)` (Chapter 3's rule -- without it, every iteration would allocate and read on device 0), then stages that device's buffer to the host with an ordinary `cudaMemcpy(..., cudaMemcpyDeviceToHost)`, and adds it, element by element, into a running host-side accumulator. Nothing here needs a device kernel: the accumulation itself is plain host arithmetic, run once per device, and the combining operation -- sum, in this section's code -- is entirely a property of what the accumulator does with each staged buffer, not of the transfer mechanism itself. A different combining operation (max, say, or a bitwise AND) would only change one line of host code; the transfer loop around it stays identical.
+The loop first selects the source device with `cudaSetDevice(src)` to make its device context explicit, then stages that device's buffer to the host with an ordinary `cudaMemcpy(..., cudaMemcpyDeviceToHost)`, and adds it, element by element, into a running host-side accumulator. Nothing here needs a device kernel: the accumulation itself is plain host arithmetic, run once per device, and the combining operation -- sum, in this section's code -- is entirely a property of what the accumulator does with each staged buffer, not of the transfer mechanism itself. A different combining operation (max, say, or a bitwise AND) would only change one line of host code; the transfer loop around it stays identical.
 
 ```cpp
 // 21_reduce_by_hand.cu
@@ -273,7 +295,7 @@ File 21 checks GPU transport and host reduction arithmetic against a reference i
 The [2026-11-17 H100 execution record](../validation-h100.md) covers two GPUs connected by local NV18. It distinguishes numerical checks, API probes and other executions; a successful exit alone does not establish GPU algorithm correctness.
 
 !!! warning "[COMMON TRAP] Assuming the accumulation order in this loop doesn't matter, for any data type"
-    For the `int` (widened to `long long` during accumulation) data this section's code uses, addition is exactly associative and commutative -- summing device 0 then device 1 then device 2 gives the bit-for-bit identical result as summing device 2 then device 0 then device 1. That guarantee is specific to integer arithmetic. It does **not** carry over to floating-point data, where, per NVIDIA's own Floating Point and IEEE 754 documentation, "the results corresponding to the sum `rn(rn(A + B) + C)` and the sum `rn(A + rn(B + C))` are different from each other" -- meaning a real floating-point reduce's *exact* result can depend on the order devices are visited in, even though every individual addition is performed correctly. Section 8.3 verifies this distinction directly rather than asserting it.
+    For the `int` (widened to `long long` during accumulation) data this section's code uses, addition is exactly associative and commutative -- summing device 0 then device 1 then device 2 gives the bit-for-bit identical result as summing device 2 then device 0 then device 1. For these bounded inputs, every intermediate fits the chosen accumulator and the result also fits its destination type. Integer arithmetic is not an unconditional escape from overflow: signed C++ overflow is undefined, and final narrowing can lose a correct wide sum. It does **not** carry over to floating-point data, where, per NVIDIA's own Floating Point and IEEE 754 documentation, "the results corresponding to the sum `rn(rn(A + B) + C)` and the sum `rn(A + rn(B + C))` are different from each other" -- meaning a real floating-point reduce's *exact* result can depend on the order devices are visited in, even though every individual addition is performed correctly. Section 8.3 verifies this distinction directly rather than asserting it.
 
 ## 8.3 Verifying Broadcast and Reduce at N Devices, and Why Order Matters for One But Not the Other
 
@@ -491,7 +513,7 @@ The [2026-11-17 H100 execution record](../validation-h100.md) covers two GPUs co
 
 ## Where We Go Next
 
-Chapter 9 builds ring all-reduce -- the algorithm that combines every device's data into an identical result on *every* device (not just one root, as this chapter's reduce did), using a bandwidth-efficient ring topology instead of a root-centered star, and the algorithm behind essentially every real multi-GPU training job's gradient synchronization step.
+Chapter 9 builds ring all-reduce -- the algorithm that combines every device's data into an identical result on *every* device (not just one root, as this chapter's reduce did), using a bandwidth-efficient ring topology instead of a root-centered star, and an important building block for gradient synchronization, alongside the other algorithms selected by production collective libraries.
 
 ## Worked Solutions
 

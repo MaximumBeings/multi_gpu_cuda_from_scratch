@@ -6,6 +6,30 @@
 
 Communication volume, measured latency and achieved bandwidth answer different questions. This appendix separates deterministic algorithm models from measurements on a particular machine, distinguishes local GPU durations from end-to-end completion, and introduces NCCL logging and Nsight Systems.
 
+<!-- mgpu:worked:start -->
+
+## Worked example — Measure the whole phase before deriving bandwidth
+
+Use a hypothetical shared host-clock timeline in milliseconds. GPU 0 work spans [0,6]; GPU 1 spans [4,7]. This is not subtraction of raw CUDA timestamps from different devices.
+
+1. Local durations are 6 ms and 3 ms. Their maximum is 6 ms, but the whole phase spans 0 through 7 ms and therefore takes 7 ms.
+
+2. For P=4 ranks and payload S=12 decimal MB, a ring all-reduce sends 2(P−1)S/P=18 MB per rank, and separately receives 18 MB. Bidirectional accounting totals 36 MB.
+
+3. Using whole-phase T=7 ms, algorithm bandwidth S/T=1.714 GB/s; modeled one-direction sent-volume bandwidth is 18/7=2.571 GB/s. State which numerator is used.
+
+![Numeric worked example: Measure the whole phase before deriving bandwidth](../images/worked/appendix-e.svg)
+
+**API connection and scope.** Record CUDA event pairs on the same owning device/stream for local intervals. For end-to-end makespan, use a host monotonic clock before the first submission through completion of all participating work. Coordinate rank start/end scope explicitly when measuring multiple processes.
+
+**Expected check and pitfall.** Do not take the maximum of differently started local durations as global elapsed time. These ring byte formulas are accounting models, not measured link utilization; topology, implementation and NCCL-tests bandwidth conventions require their own stated interpretation.
+
+??? question "Guided exercise: If the measured whole phase were 8 ms, what would the two bandwidth numbers be?"
+
+    **Worked answer.** Algorithm bandwidth is 12/8=1.5 GB/s; one-direction sent-volume bandwidth is 18/8=2.25 GB/s. Receiving traffic is not added silently to the sent-byte numerator.
+
+<!-- mgpu:worked:end -->
+
 ## E.1 Why This Book Counts Data Volume Instead of Timing It
 
 ### Intuition
@@ -256,7 +280,6 @@ g++ -std=c++17 -Wall -Wextra -O2 132_round_count_vs_timing.cpp -o 132_round_coun
 
 **Sample input:** none -- the six GPU counts `{2, 4, 8, 16, 32, 64}` are fixed constants; every volume figure is computed from Chapter 9's own closed-form formulas.
 
-
 ## E.2 Timing a Multi-Device Collective Correctly
 
 <!-- mgpu:figure-2:start -->
@@ -420,7 +443,6 @@ nvcc -arch=sm_80 133_multi_device_timing.cu -o 133_multi_device_timing
 ```
 
 **Sample input:** none -- this file targets 4 illustrative device indices (0-3); the point under test is the per-device timing loop's own structure, not any particular data.
-
 
 ## E.3 NCCL_DEBUG and Nsight Systems: Real Multi-GPU Diagnostics
 

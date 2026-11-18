@@ -8,6 +8,30 @@ Chapter 23 established two real capabilities and left two natural follow-up ques
 
 <a id="d1-updating-a-captured-graph-without-recapturing"></a>
 
+<!-- mgpu:worked:start -->
+
+## Worked example — Update a graph parameter without changing the contract
+
+Take a two-node scalar model: node A computes t=x+c and node B computes y=2t. Use x=3,c=1 and an edge A→B.
+
+1. The initial graph produces t=4 and y=8. The edge is essential: B consumes A’s output.
+
+2. Change c to 2 while preserving the represented dependency. The expected values become t=5,y=10.
+
+3. For a known kernel node, cudaGraphExecKernelNodeSetParams can update supported parameters. For a replacement graph, call cudaGraphExecUpdate and inspect both the API status and detailed update result; reinstantiate if the update is rejected.
+
+![Numeric worked example: Update a graph parameter without changing the contract](../images/worked/appendix-d.svg)
+
+**API connection and scope.** This arithmetic trace is not a new GPU timing result. Update compatibility depends on the actual node types and changes, not merely the number of nodes. Keep allocations and kernel argument storage valid for the required lifetime and execution context.
+
+**Expected check and pitfall.** A per-device cooperative grid synchronization is not a cross-device barrier. Do not infer modern portability from the legacy deprecated multi-device cooperative launch API. Cross-device dependencies need a supported explicit protocol.
+
+??? question "Guided exercise: With updated c=2 and x=4, what output should the graph produce?"
+
+    **Worked answer.** A produces 6 and B produces 12. A stale parameter would instead yield 10, making this a useful update check.
+
+<!-- mgpu:worked:end -->
+
 ## D.1 Updating an Executable Graph
 
 <!-- mgpu:figure-1:start -->
@@ -164,7 +188,6 @@ nvcc -arch=sm_80 129_graph_exec_update.cu -o 129_graph_exec_update
 ```
 
 **Sample input:** none -- both captured graphs operate on fixed 8-element buffers; the point under test is the API sequence itself, not any particular data.
-
 
 ## D.2 Cooperative Multi-Device Kernels, and Why They're Deprecated
 
@@ -475,7 +498,6 @@ nvcc -arch=sm_80 131_modern_composed_equivalent.cu -o 131_modern_composed_equiva
 ```
 
 **Sample input:** none -- both device kernels operate on fixed 8-element buffers; the point under test is the composed API sequence.
-
 
 ## D.4 When to Reach for Which Tool
 

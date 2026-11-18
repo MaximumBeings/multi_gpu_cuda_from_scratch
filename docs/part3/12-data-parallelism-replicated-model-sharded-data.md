@@ -36,6 +36,28 @@ shard, then all four gradients are AVERAGED (ncclAllReduce, ncclAvg)
 before anyone updates -- so every device's weights stay identical.
 ```
 
+<!-- mgpu:worked:start -->
+## Worked example — Weight gradients by the number of samples
+
+Two data-parallel ranks process unequal local batch sizes. Rank 0 processes n0 = 2 samples with mean gradient [2, 4]; rank 1 processes n1 = 6 with mean gradient [6, 8]. Assume both local means use the same loss normalization convention.
+
+![Numeric worked example: Weight gradients by the number of samples](../images/worked/ch12.svg)
+
+1. Recover local gradient sums: 2 × [2, 4] = [4, 8] and 6 × [6, 8] = [36, 48].
+
+2. All-reduce SUM the gradient sums to obtain [40, 56]. Sum sample counts to obtain N = 2 + 6 = 8.
+
+3. Divide by N: the sample-weighted global mean is [5, 7]. Averaging the two rank means instead gives [4, 6], which weights ranks rather than samples.
+
+4. For parameters w = [10, 20] and learning rate η = 0.1, an SGD update is w − ηg = [9.5, 19.3].
+
+**Expected result and pitfall.** The expected synchronized update is identical on both ranks. NCCL SUM does not infer the loss convention or automatically divide by the correct sample count. Handle empty local batches, accumulation and masked tokens using the actual objective’s denominator.
+
+**Exercise.** If both ranks process four samples, is the mean of their mean gradients correct?
+
+**Worked answer.** Yes, with equal nonzero denominators: (4g0 + 4g1)/8 = (g0 + g1)/2. Unequal denominators require weighted sums.
+<!-- mgpu:worked:end -->
+
 ## 12.1 Same Model, Different Data: What "Replica" Actually Means
 
 <!-- mgpu:figure-1:start -->

@@ -21,6 +21,28 @@
 
 Every chapter after this one is about getting two or more GPUs to cooperate. Before that's worth the trouble, it's worth being precise about what problem it actually solves — because "not enough" is not one failure, and the rest of this book is organized around the difference between its two forms.
 
+<!-- mgpu:worked:start -->
+## Worked example — Capacity is a per-device constraint
+
+Use decimal GB (1 GB = 10⁹ bytes), two billion parameters, and a hypothetical usable capacity of 24 GB per GPU. Assume FP16 weights and gradients, FP32 master weights and two FP32 optimizer moments; reserve 4 GB per GPU for activations and workspace. This is a capacity model, not a measured allocation.
+
+![Numeric worked example: Capacity is a per-device constraint](../images/worked/ch01.svg)
+
+1. Add the state bytes per parameter: 2 + 2 + 4 + 4 + 4 = 16 bytes.
+
+2. Multiply: 2 × 10⁹ parameters × 16 bytes = 32 GB of persistent state.
+
+3. A complete replica needs 32 + 4 = 36 GB on each device. Two replicas still need 36 GB each; capacities do not automatically pool.
+
+4. An ideal equal two-way state shard needs 32 / 2 + 4 = 20 GB per GPU, leaving 4 GB in this simplified budget.
+
+**Expected result and pitfall.** The expected conclusion is that replication alone cannot fit this model; an appropriate state-sharding scheme might. Actual sharding requires additional communication buffers and transient storage, which this budget must include before claiming it fits.
+
+**Exercise.** What happens if workspace grows to 9 GB per GPU?
+
+**Worked answer.** The ideal shard then needs 16 + 9 = 25 GB per GPU and no longer fits; the combined free memory of the machine does not repair a per-device overflow.
+<!-- mgpu:worked:end -->
+
 ## 1.1 The Memory-Capacity Wall
 
 <!-- mgpu:figure-1:start -->

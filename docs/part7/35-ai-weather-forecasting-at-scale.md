@@ -32,6 +32,29 @@ The previous chapter's own closing preview, and this book's own table of content
 +------------------------------------------------------------------+
 ```
 
+<!-- mgpu:worked:start -->
+## Worked walkthrough — Perform a tiny distributed Fourier transpose on paper
+
+[![Perform a tiny distributed Fourier transpose on paper: numerical ownership, intermediate values and checks](../images/worked/ch35.svg)](../images/worked/ch35.svg)
+
+Use a full complex 4×4 grid and two ranks. Each complex value occupies eight bytes in this teaching representation. Rank 0 initially owns rows 0–1 and rank 1 rows 2–3. This is a layout/communication model, not a cuFFTMp execution or a FourCastNet training run.
+
+1. **Compute what is local.** Every rank has complete rows and can perform each row's 1D transform without cross-rank data. That does not provide complete columns for the second transform.
+2. **Choose the transposed ownership.** Rank 0 will own columns 0–1, rank 1 columns 2–3. Each source rank splits its two rows into two 2×2 blocks, four complex values per destination.
+3. **Exchange the off-rank blocks.** Rank 0 sends its upper-right block to rank 1; rank 1 sends its lower-left block to rank 0. Each sends `4*8=32` remote bytes, 64 total. Two equally sized local blocks do not traverse the inter-rank link.
+4. **Reconstruct complete columns.** Column 0's values are global positions `(0,0),(1,0),(2,0),(3,0)`. For a separate relocation-only check, label each post-row-pass slot with the synthetic identifier `10*row+column`; these labels appear as `[0,10,20,30]`. They are identity tags, not the numerical FFT of the pre-transform grid. The receiver's buffer order must match its transform plan, not simply the sender's flat block order.
+5. **Finish the selected transform.** Each owner can now transform its complete columns. Any required final redistribution is a separate operation and must be counted. In a real distributed FFT, datatype, transform kind, decomposition and library plan determine the storage and communication.
+
+**Expected check:** a distributed transform agrees within a justified numerical tolerance with the same global transform, including normalization convention. A fixed one-cell halo cannot supply the whole column. Conversely, data-parallel training of a model whose complete sample fits one worker does not imply this spatial FFT decomposition.
+
+??? question "Exercise: double the complex storage width"
+
+    Keeping the same grid and partition, use sixteen-byte complex values. Does the count of remote values change?
+
+    **Worked answer:** each direction still sends four values, but payload becomes 64 bytes each, 128 total. Message count, value count and byte volume are different units; this doubling alone predicts no measured latency.
+
+<!-- mgpu:worked:end -->
+
 ## 35.1 FourCastNet's Real Training Is Data Parallelism, Not Domain Decomposition
 
 <!-- mgpu:figure-1:start -->
@@ -43,7 +66,7 @@ The previous chapter's own closing preview, and this book's own table of content
 Picture two very different ways a team of 64 meteorologists could split up the work of training themselves to forecast weather from a huge archive of historical maps. In the first (Chapter 16's approach), each meteorologist is handed a physical PIECE of every single map -- the northeast corner, say -- and has to constantly compare notes with whoever holds the adjoining piece, because weather at a boundary depends on what's happening just across it. In the second (Chapter 12's approach), every meteorologist gets their OWN full copy of the map-drawing tools and studies a DIFFERENT subset of the historical archive, periodically comparing what they've each learned and averaging their updated technique. FourCastNet's real training uses the second approach, and the reason is almost anticlimactic: the map itself, at "a global grid size of 720x1440 pixels," is small enough that giving every one of the real 64 A100s its own full copy costs nothing worth worrying about. There is no map-splitting problem to solve at all -- the real bottleneck this cluster is working around is the size of the training ARCHIVE, not the size of any single map, and that is exactly Chapter 12's own problem shape.
 
 !!! warning "[COMMON TRAP] Assuming a large spatial grid model automatically needs domain decomposition"
-    A weather model operating on a global grid looks, on the surface, exactly like Chapter 16's stencil computations -- and the previous chapter's own closing preview fell into this trap in print. File 102's own real cited numbers show why the assumption fails here specifically: FourCastNet's real 720x1440 global grid is a small fraction of a real A100's memory capacity, so there is no capacity pressure forcing a spatial split at all. Domain decomposition earns its cost (Chapter 16's own real halo-exchange communication, paid on every step) only when a SINGLE replica of the spatial domain does not fit on one device -- a condition FourCastNet's own real training never reaches.
+    A global weather grid does not imply a nearest-neighbor stencil. The cited FourCastNet setup uses data-parallel model replicas, and its Fourier mixing has global spatial dependencies. Grid point count is only one factor in memory use; channels, batch size, saved activations, parameters, gradients, optimizer state and workspaces must also fit. Spatial/model parallelism can serve capacity or performance goals even when a smaller single replica fits.
 
 ### Background
 
@@ -156,7 +179,6 @@ FourCastNet's own real cited results (not derived by this book):
 
 <!-- execution:end:h100-rerun:102_fourcastnet_data_parallel_training_model.cpp -->
 
-
 <!-- execution:start:a100:102_fourcastnet_data_parallel_training_model.cpp -->
 > **Compiled and executed — 2026-11-17-a100: Host program/model (exit-only).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:05:30.266555+00:00`.
 
@@ -193,7 +215,6 @@ FourCastNet's own real cited results (not derived by this book):
 
 
 <!-- execution:end:a100:102_fourcastnet_data_parallel_training_model.cpp -->
-
 
 <!-- execution:start:h100:102_fourcastnet_data_parallel_training_model.cpp -->
 > **Compiled and executed — 2026-11-17-h100: Host program/model (exit-only).** Hardware: 2 H100 GPUs. Execution record UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`.
@@ -233,7 +254,6 @@ FourCastNet's own real cited results (not derived by this book):
 
 </details>
 <!-- execution:end:h100:102_fourcastnet_data_parallel_training_model.cpp -->
-
 
 Compile and run (a plain host `.cpp` file with no CUDA/NCCL/MPI/NVSHMEM linkage, executed on the recorded H100 and A100 hosts):
 
@@ -461,7 +481,6 @@ Every P reproduces the exact same 2D DFT as the single-process reference, to the
 
 <!-- execution:end:h100-rerun:103_distributed_fft_transpose_correctness_simulation.cpp -->
 
-
 <!-- execution:start:a100:103_distributed_fft_transpose_correctness_simulation.cpp -->
 > **Compiled and executed — 2026-11-17-a100: Host program/model (exit-only).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:05:30.939617+00:00`.
 
@@ -493,7 +512,6 @@ Every P reproduces the exact same 2D DFT as the single-process reference, to the
 
 <!-- execution:end:a100:103_distributed_fft_transpose_correctness_simulation.cpp -->
 
-
 <!-- execution:start:h100:103_distributed_fft_transpose_correctness_simulation.cpp -->
 > **Compiled and executed — 2026-11-17-h100: Host program/model (exit-only).** Hardware: 2 H100 GPUs. Execution record UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`.
 
@@ -524,7 +542,6 @@ Every P reproduces the exact same 2D DFT as the single-process reference, to the
 
 </details>
 <!-- execution:end:h100:103_distributed_fft_transpose_correctness_simulation.cpp -->
-
 
 Compile and run (plain host `.cpp`, executed on the recorded H100 and A100 hosts):
 
@@ -676,7 +693,6 @@ This is the honest resolution of the tension this chapter opened with: AFNO's ow
 
 <!-- execution:end:h100-rerun:104_distributed_fft_communication_cost_model.cpp -->
 
-
 <!-- execution:start:a100:104_distributed_fft_communication_cost_model.cpp -->
 > **Compiled and executed — 2026-11-17-a100: Host program/model (exit-only).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:05:31.062552+00:00`.
 
@@ -712,7 +728,6 @@ This is the honest resolution of the tension this chapter opened with: AFNO's ow
 
 
 <!-- execution:end:a100:104_distributed_fft_communication_cost_model.cpp -->
-
 
 <!-- execution:start:h100:104_distributed_fft_communication_cost_model.cpp -->
 > **Compiled and executed — 2026-11-17-h100: Host program/model (exit-only).** Hardware: 2 H100 GPUs. Execution record UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`.
@@ -750,7 +765,6 @@ This is the honest resolution of the tension this chapter opened with: AFNO's ow
 </details>
 <!-- execution:end:h100:104_distributed_fft_communication_cost_model.cpp -->
 
-
 Compile and run (plain host `.cpp`, executed on the recorded H100 and A100 hosts):
 
 ```bash
@@ -761,7 +775,7 @@ g++ -O2 -ffp-contract=off -o 104_distributed_fft_communication_cost_model \
 
 ## Chapter Summary
 
-This chapter opened by correcting its own predecessor's preview: NVIDIA Earth-2's real FourCastNet weather model does not extend Chapter 16's halo exchange to a learned neural operator. File 102 showed why -- FourCastNet's own real 720x1440 global grid comfortably fits a single A100's memory, so its real 64-GPU, 16-hour training run is ordinary Chapter 12 data parallelism: whole-model replicas differing only in which training samples they see. The real reason this matters goes deeper than one grid's size, though: FourCastNet's own real AFNO architecture computes its mixing operation as "continuous global convolution, implemented efficiently in the Fourier domain with FFTs," and a Fourier transform's dependency structure is fundamentally global, not local -- so if a future, larger grid ever did outgrow one GPU, Chapter 16's own halo exchange could not supply what it needs. File 103 built NVIDIA's own real cuFFTMp technique for that case -- a slab decomposition plus a global all-to-all TRANSPOSE (Chapter 10's own primitive) -- and proved it bit-exact at every tested P, because it is pure resharding, never a reduction, echoing Chapter 34's own embedding all-to-all. File 104 closed the chapter by separating correctness from cost: cuFFTMp's own real cited benchmark numbers (78ms at 8 GPUs, 4ms at 2048 GPUs for a 2048-cubed FFT) show the transpose's real communication cost is significant but shrinks with more GPUs, and a plain grid-size comparison shows FourCastNet's own real grid is about four orders of magnitude smaller than that benchmark -- exactly why this chapter's own distributed-FFT technique is not needed today, but is precisely what a future, much higher-resolution global model would need.
+This chapter opened by correcting its own predecessor's preview: NVIDIA Earth-2's real FourCastNet weather model does not extend Chapter 16's halo exchange to a learned neural operator. File 102 showed why -- FourCastNet's own real 720x1440 global grid comfortably fits a single A100's memory, while the cited 64-GPU, 16-hour training setup uses data parallelism: whole-model replicas differing only in which training samples they see. The real reason this matters goes deeper than one grid's size, though: FourCastNet's own real AFNO architecture computes its mixing operation as "continuous global convolution, implemented efficiently in the Fourier domain with FFTs," and a Fourier transform's dependency structure is fundamentally global, not local -- so if a future, larger grid ever did outgrow one GPU, Chapter 16's own halo exchange could not supply what it needs. File 103 built NVIDIA's own real cuFFTMp technique for that case -- a slab decomposition plus a global all-to-all TRANSPOSE (Chapter 10's own primitive) -- and proved it bit-exact at every tested P, because it is pure resharding, never a reduction, echoing Chapter 34's own embedding all-to-all. File 104 closed the chapter by separating correctness from cost: cuFFTMp's own real cited benchmark numbers (78ms at 8 GPUs, 4ms at 2048 GPUs for a 2048-cubed FFT) show the transpose's real communication cost is significant but shrinks with more GPUs, and a plain grid-size comparison shows FourCastNet's own real grid is about four orders of magnitude smaller than that benchmark -- why the cited setup did not require this spatial FFT decomposition. Input grid size alone does not size a training job: channels, batch size, activations, gradients, optimizer state and workspace also matter. Future workloads may use a distributed FFT or another supported model/domain decomposition.
 
 ## Self-Check Questions
 
@@ -781,11 +795,11 @@ Chapter 36 returns to the financial-services domain this book last visited in Ch
 
 ## Worked Solutions
 
-1. File 102 found that FourCastNet's real training is ordinary Chapter 12 data parallelism -- whole-model replicas, each seeing a different slice of training samples, gradients synchronized by an all-reduce -- not Chapter 16's spatial domain decomposition. The reason is capacity, not computation: FourCastNet's own real 720x1440 global grid is small enough that giving every one of the real 64 A100s its own full replica costs nothing worth avoiding, so there was never any capacity pressure forcing a spatial split.
-2. The real cited fact is FourCastNet's own paper describing "a resolution of 0.25 degree which corresponds to... a global grid size of 720x1440 pixels" -- a grid that comfortably fits within a single real A100's memory budget, removing the entire premise (a spatial domain too large for one device) that would make domain decomposition necessary.
+1. File 102 found that FourCastNet's real training is ordinary Chapter 12 data parallelism -- whole-model replicas, each seeing a different slice of training samples, gradients synchronized by an all-reduce -- not Chapter 16's spatial domain decomposition. The reason is capacity, not computation: FourCastNet's own real 720x1440 global grid is small enough that giving every one of the real 64 A100s its own full replica was feasible in the cited setup. This is not a proof that any batch size, channel count or model state fits; complete training memory must be budgeted.
+2. The real cited fact is FourCastNet's own paper describing "a resolution of 0.25 degree which corresponds to... a global grid size of 720x1440 pixels" -- a spatial grid used by the cited data-parallel training setup. Grid point count alone is not a full training-memory calculation: multiply by channels, batch and storage width, then include saved activations, model/gradient/optimizer state and workspaces.
 3. A Fourier transform is fundamentally global: every output frequency component is a weighted combination of every input grid point, not just nearby ones. Chapter 16's halo exchange only ever shares a border strip with immediate neighbors, which is sufficient for a local 5-point stencil but structurally cannot deliver the globally-scattered data a Fourier transform's computation actually depends on.
 4. In phase 1, each rank owns a contiguous slab of full ROWS and computes a local 1D transform along each of its own rows -- no communication needed, because each row lives entirely on one rank. Between phase 1 and phase 2, an all-to-all TRANSPOSE reshards ownership from row-slabs to column-slabs -- this is the one phase that requires communication. In phase 2, each rank computes a local 1D transform along each of its own (now-owned) columns -- again no communication needed.
-5. File 103 uses a naive O(N) per-output-element DFT because it computes the mathematically identical transform a real Cooley-Tukey FFT computes, just via direct summation instead of divide-and-conquer -- simpler code to verify exactly, with no effect on the correctness result, since both algorithms compute the same DFT values. Only the real cuFFTMp library's own algorithm for computing each 1D pass would be faster, not different in the communication pattern the file is actually testing.
+5. File 103 uses a naive O(N) per-output-element DFT because it computes the mathematically identical transform a real Cooley-Tukey FFT computes, just via direct summation instead of divide-and-conquer -- simpler code to verify exactly, and computes the same mathematical DFT. Different floating-point summation algorithms need not produce bit-identical values, so actual FFT-versus-DFT comparisons require a justified tolerance. Only the real cuFFTMp library's own algorithm for computing each 1D pass would be faster, not different in the communication pattern the file is actually testing.
 6. It was something else: a pure resharding, never a reduction. Every output element in File 103's transpose is computed by exactly one rank from data that arrived via relocation, and no value is ever combined with another rank's own partial value. That is exactly why floating-point associativity, the recurring concern in Chapters 8, 25, 29, 31, and 32, was never a risk here -- there is no combination step for grouping order to ever affect.
 7. File 104's own Sample output shows the ratio is about 8285x: cuFFTMp's own cited 2048-cubed benchmark has 8,589,934,592 points, versus FourCastNet's own real 720x1440 grid's 1,036,800 points.
 8. cuFFTMp's own documentation names "global collective communications of the MPI_Alltoallv type" as the real bottleneck for distributed 3D FFTs -- precisely the all-to-all transpose Section 35.2 proved bit-exact. The relationship is that Section 35.2 settled the correctness question for that exact operation, while cuFFTMp's own documentation is naming its communication cost, not its correctness, as the real concern at scale.

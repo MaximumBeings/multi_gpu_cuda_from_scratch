@@ -43,6 +43,30 @@ Chapters 12-15 split something ABSTRACT:        This chapter splits something PH
   between the periodic all-reduces.        data EVERY single iteration.
 ```
 
+<!-- mgpu:worked:start -->
+
+## Worked example — Compute both sides of a halo boundary
+
+Use six old cells [0,1,2,3,4,5], split into three cells per rank. Fix the two external ghost cells at zero. One update is new[i]=(old[i−1]+old[i]+old[i+1])/3; all operands belong to the old generation.
+
+1. Rank 0 owns indices 0–2. Its left ghost is 0; it receives old[3]=3 from rank 1 as its right ghost. Its new values are [1/3,1,2].
+
+2. Rank 1 owns indices 3–5. It receives old[2]=2 from rank 0 and uses external right ghost 0. Its new values are [3,4,3].
+
+3. Assemble [1/3,1,2,3,4,3]. In particular the interface outputs are (1+2+3)/3=2 and (2+3+4)/3=3.
+
+![Numeric worked example: Compute both sides of a halo boundary](../images/worked/ch16.svg)
+
+**API connection and scope.** A peer-copy implementation can overlap interior computation with halo transfers, then order boundary kernels after the copy-completion events. With MPI, post matching receives and sends, complete the requests, and only then consume received boundary values. This arithmetic is a model, not additional execution evidence.
+
+**Expected check and pitfall.** Keep old and new generations distinct. An in-place update can accidentally use a neighbor already advanced to the next step even when all memory accesses are in bounds.
+
+??? question "Guided exercise: What does rank 0 compute at index 2 if its right halo is incorrectly zero?"
+
+    **Worked answer.** (1+2+0)/3=1, instead of 2. A local bounds check cannot detect this numerical error.
+
+<!-- mgpu:worked:end -->
+
 ## 16.1 Domain Decomposition: Splitting the Grid Itself
 
 <!-- mgpu:figure-1:start -->

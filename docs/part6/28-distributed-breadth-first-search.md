@@ -34,6 +34,30 @@ Chapter 16 (fixed, minimum):   Chapter 27 (fixed, maximum):    This chapter (var
                       Yoo et al.'s own real WORST CASE, not a guarantee
 ```
 
+<!-- mgpu:worked:start -->
+
+## Worked example — Route discoveries to owners and deduplicate
+
+Use directed edges 0→{1,2}, 1→{3}, 2→{3,4}, 3→{5}, 4→{5}. Vertex 5 has no outgoing edges. Owner(v)=floor(v/2): rank 0 owns {0,1}, rank 1 owns {2,3}, rank 2 owns {4,5}. Start from vertex 0.
+
+1. Level 0 contains rank 0:{0}. Expanding it produces level 1 rank 0:{1}, rank 1:{2}, rank 2:empty.
+
+2. Vertices 1 and 2 both discover 3; its owner rank 1 accepts it once. Vertex 2 also discovers 4 on rank 2. Level 2 is rank 1:{3}, rank 2:{4}.
+
+3. Both 3 and 4 discover 5; rank 2 accepts it once at level 3. The next global frontier is empty. Distances are [0,1,1,2,2,3].
+
+![Numeric worked example: Route discoveries to owners and deduplicate](../images/worked/ch28.svg)
+
+**API connection and scope.** Owner-routed candidate IDs can use MPI_Alltoallv or matched point-to-point messages. Owners deduplicate and record first visitation before constructing the next frontier. A global sum of next-frontier counts equal to zero provides termination for this level-synchronous protocol.
+
+**Expected check and pitfall.** An empty local frontier does not mean global termination. Ranks with no local work still participate in the agreed exchange and termination protocol. Count units consistently: vertex IDs and message bytes are different quantities.
+
+??? question "Guided exercise: Can rank 0 stop participating when it becomes empty at level 2?"
+
+    **Worked answer.** No. Ranks 1 and 2 still expand vertices and later discover 5. Rank 0 must continue matching communication until the globally empty next frontier is established.
+
+<!-- mgpu:worked:end -->
+
 ## 28.1 A Frontier That Doesn't Know Where It's Going
 
 <!-- mgpu:figure-1:start -->

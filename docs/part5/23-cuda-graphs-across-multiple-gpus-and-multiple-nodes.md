@@ -40,6 +40,30 @@ Every earlier chapter's device work:               This chapter's own graphs:
                                                                    +------------------+
 ```
 
+<!-- mgpu:worked:start -->
+
+## Worked example — Track persistent state across graph replays
+
+Use a scalar model of a two-device graph. A starts at 0. Device 0 increments A; after a dependency event, device 1 reads A through enabled peer access and writes B=A+1.
+
+1. During capture, connect device 0’s producer to device 1’s reader with the fork dependency. Join device 1’s work back to the originating stream before capture ends.
+
+2. Instantiate and replay the graph three times in ordered sequence (for example on the same launch stream). Replay 1 leaves A=1,B=2; replay 2 leaves A=2,B=3; replay 3 leaves A=3,B=4.
+
+3. Wait for the replay’s completion before checking results or freeing allocations. A graph replay repeats operations and edges; it does not restore initial memory contents automatically.
+
+![Numeric worked example: Track persistent state across graph replays](../images/worked/ch23.svg)
+
+**API connection and scope.** The concrete API chain is cudaStreamBeginCapture, dependency events, cudaStreamEndCapture, cudaGraphInstantiate and cudaGraphLaunch. For a captured NCCL operation, capture participation must be uniform over its participating ranks, and each collective replay must use graphs derived from that matching capture. All ranks must replay the compatible sequence; matching capture alone is insufficient. The NCCL guide recommends one GPU per process for reliability because multi-GPU, single-threaded graph launch can deadlock in some cases. A local graph does not automatically create a multi-node global execution graph.
+
+**Expected check and pitfall.** Keep peer access, pointer lifetimes and rank-to-device mapping explicit. All-GPUs-visible local-rank selection and launcher-masked visible-device-0 selection are different policies because CUDA_VISIBLE_DEVICES renumbers ordinals. Do not mix them when reproducing the recorded run.
+
+??? question "Guided exercise: What if a reset A=0 is deliberately included before every increment?"
+
+    **Worked answer.** Every replay finishes A=1,B=2. The cumulative result A=3,B=4 applies only when no such reset is represented.
+
+<!-- mgpu:worked:end -->
+
 ## 23.1 One Graph, Two Devices: Cross-Device Capture With Events
 
 <!-- mgpu:figure-1:start -->
@@ -221,7 +245,7 @@ The [2026-11-17 H100 execution record](../validation-h100.md) covers two GPUs co
 
 ### Intuition
 
-File 66 captured plain CUDA work. NCCL's own user guide states a separate, real capability this section builds next: "Starting with NCCL 2.9, NCCL operations can be captured by CUDA Graphs. This support requires a minimum CUDA version of 11.3." No new NCCL call is needed for this -- `ncclAllReduce()` is, underneath, ordinary kernel launches enqueued on the communicator's own stream, so a call to it between `cudaStreamBeginCapture()` and `cudaStreamEndCapture()` is captured exactly like file 66's own `incrementKernel<<<>>>()` calls were. The real benefit this unlocks, stated directly on the same NCCL page in the training-loop case: capturing a forward pass, backward pass, and `ncclAllReduce()` together into one graph removes the per-step CPU launch overhead of re-issuing the collective by hand every iteration, real overhead this book's own Chapter 11 already measured indirectly through NCCL's ring/tree round-count model. Getting there needs one thing file 66 didn't: a genuine multi-process communicator, built exactly the way Chapter 21 built one -- `ncclGetUniqueId()` on rank 0, `MPI_Bcast()` to every rank, then every rank calling `ncclCommInitRank()` -- before any capture begins at all.
+File 66 captured plain CUDA work. NCCL's own user guide states a separate, real capability this section builds next: "Starting with NCCL 2.9, NCCL operations can be captured by CUDA Graphs. This support requires a minimum CUDA version of 11.3." No new NCCL call is needed for this -- `ncclAllReduce()` is, underneath, ordinary kernel launches enqueued on the communicator's own stream, so a call to it between `cudaStreamBeginCapture()` and `cudaStreamEndCapture()` is captured exactly like file 66's own `incrementKernel<<<>>>()` calls were. The real benefit this unlocks, stated directly on the same NCCL page in the training-loop case: capturing a forward pass, backward pass, and `ncclAllReduce()` together into one graph removes the per-step CPU launch overhead of re-issuing the collective by hand every iteration, host submission overhead that must be measured separately from Chapter 11's analytical communication-round model. Getting there needs one thing file 66 didn't: a genuine multi-process communicator, built exactly the way Chapter 21 built one -- `ncclGetUniqueId()` on rank 0, `MPI_Bcast()` to every rank, then every rank calling `ncclCommInitRank()` -- before any capture begins at all.
 
 ```text
 Chapter 21's own hybrid bootstrap:                This chapter's own addition:

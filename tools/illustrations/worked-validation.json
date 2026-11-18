@@ -1,0 +1,244 @@
+{
+  "status": "PASS",
+  "pages": 47,
+  "figures": 47,
+  "scope": "Derived teaching examples; no new hardware execution.",
+  "issues": [],
+  "files": [
+    {
+      "page": "part0/01-why-one-gpu-is-not-enough.md",
+      "file": "worked/ch01.svg",
+      "sha256": "cb9a7088b15ea271f8367a70b7c31fffff2ed2a938271abdddd898c5be2b8a85"
+    },
+    {
+      "page": "part0/02-multi-gpu-hardware-topology.md",
+      "file": "worked/ch02.svg",
+      "sha256": "ef636127730698a7504e5eeb8299a1eb5244c5df36acbcc13bec11f8e8e825c8"
+    },
+    {
+      "page": "part0/03-the-cuda-multi-gpu-programming-model.md",
+      "file": "worked/ch03.svg",
+      "sha256": "fa8dd6b208f2a6930f3f7951dd915060cc1a4af6400986099ee16f42e21b21b7"
+    },
+    {
+      "page": "part1/04-peer-to-peer-memory-access-and-uva.md",
+      "file": "worked/ch04.svg",
+      "sha256": "fe62cf1e20cc71951b8764484dd242478a526517e6d491c5691ebf5f40287eb4"
+    },
+    {
+      "page": "part1/05-explicit-transfers-cudamemcpypeer-staged-host-transfers.md",
+      "file": "worked/ch05.svg",
+      "sha256": "f222b35d889673fe31615b3db7d186aa822643877e92c5ffc64f0dbe96791fad"
+    },
+    {
+      "page": "part1/06-streams-events-and-cross-device-synchronization.md",
+      "file": "worked/ch06.svg",
+      "sha256": "c59e46c1c16b04ff82b0d98bf0b6c8397275436966a35ef6771e412fa7f4493f"
+    },
+    {
+      "page": "part1/07-cuda-inter-process-communication.md",
+      "file": "worked/ch07.svg",
+      "sha256": "790bff3cb0c639f59225ee19b6b870bcec75829ee7caa46427795ad0fe712597"
+    },
+    {
+      "page": "part2/08-broadcast-and-reduce-the-first-two-collectives-by-hand.md",
+      "file": "worked/ch08.svg",
+      "sha256": "d3450c75a49c48452c6e01f36801c0e3191f8f384493259a2cf31df2b31dde13"
+    },
+    {
+      "page": "part2/09-ring-all-reduce-the-algorithm-behind-every-multi-gpu-training-job.md",
+      "file": "worked/ch09.svg",
+      "sha256": "00dc2ba994c7e1ca961f38803b377f54b0387f53ba3c3d63f5f6e5f94e143c27"
+    },
+    {
+      "page": "part2/10-all-gather-reduce-scatter-and-all-to-all.md",
+      "file": "worked/ch10.svg",
+      "sha256": "1ff7984cbfb9a5d20414810db4f89860f06adab8e15261a22ce8863564fb1a93"
+    },
+    {
+      "page": "part2/11-nccl-what-it-actually-does-differently.md",
+      "file": "worked/ch11.svg",
+      "sha256": "cb6dba4a7e4f54faf15f23cd3e410fe476cdc882f9980d29221cea83afc2fddc"
+    },
+    {
+      "page": "part3/12-data-parallelism-replicated-model-sharded-data.md",
+      "file": "worked/ch12.svg",
+      "sha256": "2bc09f1e06c8fc0ccdc20a805aa2955a46a976294086ccba5c332c87f8d3b670"
+    },
+    {
+      "page": "part3/13-model-parallelism-when-one-gpu-cant-hold-the-weights.md",
+      "file": "worked/ch13.svg",
+      "sha256": "e039bc5c84bfef8d47ead5f1662ac0cf3c41480947c6b89171e3ebe666cfe3c8"
+    },
+    {
+      "page": "part3/14-tensor-parallelism-splitting-a-single-matrix-multiply-across-devices.md",
+      "file": "worked/ch14.svg",
+      "sha256": "8e9da24fde0ccf34687af84f0ebad8ea781c53a44fbbf18b9a60a5175a8ef5d5"
+    },
+    {
+      "page": "part3/15-pipeline-parallelism-splitting-layers-across-devices-and-the-bubble-that-costs-you.md",
+      "file": "worked/ch15.svg",
+      "sha256": "6842a68fecc17e22d1f86fc4be29facf5d86ad369f073d4adf41bfe6d568d522"
+    },
+    {
+      "page": "part3/16-domain-decomposition-for-scientific-computing-halo-exchange-and-distributed-stencils.md",
+      "file": "worked/ch16.svg",
+      "sha256": "b3fcdaff632c66fd081fa9b850b1a597231a65aef24102c8d6da5071cac3ad98"
+    },
+    {
+      "page": "part4/17-barriers-and-global-synchronization-across-devices.md",
+      "file": "worked/ch17.svg",
+      "sha256": "d0a8b486bedae6bd7b329a4bd1cf9f88254ad83f8607dcfe834daf8956e25ac6"
+    },
+    {
+      "page": "part4/18-load-balancing-across-heterogeneous-gpus.md",
+      "file": "worked/ch18.svg",
+      "sha256": "c264d6317502545365a6df2833b88d531d18d3c7680a6d220865217fc828aa99"
+    },
+    {
+      "page": "part4/19-stragglers-failures-and-fault-tolerant-collectives.md",
+      "file": "worked/ch19.svg",
+      "sha256": "0a59321ef794cdefa6c1c2498a5361408dd1186b797fc96bccf4bce755a9500c"
+    },
+    {
+      "page": "part5/20-mpi-from-scratch-then-cuda-aware-mpi-scaling-beyond-one-node.md",
+      "file": "worked/ch20.svg",
+      "sha256": "64b2c008e9edb97c253f1736123b81f8f9a7f886144ac886edadfb91806bae10"
+    },
+    {
+      "page": "part5/21-gpudirect-rdma-bypassing-the-host-entirely.md",
+      "file": "worked/ch21.svg",
+      "sha256": "ee6aed004cb2dac649fcfa37355caec85296101aa1ccc86955c74632092dae12"
+    },
+    {
+      "page": "part5/22-nvshmem-and-gpu-initiated-communication.md",
+      "file": "worked/ch22.svg",
+      "sha256": "18508f1f7c3ca4c73abe57992afe7172bfced91033815266197d48816d31f3b9"
+    },
+    {
+      "page": "part5/23-cuda-graphs-across-multiple-gpus-and-multiple-nodes.md",
+      "file": "worked/ch23.svg",
+      "sha256": "8136e2a73122047dfef9b3f28132ec777f14ba8b1619073aa1947804019495bb"
+    },
+    {
+      "page": "part6/24-multi-gpu-dense-matrix-multiplication-at-scale.md",
+      "file": "worked/ch24.svg",
+      "sha256": "4b8ddd81a660318607feac61b540af2052b17a21006c5b736bb8b85028e8b4bc"
+    },
+    {
+      "page": "part6/25-distributed-training-of-a-neural-network-data-parallelism-and-ring-all-reduce.md",
+      "file": "worked/ch25.svg",
+      "sha256": "281921d4489845cc1dec25c390fcbe3a1d587713974319dc6c29c6b8ac213c75"
+    },
+    {
+      "page": "part6/26-multi-gpu-llm-inference-tensor-and-pipeline-parallelism-in-practice.md",
+      "file": "worked/ch26.svg",
+      "sha256": "6796b787ae1946445246fa12b7336b8adbe1c916f936d43f7a4af26cc786783c"
+    },
+    {
+      "page": "part6/27-n-body-simulation-at-scale.md",
+      "file": "worked/ch27.svg",
+      "sha256": "037e9bd39d15ffad313ea522a30ed785c744f7313c1c464830d98b20ba75c148"
+    },
+    {
+      "page": "part6/28-distributed-breadth-first-search.md",
+      "file": "worked/ch28.svg",
+      "sha256": "259b597a2efd3340c01466c338ad7e64a7091d3f649985194c94f0756d320e3a"
+    },
+    {
+      "page": "part6/29-distributed-jacobi-solver.md",
+      "file": "worked/ch29.svg",
+      "sha256": "d33ed66464ef42df1d8d897acb745527f9bf25d920526838c17c3044e6a26af1"
+    },
+    {
+      "page": "part6/30-multi-gpu-ray-tracing-and-rendering.md",
+      "file": "worked/ch30.svg",
+      "sha256": "2d0914fd6297dfa2d5a6ec5bcae9d340dadee257ec44e80d8017bc4dbb99c6c4"
+    },
+    {
+      "page": "part6/31-multi-gpu-monte-carlo-risk-simulation.md",
+      "file": "worked/ch31.svg",
+      "sha256": "c1698708c6da252de2c93a4666098226bd375657734a887b1413d7209962d41d"
+    },
+    {
+      "page": "part7/32-mixture-of-experts-at-scale.md",
+      "file": "worked/ch32.svg",
+      "sha256": "4e31e146841894b03f3407601d989007ec6e5edb1382bc9e47bff21b19b79a14"
+    },
+    {
+      "page": "part7/33-disaggregated-llm-inference.md",
+      "file": "worked/ch33.svg",
+      "sha256": "ea21aace52352e63b14d298ea4a258e5def452aeb04bd7aab841296f0f7a08a2"
+    },
+    {
+      "page": "part7/34-gpu-recommendation-systems.md",
+      "file": "worked/ch34.svg",
+      "sha256": "cf5ce2f3b9d1469fd5557ae14628b8d7d5914baf497cd63fd47e1d124ad78403"
+    },
+    {
+      "page": "part7/35-ai-weather-forecasting-at-scale.md",
+      "file": "worked/ch35.svg",
+      "sha256": "f59ca5c1d7e040954bcc63335ef87bb7b278e4f4e6494fd096fa8efe7ad719c5"
+    },
+    {
+      "page": "part7/36-multi-gpu-xva-and-portfolio-risk.md",
+      "file": "worked/ch36.svg",
+      "sha256": "c04051af3d404db4570277ae865eec472be2724ca8809c7a8f8b8802fa55ad1f"
+    },
+    {
+      "page": "part7/37-gpudirect-rdma-in-capital-markets.md",
+      "file": "worked/ch37.svg",
+      "sha256": "973e9e387a39ea5f104f7fdb8219a176090791d5d9ab0eaa6f6216cc46f778f1"
+    },
+    {
+      "page": "part7/38-real-time-fraud-detection-at-payment-scale.md",
+      "file": "worked/ch38.svg",
+      "sha256": "303a5060fa3c8200997c03f4a4eae22864bfb21697e6f9538bc2da580e8a0e8b"
+    },
+    {
+      "page": "part7/39-real-time-genomics-at-scale.md",
+      "file": "worked/ch39.svg",
+      "sha256": "dac32ee7258108ec02c13c2b231b1ffec19428c046f96b48f7a27cf721862539"
+    },
+    {
+      "page": "part7/40-medical-imaging-reconstruction-at-scale.md",
+      "file": "worked/ch40.svg",
+      "sha256": "e3ab784d39395bd46cf098480be16bb743d4bd91adbef8230b6ae4f1db0bf3db"
+    },
+    {
+      "page": "appendix/a-installation-and-setup.md",
+      "file": "worked/appendix-a.svg",
+      "sha256": "c8c8cc76b6ecdbfe09994d00e1236045c99591c412f234c095b7de9f40fc825b"
+    },
+    {
+      "page": "appendix/b-practice-quiz.md",
+      "file": "worked/appendix-b.svg",
+      "sha256": "45e7a115ca93a2b89677b7a99f49549ced5ee5cae47a6b5d957b3a7163c067cd"
+    },
+    {
+      "page": "appendix/c-nccl-and-nvshmem.md",
+      "file": "worked/appendix-c.svg",
+      "sha256": "fb3dda56d366613ad1432ea6358e3c5dcb6f66989108b581f8cdd0818b6f7a59"
+    },
+    {
+      "page": "appendix/d-cuda-graphs-and-cooperative-multi-device-kernels.md",
+      "file": "worked/appendix-d.svg",
+      "sha256": "70e197e85910efb225ceaa0321e0012dc03bdd1d9779ef6e800b098ed0cf0c75"
+    },
+    {
+      "page": "appendix/e-profiling-and-benchmarking-multi-gpu-communication.md",
+      "file": "worked/appendix-e.svg",
+      "sha256": "66c8cac359015f7004ba03c690e7e224c7158ebb4cc2e1aadd499a21e05327de"
+    },
+    {
+      "page": "appendix/f-pytorch-distributed-and-deepspeed-to-cpp-rosetta-stone.md",
+      "file": "worked/appendix-f.svg",
+      "sha256": "1bfc99b5a2f8acc850535dc0fcae1a118f5d71ec0e9d22d8f1d955c5e405ee4a"
+    },
+    {
+      "page": "appendix/g-common-failure-modes-deadlocks-silent-corruption-topology-mismatches.md",
+      "file": "worked/appendix-g.svg",
+      "sha256": "b9603ad3f5416539df6f44edd0f23ae6de6cb52d314418104949a9fa57b023a9"
+    }
+  ]
+}

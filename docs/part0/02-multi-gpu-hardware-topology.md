@@ -20,6 +20,28 @@
 
 Chapter 1 established that splitting work across GPUs solves both the capacity wall and the throughput wall, but introduces a new one: the devices now have to talk to each other. This chapter is about the physical layer that conversation happens over.
 
+<!-- mgpu:worked:start -->
+## Worked example — A route is constrained by its slowest link
+
+Consider a hypothetical chain GPU 0—1—2—3 with one-way link capacities 48, 12 and 48 GB/s. Transfer a 12 MB payload (decimal units). Ignore startup, contention and protocol overhead; the times below are arithmetic lower bounds, not measurements.
+
+![Numeric worked example: A route is constrained by its slowest link](../images/worked/ch02.svg)
+
+1. Convert 12 MB to 0.012 GB.
+
+2. For GPU 0 to GPU 1, payload / capacity = 0.012 / 48 seconds = 0.25 ms.
+
+3. A route from GPU 0 to GPU 3 crosses the 12 GB/s link, so even perfectly pipelined steady-state delivery requires at least 0.012 / 12 = 1 ms.
+
+4. If complete messages are forwarded serially with no overlap, the three link times sum to 0.25 + 1 + 0.25 = 1.5 ms.
+
+**Expected result and pitfall.** The expected distinction is between a bottleneck lower bound and a particular store-and-forward model. Neither establishes that a CUDA transfer actually takes that route. Inspect topology and peer capability, then measure the selected operation.
+
+**Exercise.** What is the bottleneck bound for 24 MB on the same route?
+
+**Worked answer.** 0.024 / 12 seconds = 2 ms. Startup and interference can make actual time larger.
+<!-- mgpu:worked:end -->
+
 ## 2.1 Bandwidth Is a Graph, Not a Number
 
 <!-- mgpu:figure-1:start -->
@@ -677,7 +699,7 @@ Chapter 3 builds the CUDA-side vocabulary this book needs to actually address mo
 
 **3.** Because the model in Section 2.4 gives every non-wired pair the exact same constant fallback bandwidth (31.5 GB/s, plain PCIe 4.0 x16) rather than a range of degraded values — there's no partial credit for "almost" having a direct NVLink connection. A pair either has the direct wire (50 GB/s) or it doesn't, in which case it gets exactly the PCIe figure, with nothing in between in this model.
 
-**4.** In a ring, every participating GPU both sends and receives on every round, so the round cannot complete faster than its slowest edge allows — a fast edge finishing early still has to wait for the slowest edge before the next round can begin, exactly like a relay team's total time being decided by its slowest leg no matter how fast the others run. Averaging would imply the fast edges could somehow compensate for the slow one, which they cannot in a synchronous ring.
+**4.** In this synchronous ring-round model, every participating GPU both sends and receives on every round, so the round cannot complete faster than its slowest edge allows — a fast edge finishing early still has to wait for the slowest edge before the next round can begin, exactly like a relay team's total time being decided by its slowest leg no matter how fast the others run. Averaging would imply the fast edges could somehow compensate for the slow one, which they cannot in this synchronous model. Real collective implementations can pipeline chunks and do not necessarily impose a global barrier after every modeled round; the model is a bottleneck estimate, not a complete execution schedule.
 
 **5.** The idealized NVSwitch matrix assigns every ring edge the same 450 GB/s per-direction ceiling; this is a model of a symmetric fabric, not an achieved bandwidth measurement. The partial mesh instead has two different bandwidth values (50 GB/s wired, 31.5 GB/s fallback) depending on which specific pair an edge connects, so the ring's bottleneck depends on which pairs the chosen order happens to use.
 

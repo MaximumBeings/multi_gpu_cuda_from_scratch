@@ -4,7 +4,7 @@
 [![Chapter 38: Real-Time Fraud Detection at Payment Scale](../images/chapter-openers/38.svg)](../images/chapter-openers/38.svg)
 <!-- mgpu:opener:end -->
 
-**What you will understand after this chapter:** why real production fraud detection increasingly treats accounts, merchants, and transactions as a GRAPH rather than scoring each transaction in isolation, and what real, measured accuracy improvement that produces; why partitioning that graph across multiple GPUs (NVIDIA's own real WholeGraph technique) creates a genuinely new communication shape for this book -- a demand-driven, per-batch remote feature fetch, decided by which nodes happen to be sampled, rather than a fixed schedule like Chapter 16's halo exchange or a level-by-level frontier like Chapter 28's distributed BFS; and why the second real stage of NVIDIA's own hybrid pipeline, distributed XGBoost tree-building, produces a genuinely different reduction pattern from Chapter 36's own exposure profile -- one that is sequentially chained within a single tree, not independent and overlappable.
+**What you will understand after this chapter:** why real production fraud detection increasingly treats accounts, merchants, and transactions as a GRAPH rather than scoring each transaction in isolation, and what real, measured accuracy improvement that produces; why partitioning that graph across multiple GPUs (NVIDIA's own real WholeGraph technique) creates a genuinely new communication shape for this book -- a demand-driven, per-batch remote feature fetch, decided by which nodes happen to be sampled, rather than a fixed schedule like Chapter 16's halo exchange or a level-by-level frontier like Chapter 28's distributed BFS; and why the second real stage of NVIDIA's own hybrid pipeline, distributed XGBoost tree-building, produces a genuinely different reduction pattern from Chapter 36's own exposure profile -- one with parent-to-child split dependencies, while sibling-node histogram work and supported communication batching may still proceed together.
 
 **What you need to know first:** Chapter 4 (Universal Virtual Addressing, reused by name in Section 38.2's own real citation), Chapter 9 (the reduction primitive reused throughout this book, including Section 38.3's own per-split reductions), Chapter 16 (domain decomposition, this chapter's point of contrast for Section 38.2's own graph partitioning), Chapter 28 (distributed BFS, the book's other graph-shaped communication pattern), and Chapter 36 (the T-independent-reductions structure Section 38.3 directly contrasts against).
 
@@ -24,6 +24,31 @@ NVIDIA's own real American Express case study describes a production system "gen
 |   -- sequential within a tree, unlike Ch36's independent T dates  |
 +------------------------------------------------------------------+
 ```
+
+<!-- mgpu:worked:start -->
+## Worked walkthrough — Deduplicate remote features without losing graph semantics
+
+[![Deduplicate remote features without losing graph semantics: numerical ownership, intermediate values and checks](../images/worked/ch38.svg)](../images/worked/ch38.svg)
+
+Use a graph feature-fetch model with two owners: GPU 0 owns node IDs 0–3 and GPU 1 IDs 4–7. A sampled batch on GPU 0 needs neighbor IDs `[1,4,4,7]`. Each feature vector has D=8 FP32 values, so one vector occupies 32 bytes. This is an illustrative communication contract, not a fraud-model accuracy experiment.
+
+1. **Separate local and remote requests.** ID 1 is local. The remote request multiset is `[4,4,7]`, while the distinct remote set is `{4,7}`. A count of edges is not the same as a count of unique feature rows.
+2. **Fetch once when permitted.** With a stable feature snapshot and read deduplication, GPU 1 returns two vectors, 64 payload bytes. Fetching every occurrence would return 96 bytes. Request IDs, responses and metadata add overhead beyond these values.
+3. **Restore multiplicity.** The fetched vector for node 4 supplies two sampled edge slots. If the aggregator is a sum, node 4 contributes twice under this sampled multigraph contract. Deduplication is a transport optimization, not permission to remove an edge.
+4. **Compute a numerical check.** Let feature component zero equal the node ID. The four gathered component values are `[1,4,4,7]`; their sum is sixteen and mean is four. Summing unique IDs instead gives twelve, an incorrect result for this batch.
+5. **Keep update generation consistent.** A feature cache must define when a row becomes stale. Returning one node from training step s and another from s+1 changes the input snapshot unless the algorithm explicitly permits that. Ownership, version and readiness are separate from the pointer address.
+
+For histogram-based tree training, a subsequent reduction has another meaning: workers combine bin statistics before evaluating globally defined split candidates. It is not the feature routing operation above. Independent nodes or histogram preparation may overlap when dependencies permit; statements about sequential split dependencies do not prohibit every kind of overlap.
+
+**Expected check:** gathered rows, slot order, multiplicities and feature versions match a reference sampler. This toy sum neither predicts fraud detection accuracy nor demonstrates a deployed WholeGraph/XGBoost workload.
+
+??? question "Exercise: widen the feature vector"
+
+    D becomes sixteen with the same requests and FP32 storage. Count deduplicated remote payload and retained logical slots.
+
+    **Worked answer:** two remote vectors cost `2*16*4=128` bytes. Four logical sampled slots still remain, including both occurrences of ID 4; the ownership and aggregation contract did not change.
+
+<!-- mgpu:worked:end -->
 
 ## 38.1 Why Fraud Detection Needs a Graph, Not Isolated Transactions
 
@@ -76,7 +101,6 @@ int main() {
 }
 ```
 
-
 !!! note "Corrected host model — November 18, 2026"
 
     The listing above corrects the earlier model's fraud-dataset attribution. Its [new local compile/run record](../host-model-corrections.md#111) contains the current source hash, system, date, commands and output. The H100/A100 blocks below retain the earlier revision's actual output; their model claims are superseded by this correction.
@@ -118,7 +142,6 @@ This is the real, cited motivation for everything the rest of this chapter build
 
 <!-- execution:end:h100-rerun:111_gnn_embedding_fraud_accuracy_model.cpp -->
 
-
 <!-- execution:start:a100:111_gnn_embedding_fraud_accuracy_model.cpp -->
 > **Compiled and executed — 2026-11-17-a100: Host program/model (exit-only).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:05:32.262598+00:00`.
 
@@ -157,7 +180,6 @@ This is the real, cited motivation for everything the rest of this chapter build
 
 <!-- execution:end:a100:111_gnn_embedding_fraud_accuracy_model.cpp -->
 
-
 <!-- execution:start:h100:111_gnn_embedding_fraud_accuracy_model.cpp -->
 > **Compiled and executed — 2026-11-17-h100: Host program/model (exit-only).** Hardware: 2 H100 GPUs. Execution record UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`.
 
@@ -195,7 +217,6 @@ This is the real, cited motivation for everything the rest of this chapter build
 
 </details>
 <!-- execution:end:h100:111_gnn_embedding_fraud_accuracy_model.cpp -->
-
 
 Compile and run (a plain host `.cpp` file with no CUDA/NCCL/MPI/NVSHMEM linkage, executed on the recorded H100 and A100 hosts):
 
@@ -413,7 +434,6 @@ Every P reproduces the exact same neighbor-feature sums as the single-process re
 
 <!-- execution:end:h100-rerun:112_graph_partitioned_neighbor_fetch_correctness_simulation.cpp -->
 
-
 <!-- execution:start:a100:112_graph_partitioned_neighbor_fetch_correctness_simulation.cpp -->
 > **Compiled and executed — 2026-11-17-a100: Host program/model (exit-only).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:05:32.584240+00:00`.
 
@@ -448,7 +468,6 @@ Every P reproduces the exact same neighbor-feature sums as the single-process re
 
 
 <!-- execution:end:a100:112_graph_partitioned_neighbor_fetch_correctness_simulation.cpp -->
-
 
 <!-- execution:start:h100:112_graph_partitioned_neighbor_fetch_correctness_simulation.cpp -->
 > **Compiled and executed — 2026-11-17-h100: Host program/model (exit-only).** Hardware: 2 H100 GPUs. Execution record UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`.
@@ -485,7 +504,6 @@ Every P reproduces the exact same neighbor-feature sums as the single-process re
 </details>
 <!-- execution:end:h100:112_graph_partitioned_neighbor_fetch_correctness_simulation.cpp -->
 
-
 Compile and run (plain host `.cpp`, executed on the recorded H100 and A100 hosts):
 
 ```bash
@@ -505,7 +523,7 @@ g++ -O2 -ffp-contract=off -o 112_graph_partitioned_neighbor_fetch_correctness_si
 Once the GNN has produced its own embeddings, NVIDIA's own real pipeline hands them to XGBoost for the actual classification decision, and real production XGBoost training is itself distributed: "each process holds a shard of the embedding data," and "all GPUs collaborate on each tree (splits are computed across all shards simultaneously)." Picture a group of analysts jointly deciding, one yes-or-no question at a time, how to split a stack of case files into smaller and smaller piles -- every analyst has to see the answer to question one before anyone can even propose question two, because question two only makes sense once everyone agrees which pile they are now looking at. That is exactly why building one tree cannot be sped up by simply throwing more independent reductions at it in parallel: split k+1's own cross-shard reduction cannot even begin until split k's own reduction has finished and told every shard which half of the data it now owns.
 
 !!! warning "[COMMON TRAP] Assuming a large reduction COUNT always means the same thing"
-    Chapter 36's own File 105 found T=360 real reductions for one XVA exposure profile, and this chapter's own File 113 finds an even larger number -- 31,500 -- for one illustrative XGBoost ensemble. It is tempting to read both as "many reductions, therefore similarly parallelizable." They are not: Chapter 36's own T reductions were mutually independent, computable in any order. Section 38.3's own reductions are chained in strict sequence WITHIN each tree -- split k+1 structurally depends on split k's own result -- so a large reduction count here does not translate into the same opportunity for overlap that Chapter 36's own T dates had throughout.
+    A depth-six full binary tree has at most 63 internal split nodes, and 500 such trees have at most 31,500 split nodes. These are structural counts, not a measured number of MPI/NCCL calls. Histogram implementations can batch multiple nodes, cache histograms and derive a sibling by subtraction. Parent splits constrain descendants; independent sibling work can overlap. Successive boosting rounds usually depend on prior predictions, unlike independent date-statistic reductions.
 
 ### Background
 
@@ -522,7 +540,7 @@ Once the GNN has produced its own embeddings, NVIDIA's own real pipeline hands t
 +----------------------------------------------------------+
 ```
 
-File 113 computes the total number of real cross-shard reductions XGBoost's own real documented default depth implies for an illustrative production-scale ensemble, and contrasts the SEQUENTIAL dependency within one tree against Chapter 36's own independent, overlappable T reductions.
+File 113 counts potential internal split nodes for an illustrative full binary tree. It does not execute XGBoost or establish one collective per split. Read its captured reduction-count wording as this simplified model assumption; real operation counts depend on grow policy, pruning, histogram reuse, batching and the distributed implementation. See [XGBoost GPU memory/histogram documentation](https://xgboost.readthedocs.io/en/stable/gpu/).
 
 ```cpp
 // Chapter 38: Real-Time Fraud Detection at Payment Scale
@@ -640,7 +658,6 @@ Chapter 36's own File 105 found T=360 independent reductions for a full XVA expo
 
 <!-- execution:end:h100-rerun:113_distributed_tree_building_sequential_reduction_model.cpp -->
 
-
 <!-- execution:start:a100:113_distributed_tree_building_sequential_reduction_model.cpp -->
 > **Compiled and executed — 2026-11-17-a100: Host program/model (exit-only).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:05:32.805141+00:00`.
 
@@ -671,7 +688,6 @@ Chapter 36's own File 105 found T=360 independent reductions for a full XVA expo
 
 
 <!-- execution:end:a100:113_distributed_tree_building_sequential_reduction_model.cpp -->
-
 
 <!-- execution:start:h100:113_distributed_tree_building_sequential_reduction_model.cpp -->
 > **Compiled and executed — 2026-11-17-h100: Host program/model (exit-only).** Hardware: 2 H100 GPUs. Execution record UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`.
@@ -704,7 +720,6 @@ Chapter 36's own File 105 found T=360 independent reductions for a full XVA expo
 </details>
 <!-- execution:end:h100:113_distributed_tree_building_sequential_reduction_model.cpp -->
 
-
 Compile and run (plain host `.cpp`, executed on the recorded H100 and A100 hosts):
 
 ```bash
@@ -715,7 +730,7 @@ g++ -O2 -ffp-contract=off -o 113_distributed_tree_building_sequential_reduction_
 
 ## Chapter Summary
 
-Real production fraud detection, per NVIDIA's own real American Express case study and Financial Fraud Detection AI Blueprint, increasingly scores transactions with a graph neural network rather than in isolation, because "fraudsters operate within complex networks." File 111 grounded that choice in a real, measured number: a 13.9% relative improvement in AUPRC from adding GNN embeddings as features, on NVIDIA's own real TabFormer fraud workflow. File 112 then showed how that graph is actually partitioned across GPUs when it grows too large for one: NVIDIA's own real WholeGraph technique shards node features by node (Chapter 16's own domain-decomposition idea, applied to a graph), and fetches a sampled node's own remote neighbors on demand over NVLink or PCIe -- a genuinely new, demand-driven communication shape for this book, verified bit-exact at every tested P because it is pure retrieval, never a value combination, and directly connected to Chapter 4's own real Universal Virtual Addressing idea. File 113 closed the chapter with the real second stage of NVIDIA's own hybrid pipeline: distributed XGBoost tree-building, where "all GPUs collaborate on each tree," producing a real reduction count (31,500 for an illustrative 500-tree ensemble at XGBoost's own real documented default depth) that looks superficially like Chapter 36's own large T, but is structurally different -- chained in strict sequence within each tree, not independent and overlappable.
+Real production fraud detection, per NVIDIA's own real American Express case study and Financial Fraud Detection AI Blueprint, increasingly scores transactions with a graph neural network rather than in isolation, because "fraudsters operate within complex networks." File 111 grounded that choice in a real, measured number: a 13.9% relative improvement in AUPRC from adding GNN embeddings as features, on NVIDIA's own real TabFormer fraud workflow. File 112 then showed how that graph is actually partitioned across GPUs when it grows too large for one: NVIDIA's own real WholeGraph technique shards node features by node (Chapter 16's own domain-decomposition idea, applied to a graph), and fetches a sampled node's own remote neighbors on demand over NVLink or PCIe -- a genuinely new, demand-driven communication shape for this book, verified bit-exact at every tested P because it is pure retrieval, never a value combination, and directly connected to Chapter 4's own real Universal Virtual Addressing idea. File 113 closed the chapter with the real second stage of NVIDIA's own hybrid pipeline: distributed XGBoost tree-building, where "all GPUs collaborate on each tree," illustrating up to 31,500 internal split nodes for 500 full depth-six binary trees, rather than establishing 31,500 real collective calls that looks superficially like Chapter 36's own large T, but is structurally different -- subject to parent-child dependencies; sibling work and histogram communication may be batched or overlapped when the implementation permits.
 
 ## Self-Check Questions
 
@@ -726,7 +741,7 @@ Real production fraud detection, per NVIDIA's own real American Express case stu
 5. Why does File 112 find every tested P produces bit-exact neighbor-feature sums, even though some fetches are remote and some are local?
 6. What real cited XGBoost default does File 113 use, and why is the 500-tree ensemble size explicitly labeled illustrative rather than a real cited default?
 7. What is the real, structural difference between Chapter 36's own T=360 independent per-date reductions and Section 38.3's own per-split reductions within one XGBoost tree?
-8. According to File 113's own Sample output, how many total real cross-shard reductions does the illustrative 500-tree ensemble require, and where -- within a tree, or across trees -- is there room for overlap?
+8. According to File 113's own Sample output, how many potential internal split nodes does the full-tree model count, and why does that not determine the real number of collectives or rule out sibling-node overlap?
 9. This book's own Chapter 4 introduced Universal Virtual Addressing. How does Section 38.2's own real citation connect that same real idea to a completely different problem (graph neural network training) many chapters later?
 
 ## Where We Go Next
@@ -741,8 +756,8 @@ Chapter 39 turns to real-time healthcare, extending this book's own domain-decom
 4. It is "demand-driven" because which neighbors must be fetched, and whether that fetch is local or must cross a rank boundary, is decided fresh every training batch by which nodes happen to be randomly sampled as seeds -- unlike Chapter 16's own halo exchange, which trades the exact same fixed set of border cells with the exact same fixed neighbors on every single step, known in advance regardless of what the computation is currently doing.
 5. Because a feature fetch, whether local or remote, is pure RETRIEVAL of a value defined by a pure function of the neighbor's own node id -- it is never recomputed differently depending on which rank asks for it, and it is never combined with another rank's own partial value at fetch time. With no combination step at all, there is no floating-point associativity question for partitioning to disturb.
 6. File 113 uses XGBoost's own real, officially documented default, "max_depth=6" (from xgboost.readthedocs.io's own parameter reference). The 500-tree ensemble size is explicitly labeled illustrative because XGBoost itself has no default number of boosting rounds or trees -- that choice is left to whoever trains the model, so 500 is presented as a realistic illustrative production-scale figure, not something XGBoost itself specifies.
-7. Chapter 36's own T=360 reductions, one per real observation date, are mutually independent -- computing date 5's own EPE never requires date 4's own result, so in principle they could be computed in any order or even overlapped. Section 38.3's own per-split reductions within one XGBoost tree are sequentially dependent: split k+1 needs to know where split k placed its own boundary before it can even determine which shard's own data belongs to which branch next, so they must be computed strictly in order within that one tree.
-8. File 113's own Sample output shows 31,500 total real cross-shard reductions (63 splits per tree at the real cited max_depth=6, times the illustrative 500 trees). There is no room for overlap WITHIN one tree, since each split strictly depends on the previous one's own result; the only room for overlap is ACROSS different trees, and only if they are built independently of one another rather than in XGBoost's own real strict sequential boosting order (where each new tree is fit to the residual of the trees built before it).
+7. Date-wise statistics can be combined independently once their inputs exist. Within a tree, descendants depend on parent split decisions, but sibling histograms can be prepared together and communication can be batched. Neither split count nor depth alone gives the actual collective schedule.
+8. The model counts up to 31,500 internal split nodes across 500 full depth-six trees. It does not measure the number of cross-shard reductions. Real histogram algorithms can cache, derive and batch node statistics; independent sibling work can overlap, whereas successive boosting rounds normally depend on prior predictions.
 9. Chapter 4 built Universal Virtual Addressing from scratch as a way for GPU peer memory to be addressed as if it were local, without an explicit staged copy. Section 38.2's own real cited MAG240M benchmark article uses that exact same real idea, by its own real name, to let a graph's own node feature tensors be "instantiate[d]... such that it can be directly accessed by all the GPUs" during neighborhood sampling -- the same underlying real capability Chapter 4 introduced, now applied by NVIDIA's own real software to a completely different real workload many chapters later.
 
 ---

@@ -27,6 +27,29 @@ Chapter 21 introduced NIC DMA directly to GPU memory. The cited Databento deploy
 +------------------------------------------------------------------+
 ```
 
+<!-- mgpu:worked:start -->
+## Worked walkthrough — Put every market-data path on the same timing boundary
+
+[![Put every market-data path on the same timing boundary: numerical ownership, intermediate values and checks](../images/worked/ch37.svg)](../images/worked/ch37.svg)
+
+Use a hypothetical eight-message batch, each message 256 bytes. The batch carries 2048 payload bytes. Define the useful-result boundary as GPU computation finishing after it has consumed all eight messages. This is path accounting, not a measured trading system or a latency guarantee.
+
+1. **Name the host-staged path.** NIC delivery into host memory is followed by a CPU/transport ownership handoff, host-to-device transfer, GPU dependency and processing. Kernel bypass on the NIC-to-host portion does not automatically remove the host-to-device portion.
+2. **Name a direct path separately.** A supported NIC-to-GPU path must register the actual GPU buffer and establish the transport's required completion/visibility ordering before the kernel consumes it. A GPU pointer or successful memory registration alone does not prove application-level readiness.
+3. **Apply an explicit serial cost model.** Suppose host arrival costs three microseconds, host-to-device setup costs two, the payload transfer costs one and GPU processing costs four. Without overlap, useful-result latency is ten microseconds. Removing the modeled three-microsecond H2D stage would give seven only if the direct route's own added costs were zero; that is an assumption to test, not a free speedup.
+4. **Distinguish GDRCopy.** A CPU mapping of GPU memory permits CPU-driven access under its documented API contract; it is not a NIC-initiated transfer. Reads and writes can have very different performance and ordering. Account for map/registration setup and reuse separately.
+5. **Check throughput too.** A batch every ten microseconds corresponds to 800000 messages/s and `2048/10e-6=204.8 MB/s` of payload in the serial toy schedule. Protocol bytes and concurrent pipelining alter the relationship; one latency number does not establish maximum packet rate.
+
+**Expected check:** the GPU sees every message's sequence ID and payload exactly as required, and the timer ends after the last result. Use actual transport documentation for ordering and a trace for overlap. None of this paper arithmetic establishes deployment status, order execution latency or strategy profitability.
+
+??? question "Exercise: add direct-route setup"
+
+    A direct route takes four microseconds to deliver GPU-visible input, then four for processing. What is its modeled serial result latency relative to the ten-microsecond staged example?
+
+    **Worked answer:** eight microseconds, a two-microsecond reduction for this declared boundary. Compare complete paths under the same message/batch contract; do not subtract an unrelated published NIC-only latency.
+
+<!-- mgpu:worked:end -->
+
 ## 37.1 What Gets Market Data to Memory Today, Really
 
 <!-- mgpu:figure-1:start -->
@@ -167,7 +190,6 @@ This is the real, CURRENTLY-DEPLOYED starting point for everything this chapter 
 
 <!-- execution:end:h100-rerun:108_kernel_bypass_market_data_baseline_model.cpp -->
 
-
 <!-- execution:start:a100:108_kernel_bypass_market_data_baseline_model.cpp -->
 > **Compiled and executed — 2026-11-17-a100: Host program/model (exit-only).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:05:32.049333+00:00`.
 
@@ -203,7 +225,6 @@ This is the real, CURRENTLY-DEPLOYED starting point for everything this chapter 
 
 <!-- execution:end:a100:108_kernel_bypass_market_data_baseline_model.cpp -->
 
-
 <!-- execution:start:h100:108_kernel_bypass_market_data_baseline_model.cpp -->
 > **Compiled and executed — 2026-11-17-h100: Host program/model (exit-only).** Hardware: 2 H100 GPUs. Execution record UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`.
 
@@ -238,7 +259,6 @@ This is the real, CURRENTLY-DEPLOYED starting point for everything this chapter 
 
 </details>
 <!-- execution:end:h100:108_kernel_bypass_market_data_baseline_model.cpp -->
-
 
 Compile and run (a plain host `.cpp` file with no CUDA/NCCL/MPI/NVSHMEM linkage, executed on the recorded H100 and A100 hosts):
 
@@ -396,7 +416,6 @@ Why this is labeled a projection and not a finding: Chapter 21's own 9.44x figur
 
 <!-- execution:end:h100-rerun:109_gpudirect_rdma_market_data_projection_model.cpp -->
 
-
 <!-- execution:start:a100:109_gpudirect_rdma_market_data_projection_model.cpp -->
 > **Compiled and executed — 2026-11-17-a100: Host program/model (exit-only).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:05:32.120867+00:00`.
 
@@ -430,7 +449,6 @@ Why this is labeled a projection and not a finding: Chapter 21's own 9.44x figur
 
 <!-- execution:end:a100:109_gpudirect_rdma_market_data_projection_model.cpp -->
 
-
 <!-- execution:start:h100:109_gpudirect_rdma_market_data_projection_model.cpp -->
 > **Compiled and executed — 2026-11-17-h100: Host program/model (exit-only).** Hardware: 2 H100 GPUs. Execution record UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`.
 
@@ -463,7 +481,6 @@ Why this is labeled a projection and not a finding: Chapter 21's own 9.44x figur
 
 </details>
 <!-- execution:end:h100:109_gpudirect_rdma_market_data_projection_model.cpp -->
-
 
 Compile and run (plain host `.cpp`, executed on the recorded H100 and A100 hosts):
 
@@ -528,7 +545,6 @@ int main() {
 }
 ```
 
-
 !!! note "Corrected host model — November 18, 2026"
 
     The listing above corrects the earlier model's comparison of distinct copy operations. Its [new local compile/run record](../host-model-corrections.md#110) contains the current source hash, system, date, commands and output. The H100/A100 blocks below retain the earlier revision's actual output; their model claims are superseded by this correction.
@@ -567,7 +583,6 @@ A plain cudaMemcpy round trip's own real cited FIXED overhead (6.0-7.0us) is, by
 
 <!-- execution:end:h100-rerun:110_gdrcopy_fixed_overhead_vs_latency_budget_model.cpp -->
 
-
 <!-- execution:start:a100:110_gdrcopy_fixed_overhead_vs_latency_budget_model.cpp -->
 > **Compiled and executed — 2026-11-17-a100: Host program/model (exit-only).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:05:32.191932+00:00`.
 
@@ -603,7 +618,6 @@ A plain cudaMemcpy round trip's own real cited FIXED overhead (6.0-7.0us) is, by
 
 <!-- execution:end:a100:110_gdrcopy_fixed_overhead_vs_latency_budget_model.cpp -->
 
-
 <!-- execution:start:h100:110_gdrcopy_fixed_overhead_vs_latency_budget_model.cpp -->
 > **Compiled and executed — 2026-11-17-h100: Host program/model (exit-only).** Hardware: 2 H100 GPUs. Execution record UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`.
 
@@ -638,7 +652,6 @@ A plain cudaMemcpy round trip's own real cited FIXED overhead (6.0-7.0us) is, by
 
 </details>
 <!-- execution:end:h100:110_gdrcopy_fixed_overhead_vs_latency_budget_model.cpp -->
-
 
 Compile and run (plain host `.cpp`, executed on the recorded H100 and A100 hosts):
 

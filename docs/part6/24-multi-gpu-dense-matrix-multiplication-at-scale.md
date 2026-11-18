@@ -35,6 +35,30 @@ model, no comm cost)            (SUMMA, verified by                this?"
                           capacity, algorithm, production API
 ```
 
+<!-- mgpu:worked:start -->
+
+## Worked example — Accumulate two SUMMA panels on four owners
+
+Let A have rows [1,2], [3,4], [5,6], [7,8], and B have rows [1,2,3,4], [10,20,30,40]. Thus M=4,K=2,N=4. A 2×2 process grid gives each owner a 2×2 C tile.
+
+1. For k=0, owner (0,0) forms outer product [1,3]×[1,2]=[[1,2],[3,6]]. Owner (0,1) uses [3,4] instead, producing [[3,4],[9,12]].
+
+2. At k=1, owner (0,0) adds [2,4]×[10,20]=[[20,40],[40,80]], reaching [[21,42],[43,86]].
+
+3. The four final tiles are shown below. Check the opposite corner independently: C[3,3]=7×4+8×40=348.
+
+![Numeric worked example: Accumulate two SUMMA panels on four owners](../images/worked/ch24.svg)
+
+**API connection and scope.** SUMMA broadcasts an A panel along each process row and a B panel down each process column, then performs a local matrix multiply. MPI_Bcast on row and column communicators plus a local GEMM is one implementation. This tiny paper trace is not an additional distributed GPU run.
+
+**Expected check and pitfall.** For C=AB, initialize the first accumulation correctly and retain earlier panels; a GEMM implementation may use beta=0 first and beta=1 thereafter. Panel ownership and collective matching matter as much as tile dimensions. Validate the entire assembled matrix against an independent reference.
+
+??? question "Guided exercise: What happens if owner (0,0) overwrites C with only its second panel?"
+
+    **Worked answer.** It returns [[20,40],[40,80]], losing [[1,2],[3,6]]. The correct tile is [[21,42],[43,86]].
+
+<!-- mgpu:worked:end -->
+
 ## 24.1 The Memory Wall for a GEMM's THREE Operands
 
 <!-- mgpu:figure-1:start -->

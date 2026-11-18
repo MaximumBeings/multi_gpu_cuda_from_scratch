@@ -6,6 +6,29 @@
 
 Every chapter in this book has reported one specific real finding at a time. This closing appendix collects three failure modes that have each surfaced, piece by piece, across many of those chapters -- Chapter 17 and Chapter 20's own real deadlocks, Chapter 6's own cross-device event semantics, Chapter 16 and Chapter 40's own halo-sync corruption, Chapter 4's own peer-access query, Chapter 2's own topology model -- and names each one directly, with one new, genuinely tested demonstration per failure mode rather than a repeat of an earlier chapter's own example. None of the three failure modes below announces itself with an error message. A deadlocked program hangs silently; a program with a missed synchronization step returns a wrong answer with `cudaSuccess` on every call; a program built on an assumed topology runs correctly, just slower than planned, with nothing in any return code to say why. That is precisely what makes all three worth a dedicated closing appendix: each one is a program that never crashes and never reports an error, right up until someone notices the number is wrong.
 
+<!-- mgpu:worked:start -->
+## Worked walkthrough — Trace the wait cycle and reject a plausible wrong result
+
+[![Trace the wait cycle and reject a plausible wrong result: numerical ownership, intermediate values and checks](../images/worked/appendix-g.svg)](../images/worked/appendix-g.svg)
+
+Use two ranks exchanging one FP32 value. Rank 0 owns value three, rank 1 value seven. The intended operation is to exchange the values and compute their sum ten on each rank. This is a protocol model, not an extra deliberately hanging run.
+
+1. **Draw a receive-first cycle.** Rank 0 blocks in `MPI_Recv(from=1)` before sending; rank 1 blocks in `MPI_Recv(from=0)` before sending. Each waits for a send that control flow has not reached. Small messages do not fix a cycle made entirely of unmatched blocking receives.
+2. **Change the communication schedule.** `MPI_Sendrecv` expresses a paired exchange without this particular receive-first ordering, provided source/destination, tags, counts, communicator and participation match. Alternatively, post matching nonblocking receives/sends and complete the requests before consuming the buffers. Nonblocking initiation alone is not completion.
+3. **Check generation and readiness.** Suppose rank 0's incoming buffer still contains last iteration's value two. Reading it before the current exchange completes produces `3+2=5`. Every earlier launch can have returned success while the result is still logically wrong.
+4. **Validate more than a checksum.** Check received sequence/iteration ID, owner ID and nonuniform value at each destination. If rank 1 simultaneously consumes stale six, the pair of wrong results can sometimes conceal a checksum error under other inputs. Distinct identities expose a permutation or stale generation.
+5. **Separate topology from correctness.** A peer-access query is directional and device-pair-specific. Unsupported direct access needs a supported transfer path. A slower route can be correct; a fast route missing ordering can be wrong. Measure route cost after verifying data and dependencies.
+
+**Expected check:** both ranks consume the current peer's value and obtain ten; outstanding requests and device work finish before buffer reuse/free. For NCCL, all participants must also enter compatible collective order; matching only bytes is insufficient if one rank calls a different collective.
+
+??? question "Exercise: why a later wait cannot repair an earlier read"
+
+    Rank 0 reads stale value two, computes five, then waits for a transfer that writes seven. Is the previously computed five corrected automatically?
+
+    **Worked answer:** no. The wait makes the new data available for subsequent correctly ordered work; it does not replay a computation that already consumed stale data. Place the dependency before the consumer or recompute after completion.
+
+<!-- mgpu:worked:end -->
+
 ## G.1 Deadlocks: When Every Process Waits for a Call Another Process Never Makes
 
 <!-- mgpu:figure-1:start -->
@@ -38,7 +61,7 @@ Chapter 20's own File 57 already reproduced one real MPI deadlock: a ring where 
   rank3(odd)  --Send-> rank0(even, now in Recv)     : delivered immediately
 ```
 
-`MPI_Recv()` genuinely blocks until a matching message arrives -- there is no buffering variant of receiving, unlike `MPI_Send()`, which the MPI standard (already quoted in Chapter 20) allows an implementation to complete early by copying into a temporary system buffer. So a ring where every rank calls `MPI_Recv()` first has no size-dependent way out: every rank is genuinely, permanently blocked waiting for a `MPI_Send()` call that no rank has reached, because every rank is stuck at the exact same point in the exact same cycle. The real, standard fix does not remove either call -- it breaks the cycle by having half the ranks issue their `MPI_Send()` first: even-numbered ranks send, then receive; odd-numbered ranks receive, then send. An even rank's `MPI_Send()` has an odd rank already waiting in `MPI_Recv()` to receive it, so it completes immediately; that same odd rank's own subsequent `MPI_Send()` then has the next even rank waiting for it, and the pattern propagates around the entire ring without a single rank ever blocking on a call nobody has issued.
+`MPI_Recv()` genuinely blocks until a matching message arrives -- there is no buffering variant of receiving, unlike `MPI_Send()`, which the MPI standard (already quoted in Chapter 20) allows an implementation to complete early by copying into a temporary system buffer. So a ring where every rank calls `MPI_Recv()` first has no size-dependent way out: every rank is genuinely, permanently blocked waiting for a `MPI_Send()` call that no rank has reached, because every rank is stuck at the exact same point in the exact same cycle. The real, standard fix does not remove either call -- it breaks the cycle by having half the ranks issue their `MPI_Send()` first: even-numbered ranks send, then receive; odd-numbered ranks receive, then send. An even rank's `MPI_Send()` has an odd rank already waiting in `MPI_Recv()` to receive it, so it can complete once the matching receive and required data movement progress; that same odd rank's own subsequent `MPI_Send()` then has the next even rank waiting for it, and the pattern propagates around the entire ring without a single rank ever blocking on a call nobody has issued.
 
 !!! warning "[COMMON TRAP] Assuming a deadlock is a message-size problem because the last one was"
     Chapter 20's own deadlock depended on crossing a real buffering threshold, which makes it tempting to treat "keep messages small" as a general defense against MPI deadlocks. It is not. This section's own recv-first deadlock hangs at a single `int` exactly as completely as it would at a million -- there is no buffer to exploit, because the blocking call at fault (`MPI_Recv()`) was never eligible for buffering in the first place. The real, general rule has nothing to do with size: every rank's *sequence* of blocking calls has to be constructed so that some rank is always in a position to unblock another, at every point in the program. A size threshold is Chapter 20's own specific symptom of a specific call shape (`Send`-then-`Recv`, everywhere); it is not the underlying disease.
@@ -143,7 +166,6 @@ rank 0 done, recvVal=1 (expected 1)
 
 <!-- execution:end:h100-rerun:138_collective_order_deadlock.c -->
 
-
 <!-- execution:start:a100:138_collective_order_deadlock.c -->
 > **Compiled and executed — 2026-11-17-a100: API/host demonstration (exit-only).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-17T23:59:46.741810+00:00`.
 
@@ -214,7 +236,6 @@ rank 1 done, recvVal=0 (expected 0)
 
 <!-- execution:end:a100:138_collective_order_deadlock.c -->
 
-
 <!-- execution:start:h100:138_collective_order_deadlock.c -->
 > **Compiled and executed — 2026-11-17-h100: API/host demonstration (exit-only).** Hardware: 2 H100 GPUs. Execution record UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`.
 
@@ -283,7 +304,6 @@ rank 0 done, recvVal=1 (expected 1)
 </details>
 <!-- execution:end:h100:138_collective_order_deadlock.c -->
 
-
 **Compile and run:**
 
 ```bash
@@ -293,7 +313,6 @@ timeout 6 mpirun --allow-run-as-root --oversubscribe -np 4 ./138_collective_orde
 ```
 
 **Sample input:** `argv[1]` selects the mode (`fixed` or `deadlock`); every rank's own message is just its own rank number, `MPI_INT`, one element.
-
 
 ```text
 rank 3: about to MPI_Recv from 2 (recv-first order)
@@ -394,7 +413,6 @@ VALIDATION PASS: errors=0
 
 <!-- execution:end:h100-rerun:139_stream_wait_enqueue_order.cu -->
 
-
 <!-- execution:start:a100:139_stream_wait_enqueue_order.cu -->
 > **Compiled and executed — 2026-11-17-a100: Numerical/transport validation (recorded scope).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-17T23:59:48.680783+00:00`.
 
@@ -419,7 +437,6 @@ VALIDATION PASS: errors=0
 
 
 <!-- execution:end:a100:139_stream_wait_enqueue_order.cu -->
-
 
 <!-- execution:start:h100:139_stream_wait_enqueue_order.cu -->
 > **Compiled and executed — 2026-11-17-h100: Numerical/transport validation (recorded scope).** Hardware: 2 H100 GPUs. Execution record UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`.
@@ -446,7 +463,6 @@ VALIDATION PASS: errors=0
 </details>
 <!-- execution:end:h100:139_stream_wait_enqueue_order.cu -->
 
-
 **Compile and run:**
 
 ```bash
@@ -456,12 +472,11 @@ nvcc -arch=sm_80 139_stream_wait_enqueue_order.cu -o 139_stream_wait_enqueue_ord
 
 **Sample input:** none -- every value is either a real return code from the CUDA Runtime API or a compile-time-fixed description of the two enqueue orders being compared.
 
-
 ## G.3 Topology Mismatches: When Code Assumes a Link That Isn't There
 
 ### Intuition
 
-Chapter 4's own File 9 built the real, idiomatic sequence: check `cudaDeviceCanAccessPeer()` for a device pair before assuming anything about it, then enable access only where it genuinely exists. Chapter 5's own File 11 and File 13 showed why skipping that query never produces a wrong *answer* -- `cudaMemcpyPeer()` falls back to a staged host copy transparently, for any pair that never had peer access enabled, with no error and no corrupted data either way. What skipping the query can still silently break is a *performance* assumption baked into the code around those calls -- a capacity plan, a scheduling deadline, a batch size chosen assuming a specific link class -- because Chapter 2's own partial-mesh topology model already established that not every device pair on the same real machine shares the same link.
+Chapter 4's own File 9 built the real, idiomatic sequence: check `cudaDeviceCanAccessPeer()` for a device pair before assuming anything about it, then enable access only where it genuinely exists. Chapter 5's own File 11 and File 13 showed why a supported peer-copy path can still produce the right answer without explicit peer mapping -- `cudaMemcpyPeer()` falls back to a staged host copy transparently, for any pair that never had peer access enabled, with no error and no corrupted data either way. What skipping the query can still silently break is a *performance* assumption baked into the code around those calls -- a capacity plan, a scheduling deadline, a batch size chosen assuming a specific link class -- because Chapter 2's own partial-mesh topology model already established that not every device pair on the same real machine shares the same link.
 
 ### The Concept, In Detail
 
@@ -479,7 +494,7 @@ Chapter 4's own File 9 built the real, idiomatic sequence: check `cudaDeviceCanA
   with zero error code anywhere
 ```
 
-Chapter 5's own File 13 already built the closed-form cost comparison between a direct peer transfer and a two-hop staged transfer, using Chapter 2's own already-cited bandwidth figures (31.5 GB/s PCIe 4.0 x16, 50 GB/s a directly-wired NVLink pair). This section reuses that exact model for a different question: not "which route does `cudaMemcpyPeer()` actually take," which Chapter 5 already answered, but "what happens to code that assumed one row of this table and never checked which row actually applies to the pair it is running on." Because `cudaMemcpyPeer()` and `cudaMemcpyPeerAsync()` route correctly regardless -- Chapter 5's own real finding -- nothing in their return code will ever reveal that the assumption was wrong. A capacity plan, a communication-computation overlap budget, or a training-step deadline built around the NVLink row of this table has a modeled transfer-time ratio of 1.59 for the assumed direct PCIe bandwidth, or 3.17 for the assumed serialized host-staging bandwidth -- exactly the two-hop cost Chapter 5's own File 12 already measured the call pattern for.
+Chapter 5's own File 13 already built the closed-form cost comparison between a direct peer transfer and a two-hop staged transfer, using Chapter 2's own already-cited bandwidth figures (31.5 GB/s PCIe 4.0 x16, 50 GB/s a directly-wired NVLink pair). This section reuses that exact model for a different question: not "which route does `cudaMemcpyPeer()` actually take," which Chapter 5 already answered, but "what happens to code that assumed one row of this table and never checked which row actually applies to the pair it is running on." When the peer-copy operation is supported and completes successfully -- Chapter 5's own real finding -- a successful return code alone does not reveal the realized bandwidth or route. A capacity plan, a communication-computation overlap budget, or a training-step deadline built around the NVLink row of this table has a modeled transfer-time ratio of 1.59 for the assumed direct PCIe bandwidth, or 3.17 for the assumed serialized host-staging bandwidth -- exactly the two-hop cost Chapter 5's own File 12 already measured the call pattern for.
 
 !!! warning "[COMMON TRAP] Trusting a topology number that was measured on a different machine"
     It is tempting to treat a bandwidth or link-class figure as a property of the *code*, once it has been measured or read off a vendor spec sheet -- something that can be hardcoded into a constant and reused everywhere the same code runs. It is a property of the specific *deployment*, not the code. Chapter 2's own partial-mesh topology model is itself the proof: two GPUs in the same server can be NVLink-wired while another pair in the same server share only a PCIe switch, and a cluster's own topology can differ node to node even running the identical binary. `cudaDeviceCanAccessPeer()` and `cudaDeviceGetP2PAttribute()` query the *actual* topology of the *actual* devices at *actual* runtime -- use these capability queries together with a saved topology report and measured transfer rates; they do not by themselves establish NVLink wiring or achieved bandwidth; a number copied from one cluster's own topology report into a shared constant is a silent liability the moment the code runs anywhere else.
@@ -666,7 +681,6 @@ gets worse (confirmed): confirmed
 
 <!-- execution:end:h100-rerun:140_topology_assumption_cost.cpp -->
 
-
 <!-- execution:start:a100:140_topology_assumption_cost.cpp -->
 > **Compiled and executed — 2026-11-17-a100: Host program/model (exit-only).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-17T23:59:52.168468+00:00`.
 
@@ -742,7 +756,6 @@ gets worse (confirmed): confirmed
 
 
 <!-- execution:end:a100:140_topology_assumption_cost.cpp -->
-
 
 <!-- execution:start:h100:140_topology_assumption_cost.cpp -->
 > **Compiled and executed — 2026-11-17-h100: Host program/model (exit-only).** Hardware: 2 H100 GPUs. Execution record UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`.
@@ -820,7 +833,6 @@ gets worse (confirmed): confirmed
 </details>
 <!-- execution:end:h100:140_topology_assumption_cost.cpp -->
 
-
 **Compile and run:**
 
 ```bash
@@ -829,7 +841,6 @@ g++ -std=c++17 -Wall -Wextra -O2 140_topology_assumption_cost.cpp -o 140_topolog
 ```
 
 **Sample input:** none -- every figure is Chapter 2's own already-cited bandwidth constant or arithmetic derived from it, identical to Chapter 5's own File 13 model.
-
 
 ## G.4 A Diagnostic Checklist for Recognizing These Failure Modes
 

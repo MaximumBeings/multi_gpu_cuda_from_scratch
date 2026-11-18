@@ -6,6 +6,29 @@
 
 Most readers arrive at a book about hand-written multi-GPU C++ already having trained a model with `torch.distributed`, `DistributedDataParallel`, or DeepSpeed, without ever seeing what those Python calls do underneath. This appendix is a translation guide, not a new technique: for three of the most common Python-side mechanisms, it shows the exact chapter of this book that already built the real C++ underneath it, quotes the Python framework's own documentation directly rather than from memory, and genuinely compiles and runs the C++ side against this environment's real, installed NCCL library. It closes with a summary table extending the same mapping to the remaining PyTorch Distributed and DeepSpeed concepts this appendix does not build code for.
 
+<!-- mgpu:worked:start -->
+## Worked walkthrough — Translate a two-rank gradient without changing the scale
+
+[![Translate a two-rank gradient without changing the scale: numerical ownership, intermediate values and checks](../images/worked/appendix-f.svg)](../images/worked/appendix-f.svg)
+
+Use two equally sized data-parallel minibatches and a two-element gradient. Rank-local gradients are `[2,4]` and `[6,8]`, each already the mean over its local samples. Assume the intended global objective averages all samples equally. This is a semantic translation exercise, not a new framework-training capture.
+
+1. **Apply the raw collective semantics.** `ncclAllReduce` with `ncclSum` yields `[8,12]` on both ranks. A sum collective does not independently know the loss normalization policy.
+2. **Form the intended average.** Dividing by world size two gives `[4,6]`. The Python call `dist.all_reduce(..., op=SUM)` is likewise a sum operation; it should not be confused with DDP's configured reducer behavior. Communication hooks and custom losses can change scaling assumptions.
+3. **Perform one optimizer step.** For parameters `[10,20]` and learning rate 0.1 under simple SGD without momentum/weight decay, the averaged-gradient update is `[9.6,19.4]`. Using the unreduced local rank-0 gradient gives `[9.8,19.6]`; using the raw sum gives `[9.2,18.8]`. All are plausible numbers, but only one matches this declared objective.
+4. **Test unequal local batch sizes.** If rank 0 represents one sample and rank 1 three, the global sample mean is `(1*[2,4]+3*[6,8])/4=[5,7]`, not `[4,6]`. The training implementation must arrange loss/reducer weighting deliberately; a world-size average alone does not repair arbitrary sample imbalance.
+5. **Keep memory sharding separate.** ZeRO-style state partitioning changes which rank owns parameters, gradients or optimizer states. It does not by itself redefine the intended mathematical gradient. Count the actual state formats, master weights and temporary gather buffers when estimating memory.
+
+**Expected check:** the distributed update matches a serial concatenated-minibatch reference under the same loss and optimizer semantics. The chapter's captured C++ collective examples establish their recorded scope, not an automatic proof of every PyTorch/DeepSpeed training configuration.
+
+??? question "Exercise: avoid averaging twice"
+
+    A reducer already returns `[4,6]` under this equal-batch contract. What happens if application code divides by world size again before SGD?
+
+    **Worked answer:** gradient becomes `[2,3]` and parameters become `[9.8,19.7]`, halving this update. Track where normalization occurs; matching API names is insufficient when mathematical scaling differs.
+
+<!-- mgpu:worked:end -->
+
 ## F.1 torch.distributed's Collectives Are This Book's Own NCCL Calls, Named Differently
 
 <!-- mgpu:figure-1:start -->
@@ -96,7 +119,6 @@ API PROBE PASS: errors=0; semantic mapping and one-rank C++ setup, not a PyTorch
 
 <!-- execution:end:h100-rerun:135_torch_distributed_collectives_mapped.cu -->
 
-
 <!-- execution:start:a100:135_torch_distributed_collectives_mapped.cu -->
 > **Compiled and executed — 2026-11-17-a100: API validation (recorded scope).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-17T23:59:39.446489+00:00`.
 
@@ -126,7 +148,6 @@ API PROBE PASS: errors=0; semantic mapping and one-rank C++ setup, not a PyTorch
 
 
 <!-- execution:end:a100:135_torch_distributed_collectives_mapped.cu -->
-
 
 <!-- execution:start:h100:135_torch_distributed_collectives_mapped.cu -->
 > **Compiled and executed — 2026-11-17-h100: API validation (recorded scope).** Hardware: 2 H100 GPUs. Execution record UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`.
@@ -158,7 +179,6 @@ API PROBE PASS: errors=0; semantic mapping and one-rank C++ setup, not a PyTorch
 </details>
 <!-- execution:end:h100:135_torch_distributed_collectives_mapped.cu -->
 
-
 **Compile and run:**
 
 ```bash
@@ -167,7 +187,6 @@ nvcc -arch=sm_80 135_torch_distributed_collectives_mapped.cu -o 135_torch_distri
 ```
 
 **Sample input:** none -- the program takes no arguments; every value it prints is either a compile-time string constant (including the quoted PyTorch documentation text, verified via `docs.pytorch.org` before writing this file) or a real return value read back from the installed NCCL library.
-
 
 ## F.2 DistributedDataParallel Is Chapter 12's Averaging, Automated and Bucketed
 
@@ -377,7 +396,6 @@ VALIDATION PASS: errors=0
 
 <!-- execution:end:h100-rerun:136_ddp_bucketed_allreduce.cu -->
 
-
 <!-- execution:start:a100:136_ddp_bucketed_allreduce.cu -->
 > **Compiled and executed — 2026-11-17-a100: Numerical/transport validation (recorded scope).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-17T23:59:44.337668+00:00`.
 
@@ -424,7 +442,6 @@ VALIDATION PASS: errors=0
 
 
 <!-- execution:end:a100:136_ddp_bucketed_allreduce.cu -->
-
 
 <!-- execution:start:h100:136_ddp_bucketed_allreduce.cu -->
 > **Compiled and executed — 2026-11-17-h100: Numerical/transport validation (recorded scope).** Hardware: 2 H100 GPUs. Execution record UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`.
@@ -473,7 +490,6 @@ VALIDATION PASS: errors=0
 </details>
 <!-- execution:end:h100:136_ddp_bucketed_allreduce.cu -->
 
-
 **Compile and run:**
 
 ```bash
@@ -482,7 +498,6 @@ nvcc -arch=sm_80 136_ddp_bucketed_allreduce.cu -o 136_ddp_bucketed_allreduce -ln
 ```
 
 **Sample input:** none -- 6 simulated parameters, their bucket assignment, and their hook-firing ticks are all fixed constants in the source, chosen specifically to force an out-of-order readiness sequence.
-
 
 ## F.3 DeepSpeed's ZeRO Stages Are Chapter 13's Own Memory Arithmetic, Staged
 
@@ -694,7 +709,6 @@ model-parallel/tensor-parallel splitting.
 
 <!-- execution:end:h100-rerun:137_zero_stage_memory_model.cpp -->
 
-
 <!-- execution:start:a100:137_zero_stage_memory_model.cpp -->
 > **Compiled and executed — 2026-11-17-a100: Host program/model (exit-only).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-17T23:59:46.623671+00:00`.
 
@@ -763,7 +777,6 @@ model-parallel/tensor-parallel splitting.
 
 
 <!-- execution:end:a100:137_zero_stage_memory_model.cpp -->
-
 
 <!-- execution:start:h100:137_zero_stage_memory_model.cpp -->
 > **Compiled and executed — 2026-11-17-h100: Host program/model (exit-only).** Hardware: 2 H100 GPUs. Execution record UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`.
@@ -834,7 +847,6 @@ model-parallel/tensor-parallel splitting.
 </details>
 <!-- execution:end:h100:137_zero_stage_memory_model.cpp -->
 
-
 **Compile and run:**
 
 ```bash
@@ -843,7 +855,6 @@ g++ -std=c++17 -Wall -Wextra -O2 137_zero_stage_memory_model.cpp -o 137_zero_sta
 ```
 
 **Sample input:** none -- every figure is either Chapter 13's own already-locked constant, the ZeRO paper's own independently-published worked example, or arithmetic derived from both.
-
 
 ## F.4 The Rosetta Stone: A Full Reference Table
 

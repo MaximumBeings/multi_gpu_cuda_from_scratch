@@ -20,6 +20,28 @@
 
 Chapter 2 established that GPUs are wired together in specific, uneven ways. Before this book can move a single byte between two of them, it needs the vocabulary the CUDA Runtime API actually uses to talk about "which device" — because that vocabulary has sharp edges that cause real, well-documented bugs the moment more than one device is involved.
 
+<!-- mgpu:worked:start -->
+## Worked example — Current device does not migrate existing objects
+
+One host thread manages two GPUs. Each buffer contains three FP32 values, so its allocation is 3 × 4 = 12 bytes. Let stream s0 belong to GPU 0 and s1 to GPU 1.
+
+![Numeric worked example: Current device does not migrate existing objects](../images/worked/ch03.svg)
+
+1. Select GPU 0 with cudaSetDevice(0), allocate A and create s0 there; initialize A = [1, 2, 3].
+
+2. Select GPU 1, allocate B and create s1 there; initialize B = [10, 20, 30].
+
+3. Select GPU 0 again and launch a multiply-by-two kernel on A in s0. After appropriate stream synchronization, A = [2, 4, 6].
+
+4. Selecting GPU 1 afterward changes the calling thread’s current device; it does not move A or change the ownership of s0. B remains [10, 20, 30].
+
+**Expected result and pitfall.** The expected output is two independent allocations with different contents. This is an API-ordering walkthrough, not a complete standalone program: allocation error checks, initialization copies and cleanup are required as in the chapter listing.
+
+**Exercise.** Does cudaSetDevice(1) make s0 a GPU 1 stream?
+
+**Worked answer.** No. A stream retains its creating device. Select its owning device when issuing its device-specific work and avoid passing it to a kernel launch on another GPU.
+<!-- mgpu:worked:end -->
+
 ## 3.1 "Current Device" Is a Per-Thread Setting, Not a Global One
 
 <!-- mgpu:figure-1:start -->

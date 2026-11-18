@@ -34,6 +34,29 @@ Chapter 16's stencil sweep:              This chapter's Jacobi solver:
                                              done
 ```
 
+<!-- mgpu:worked:start -->
+## Worked walkthrough — Trace one Jacobi sweep and its stopping decision
+
+[![Trace one Jacobi sweep and its stopping decision: numerical ownership, intermediate values and checks](../images/worked/ch29.svg)](../images/worked/ch29.svg)
+
+This is a hand-computed 1D analogue of the chapter's distributed stencil, not an additional captured GPU run. Let the interior unknowns be `x=[0,0,0,0]`, fixed endpoint values be one and zero, and `b_i=1`. Define the interior matrix `A` by diagonal two and off-diagonal minus one. The fixed left endpoint makes the effective interior right-hand side `[2,1,1,1]`; equivalently the stencil form uses `x_new[i]=(b_i+x_old[i-1]+x_old[i+1])/2`. Rank 0 owns unknowns 1–2; rank 1 owns 3–4. Indices count unknowns; values and norms are dimensionless in this toy system.
+
+1. **Exchange the old interface values.** Rank 0 sends old x2=0 to rank 1; rank 1 sends old x3=0 to rank 0. Boundary values one and zero belong to the fixed physical endpoints, not to another rank.
+2. **Compute into another buffer.** The new vector is `[1,0.5,0.5,0.5]`. For example x1 becomes `(1+1+0)/2=1`, while x2 uses old x1=0 and old x3=0, giving 0.5. Using freshly computed x1 would silently change the method.
+3. **Name the stopping statistic.** The update norm is `sqrt(1+0.25+0.25+0.25)=sqrt(1.75)`. This is not automatically the true residual norm. To evaluate `r=b_effective-A*x_new`, with `b_effective=[2,1,1,1]`, exchange the new interface values first.
+4. **Compute the actual residual.** Using the interior matrix, unknown 1 has `Ax=2*1-0.5=1.5` and effective right-hand side two, giving residual 0.5; at unknown 2, `Ax=1-1-0.5=-0.5` against right-hand side one. The complete residual is `[0.5,1.5,1,0.5]`. Local squared sums are 2.5 and 1.25; a sum all-reduce gives 3.75 and global norm `sqrt(3.75)`.
+5. **Agree before continuing.** Every rank compares the same global statistic with the same tolerance. `MPI_Allreduce` with `MPI_SUM`, or the corresponding supported NCCL sum reduction, combines squared contributions; take the square root afterward. A library call does not choose which statistic your program actually computed.
+
+**Expected check:** both ranks obtain the same stopping norm and the concatenated iterate matches the serial Jacobi sweep. **Pitfall:** accepting rank 1's local norm alone can stop while another partition has a larger residual. Checking every q iterations changes synchronization frequency and may perform extra sweeps; it does not make the unchecked local norm global.
+
+??? question "Exercise: residual after the next sweep"
+
+    Compute the next iterate using only `[1,0.5,0.5,0.5]` as old data.
+
+    **Worked answer:** `[1.25,1.25,1,0.75]`. For unknown 2, `(1+1+0.5)/2=1.25`. Preserve the old/new separation and exchange the appropriate generation before another residual evaluation.
+
+<!-- mgpu:worked:end -->
+
 ## 29.1 The Update Step: Chapter 16's Halo Exchange, Unchanged
 
 <!-- mgpu:figure-1:start -->
@@ -286,7 +309,6 @@ P      grid EXACT match?    residual norm (per-rank sums) norm match?
 
 <!-- execution:end:h100-rerun:84_distributed_jacobi_correctness_simulation.cpp -->
 
-
 <!-- execution:start:a100:84_distributed_jacobi_correctness_simulation.cpp -->
 > **Compiled and executed — 2026-11-17-a100: Host program/model (exit-only).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:05:27.272809+00:00`.
 
@@ -319,7 +341,6 @@ P      grid EXACT match?    residual norm (per-rank sums) norm match?
 
 <!-- execution:end:a100:84_distributed_jacobi_correctness_simulation.cpp -->
 
-
 <!-- execution:start:h100:84_distributed_jacobi_correctness_simulation.cpp -->
 > **Compiled and executed — 2026-11-17-h100: Host program/model (exit-only).** Hardware: 2 H100 GPUs. Execution record UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`.
 
@@ -351,7 +372,6 @@ P      grid EXACT match?    residual norm (per-rank sums) norm match?
 
 </details>
 <!-- execution:end:h100:84_distributed_jacobi_correctness_simulation.cpp -->
-
 
 Compile and run:
 
@@ -390,7 +410,7 @@ Single flat pass (reference):        Per-rank partial sums, then combined:
 
 ### Intuition
 
-The halo exchange has a fixed cost per iteration that never depends on how many ranks there are -- each rank only ever has two neighbors, and Chapter 16 already established that. The residual-norm Allreduce is the opposite: every single rank must participate, and for a naive algorithm the number of communication rounds needed grows with the number of ranks. Checking convergence every single iteration means paying that scaling cost every single iteration; checking it less often means paying it less often, at the cost of running a few extra iterations past the point where the solver actually converged.
+The halo exchange has a bounded neighbor count per rank: at most two in this row-strip decomposition. Its measured cost is not independent of rank count: local strip size, message size, contention, topology and synchronization can change as P changes. The residual-norm Allreduce is the opposite: every single rank must participate, and for a naive algorithm the number of communication rounds needed grows with the number of ranks. Checking convergence every single iteration means paying that scaling cost every single iteration; checking it less often means paying it less often, at the cost of running a few extra iterations past the point where the solver actually converged.
 
 ### Background
 
@@ -536,7 +556,6 @@ The reduction factor is exactly K, by construction -- the same shape as Chapter 
 
 <!-- execution:end:h100-rerun:85_allreduce_check_frequency_cost_model.cpp -->
 
-
 <!-- execution:start:a100:85_allreduce_check_frequency_cost_model.cpp -->
 > **Compiled and executed — 2026-11-17-a100: Host program/model (exit-only).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:05:27.495466+00:00`.
 
@@ -586,7 +605,6 @@ The reduction factor is exactly K, by construction -- the same shape as Chapter 
 
 <!-- execution:end:a100:85_allreduce_check_frequency_cost_model.cpp -->
 
-
 <!-- execution:start:h100:85_allreduce_check_frequency_cost_model.cpp -->
 > **Compiled and executed — 2026-11-17-h100: Host program/model (exit-only).** Hardware: 2 H100 GPUs. Execution record UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`.
 
@@ -635,7 +653,6 @@ The reduction factor is exactly K, by construction -- the same shape as Chapter 
 
 </details>
 <!-- execution:end:h100:85_allreduce_check_frequency_cost_model.cpp -->
-
 
 Compile and run:
 
@@ -825,7 +842,6 @@ Naumov, Arsaev, Castonguay, Cohen, Demouth, Eaton, Layton, Markovskiy, Reguly, S
 
 <!-- execution:end:h100-rerun:86_jacobi_convergence_rate_model.cpp -->
 
-
 <!-- execution:start:a100:86_jacobi_convergence_rate_model.cpp -->
 > **Compiled and executed — 2026-11-17-a100: Host program/model (exit-only).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:05:27.716552+00:00`.
 
@@ -870,7 +886,6 @@ Naumov, Arsaev, Castonguay, Cohen, Demouth, Eaton, Layton, Markovskiy, Reguly, S
 
 
 <!-- execution:end:a100:86_jacobi_convergence_rate_model.cpp -->
-
 
 <!-- execution:start:h100:86_jacobi_convergence_rate_model.cpp -->
 > **Compiled and executed — 2026-11-17-h100: Host program/model (exit-only).** Hardware: 2 H100 GPUs. Execution record UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`.
@@ -917,7 +932,6 @@ Naumov, Arsaev, Castonguay, Cohen, Demouth, Eaton, Layton, Markovskiy, Reguly, S
 </details>
 <!-- execution:end:h100:86_jacobi_convergence_rate_model.cpp -->
 
-
 Compile and run:
 
 ```text
@@ -963,7 +977,7 @@ Jacobi's own real slowness (Demmel):        What production solvers actually do:
 
 ## Chapter Summary
 
-Distributed Jacobi combines two ingredients this book already built separately: Chapter 16's fixed-neighbor halo exchange for the local update step, verified in Section 29.1 to still be bit-exact across every partition tested, and a global residual-norm Allreduce -- the first genuinely new requirement an *iterative solver* adds on top of a fixed-step stencil sweep. Section 29.1 showed that the update step's exactness does not automatically extend to the reduction: summing the residual as P separate partial sums, then combining them, produced a real one-bit mismatch against a single flat pass, for the non-associativity reason Chapter 8 cautioned about -- a genuine, verified instance of that caution in this book. Section 29.2 quantified the reduction's real cost using Chapter 9's round-count model and Chapter 11's ring-vs-tree contrast, and showed -- using NVIDIA's own real `-nccheck` tunable and PETSc's own real statement about large-P reduction cost -- that checking convergence every K iterations divides the reduction's total overhead by K. Section 29.3 closed with the Jacobi convergence rate from Demmel's notes (about 2 ln2 ((n+1)/pi)^2 iterations per halving of the error), showing Jacobi's O(N^2) serial complexity makes it impractical at production grid sizes, and pointed to NVIDIA's own real AmgX library as a production successor that reuses this exact communication pattern around a faster-converging method.
+Distributed Jacobi combines two ingredients this book already built separately: Chapter 16's fixed-neighbor halo exchange for the local update step, verified in Section 29.1 to still be bit-exact across every partition tested, and a global residual-norm Allreduce -- the first genuinely new requirement an *iterative solver* adds on top of a fixed-step stencil sweep. Section 29.1 showed that the update step's exactness does not automatically extend to the reduction: summing the residual as P separate partial sums, then combining them, produced a real one-bit mismatch against a single flat pass, for the non-associativity reason Chapter 8 cautioned about -- a genuine, verified instance of that caution in this book. Section 29.2 quantified the reduction's real cost using Chapter 9's round-count model and Chapter 11's ring-vs-tree contrast, and showed -- using NVIDIA's own real `-nccheck` tunable and PETSc's own real statement about large-P reduction cost -- that checking convergence every K iterations divides the number of scheduled checks by approximately K for a fixed iteration count. Section 29.3 closed with the Jacobi convergence rate from Demmel's notes (about 2 ln2 ((n+1)/pi)^2 iterations per halving of the error), showing Jacobi's O(N^2) serial complexity makes it impractical at production grid sizes, and pointed to NVIDIA's own real AmgX library as a production successor that reuses this exact communication pattern around a faster-converging method.
 
 ## Self-Check Questions
 

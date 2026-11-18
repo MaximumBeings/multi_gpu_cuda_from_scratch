@@ -26,6 +26,30 @@ MPI supplies independent operating-system processes and explicit rank identities
 The [2026-11-17 H100 execution record](../validation-h100.md) covers two GPUs connected by local NV18. It distinguishes numerical checks, API probes and other executions; a successful exit alone does not establish GPU algorithm correctness.
 
 
+<!-- mgpu:worked:start -->
+
+## Worked example — Match every edge of a three-rank ring
+
+Use ranks 0,1,2, each sending two host integers to its successor. Outgoing buffers are [10,11], [20,21] and [30,31]. Keep receive buffers separate.
+
+1. At rank r, next=(r+1)%3 and previous=(r+2)%3. Rank 0 sends to 1 and receives from 2.
+
+2. Rank 1 sends to 2 and receives from 0; rank 2 sends to 0 and receives from 1. Use count 2, MPI_INT and matching tag 7 in MPI_Sendrecv.
+
+3. The completed receives must be rank 0:[30,31], rank 1:[10,11], rank 2:[20,21]. Validate every element before reusing buffers.
+
+![Numeric worked example: Match every edge of a three-rank ring](../images/worked/ch20.svg)
+
+**API connection and scope.** MPI_Sendrecv expresses the paired exchange without depending on eager buffering. This host-buffer trace does not demonstrate CUDA-aware MPI or RDMA. Passing a device pointer requires a supporting MPI stack; otherwise use explicit staging and wait for device copies before MPI consumes their host buffers.
+
+**Expected check and pitfall.** World rank is not a CUDA ordinal. CUDA_VISIBLE_DEVICES renumbers visible devices. An all-node-GPUs-visible one-process-per-GPU launch can select a valid local rank; a launcher exposing only one GPU to each process requires visible device 0. The recorded MPI example uses its stated localRank%device_count policy; check the launch mapping independently.
+
+??? question "Guided exercise: Which rank and values must rank 1 receive?"
+
+    **Worked answer.** Its predecessor is rank 0, so [10,11]. Asking to receive from its successor instead changes matching and can leave the protocol waiting indefinitely.
+
+<!-- mgpu:worked:end -->
+
 ## 20.1 MPI Basics, Built From Scratch: Init, Rank, Size, and a Real Point-to-Point Ring
 
 <!-- mgpu:figure-1:start -->

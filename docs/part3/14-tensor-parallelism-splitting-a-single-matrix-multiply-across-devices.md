@@ -43,6 +43,28 @@ Tensor parallelism, ONE MLP block, 2 devices:
          Z = Z0 + Z1  (the block's real output)
 ```
 
+<!-- mgpu:worked:start -->
+## Worked example — Add a replicated bias after reducing partial outputs
+
+Use X = [1, 2]. The first weight matrix has rows [1, 2, 3, 4] and [5, 6, 7, 8]. Split its columns evenly across two ranks. A second matrix has rows [1, 0], [0, 1], [1, 1], [2, 1], split by corresponding input rows.
+
+![Numeric worked example: Add a replicated bias after reducing partial outputs](../images/worked/ch14.svg)
+
+1. Column-parallel first multiplication gives rank 0 values [11, 14] and rank 1 values [17, 20]: for example 1×1 + 2×5 = 11.
+
+2. For the second multiplication, rank 0 uses its local two activations and first two weight rows: [11, 14]. Rank 1 computes [17, 20] × [[1, 1], [2, 1]] = [57, 37].
+
+3. All-reduce SUM the two-element partial outputs: [11, 14] + [57, 37] = [68, 51]. Each partial is two FP32 elements, 8 bytes.
+
+4. Add the replicated bias b = [1, −1] once after reduction: [69, 50]. If both ranks add b before SUM, the result is [70, 49], incorrectly counting the bias twice.
+
+**Expected result and pitfall.** The expected final output is [69, 50]. “Column” and “row” describe this chapter’s XW mathematical convention, not a blanket rule about physical storage layout. Match each shard’s dimensions before selecting a collective.
+
+**Exercise.** Can ReLU always be applied to each second-layer partial before SUM?
+
+**Worked answer.** No. In general ReLU(a) + ReLU(b) differs from ReLU(a + b). Reduce contributions first, then apply an activation that belongs to the combined output.
+<!-- mgpu:worked:end -->
+
 ## 14.1 Column-Parallel Linear Layers: Splitting the Output, No Communication Needed
 
 <!-- mgpu:figure-1:start -->
@@ -808,7 +830,7 @@ Chapter 15 returns to a cost this book has named twice now but never quantified:
 
 **5.** The first test input, `(1.00, 2.00)`, produced the non-bit-identical result -- its second output component was `2.3700000000000001` in the unsplit reference versus `2.3699999999999997` in the tensor-parallel version. This happened because the row-parallel combine step computes `(partial_rank0 + partial_rank1)`, summing two already-summed partial dot products, while the unsplit reference computes one accumulator that adds all four terms in a single, uninterrupted sequence -- a different grouping of the same four real-number terms, which IEEE 754 floating-point arithmetic does not guarantee will round to the identical bit pattern.
 
-**6.** Chapter 13's guarantee is structurally stronger: it is unconditional, because a layer-wise split only ever *relocates* a strictly sequential chain of operations, never regrouping or reordering any of them, so there is nothing for floating-point rounding to catch. This chapter's row-parallel combine step is a genuine summation of independently-computed partial results -- structurally the same category of operation as Chapter 8's reduce -- so it inherits reduce's weaker, checked-not-assumed guarantee: correct to within floating-point rounding, but not bit-identical in general, exactly as Section 14.3's own Sample output demonstrated.
+**6.** Chapter 13's exact-equality result applies to its unchanged scalar layer function, operation order and representations. Merely moving a layer boundary does not regroup that function's arithmetic in that model. A real implementation may select another GEMM kernel, precision, contraction policy or fusion when device/shape changes, so layer-wise distribution alone is not an unconditional bit-identity guarantee. This chapter's row-parallel combination explicitly regroups partial sums even with the same scalar arithmetic and therefore has an additional source of floating-point differences. Validate each implementation against its stated numerical criterion.
 
 **7.** A naive design has no reason to know that Section 14.1's nonlinearity commutes with a column split -- treated as two independent matrix multiplies, each one's result would need to be reassembled into a full, correct tensor before the next operation could safely run, requiring one synchronizing collective after GEMM 1 and a second after GEMM 2. Megatron-LM's design specifically arranges the split (column then matching row) so that the intermediate result after GEMM 1 never needs to be reassembled at all -- every device already has everything it needs for GEMM 2 -- collapsing the requirement to a single collective after GEMM 2 alone.
 

@@ -24,6 +24,29 @@ Chapter 30's rendering case:              This chapter's Monte Carlo case:
                                                     into one statistic)
 ```
 
+<!-- mgpu:worked:start -->
+## Worked walkthrough — Combine path summaries and expose what they omit
+
+[![Combine path summaries and expose what they omit: numerical ownership, intermediate values and checks](../images/worked/ch31.svg)](../images/worked/ch31.svg)
+
+Use two fixed path partitions with terminal losses `[1,3]` and `[5,7]`, in arbitrary monetary units. No random generator or GPU workload is executed by this calculation. For each partition define count n, mean mu and `M2=sum((loss-mu)^2)`, the unnormalized centered second moment.
+
+1. **Form local summaries.** Rank 0 has `(n,mu,M2)=(2,2,2)`; rank 1 has `(2,6,2)`. Its two deviations are minus one and plus one, so each local M2 is two.
+2. **Combine with the mean difference.** Delta is `6-2=4`; combined count is four. The merged mean is `2+4*(2/4)=4`. The correction to M2 is `delta^2*n0*n1/n=16*4/4=16`, yielding `M2=2+2+16=20`.
+3. **Declare the denominator.** Population variance is `20/4=5`; unbiased sample variance is `20/(4-1)=20/3`. They answer different questions. A sum of local variances without the between-partition correction would be wrong.
+4. **Keep count and representation explicit.** Three logical fields summarize mean and variance; an actual serialized tuple's byte count depends on integer/float widths and padding. A custom MPI reduction must implement the merge and its identity correctly, not sum three fields independently. Empty partitions need a defined n=0 identity to avoid division by zero.
+5. **Ask for a percentile.** Under the declared nearest-rank convention, empirical 75th-percentile loss is sorted entry `ceil(0.75*4)=3`, namely five. Mean and M2 do not determine that order statistic. Gathered samples, a distributed selection or a declared approximation are different communication contracts.
+
+**Expected check:** the merged mean/M2 equal the direct serial calculation on `[1,3,5,7]`. Floating-point merges can still differ by grouping; the exact small integers here do not predict production error or a risk estimate's economic adequacy. Repartitioning must also retain unique global path/RNG identities.
+
+??? question "Exercise: add an empty worker"
+
+    A third rank owns zero paths. What should happen to the summary and percentile input?
+
+    **Worked answer:** its merge identity leaves `(4,4,20)` unchanged and contributes no samples to selection. Do not compute an empty rank's mean by dividing zero by zero or treat a placeholder zero as an observed loss.
+
+<!-- mgpu:worked:end -->
+
 ## 31.1 Independent Paths, One Real Reduction
 
 <!-- mgpu:figure-1:start -->
@@ -212,7 +235,6 @@ Every combined count matches exactly (integer payoff sums are exactly associativ
 
 <!-- execution:end:h100-rerun:90_independent_path_correctness_simulation.cpp -->
 
-
 <!-- execution:start:a100:90_independent_path_correctness_simulation.cpp -->
 > **Compiled and executed — 2026-11-17-a100: Host program/model (exit-only).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:05:28.752219+00:00`.
 
@@ -247,7 +269,6 @@ Every combined count matches exactly (integer payoff sums are exactly associativ
 
 
 <!-- execution:end:a100:90_independent_path_correctness_simulation.cpp -->
-
 
 <!-- execution:start:h100:90_independent_path_correctness_simulation.cpp -->
 > **Compiled and executed — 2026-11-17-h100: Host program/model (exit-only).** Hardware: 2 H100 GPUs. Execution record UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`.
@@ -284,7 +305,6 @@ Every combined count matches exactly (integer payoff sums are exactly associativ
 </details>
 <!-- execution:end:h100:90_independent_path_correctness_simulation.cpp -->
 
-
 Compile and run:
 
 ```text
@@ -320,11 +340,11 @@ Integer sums (count, raw payoff totals):     Floating-point mean and M2:
 
 ### Intuition
 
-Section 31.1 showed each rank generating its own paths with no coordination needed. That is not automatic in every random number generator design -- a naive sequential generator keeps internal state that advances one draw at a time, so handing two different GPUs two different *ranges* of that same sequence would require one GPU to know exactly how many numbers the other has already consumed. A counter-based generator sidesteps this entirely: each stream is addressed directly by an index, the way an array is addressed by a subscript, with no dependency on anyone else's progress.
+Section 31.1 showed each rank generating its own paths with no coordination needed. That is not automatic in every random number generator design -- a naive sequential generator keeps internal state that advances one draw at a time, so handing two different GPUs two different *ranges* of that same sequence would require a partitioning policy for draw ranges; skip-ahead or independently initialized supported substreams can avoid runtime coordination even for stateful generators. A counter-based generator sidesteps this entirely: each stream is addressed directly by an index, the way an array is addressed by a subscript, with no dependency on anyone else's progress.
 
 ### Background
 
-NVIDIA's own real cuRAND documentation confirms this design choice directly: "CURAND_RNG_PSEUDO_PHILOX4_32_10 is a member of Philox family, which is one of the three non-cryptographic Counter Based Random Number Generators," and its device-API guidance (given in the section on the XORWOW and MRG32k3a generators, and resting on the same subsequence/offset mechanism Philox exposes) states plainly that "each thread of computation should be assigned a unique sequence number" -- nothing more is needed for independence. This section's model also asks a sharper question than Section 31.1 did: holding the same eight-way partition and the same eight per-rank partial statistics fixed, does the *shape* of the final reduction -- a sequential fold (a chain: rank 0, then 1, then 2, ...) versus a tree fold (Chapter 11's tree shape) -- change the result, even when both use the identical real Chan et al. formula at every combination step?
+NVIDIA's own real cuRAND documentation confirms this design choice directly: "CURAND_RNG_PSEUDO_PHILOX4_32_10 is a member of Philox family, which is one of the three non-cryptographic Counter Based Random Number Generators," and its device-API guidance (given in the section on the XORWOW and MRG32k3a generators, and resting on the same subsequence/offset mechanism Philox exposes) states plainly that "each thread of computation should be assigned a unique sequence number"; the generator, seed, subsequence and offset policy must still prevent overlapping draw ranges. A unique thread ID is an addressing rule, not a universal proof of statistical independence. This section's model also asks a sharper question than Section 31.1 did: holding the same eight-way partition and the same eight per-rank partial statistics fixed, does the *shape* of the final reduction -- a sequential fold (a chain: rank 0, then 1, then 2, ...) versus a tree fold (Chapter 11's tree shape) -- change the result, even when both use the identical real Chan et al. formula at every combination step?
 
 ```cpp
 // Chapter 31: Multi-GPU Monte Carlo Risk Simulation
@@ -495,7 +515,6 @@ The mean matches; the M2 does NOT. Both reductions combine the exact SAME 8 part
 
 <!-- execution:end:h100-rerun:91_rng_independence_and_reduction_topology_model.cpp -->
 
-
 <!-- execution:start:a100:91_rng_independence_and_reduction_topology_model.cpp -->
 > **Compiled and executed — 2026-11-17-a100: Host program/model (exit-only).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:05:29.175502+00:00`.
 
@@ -531,7 +550,6 @@ The mean matches; the M2 does NOT. Both reductions combine the exact SAME 8 part
 
 <!-- execution:end:a100:91_rng_independence_and_reduction_topology_model.cpp -->
 
-
 <!-- execution:start:h100:91_rng_independence_and_reduction_topology_model.cpp -->
 > **Compiled and executed — 2026-11-17-h100: Host program/model (exit-only).** Hardware: 2 H100 GPUs. Execution record UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`.
 
@@ -566,7 +584,6 @@ The mean matches; the M2 does NOT. Both reductions combine the exact SAME 8 part
 
 </details>
 <!-- execution:end:h100:91_rng_independence_and_reduction_topology_model.cpp -->
-
 
 Compile and run:
 
@@ -612,7 +629,7 @@ A mean and a variance can be reconstructed from a handful of summary numbers per
 
 ### Background
 
-The Basel Committee on Banking Supervision's own real 1996 market-risk amendment states the industry-standard requirement plainly: "'value-at-risk' be computed daily, using a 99th percentile, one-tailed confidence interval." Philippe Jorion's own real textbook definition puts the intuition in one sentence: VaR "summarizes the worst loss over a target horizon with a given level of confidence." This section shows exactly why Chan et al.'s own real (count, mean, M2) combination -- the technique that worked cleanly in Section 31.1 -- cannot produce this number, and what it costs to get an exact one instead.
+The Basel Committee on Banking Supervision's historical 1996 market-risk amendment specified a VaR requirement: "'value-at-risk' be computed daily, using a 99th percentile, one-tailed confidence interval." Philippe Jorion's own real textbook definition puts the intuition in one sentence: VaR "summarizes the worst loss over a target horizon with a given level of confidence." This section shows exactly why Chan et al.'s own real (count, mean, M2) combination -- the technique that worked cleanly in Section 31.1 -- cannot produce this number, and what it costs to get an exact one instead.
 
 ```cpp
 // Chapter 31: Multi-GPU Monte Carlo Risk Simulation
@@ -755,7 +772,6 @@ Every rank's own message size for the MEAN/VARIANCE path stays at 3 values, alwa
 
 <!-- execution:end:h100-rerun:92_var_percentile_and_allgather_cost_model.cpp -->
 
-
 <!-- execution:start:a100:92_var_percentile_and_allgather_cost_model.cpp -->
 > **Compiled and executed — 2026-11-17-a100: Host program/model (exit-only).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:05:29.548888+00:00`.
 
@@ -793,7 +809,6 @@ Every rank's own message size for the MEAN/VARIANCE path stays at 3 values, alwa
 
 
 <!-- execution:end:a100:92_var_percentile_and_allgather_cost_model.cpp -->
-
 
 <!-- execution:start:h100:92_var_percentile_and_allgather_cost_model.cpp -->
 > **Compiled and executed — 2026-11-17-h100: Host program/model (exit-only).** Hardware: 2 H100 GPUs. Execution record UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`.
@@ -833,7 +848,6 @@ Every rank's own message size for the MEAN/VARIANCE path stays at 3 values, alwa
 </details>
 <!-- execution:end:h100:92_var_percentile_and_allgather_cost_model.cpp -->
 
-
 Compile and run:
 
 ```text
@@ -855,7 +869,7 @@ P        Chan et al.: values/rank     exact VaR: values/rank (gather) VaR_99 EXA
 Every rank's own message size for the MEAN/VARIANCE path stays at 3 values, always -- but an EXACT VaR needs each rank to contribute its full local share of the dataset (N/P values per rank) to a gather step, because only the full sorted set determines which value sits at the 99th percentile. Real production systems facing this exact tradeoff at genuinely large scale use approximate streaming-percentile techniques (e.g., t-digest-style sketches) specifically to avoid gathering every raw value -- an extension this chapter's own exact gather model does not build, but names honestly as the real next step production systems take.
 ```
 
-The VaR values themselves match exactly at every P, because sorting integers and picking an index is exact -- there is no floating-point concern in this section at all. The real point is the *message-size column*: Chan et al.'s combination needs only 3 numbers per rank regardless of how much data that rank has, while the exact VaR computation needs every single one of that rank's N/P raw values. That is the same qualitative jump this book has seen before -- Chapter 24's SUMMA needed only broadcasts of matrix blocks, not the whole matrix, while Chapter 27's N-body simulation genuinely needed every body's full data every step. A mean and a variance are the SUMMA case; an exact percentile is the N-body case.
+The VaR values themselves match exactly at every P, because sorting integers and picking an index is exact -- there is no floating-point concern in this section at all. The real point is the *message-size column*: Chan et al.'s combination needs only 3 numbers per rank regardless of how much data that rank has, while the gather-based exact VaR example sends every local raw value. This is a property of that algorithm, not a lower bound requiring a gather for all exact quantile algorithms: distributed selection can count values relative to pivots and narrow the target rank without centralizing every sample. The example therefore contrasts a constant-size moment summary with a full-sample gather. It does not establish the traffic or synchronization cost of a different exact-selection algorithm.
 
 ```text
 Chan et al. (mean, variance):              Exact percentile (VaR):
@@ -867,11 +881,13 @@ Chan et al. (mean, variance):              Exact percentile (VaR):
 ```
 
 !!! warning "[COMMON TRAP] Assuming any 'aggregate statistic' can be combined as cheaply as a mean"
-    Section 31.1's clean result -- a small, fixed-size summary per rank producing an exact global mean -- can tempt the assumption that any final risk number will be similarly cheap to combine. Percentiles genuinely are not: unlike a sum or a count, there is no fixed-size summary that determines a percentile of a combined dataset without knowing the relative order of the individual values. Before assuming a new risk metric can reuse Section 31.1's approach, check whether it is a *summable* statistic (mean, variance, total exposure) or an *order-dependent* one (any percentile, including VaR) -- the communication cost differs by orders of magnitude between the two.
+    Section 31.1's small fixed-size summary per rank can produce a global mean subject to floating-point rounding; this can tempt the assumption that any final risk number will be similarly cheap to combine. Percentiles genuinely are not: unlike a sum or a count, an arbitrary exact percentile is not determined by the fixed (count,mean,M2) tuple. An exact bounded-domain histogram, distributed selection or a gather are different possible contracts; an approximate sketch trades accuracy for storage and communication. Before assuming a new risk metric can reuse Section 31.1's approach, check whether it is a *summable* statistic (mean, variance, total exposure) or an *order-dependent* one (any percentile, including VaR) -- the required representation and communication algorithm must be chosen for the statistic; the cost ratio depends on dataset size, domain and implementation.
+
+**Interpreting the captured model.** The older captured output and ASCII use a gather of all raw samples for exact VaR. That is the chosen model implementation, not a mathematical requirement that all exact percentiles gather every value. A distributed selection protocol or a bounded-domain histogram can have a different communication contract.
 
 ## Chapter Summary
 
-Monte Carlo risk simulation sits between Chapter 30's zero-reduction rendering case and every earlier Part 6 chapter's per-step communication requirement: its individual simulation paths are as independent as Chapter 30's pixels, but its whole purpose is a final reduction Chapter 30 never needed. Section 31.1 showed that reduction done correctly for a mean and variance, using Chan, Golub & LeVeque's own real pairwise formula, needing only 3 numbers per rank -- and found a real, tiny floating-point mismatch in the combined variance once more than one rank was involved, for the reasons Chapter 8 cautioned about and Chapter 29 also observed -- with the twist that the single-process reference, not the distributed result, was the one further from the exact value. Section 31.2 sharpened that finding: holding the same partition fixed and varying only the shape of the final reduction (sequential fold versus tree fold) produced a different variance too, showing that reduction topology, not just partitioning, affects a floating-point result -- and grounded the chapter's independence claim in NVIDIA's own real cuRAND Philox counter-based generator design. Section 31.3 closed with the real limit: Basel's own real 99th-percentile Value-at-Risk standard cannot be reconstructed from Chan et al.'s small summary at all, requiring every rank's full share of raw data in a gather instead (an all-gather, Chapter 10 and Chapter 27's pattern, only if every rank needs the answer) rather than Section 31.1's cheap summary.
+Monte Carlo risk simulation sits between Chapter 30's zero-reduction rendering case and every earlier Part 6 chapter's per-step communication requirement: its individual simulation paths are as independent as Chapter 30's pixels, but its whole purpose is a final reduction Chapter 30 never needed. Section 31.1 showed that reduction done correctly for a mean and variance, using Chan, Golub & LeVeque's own real pairwise formula, needing only 3 numbers per rank -- and found a real, tiny floating-point mismatch in the combined variance once more than one rank was involved, for the reasons Chapter 8 cautioned about and Chapter 29 also observed -- with the twist that the single-process reference, not the distributed result, was the one further from the exact value. Section 31.2 sharpened that finding: holding the same partition fixed and varying only the shape of the final reduction (sequential fold versus tree fold) produced a different variance too, showing that reduction topology, not just partitioning, affects a floating-point result -- and grounded the chapter's independence claim in NVIDIA's own real cuRAND Philox counter-based generator design. Section 31.3 closed with the real limit: the cited historical 99th-percentile Value-at-Risk convention cannot be reconstructed from Chan et al.'s small summary at all, using every rank's full share of raw data in this gather implementation instead (an all-gather, Chapter 10 and Chapter 27's pattern, only if every rank needs the answer) rather than Section 31.1's cheap summary.
 
 ## Self-Check Questions
 
@@ -891,13 +907,13 @@ Chapter 31 closes Part 6's eight-chapter case-study arc. Part 7, "Cutting-Edge I
 ## Worked Solutions
 
 1. Integer addition is exactly associative as long as no overflow occurs, so summing the same 24 integer payoffs in any grouping always produces the identical total, and therefore the identical count. Computing M2 requires first dividing by a count to get a mean (a floating-point operation) and then summing squared floating-point differences; floating-point addition is not associative, and the distributed path uses a different formula (Chan et al.'s pairwise combination) from the reference's single two-pass loop, so the two can and did round differently in the last few digits. (Checked against the exact rational value, it is the two-pass reference that is 3 ulp off; the distributed results are mostly correctly rounded.)
-2. cuRAND's Philox family is counter-based: a stream is addressed directly by a subsequence/offset value derived from a thread's own unique sequence number, so any thread can jump straight to its own portion of the sequence without needing any information about another thread's progress. A naive stateful sequential generator instead advances one draw at a time from shared internal state, so a second GPU wanting a non-overlapping range of the same sequence would need to know exactly how many draws an earlier GPU had already consumed.
+2. cuRAND's Philox family is counter-based: a stream is addressed directly by a subsequence/offset value derived from a thread's own unique sequence number, so any thread can jump straight to its own portion of the sequence without needing any information about another thread's progress. A naive stateful sequential generator instead advances one draw at a time from shared internal state, so a second GPU wanting a non-overlapping range of the same sequence can use a predefined skip-ahead/substream policy where supported; sharing one unpartitioned mutable state would instead require coordination. Counter-based addressing makes global path/draw identities especially convenient, but does not remove the need to avoid draw-range collisions.
 3. The experiment held the P=8 partition (the same eight groups of paths) and the per-rank partial (count, mean, M2) statistics exactly fixed, and used the identical real Chan et al. pairwise formula at every single combination step in both cases. The one thing that differed was the order and grouping in which those eight partial results were folded together -- sequentially (fold one at a time) versus as a tree (pair up and combine, repeatedly).
 4. Because the tree shape and the sequential shape were shown to produce different final M2 values from the identical inputs and the identical combination formula, switching between them for a performance reason (fewer communication rounds) has a side effect that has nothing to do with speed: it can shift which floating-point bit pattern comes out of the reduction, which shows up as a small change in a reported statistic's last few digits.
 5. A mean and a variance are themselves summary statistics built from a count, a sum, and a sum of squared deviations -- quantities that can be combined algebraically from smaller groups' own summaries without needing to revisit the original data. A percentile is defined by the relative ORDER of every individual value in the combined dataset (how many values fall below a threshold), and no fixed-size summary of a group can capture that ordering information about values it doesn't fully contain.
 6. Chan et al.'s own mean/variance combination needs exactly 3 numbers (count, mean, M2) from each rank, regardless of how many paths that rank ran -- a message size that stays constant as P grows. Section 31.3's own exact VaR computation needs each rank to contribute its full local share of raw values (N/P values per rank) to a gather step, so the total data moved does not shrink with P the way Chan et al.'s summary does; only each individual rank's share shrinks.
 7. Section 31.3 names approximate streaming-percentile techniques, for example t-digest-style sketches, as the real production approach for computing an approximate percentile at large scale without gathering every raw simulated value.
-8. Chapter 30's rendering case needed zero communication and no reduction at all; every earlier Part 6 chapter needed communication at every computational step. This chapter's Monte Carlo simulation needs zero communication DURING path simulation (like Chapter 30), but always ends in a real reduction (unlike Chapter 30) -- placing it between the two extremes, with the reduction's own cost ranging from Chapter 24-style cheap summaries (mean/variance) to Chapter 27-style full-data requirements (an exact percentile), depending on which statistic is actually needed.
+8. Chapter 30's rendering case needed zero communication and no reduction at all; every earlier Part 6 chapter needed communication at every computational step. This chapter's Monte Carlo simulation needs zero communication DURING path simulation (like Chapter 30), but always ends in a real reduction (unlike Chapter 30) -- placing it between the two extremes, with the reduction's own cost ranging from Chapter 24-style cheap summaries (mean/variance) to this example's full-data gather (one exact-percentile implementation), depending on which statistic is actually needed.
 
 ---
 

@@ -27,6 +27,29 @@ Every parallelization strategy this book has built so far -- data, model, tensor
 +------------------------------------------------------------------+
 ```
 
+<!-- mgpu:worked:start -->
+## Worked walkthrough — Trace embedding requests back to their sample owners
+
+[![Trace embedding requests back to their sample owners: numerical ownership, intermediate values and checks](../images/worked/ch34.svg)](../images/worked/ch34.svg)
+
+This is a row-sharded embedding lookup model, not a captured HugeCTR training run. A table has eight rows, embedding width D=4 and FP32 elements. Rank 0 owns IDs 0–3; rank 1 owns 4–7. Sample-owner rank 0 requests IDs `[1,6]`; rank 1 requests `[2,7]`.
+
+1. **Calculate table capacity.** The full table is `8*4*4=128` bytes; each row shard stores 64 bytes of weights. Optimizer state, gradients, cache and communication buffers are excluded. Half the weights does not mean half the full training memory.
+2. **Partition requests by owner.** Rank 0 serves local ID 1 and sends ID 6 to rank 1. Rank 1 serves local ID 7 and sends ID 2 to rank 0. Each lookup retains its sample and feature-slot identity.
+3. **Return vectors, not reduced scalars.** Each embedding is `4*4=16` bytes. Two remote lookups return 32 payload bytes total. Request IDs consume additional bytes according to their actual integer type. A sum all-reduce would combine values rather than route the requested rows and is the wrong semantic operation.
+4. **Restore order.** For a toy table `E[id,j]=10*id+j`, rank 0's assembled vectors are `[10,11,12,13]` then `[60,61,62,63]`. They remain in input feature-slot order even if the remote response completes first.
+5. **Reverse the training dependency.** Backward gradients must reach the owners of their embedding rows. Duplicate IDs may require accumulation rather than a last-writer store. If ID 6 appears twice with gradient vectors of ones and twos, its total gradient is threes in every component under sum semantics.
+
+**Expected check:** assembled rows and their sample positions match a direct lookup; row-owner updates match the declared reduction and optimizer. Deduplicating remote reads can reduce payload, but only if reconstruction retains multiplicity and backward accumulation. Row sharding here is one ownership policy, not a claim that all HugeCTR deployments shard every table identically.
+
+??? question "Exercise: one more duplicate request"
+
+    Rank 0 requests ID 6 twice. With read deduplication, how many remote vector bytes are needed and how many result slots must be filled?
+
+    **Worked answer:** one sixteen-byte vector can fill two logical result slots. Backward still combines two gradient contributions; suppressing the second contribution would change training.
+
+<!-- mgpu:worked:end -->
+
 ## 34.1 Why Recommendation Models Need Both Data and Model Parallelism
 
 <!-- mgpu:figure-1:start -->
@@ -167,7 +190,6 @@ These GPU counts are LOWER bounds: they assume the whole 80 GB of every GPU hold
 
 <!-- execution:end:h100-rerun:99_embedding_capacity_and_parallelism_choice_model.cpp -->
 
-
 <!-- execution:start:a100:99_embedding_capacity_and_parallelism_choice_model.cpp -->
 > **Compiled and executed — 2026-11-17-a100: Host program/model (exit-only).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:06:18.303890+00:00`.
 
@@ -200,7 +222,6 @@ These GPU counts are LOWER bounds: they assume the whole 80 GB of every GPU hold
 
 <!-- execution:end:a100:99_embedding_capacity_and_parallelism_choice_model.cpp -->
 
-
 <!-- execution:start:h100:99_embedding_capacity_and_parallelism_choice_model.cpp -->
 > **Compiled and executed — 2026-11-17-h100: Host program/model (exit-only).** Hardware: 2 H100 GPUs. Execution record UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`.
 
@@ -232,7 +253,6 @@ These GPU counts are LOWER bounds: they assume the whole 80 GB of every GPU hold
 
 </details>
 <!-- execution:end:h100:99_embedding_capacity_and_parallelism_choice_model.cpp -->
-
 
 Compile and run (a plain host `.cpp` file with no CUDA/NCCL/MPI/NVSHMEM linkage, executed on the recorded H100 and A100 hosts):
 
@@ -472,7 +492,6 @@ The correct unpacker reproduces every sample's feature vector at every P, and th
 
 <!-- execution:end:h100-rerun:100_embedding_alltoall_resharding_correctness_simulation.cpp -->
 
-
 <!-- execution:start:a100:100_embedding_alltoall_resharding_correctness_simulation.cpp -->
 > **Compiled and executed — 2026-11-17-a100: Host program/model (exit-only).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:05:30.022415+00:00`.
 
@@ -506,7 +525,6 @@ The correct unpacker reproduces every sample's feature vector at every P, and th
 
 <!-- execution:end:a100:100_embedding_alltoall_resharding_correctness_simulation.cpp -->
 
-
 <!-- execution:start:h100:100_embedding_alltoall_resharding_correctness_simulation.cpp -->
 > **Compiled and executed — 2026-11-17-h100: Host program/model (exit-only).** Hardware: 2 H100 GPUs. Execution record UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`.
 
@@ -539,7 +557,6 @@ The correct unpacker reproduces every sample's feature vector at every P, and th
 
 </details>
 <!-- execution:end:h100:100_embedding_alltoall_resharding_correctness_simulation.cpp -->
-
 
 Compile and run (plain host `.cpp`, executed on the recorded H100 and A100 hosts):
 
@@ -678,7 +695,6 @@ Two different quantities, two different trends. The FRACTION of the per-step pay
 
 <!-- execution:end:h100-rerun:101_embedding_alltoall_comm_volume_cost_model.cpp -->
 
-
 <!-- execution:start:a100:101_embedding_alltoall_comm_volume_cost_model.cpp -->
 > **Compiled and executed — 2026-11-17-a100: Host program/model (exit-only).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:05:30.145560+00:00`.
 
@@ -713,7 +729,6 @@ Two different quantities, two different trends. The FRACTION of the per-step pay
 
 
 <!-- execution:end:a100:101_embedding_alltoall_comm_volume_cost_model.cpp -->
-
 
 <!-- execution:start:h100:101_embedding_alltoall_comm_volume_cost_model.cpp -->
 > **Compiled and executed — 2026-11-17-h100: Host program/model (exit-only).** Hardware: 2 H100 GPUs. Execution record UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`.
@@ -750,7 +765,6 @@ Two different quantities, two different trends. The FRACTION of the per-step pay
 </details>
 <!-- execution:end:h100:101_embedding_alltoall_comm_volume_cost_model.cpp -->
 
-
 Compile and run (plain host `.cpp`, executed on the recorded H100 and A100 hosts):
 
 ```bash
@@ -780,13 +794,13 @@ Chapter 35 turns to a very different industrial domain running on the same multi
 
 ## Worked Solutions
 
-1. Because embedding tables can reach a scale ("the total size of an embedding feature can exceed the memory capacity of a single GPU," per HugeCTR's own real paper) where no single GPU can hold a full replica, model parallelism (sharding, not copying) is the only way to fit them at all -- exactly Chapter 13's own technique, applied here because of raw size, not because of any computational property of embeddings themselves.
+1. Because embedding tables can reach a scale ("the total size of an embedding feature can exceed the memory capacity of a single GPU," per HugeCTR's own real paper) where no single GPU can hold a full replica, GPU-resident model-parallel sharding is one way to fit them; caching/offloading or another storage tier can also provide capacity, with different bandwidth and latency tradeoffs -- exactly Chapter 13's own technique, applied here because of raw size, not because of any computational property of embeddings themselves.
 2. Because the dense DNN layers stay small enough to replicate on every GPU with no capacity concern at all -- File 99's own Sample output shows a 2GB dense model is a small fraction of one A100's 80 GB at any table size tested. Once capacity is not the constraint, data parallelism (Chapter 12's technique, replicate and split the batch) is the natural, simpler choice, and HugeCTR's own real design uses it there.
 3. HugeCTR's own paper describes an all-to-all that, "after each local reduction step... share[s] the results of the lookup operation across all available GPUs along the batch dimension." It converts data from being sharded by FEATURE (each GPU holds a slice of features for the whole batch) to being sharded by BATCH SAMPLE (each GPU holds every feature for its own slice of samples).
 4. Chapter 32's MoE all-to-all routes each token to whichever expert a gating network decides on AT RUNTIME, and a real capacity limit can cause an overflowed token to be silently dropped or passed through unprocessed. This chapter's embedding all-to-all follows a FIXED schedule (feature index modulo P) known before the batch even arrives, with every value having one single, predetermined destination and no equivalent of capacity overflow at all.
 5. Using plain integers isolates the question File 100 is actually asking -- does the RESHARDING itself (pack on the sender, deliver, unpack on the receiver) put every value in the right (sample, feature) slot at any P -- from the floating-point associativity question earlier chapters investigated. Since nothing in this all-to-all ever adds two values together, there was never a risk of floating-point grouping mattering, and integers make that unambiguous. The buggy unpacker passed at P = 1 because one rank owns every feature, and at P = 12 = F because each rank owns exactly one feature -- in both cases the cyclic layout (f = r + k*P) and the contiguous layout (f = r*F/P + k) name the same features, so the bug is invisible. Testing only at the extremes would have missed it.
 6. At P=8, the off-rank fraction is 0.8750 (87.5%) of the payload. At P=128, it is 0.9922 (99.22%). The trend is a rapidly rising curve that flattens out: almost all of the payload crosses the network once P is moderately large, so total network traffic approaches the full payload (0.436 GB per step in File 101) and stops changing.
-7. The off-rank fraction (P-1)/P is a fraction of the WHOLE payload, and it rises toward 1.0 and saturates. The bytes each GPU sends are that total divided among P senders, payload*(P-1)/P^2, which keeps falling roughly as 1/P from P=2 on (109 MB at P=2, 3.4 MB at P=128 in File 101). Both are true because each GPU holds less to begin with even as a larger share of what it holds must leave. The per-GPU number is what matters when each GPU's own link is the bottleneck; the saturating aggregate is what matters when a shared resource -- a switch's bisection bandwidth or the inter-node fabric -- carries everyone's traffic, and per-message latency, which grows with P, is a further cost this volume-only model leaves out.
+7. The off-rank fraction (P-1)/P is a fraction of the WHOLE payload, and it rises toward 1.0 and saturates. The bytes each GPU sends are that total divided among P senders, payload*(P-1)/P^2, which keeps falling roughly as 1/P from P=2 on (109 MB at P=2, 3.4 MB at P=128 in File 101). Both are true because each GPU holds less to begin with even as a larger share of what it holds must leave. The per-GPU number is what matters when each GPU's own link is the bottleneck; the saturating aggregate is what matters when a shared resource -- a switch's bisection bandwidth or the inter-node fabric -- carries everyone's traffic, and message/startup and scheduling costs, whose dependence on P follows the chosen communication algorithm, are further costs this volume-only model leaves out.
 8. Capacity sets a MINIMUM: File 99 shows a 2TB table needs at least 26 A100-80GB GPUs (4 eight-GPU nodes) just to hold the rows, and more in practice since HBM also holds activations, the dense model and optimizer state. Above that minimum, File 101 shows more GPUs keep cutting each GPU's memory and each GPU's bytes sent, but not the aggregate traffic the fabric carries, which is already 87.5% of the payload at P=8 and nearly all of it beyond -- and once the job spans several nodes, much of that traffic is on the slower inter-node network. So a real team would pick P from the memory constraint and compute/throughput needs, then check whether the inter-node fabric can carry the near-full payload every step, rather than expect more P to make this all-to-all cheaper overall.
 
 ---

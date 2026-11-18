@@ -42,4 +42,17 @@ The corrected staged-MPI example (58) passed the November 18 two-H100 numerical 
 
 ## How to read this book
 
+The worked walkthrough in each chapter and appendix gives you a small problem to solve before the longer implementations. Follow its numbered steps with the illustration open beside them: identify the owner of each value, trace the messages or memory locations, calculate the intermediate result, then compare with the explained check. The exercise changes one assumption so you can test whether you understand the rule.
+
+The worked figures distinguish **logical values**, **ranks and device ordinals**, **element counts**, **payload bytes** and **time units**. A paper cost model is an arithmetic illustration; actual hardware results have their own recorded source, commands, execution date and system. This distinction lets you learn the algorithm on a small example without mistaking its numbers for a measured application.
+
+| Start with this question | Follow this route | Be able to explain |
+| --- | --- | --- |
+| Who owns the memory, and who may use it? | [Devices](part0/03-the-cuda-multi-gpu-programming-model.md) → [peer access](part1/04-peer-to-peer-memory-access-and-uva.md) → [events](part1/06-streams-events-and-cross-device-synchronization.md) | The allocation owner, permitted access direction and readiness/reuse dependency |
+| Where does every rank's result come from? | [Broadcast/reduce](part2/08-broadcast-and-reduce-the-first-two-collectives-by-hand.md) → [ring all-reduce](part2/09-ring-all-reduce-the-algorithm-behind-every-multi-gpu-training-job.md) → [other collectives](part2/10-all-gather-reduce-scatter-and-all-to-all.md) | Each intermediate chunk and the final ownership, not only a checksum |
+| How should the workload be partitioned? | [Data parallelism](part3/12-data-parallelism-replicated-model-sharded-data.md) → [tensor parallelism](part3/14-tensor-parallelism-splitting-a-single-matrix-multiply-across-devices.md) → [halos](part3/16-domain-decomposition-for-scientific-computing-halo-exchange-and-distributed-stencils.md) | Which work is local, which data moves, and what remains on the critical path |
+| What changes beyond one node? | [MPI](part5/20-mpi-from-scratch-then-cuda-aware-mpi-scaling-beyond-one-node.md) → [RDMA](part5/21-gpudirect-rdma-bypassing-the-host-entirely.md) → [NVSHMEM](part5/22-nvshmem-and-gpu-initiated-communication.md) | Rank/device mapping, transport support, matching operations and completion scope |
+
+Use [Appendix E](appendix/e-profiling-and-benchmarking-multi-gpu-communication.md) to define measurement boundaries and [Appendix G](appendix/g-common-failure-modes-deadlocks-silent-corruption-topology-mismatches.md) to trace a failed dependency. For every case study, predict the result of its small worked example before reading the full code.
+
 Every chapter develops intuition, complete implementations, worked examples, pitfalls and self-checks. All 145 programs have [H100](validation-h100.md) and [A100](validation-a100.md) execution records, with sample output beside the code. The eight-A100 supplement also checks all 56 ordered peer pairs, four collectives and three halo generations.

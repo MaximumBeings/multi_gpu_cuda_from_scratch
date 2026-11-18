@@ -38,6 +38,30 @@ Chapter 14 (isolated):        Chapter 15 (isolated):        This chapter (combin
                  this chapter's own real, combined case study
 ```
 
+<!-- mgpu:worked:start -->
+
+## Worked example — Keep tensor-parallel groups inside pipeline stages
+
+Use TP=2, PP=2 and rank=stage×2+lane. Here vectors are columns and each matrix row computes one output dot product (W x), the transpose convention of Chapter 14’s row-vector XW notation. This is a two-layer linear arithmetic model, not a complete transformer. Replicate input x=[1,2] across ranks 0 and 1.
+
+1. Rank 0 owns first-layer rows [1,0] and [0,1], so h0=[1,2]. Rank 1 owns rows [1,1] and [2,1], so h1=[3,4].
+
+2. Send h0 from rank 0 to rank 2 and h1 from rank 1 to rank 3. The next layer has row [1,10,100,1000], partitioned along its input dimension.
+
+3. Rank 2 computes [1,10] dot h0=21. Rank 3 computes [100,1000] dot h1=4300. A sum inside communicator {2,3} produces 4321 on both second-stage ranks.
+
+![Numeric worked example: Keep tensor-parallel groups inside pipeline stages](../images/worked/ch26.svg)
+
+**API connection and scope.** Column-parallel output shards can feed compatible row-parallel input shards without assembling the complete intermediate vector on every rank. Match pipeline sends/receives by microbatch and shard identity; use a tensor-parallel reduction only for the partial outputs of the same layer.
+
+**Expected check and pitfall.** A world all-reduce across all four ranks mixes pipeline stages and changes the computation. Real transformer blocks add normalization, nonlinearities, attention and cache-layout contracts; the linear example isolates only ownership and reduction.
+
+??? question "Guided exercise: Replace the final coefficient 1000 with 100. What changes?"
+
+    **Worked answer.** Rank 3 computes 100×3+100×4=700. Rank 2 remains 21, so the final value is 721.
+
+<!-- mgpu:worked:end -->
+
 ## 26.1 One Real 2D Grid: Tensor Parallelism Inside, Pipeline Parallelism Across
 
 <!-- mgpu:figure-1:start -->
@@ -46,7 +70,7 @@ Chapter 14 (isolated):        Chapter 15 (isolated):        This chapter (combin
 
 ### Intuition
 
-Chapter 14's own tensor-parallel MLP split needed exactly one all-reduce, scoped to however many devices were splitting that ONE GEMM. Chapter 15's own pipeline schedule needed exactly one activation handoff, scoped to two ADJACENT stages. Combining them means every device in a real system now plays both roles at once: it belongs to a pipeline STAGE, and within that stage, it belongs to a tensor-parallel GROUP. The real correctness property this creates, and the one this section's own simulation is built to check, is that these two kinds of communication must never cross into each other: a tensor-parallel all-reduce stays inside its own stage's own group, and a pipeline handoff only ever carries a stage's ALREADY-combined result to the next stage -- never a partial, not-yet-reduced tensor-parallel shard. This chapter is about LLM INFERENCE specifically, which changes the pipeline shape from Chapter 15's own training loop in one real way: there is no backward pass, so the pipeline is forward-only, and Chapter 15's own bubble formula, built for a schedule with both a forward AND a backward phase per microbatch, does not apply here unchanged.
+Chapter 14's own tensor-parallel MLP split needed exactly one all-reduce, scoped to however many devices were splitting that ONE GEMM. Chapter 15's own pipeline schedule needed exactly one activation handoff, scoped to two ADJACENT stages. Combining them means every device in a real system now plays both roles at once: it belongs to a pipeline STAGE, and within that stage, it belongs to a tensor-parallel GROUP. The real correctness property this creates, and the one this section's own simulation is built to check, is that these two kinds of communication must never cross into each other: a tensor-parallel all-reduce stays inside its own stage's own group, and the full-MLP stage implementation below hands off its already-combined output. This is that implementation’s layout contract, not a universal ban on sharded pipeline boundaries: the opening two-layer worked model deliberately carries compatible activation shards between stages and reduces only the second layer’s contributions. This chapter is about LLM INFERENCE specifically, which changes the pipeline shape from Chapter 15's own training loop in one real way: there is no backward pass, so the pipeline is forward-only, and Chapter 15's own bubble formula, built for a schedule with both a forward AND a backward phase per microbatch, does not apply here unchanged.
 
 ```text
 A 2 x 2 grid: PP_STAGES=2, TP_DEGREE=2 (4 devices total)
@@ -357,7 +381,6 @@ Read this check for what it is, and no more. Microbatch 1 produces an all-zero o
 
 !!! warning "[COMMON TRAP] Assuming Chapter 15's bubble formula, `(K-1)/(M+K-1)`, is training-only and needs re-deriving for inference"
     It is tempting to think a pipeline-bubble formula from a training chapter must carry hidden backward-pass terms, and so cannot be reused for a forward-only inference server. Chapter 15's formula has no such terms: Chapter 15 derived it by directly counting a forward-only schedule -- micro-batches staggered one time step per stage -- exactly the shape an inference pipeline runs. It applies unchanged. This section's own Sample output is an independent cross-check of that, not a replacement: counting stage-slots directly, `M` microbatches through `PP_STAGES` stages take `M + PP_STAGES - 1` total time steps, of which `M * PP_STAGES` stage-slots are busy, leaving 2 of 10 idle -- 20%. Chapter 15's formula with K=2 stages and M=4 microbatches gives `(2-1)/(4+2-1) = 1/5`, the same 20%. What genuinely differs in a real serving system is not the formula but its inputs: requests arrive continuously rather than as one fixed batch of M microbatches, so the effective M depends on load and on how the server schedules incoming requests.
-
 
 ## 26.2 Why 8-Way, Why 35-Way: A Real 530-Billion-Parameter Config
 

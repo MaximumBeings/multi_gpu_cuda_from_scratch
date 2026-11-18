@@ -4,7 +4,7 @@
 [![Chapter 39: Real-Time Genomics at Scale](../images/chapter-openers/39.svg)](../images/chapter-openers/39.svg)
 <!-- mgpu:opener:end -->
 
-**What you will understand after this chapter:** what real, cited speedup NVIDIA's own Clara Parabricks platform reports for whole-genome sequencing (WGS) analysis on GPUs versus CPU-only pipelines, and how two independently cited real figures from the same real source can be honestly cross-checked against each other rather than taken on faith; why the two real stages of a production genomics pipeline -- read alignment and variant calling -- can each be split across GPUs with ZERO cross-worker communication, a real structural property this book has not seen in quite this form before, grounded in Google's own real DeepVariant documentation; and why NVIDIA's own real published 2-GPU-to-4-GPU benchmark numbers show that being algorithmically embarrassingly parallel does not, on its own, guarantee near-ideal real-world scaling.
+**What you will understand after this chapter:** how to interpret the cited Parabricks speedups and scaling ratios; which independent-work stages can be sharded with their required reference/context already available; and why synthetic partition correctness is different from complete pipeline validation. Input distribution, paired-read context, region boundaries, sorting and result merging must remain explicit.
 
 **What you need to know first:** Chapter 9 (the round-count/cost-model discipline reused in Section 39.1), Chapter 16 (domain decomposition and halo exchange, this chapter's point of contrast in Section 39.2), Chapter 18 (load imbalance, reused for a different, much smaller reason in Section 39.2), Chapter 30 (ray tracing's own zero-communication-during-computation shape, this chapter's other point of contrast), and Chapter 34 (the "more ranks is not free" saturation lesson Section 39.3 rediscovers from real published data).
 
@@ -25,6 +25,29 @@ NVIDIA's own real Clara Parabricks documentation reports a real, cited headline 
 |   scaling, but real engineering factors cap it well below ideal   |
 +------------------------------------------------------------------+
 ```
+
+<!-- mgpu:worked:start -->
+## Worked walkthrough — Partition read or region work without dropping boundaries
+
+[![Partition read or region work without dropping boundaries: numerical ownership, intermediate values and checks](../images/worked/ch39.svg)](../images/worked/ch39.svg)
+
+Use a workflow schematic with global read IDs 0–9 and two alignment workers. Both workers can read the same immutable reference data. Give worker 0 IDs 0–4 and worker 1 IDs 5–9. This is partition accounting, not a Parabricks/DeepVariant execution or a diagnostic-quality claim.
+
+1. **Prove coverage.** The two disjoint ID intervals contain five reads each and their union contains ten. The work items are read records, not arbitrary byte slices that might split a record or a read pair.
+2. **Preserve shared context.** Independent read alignment still requires the appropriate reference/index and any algorithm-specific paired-read or batch context. Worker independence during this stage does not remove reference distribution, result writing or downstream merge operations.
+3. **Distinguish balanced count from balanced work.** If worker costs per assigned read sum to twelve and eight hypothetical time units, compute makespan is twelve. Ten units would require a better distribution or changed processing; equal read counts alone do not guarantee it.
+4. **Switch carefully to region ownership.** For a separate variant-calling stage, partition a 100-position interval into core regions `[0,50)` and `[50,100)`. If the algorithm needs a two-position context overlap, workers may read `[0,52)` and `[48,100)` but emit only their core-owned results. Positions 48–51 are context in one or both workers, not permission for duplicate final variants.
+5. **Validate the merge.** Record reference build, contig coordinates, interval convention and deterministic filtering. Sort/merge output by the declared keys and compare against the stage's serial reference under its real semantics. A schematic nonoverlap argument does not certify equivalence of a full clinical pipeline.
+
+**Expected check:** every required read/work region is processed, emitted results have unique ownership, and the complete workflow's validation criteria are met. Cross-worker communication may be unnecessary within a narrowly defined task while input distribution, shared storage, coordination and final combination still consume time.
+
+??? question "Exercise: the boundary at position fifty"
+
+    Under the half-open core convention, which worker emits a result whose canonical position is 50? Can both workers use nearby context?
+
+    **Worked answer:** worker 1 owns `[50,100)` and emits position 50. Both may consume the required boundary context under the specified algorithm. Deduplication must use the actual output representation, not an assumed one-variant-per-position rule.
+
+<!-- mgpu:worked:end -->
 
 ## 39.1 Why Genomics Needs Multi-GPU Acceleration
 
@@ -160,7 +183,6 @@ This is the real, cited motivation for everything the rest of this chapter exami
 
 <!-- execution:end:h100-rerun:114_wgs_multi_gpu_motivation_model.cpp -->
 
-
 <!-- execution:start:a100:114_wgs_multi_gpu_motivation_model.cpp -->
 > **Compiled and executed — 2026-11-17-a100: Host program/model (exit-only).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:05:32.876697+00:00`.
 
@@ -196,7 +218,6 @@ This is the real, cited motivation for everything the rest of this chapter exami
 
 
 <!-- execution:end:a100:114_wgs_multi_gpu_motivation_model.cpp -->
-
 
 <!-- execution:start:h100:114_wgs_multi_gpu_motivation_model.cpp -->
 > **Compiled and executed — 2026-11-17-h100: Host program/model (exit-only).** Hardware: 2 H100 GPUs. Execution record UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`.
@@ -234,7 +255,6 @@ This is the real, cited motivation for everything the rest of this chapter exami
 </details>
 <!-- execution:end:h100:114_wgs_multi_gpu_motivation_model.cpp -->
 
-
 Compile and run (a plain host `.cpp` file with no CUDA/NCCL/MPI/NVSHMEM linkage, executed on the recorded H100 and A100 hosts):
 
 ```bash
@@ -254,7 +274,7 @@ g++ -O2 -ffp-contract=off -o 114_wgs_multi_gpu_motivation_model \
 Chapter 16's own stencil update needed its neighboring cells' data at every single step -- there was no way to avoid a halo exchange, no matter how the grid was split, because computing cell (i,j)'s own next value is mathematically defined in terms of its neighbors. Genomics does not have that problem, for a real, specific reason. Google's own real DeepVariant documentation -- the deep-learning variant caller NVIDIA's own Clara Parabricks GPU-accelerates -- states it directly: "Since the process of generating examples is embarrassingly parallel across the genome, `make_examples` supports sharding of its input and output via the `--task` argument." A genomic region's own variant calls depend only on the reads that overlap THAT region, never on another region's own data. The real alignment stage that comes before it rests on the same underlying real fact from basic sequence-alignment theory: each sequencing read is matched to the reference independently of every other read, because alignment only ever asks "where does THIS read best fit," never "where do reads X and Y fit relative to each other."
 
 !!! warning "[COMMON TRAP] Assuming this chapter's zero-communication shape is the same as Chapter 30's"
-    Chapter 30's ray tracing also needed zero communication during rendering -- but only because a CHOSEN spatial partition of one shared scene made every ray's ownership decidable in advance. Section 39.2's own zero-communication property is different in KIND: it holds because the real SCIENTIFIC content of the data makes unit i's own result independent of unit j's, for any i != j, not because of a scheduling choice layered on top of an otherwise-dependent computation. File 115 tests exactly this -- a contiguous, disjoint P-way split with no cross-worker read of any kind -- and the only imperfection it finds is ordinary integer-remainder load imbalance, bounded to at most one unit per worker, nothing like the halo Chapter 16 could never eliminate.
+    Both the rendering and independent-record models avoid communication during a narrowly defined phase because every worker already has its required context. File 115 tests a deterministic per-record function and disjoint ranges, not real alignment or calling. DeepVariant's sharding guarantee applies to its documented make_examples stage, not every genomics stage or arbitrary byte-sliced reads. See [DeepVariant stage and sharding contracts](https://github.com/google/deepvariant/blob/r1.10/docs/deepvariant-details.md).
 
 ### Background
 
@@ -270,6 +290,8 @@ Chapter 16's own stencil update needed its neighboring cells' data at every sing
 |   verified bit-exact at every tested P from 1 to 64          |
 +------------------------------------------------------------+
 ```
+
+The following introductory ASCII diagram describes the independent-unit toy only: its phrase "nothing outside" excludes neither shared reference/index data nor algorithm-specific context in real genomics.
 
 File 115 builds a host-side correctness simulation: N independent units (standing in for reads during alignment, or genomic regions during variant calling) are split into P disjoint, contiguous slices, each worker processes only its own slice, and the assembled result is checked against a single-process reference at every tested P.
 
@@ -436,7 +458,6 @@ Every P reproduces the exact same 10007 results as the single-process reference,
 
 <!-- execution:end:h100-rerun:115_embarrassingly_parallel_genomics_correctness_simulation.cpp -->
 
-
 <!-- execution:start:a100:115_embarrassingly_parallel_genomics_correctness_simulation.cpp -->
 > **Compiled and executed — 2026-11-17-a100: Host program/model (exit-only).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:05:33.149599+00:00`.
 
@@ -473,7 +494,6 @@ Every P reproduces the exact same 10007 results as the single-process reference,
 
 
 <!-- execution:end:a100:115_embarrassingly_parallel_genomics_correctness_simulation.cpp -->
-
 
 <!-- execution:start:h100:115_embarrassingly_parallel_genomics_correctness_simulation.cpp -->
 > **Compiled and executed — 2026-11-17-h100: Host program/model (exit-only).** Hardware: 2 H100 GPUs. Execution record UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`.
@@ -512,7 +532,6 @@ Every P reproduces the exact same 10007 results as the single-process reference,
 </details>
 <!-- execution:end:h100:115_embarrassingly_parallel_genomics_correctness_simulation.cpp -->
 
-
 Compile and run (plain host `.cpp`, executed on the recorded H100 and A100 hosts):
 
 ```bash
@@ -529,7 +548,7 @@ g++ -O2 -ffp-contract=off -o 115_embarrassingly_parallel_genomics_correctness_si
 
 ### Intuition
 
-Section 39.2 established that genomics is about as favorable a parallel workload as this book has seen -- zero required cross-worker communication, at any P, for a real, structural reason rather than a lucky scheduling trick. It would be natural to assume that property alone guarantees doubling the GPU count roughly halves the runtime. NVIDIA's own real published Clara Parabricks benchmark table says otherwise: it reports real measured wall-clock minutes, at 2 GPUs and at 4 GPUs, for seven different real tools on the same real hardware, with its own honest caveat attached: "Speeds may vary depending on the data set, GPU instance, host CPU, memory availability, and other factors." Some real tools in that table come close to doubling in speed; others barely move at all.
+Section 39.2 models an independent-work stage with all required context already available. It does not establish zero communication for every genomics operation. NVIDIA's cited two-to-four-GPU benchmark reports differing scaling across tools and explicitly notes dataset and system dependencies. Setup, I/O, load imbalance, synchronization and algorithmic differences are possible contributors; timing totals alone do not identify which one dominates.
 
 !!! warning "[COMMON TRAP] Assuming 'embarrassingly parallel' is a guarantee of near-ideal real-world scaling"
     'Embarrassingly parallel' is a statement about the ALGORITHM -- that no cross-worker communication is mathematically required. It says nothing about real engineering costs that do not shrink when the GPU count grows: fixed per-run setup time, file I/O, or a host-side bottleneck feeding the GPUs. File 116 computes real observed efficiency directly from NVIDIA's own published numbers and finds it ranges from about 50% to about 84% of ideal doubling across real tools that are ALL, by Section 39.2's own finding, equally free of required communication -- proof that the algorithmic property alone does not decide the real-world outcome.
@@ -690,7 +709,6 @@ NVIDIA's own real caveat on this exact table: "Speeds may vary depending on the 
 
 <!-- execution:end:h100-rerun:116_real_benchmark_scaling_efficiency_analysis.cpp -->
 
-
 <!-- execution:start:a100:116_real_benchmark_scaling_efficiency_analysis.cpp -->
 > **Compiled and executed — 2026-11-17-a100: Host program/model (exit-only).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:05:33.273224+00:00`.
 
@@ -725,7 +743,6 @@ NVIDIA's own real caveat on this exact table: "Speeds may vary depending on the 
 
 
 <!-- execution:end:a100:116_real_benchmark_scaling_efficiency_analysis.cpp -->
-
 
 <!-- execution:start:h100:116_real_benchmark_scaling_efficiency_analysis.cpp -->
 > **Compiled and executed — 2026-11-17-h100: Host program/model (exit-only).** Hardware: 2 H100 GPUs. Execution record UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`.
@@ -762,7 +779,6 @@ NVIDIA's own real caveat on this exact table: "Speeds may vary depending on the 
 </details>
 <!-- execution:end:h100:116_real_benchmark_scaling_efficiency_analysis.cpp -->
 
-
 Compile and run (plain host `.cpp`, executed on the recorded H100 and A100 hosts):
 
 ```bash
@@ -773,15 +789,15 @@ g++ -O2 -ffp-contract=off -o 116_real_benchmark_scaling_efficiency_analysis \
 
 ## Chapter Summary
 
-NVIDIA's own real Clara Parabricks platform reports GPU-accelerating whole-genome sequencing analysis "over 100x faster... compared to CPU-only solutions," with a real specific production example -- "~16 hours to under 10 minutes on 4 NVIDIA RTX PRO 6000 Server Edition GPUs" -- that File 114 cross-checked against the general headline and found consistent (a minimum implied 96x, against a cited ">100x"). File 115 then established the real structural reason genomics reaches that speedup at all: Google's own real DeepVariant documentation states that variant calling is "embarrassingly parallel across the genome," and read alignment rests on the same real underlying fact for independent reads -- so a P-way split needs ZERO cross-worker communication, a genuinely different real reason for zero communication than Chapter 30's own ray-tracing case, verified bit-exact at every tested P with only the smallest possible integer-remainder load imbalance. File 116 closed the chapter with an honest complication, read directly from NVIDIA's own real published 2-GPU-to-4-GPU benchmark table rather than from a simulation: real observed scaling efficiency ranged from 50.3% (Minimap2) to 84.4% (FQ2BAM_Meth) of ideal doubling across seven real tools that all share the exact same embarrassingly-parallel algorithmic foundation -- proof that being algorithmically free of required communication is necessary, but not sufficient, for near-ideal real-world multi-GPU scaling.
+The cited Parabricks material reports large GPU-versus-CPU speedups under its stated benchmark conditions. Files 114 and 116 perform arithmetic on published figures; they do not run Parabricks. An approximate 16-hour baseline and a runtime below ten minutes imply a speedup above roughly 96×, which is compatible with but does not itself prove a separate >100× headline. File 115 verifies a deterministic independent-record partition model, not a complete alignment or variant-calling workflow. DeepVariant specifically supports sharding make_examples across genomic regions; reference access, paired-read context, input/output, sorting/merging and other stages require their own contracts. The published two-to-four-GPU efficiencies range from 50.3% to 84.4% for the listed tools, showing that GPU count alone does not predict runtime. Absence of communication is neither necessary nor sufficient for efficient scaling.
 
 ## Self-Check Questions
 
 1. What two real cited numbers does File 114 cross-check against each other, and what is the honest reason they are not expected to match exactly?
 2. According to File 114's own Sample output, what is the minimum speedup implied by the real cited "~16 hours to under 10 minutes on 4 GPUs" example, and is it consistent with the separately cited ">100x" headline?
 3. What real, specific quote from Google's own DeepVariant documentation does Section 39.2 use to establish that variant calling is embarrassingly parallel?
-4. Why does read alignment (the first real stage of the germline pipeline) also require zero cross-worker communication, even though NVIDIA's own documentation does not spell out the mechanism in as much detail as DeepVariant's own docs do?
-5. How does Section 39.2's own zero-communication reasoning differ in KIND from Chapter 30's own zero-communication-during-rendering finding, even though both chapters report no communication at all during computation?
+4. Under what assumptions can a single-read alignment stage avoid cross-worker communication, even though NVIDIA's own documentation does not spell out the mechanism in as much detail as DeepVariant's own docs do?
+5. Which shared-input and phase-boundary assumptions allow both independent-record processing and replicated-scene rendering to omit communication during their narrow compute models?
 6. What is the only imperfection File 115 finds across every tested P, and why is it bounded to at most one unit per worker?
 7. According to File 116's own Sample output, what real published tool achieves the lowest percentage of ideal 2x scaling, and what real percentage does it achieve?
 8. What is the honest relationship File 116 draws between Section 39.2's own algorithmic finding and Section 39.3's own real observed scaling numbers -- is one a guarantee of the other?
@@ -796,11 +812,11 @@ Chapter 40 closes Part 7 with the second of this book's own two healthcare/medic
 1. File 114 cross-checks NVIDIA's own real general headline, "over 100x faster... compared to CPU-only solutions," against its own real specific germline-pipeline example, "~16 hours to under 10 minutes on 4 NVIDIA RTX PRO 6000 Server Edition GPUs." They are not expected to match exactly because the headline is a general claim about WGS analysis broadly, while the germline example is one specific pipeline on specific hardware -- different real measurements of a related, but not identical, real quantity.
 2. File 114's own Sample output computes a minimum implied speedup of 96x (960 minutes / 10 minutes), and finds this consistent with the separately cited ">100x" headline -- both describe the same real order of magnitude.
 3. Google's own real DeepVariant documentation states: "Since the process of generating examples is embarrassingly parallel across the genome, `make_examples` supports sharding of its input and output via the `--task` argument."
-4. Basic sequence-alignment theory establishes that each sequencing read is matched to the reference independently of every other read -- alignment asks only where one read best fits, never how two reads relate to each other -- so read i's own result never depends on read j's data, the same real independence property DeepVariant's own docs state explicitly for genomic regions.
-5. Chapter 30's own zero-communication finding held because a CHOSEN spatial partition of one shared scene made every ray's ownership decidable in advance -- a scheduling-level guarantee layered onto an otherwise-dependent rendering process. Section 39.2's own zero-communication finding holds because the real SCIENTIFIC content of the data makes unit i's own result independent of unit j's, for any i != j -- a property of the computation itself, not of how it happens to be scheduled.
+4. A single-read alignment task can be evaluated against a shared immutable reference without another worker's result. Paired-read alignment and full pipelines may need mate context, batch statistics, sorting, duplicate handling or region overlap. The synthetic independent-record test establishes only its declared partition contract, not universal independence of every sequencing read or pipeline stage.
+5. Both chapters' narrow models assume each worker has all input context required for its assigned output. Replicated-scene rendering and independent-record processing can therefore avoid cross-worker communication during that phase. Input distribution, final assembly, filters and downstream genomic operations remain separate costs; this is not a universal scientific distinction between the workloads.
 6. File 115 finds only a small max-min slice-size difference (at most 1 unit) at P values that do not evenly divide the total unit count -- ordinary integer-remainder handling from a contiguous-slice split, bounded to at most one extra unit for whichever workers get the remainder.
 7. File 116's own Sample output shows Minimap2 achieving the lowest real percentage of ideal 2x scaling, at 50.3%.
-8. File 116 draws the honest relationship that Section 39.2's algorithmic finding (zero required communication) is NECESSARY but not SUFFICIENT for near-ideal real-world scaling -- real tools sharing that exact same algorithmic foundation still show real observed efficiency ranging from 50.3% to 84.4%, so the algorithm alone does not guarantee the real-world outcome.
+8. The published timing ratios show only that ideal doubling is not guaranteed for these tool/configuration pairs. Zero communication is not necessary for good scaling: workloads with communication can scale well when useful computation and communication are balanced. The table alone cannot attribute the observed inefficiency to a particular cause.
 9. File 116 uses NVIDIA's own real caveat as the honest explanation for why real observed efficiency varies so widely across tools that are all, per Section 39.2, equally free of required communication: real engineering factors named in that caveat (the data set, GPU instance, host CPU, memory availability, and other factors) can still cap real-world scaling well below the algorithm's own theoretical ceiling, rather than being dismissed as noise around a single expected number.
 
 ---

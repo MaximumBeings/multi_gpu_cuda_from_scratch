@@ -4,7 +4,7 @@
 [![Chapter 40: Medical Imaging Reconstruction at Scale](../images/chapter-openers/40.svg)](../images/chapter-openers/40.svg)
 <!-- mgpu:opener:end -->
 
-**What you will understand after this chapter:** how a real, peer-reviewed distributed tomographic-reconstruction system (the distributed ASTRA toolbox) re-derives Chapter 16's own row-strip domain decomposition and halo exchange for a 3D medical-imaging volume, calling the halo a "ghost cell"; why the SAME real z-axis slab partition needs real communication for one of its two core operations (forward projection) but genuinely none at all for the other (backprojection), verified directly from the real paper's own published numbers; and why forward projection's own real, documented scaling hits an honest, measured near-wall at 17 or more GPUs -- a sharper real finding than this book's own earlier "more ranks is not free" lessons, because here the marginal benefit of an additional real GPU becomes genuinely close to negligible, not merely smaller.
+**What you will understand after this chapter:** how a real, peer-reviewed distributed tomographic-reconstruction system (the distributed ASTRA toolbox) re-derives Chapter 16's own row-strip domain decomposition and halo exchange for a 3D medical-imaging volume, calling the halo a "ghost cell"; why the SAME real z-axis slab partition needs real communication for one of its two core operations (forward projection) while the backprojection kernel can run locally once each node holds its required detector region, as described by the paper's data-placement and operator contracts; and why forward projection's own real, documented scaling hits an honest, measured near-wall at 17 or more GPUs -- a sharper real finding than this book's own earlier "more ranks is not free" lessons, because here the marginal benefit of an additional real GPU becomes genuinely close to negligible, not merely smaller.
 
 **What you need to know first:** Chapter 5 (the closed-form cost-model discipline reused in Section 40.3), Chapter 9 (the round-count formula this chapter's own communication-volume reasoning builds on), Chapter 16 (domain decomposition and halo exchange, this entire chapter's real point of departure), Chapter 18 (load imbalance, the category this chapter's own "min slab depth" finding belongs to), and Chapter 34 (the "more ranks is not free" saturating-fraction lesson Section 40.3 sharpens into an honest near-wall).
 
@@ -24,6 +24,29 @@ Part 7 closes with the second of this book's own two healthcare/medicine case st
 |   efficiency at 21 GPUs, honest near-wall past 17 GPUs            |
 +------------------------------------------------------------------+
 ```
+
+<!-- mgpu:worked:start -->
+## Worked walkthrough — Reduce partial projections while preserving slab ownership
+
+[![Reduce partial projections while preserving slab ownership: numerical ownership, intermediate values and checks](../images/worked/ch40.svg)](../images/worked/ch40.svg)
+
+Use an algebraic tomography model with two volume slabs and two detector bins. Let the flattened volume be `[1,2 | 3,4]`; slab 0 owns the first two voxels, slab 1 the final two. The toy forward operator has rows `[1,1,1,1]` and `[1,0,1,0]`. Values are dimensionless; this is not a scanner geometry, ASTRA execution or clinical reconstruction result.
+
+1. **Project local contributions.** Slab 0 produces detector contributions `[1+2,1]=[3,1]`. Slab 1 produces `[3+4,3]=[7,3]`. Each detector bin receives contributions from both slabs.
+2. **Combine by detector coordinate.** Sum corresponding bins to obtain `[10,4]`. Concatenating `[3,1,7,3]` instead of reducing changes a two-bin projection into four unrelated values. A sum reduce/all-reduce is appropriate only when its replicated/root ownership matches the next stage.
+3. **Backproject with different ownership.** Given detector residual `[2,5]`, apply the transpose operator. Slab 0 gets voxel contributions `[7,2]`; slab 1 also `[7,2]`. Once the needed detector data is available locally, each slab can compute its own output voxels without exchanging the other slab's voxel outputs. Distribution of detector input is still a separate cost.
+4. **Count a declared datatype.** Two FP32 detector bins occupy eight bytes per partial vector. A selected collective may move more than one such vector across links, depending on participants and algorithm. Eight bytes of logical result is not a universal eight-byte network cost.
+5. **Add stencil regularization separately.** If a later voxel update uses adjacent slabs, exchange the required old-generation boundary plane first. With a 4×3 plane and FP32 voxels, one plane carries 48 bytes. One internal boundary with both directions carries 96 sender-payload bytes per exchange, excluding protocol overhead.
+
+**Expected check:** serial `A*x` equals the reduced forward projection and serial `A^T*r` equals the concatenated slab backprojections. An adjoint inner-product check is useful but does not by itself validate clinical image quality, geometry calibration or convergence.
+
+??? question "Exercise: verify the adjoint identity"
+
+    Calculate both inner products using the vectors above.
+
+    **Worked answer:** `<A*x,r>=10*2+4*5=40`. Also `<x,A^T*r>=1*7+2*2+3*7+4*2=40`. Agreement checks this toy operator pair; implementation-specific geometry and floating-point tolerances need separate tests.
+
+<!-- mgpu:worked:end -->
 
 ## 40.1 Slabs and Ghost Cells: Chapter 16's Halo Exchange in 3D
 
@@ -225,7 +248,6 @@ Every P reproduces the exact same smoothed volume as the single-process referenc
 
 <!-- execution:end:h100-rerun:117_zslab_ghost_cell_correctness_simulation.cpp -->
 
-
 <!-- execution:start:a100:117_zslab_ghost_cell_correctness_simulation.cpp -->
 > **Compiled and executed — 2026-11-17-a100: Host program/model (exit-only).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:05:33.494519+00:00`.
 
@@ -264,7 +286,6 @@ Every P reproduces the exact same smoothed volume as the single-process referenc
 
 
 <!-- execution:end:a100:117_zslab_ghost_cell_correctness_simulation.cpp -->
-
 
 <!-- execution:start:h100:117_zslab_ghost_cell_correctness_simulation.cpp -->
 > **Compiled and executed — 2026-11-17-h100: Host program/model (exit-only).** Hardware: 2 H100 GPUs. Execution record UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`.
@@ -305,7 +326,6 @@ Every P reproduces the exact same smoothed volume as the single-process referenc
 </details>
 <!-- execution:end:h100:117_zslab_ghost_cell_correctness_simulation.cpp -->
 
-
 Compile and run (plain host `.cpp`, executed on the recorded H100 and A100 hosts):
 
 ```bash
@@ -318,10 +338,10 @@ g++ -O2 -ffp-contract=off -o 117_zslab_ghost_cell_correctness_simulation \
 
 ### Intuition
 
-A CT reconstruction has two core real operations, and they run in opposite directions. Forward projection (FP) starts from a candidate 3D volume and predicts what the X-ray detector would see. Backprojection (BP) starts from real measured detector data and smears it back into the 3D volume. That difference in direction turns out to matter enormously for communication: the real paper states plainly why BP needs none at all, even though it uses the exact same z-axis slab partition Section 40.1 just verified: "For the backprojection operation, each node locally stores the part of the detector data needed to perform a BP operation, so this can be performed locally and independently on each node." The real measured consequence: "For cone beam, the BP scales nearly linearly from 1 to 21 GPUs as there is no communication required and the sub-volumes are large enough to saturate the GPU."
+A CT reconstruction has two core real operations, and they run in opposite directions. Forward projection (FP) starts from a candidate 3D volume and predicts what the X-ray detector would see. Backprojection (BP) starts from real measured detector data and smears it back into the 3D volume. That difference in direction turns out to matter enormously for communication: the real paper states plainly why the local BP operation needs no inter-node exchange of voxel outputs once detector inputs are resident, even though it uses the same slab ownership modeled in Section 40.1: "For the backprojection operation, each node locally stores the part of the detector data needed to perform a BP operation, so this can be performed locally and independently on each node." The real measured consequence: "For cone beam, the BP scales nearly linearly from 1 to 21 GPUs as there is no communication required and the sub-volumes are large enough to saturate the GPU."
 
 !!! warning "[COMMON TRAP] Assuming one operation's own real communication pattern applies to a sibling operation on the same data"
-    Section 40.1's own ghost cells are real and necessary for SOME operations on this same z-axis slab partition (any multi-voxel filter or gradient across a slab boundary). But BP is not one of them: every voxel's own BP value comes from real detector data every node already stores a full local copy of, never from a neighboring rank's own volume slice. File 118 verifies this directly -- BP never reads globalZ-1 or globalZ+1 at all, a stronger real property than File 117's own correctly-synchronized ghost cells, and then confirms it against the real paper's own published numbers.
+    The local BP operation uses its required detector region, not neighboring voxel outputs, once that detector input is resident. File 118 is an arithmetic/model illustration and a calculation from published timing values; it does not execute ASTRA or verify scanner geometry. Input distribution, optional ghost-cell synchronization after operators and other reconstruction steps remain separate communication costs.
 
 ### Background
 
@@ -505,7 +525,6 @@ Honest arithmetic on those real cited numbers: going from 1 to 21 GPUs, BP achie
 
 <!-- execution:end:h100-rerun:118_backprojection_zero_comm_and_real_scaling_arithmetic.cpp -->
 
-
 <!-- execution:start:a100:118_backprojection_zero_comm_and_real_scaling_arithmetic.cpp -->
 > **Compiled and executed — 2026-11-17-a100: Host program/model (exit-only).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:05:33.716029+00:00`.
 
@@ -547,7 +566,6 @@ Honest arithmetic on those real cited numbers: going from 1 to 21 GPUs, BP achie
 
 
 <!-- execution:end:a100:118_backprojection_zero_comm_and_real_scaling_arithmetic.cpp -->
-
 
 <!-- execution:start:h100:118_backprojection_zero_comm_and_real_scaling_arithmetic.cpp -->
 > **Compiled and executed — 2026-11-17-h100: Host program/model (exit-only).** Hardware: 2 H100 GPUs. Execution record UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`.
@@ -591,7 +609,6 @@ Honest arithmetic on those real cited numbers: going from 1 to 21 GPUs, BP achie
 </details>
 <!-- execution:end:h100:118_backprojection_zero_comm_and_real_scaling_arithmetic.cpp -->
 
-
 Compile and run (plain host `.cpp`, executed on the recorded H100 and A100 hosts):
 
 ```bash
@@ -608,7 +625,7 @@ g++ -O2 -ffp-contract=off -o 118_backprojection_zero_comm_and_real_scaling_arith
 
 ### Intuition
 
-Why does FP need real communication at all, when BP does not? The real paper names the reason directly: "computing the result of an FP operation on the overlapping regions on the detector requires volume data from multiple nodes" -- an X-ray passing through the volume at an angle can cross a z-slab boundary, so completing that ray's own projection value genuinely requires combining partial results from more than one rank. File 118 already showed this costs FP real efficiency even at 21 GPUs (38.1% versus BP's 76.2%). The real paper reports what happens as the GPU count keeps growing, specifically for cone-beam FP: "With 17 or more GPUs, we hardly see any improvement in the execution time as it is dominated by the communication time."
+Why does FP combine cross-slab detector contributions while the local BP operation can run independently with resident detector input? The real paper names the reason directly: "computing the result of an FP operation on the overlapping regions on the detector requires volume data from multiple nodes" -- an X-ray passing through the volume at an angle can cross a z-slab boundary, so completing that ray's own projection value genuinely requires combining partial results from more than one rank. File 118 already showed this costs FP real efficiency even at 21 GPUs (38.1% versus BP's 76.2%). The real paper reports what happens as the GPU count keeps growing, specifically for cone-beam FP: "With 17 or more GPUs, we hardly see any improvement in the execution time as it is dominated by the communication time."
 
 !!! warning "[COMMON TRAP] Reading a real documented near-wall as a real regression"
     "Hardly any improvement" is not "gets worse." The real paper's own honest final word on this is explicit: "Although the network communication negatively impacts the scaling, the execution time keeps decreasing when more GPUs are added." File 119's own idealized cost model plateaus at a perfectly flat line past its own crossover point for clarity -- but it says so directly, rather than letting that simplification pass as the real paper's own exact claim.
@@ -793,7 +810,6 @@ This file's own idealized max() model plateaus PERFECTLY flat past P=17 (speedup
 
 <!-- execution:end:h100-rerun:119_forward_projection_communication_wall_cost_model.cpp -->
 
-
 <!-- execution:start:a100:119_forward_projection_communication_wall_cost_model.cpp -->
 > **Compiled and executed — 2026-11-17-a100: Host program/model (exit-only).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:05:33.937500+00:00`.
 
@@ -834,7 +850,6 @@ This file's own idealized max() model plateaus PERFECTLY flat past P=17 (speedup
 
 
 <!-- execution:end:a100:119_forward_projection_communication_wall_cost_model.cpp -->
-
 
 <!-- execution:start:h100:119_forward_projection_communication_wall_cost_model.cpp -->
 > **Compiled and executed — 2026-11-17-h100: Host program/model (exit-only).** Hardware: 2 H100 GPUs. Execution record UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`.
@@ -877,7 +892,6 @@ This file's own idealized max() model plateaus PERFECTLY flat past P=17 (speedup
 </details>
 <!-- execution:end:h100:119_forward_projection_communication_wall_cost_model.cpp -->
 
-
 Compile and run (plain host `.cpp`, executed on the recorded H100 and A100 hosts):
 
 ```bash
@@ -888,13 +902,13 @@ g++ -O2 -ffp-contract=off -o 119_forward_projection_communication_wall_cost_mode
 
 ## Chapter Summary
 
-The real, peer-reviewed distributed ASTRA toolbox (Palenstijn et al. 2017) splits a 3D medical reconstruction volume into z-axis "slabs," padded with "ghost cells" -- Chapter 16's own row-strip decomposition and halo exchange, independently re-derived for a real production tomography system, verified bit-exact by File 117 at every tested P from 1 to 60. File 118 then showed the SAME real slab partition produces very different real outcomes for the two real reconstruction operations built on top of it: backprojection needs no communication at all ("performed locally and independently on each node"), achieving a real 76.2% of ideal efficiency at 21 GPUs, while forward projection genuinely needs "volume data from multiple nodes" and manages only 38.1% on the exact same real benchmark. File 119 closed the chapter -- and Part 7 -- with a closed-form cost model reproducing the real documented SHAPE of FP's own further real finding: "with 17 or more GPUs, we hardly see any improvement in the execution time as it is dominated by the communication time," a genuinely sharper real result than this book's earlier "more ranks is not free" lessons, honestly distinguished from a real regression by the paper's own careful final word: execution time keeps decreasing, just by an amount close enough to nothing that more GPUs stop being worth adding.
+The distributed ASTRA paper uses z-axis volume slabs and optional overlapping ghost cells. File 117 checks a host-side stencil/halo model across the tested partitions; it does not run ASTRA, implement projection geometry or validate a production reconstruction. The paper's BP independence assumes each node already stores its required detector region: input distribution, ghost synchronization and other iterative-reconstruction operations can still communicate. FP instead combines partial contributions in overlapping detector regions. File 118 performs arithmetic on the paper's cited parallel-beam benchmark timings, yielding 76.2% BP and 38.1% FP efficiency at 21 GPUs. File 119 is a qualitative cost model, not a fitted performance predictor. The separate cone-beam observation of diminishing FP benefit at 17 or more GPUs is specific to the paper's hardware, data and implementation; it is not a universal GPU-count limit.
 
 ## Self-Check Questions
 
 1. What real, quoted term does the distributed ASTRA toolbox paper use for its own version of Chapter 16's halo exchange, and what real quote defines it?
 2. According to File 117's own Sample output, what happens to the "min slab depth" as P grows, and why is that the direct setup for Section 40.3's own finding?
-3. What real, quoted reason does the paper give for why backprojection needs no cross-node communication at all?
+3. What real, quoted reason does the paper give for why the BP kernel can run locally when its detector input is resident?
 4. What real, quoted reason does the paper give for why forward projection DOES need cross-node communication?
 5. According to File 118's own Sample output, what real efficiency percentage (of ideal 21x) did BP and FP each achieve at 21 GPUs on the same real benchmark, and what explains the gap?
 6. What real, quoted cone-beam finding does File 119 reproduce the SHAPE of, and at what real GPU count does it take effect?
@@ -910,7 +924,7 @@ Part 7 is now complete (Chapters 32-40, nine cutting-edge industrial and healthc
 
 1. The paper's own real term is "ghost cells," defined directly: "we have the option to make the domains... slightly larger than otherwise strictly necessary. These extra slices which overlap with neighbouring nodes, we call ghost cells. They are automatically synchronized after FP and BP operations."
 2. File 117's own Sample output shows the "min slab depth" shrinking from 60 (at P=1) down to 1 (at P=60) -- once a rank owns only a single z-slice, its own fixed-width ghost-cell region becomes LARGER than its own local data, the same halo-versus-partition imbalance Chapter 16 first raised, and the direct real-world setup for Section 40.3's own communication-dominated finding.
-3. The paper states: "each node locally stores the part of the detector data needed to perform a BP operation, so this can be performed locally and independently on each node" -- the detector data BP needs is already local, so no cross-node fetch is ever required.
+3. The paper assigns each node the detector region needed for its slab, so the BP kernel can compute its slab locally once that input is available. This does not remove detector-data distribution, optional ghost-cell synchronization, reductions or other reconstruction operations. See the [distributed ASTRA methods](https://pmc.ncbi.nlm.nih.gov/articles/PMC5143361/).
 4. The paper states: "computing the result of an FP operation on the overlapping regions on the detector requires volume data from multiple nodes" -- an X-ray ray crossing a slab boundary requires combining partial contributions from more than one node's own volume data.
 5. File 118's own Sample output shows BP achieving 76.2% of ideal efficiency at 21 GPUs, versus FP achieving only 38.1% -- the gap is explained directly by Questions 3 and 4: BP's own real independence from cross-node data versus FP's own real dependence on it.
 6. File 119 reproduces the shape of the real cited cone-beam finding: "with 17 or more GPUs, we hardly see any improvement in the execution time as it is dominated by the communication time" -- taking effect, per the real paper, at 17 or more GPUs.

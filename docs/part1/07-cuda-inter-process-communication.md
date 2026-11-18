@@ -50,6 +50,28 @@ Chapter 7 (this chapter) -- across PROCESSES entirely:
 
 Everything above the last block was one process reaching across a device boundary it already controlled. This chapter is a process reaching across a boundary it does *not* control at all -- another process's own private address space -- which is why it needs its own explicit hand-off mechanism instead of just another flavor of the calls Chapters 4-6 already used.
 
+<!-- mgpu:worked:start -->
+## Worked example — An IPC handle is not a copied pointer
+
+An exporter process owns an IPC-exportable device allocation containing four int32 values [7, 11, 13, 17], totaling 16 bytes. An importer runs on a supported device/context configuration.
+
+![Numeric worked example: An IPC handle is not a copied pointer](../images/worked/ch07.svg)
+
+1. The exporter creates the allocation and obtains an opaque cudaIpcMemHandle_t with cudaIpcGetMemHandle. Send the handle through an ordinary inter-process channel.
+
+2. The importer opens it with cudaIpcOpenMemHandle. Use the returned local pointer; do not assume its numeric virtual address equals the exporter’s pointer.
+
+3. Coordinate production and consumption. An IPC event must be created with cudaEventInterprocess | cudaEventDisableTiming; export/open its handle and wait on the relevant recorded generation.
+
+4. After consumption completes, the importer closes its mapping with cudaIpcCloseMemHandle. Only after all users are finished may the exporter free the original allocation.
+
+**Expected result and pitfall.** The expected importer values are [7, 11, 13, 17] after synchronization. Opening a memory handle maps shared storage rather than creating a 16-byte snapshot. Keep both the allocation and synchronization protocol valid through the final consumer.
+
+**Exercise.** If the exporter changes the first element to 19, does the importer hold an independent old copy?
+
+**Worked answer.** No. It refers to shared storage. Observing 19 still requires correctly ordering the update and subsequent read; mapping alone is not a visibility protocol.
+<!-- mgpu:worked:end -->
+
 ## 7.1 cudaIpcGetMemHandle / cudaIpcOpenMemHandle: Sharing Device Memory Across Processes
 
 <!-- mgpu:figure-1:start -->

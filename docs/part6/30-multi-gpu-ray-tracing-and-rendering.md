@@ -26,6 +26,29 @@ Every prior Part 6 chapter:              This chapter's clean case:
                                                     (ONE time, at the end)
 ```
 
+<!-- mgpu:worked:start -->
+## Worked walkthrough — Assign actual tiles before claiming balanced rendering
+
+[![Assign actual tiles before claiming balanced rendering: numerical ownership, intermediate values and checks](../images/worked/ch30.svg)](../images/worked/ch30.svg)
+
+Use a paper rendering schedule with four independent tiles A–D and two identical workers. Both workers already hold the complete immutable scene, and each pixel uses a unique global sample identifier. Predicted tile costs are `[8,2,6,4]` time units. These are hypothetical costs, not ray-tracing measurements.
+
+1. **Specify ownership.** A tile owns a disjoint rectangle of output pixels. The final image is assembled by pixel coordinates; no sum is needed when each pixel has exactly one complete result. Accumulating multiple samples per pixel instead requires the declared sum/count or compositing operation.
+2. **Calculate a contiguous split.** GPU 0 renders A+B for 10 units; GPU 1 renders C+D for 10. Compute makespan is `max(10,10)=10`, not the sum 20. Neither GPU needs another tile's rendered pixels under this simplified ray model.
+3. **Try a tempting alternating split.** GPU 0 gets A+C for 14, GPU 1 B+D for six. The same total work now finishes in 14 units. Equal tile counts did not guarantee equal cost.
+4. **Account for assembly.** Suppose each tile contains 1024 RGBA FP32 pixels. Each tile yields `1024*4*4=16384` bytes, so collecting four tiles moves 65536 result bytes to the chosen consumer. This traffic exists even if the compute phase has no communication. Scene upload, queue messages and output transfer belong to their stated timing boundaries.
+5. **Check capacity separately.** A 12-GiB replicated scene does not fit a worker with only 10 GiB available merely because the image is divided into many tiles. Distributed geometry changes ray routing and the independence assumptions; scheduling alone does not solve scene capacity.
+
+**Expected check:** every output pixel has exactly one owner, and the assembled image agrees with the same sample-generation and rendering contract. Floating-point sample accumulation can differ if summation order changes. A deterministic seed tied only to worker number can change the sampled image when the GPU count changes; prefer a specified mapping from global pixel/sample IDs to random streams.
+
+??? question "Exercise: move one expensive tile"
+
+    Starting from the alternating split, exchange B and C. What are the new compute loads? Does that predict end-to-end latency?
+
+    **Worked answer:** GPU 0 now has A+B=10 and GPU 1 C+D=10. The compute-model makespan becomes ten. End-to-end latency also depends on scene preparation, scheduling, transfers and assembly, so this arithmetic alone does not establish a measured 1.4× speedup.
+
+<!-- mgpu:worked:end -->
+
 ## 30.1 The Clean Case: Zero Communication During Rendering
 
 <!-- mgpu:figure-1:start -->
@@ -211,7 +234,6 @@ P      rows/rank              assembled image EXACT match?
 
 <!-- execution:end:h100-rerun:87_independent_tile_rendering_correctness_simulation.cpp -->
 
-
 <!-- execution:start:a100:87_independent_tile_rendering_correctness_simulation.cpp -->
 > **Compiled and executed — 2026-11-17-a100: Host program/model (exit-only).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:05:27.987262+00:00`.
 
@@ -256,7 +278,6 @@ P      rows/rank              assembled image EXACT match?
 
 <!-- execution:end:a100:87_independent_tile_rendering_correctness_simulation.cpp -->
 
-
 <!-- execution:start:h100:87_independent_tile_rendering_correctness_simulation.cpp -->
 > **Compiled and executed — 2026-11-17-h100: Host program/model (exit-only).** Hardware: 2 H100 GPUs. Execution record UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`.
 
@@ -300,7 +321,6 @@ P      rows/rank              assembled image EXACT match?
 
 </details>
 <!-- execution:end:h100:87_independent_tile_rendering_correctness_simulation.cpp -->
-
 
 Compile and run:
 
@@ -539,7 +559,6 @@ Slowest rank's weight after rebalancing: 12 (down from 18) -- a 1.50x reduction 
 
 <!-- execution:end:h100-rerun:88_rendering_comm_and_load_balance_model.cpp -->
 
-
 <!-- execution:start:a100:88_rendering_comm_and_load_balance_model.cpp -->
 > **Compiled and executed — 2026-11-17-a100: Host program/model (exit-only).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:05:28.260337+00:00`.
 
@@ -606,7 +625,6 @@ Slowest rank's weight after rebalancing: 12 (down from 18) -- a 1.50x reduction 
 
 
 <!-- execution:end:a100:88_rendering_comm_and_load_balance_model.cpp -->
-
 
 <!-- execution:start:h100:88_rendering_comm_and_load_balance_model.cpp -->
 > **Compiled and executed — 2026-11-17-h100: Host program/model (exit-only).** Hardware: 2 H100 GPUs. Execution record UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`.
@@ -675,7 +693,6 @@ Slowest rank's weight after rebalancing: 12 (down from 18) -- a 1.50x reduction 
 </details>
 <!-- execution:end:h100:88_rendering_comm_and_load_balance_model.cpp -->
 
-
 Compile and run:
 
 ```text
@@ -740,7 +757,7 @@ Naive equal split (contiguous, unbalanced):    Rebalanced (non-contiguous, balan
 ```
 
 !!! warning "[COMMON TRAP] Treating NVIDIA's real tile overlap as a contradiction of the zero-communication claim"
-    NVIDIA's own real "small overlap region between them" is a genuinely real detail, but it is not the same kind of communication Chapter 16's halo exchange needed. Chapter 16's halo exchange feeds directly into the *numerical result* of the next iteration's stencil update -- omitting it changes the computed values. A rendering tile's overlap exists to make a *filtering/denoising* step look correct at the seam, a post-processing concern layered on top of an already-complete per-pixel computation. Do not conflate a correctness-critical exchange with a cosmetic one just because both involve neighboring tiles.
+    Tile overlap supports the specified filtering/denoising operation at image seams. It is distinct from the stencil update dependency, but remains part of computational correctness for the final filtered image. A model of raw independent pixels may omit it; an equivalent production denoiser may not.
 
 ## 30.3 The Real Limit: When the Scene Itself Does Not Fit
 
@@ -870,7 +887,6 @@ R2E2's own real reported results against a single-machine in-memory baseline (pb
 
 <!-- execution:end:h100-rerun:89_out_of_core_scene_scale_model.cpp -->
 
-
 <!-- execution:start:a100:89_out_of_core_scene_scale_model.cpp -->
 > **Compiled and executed — 2026-11-17-a100: Host program/model (exit-only).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:05:28.381151+00:00`.
 
@@ -908,7 +924,6 @@ R2E2's own real reported results against a single-machine in-memory baseline (pb
 
 <!-- execution:end:a100:89_out_of_core_scene_scale_model.cpp -->
 
-
 <!-- execution:start:h100:89_out_of_core_scene_scale_model.cpp -->
 > **Compiled and executed — 2026-11-17-h100: Host program/model (exit-only).** Hardware: 2 H100 GPUs. Execution record UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`.
 
@@ -945,7 +960,6 @@ R2E2's own real reported results against a single-machine in-memory baseline (pb
 
 </details>
 <!-- execution:end:h100:89_out_of_core_scene_scale_model.cpp -->
-
 
 Compile and run:
 
@@ -1005,8 +1019,8 @@ Chapter 31, "Multi-GPU Monte Carlo Risk Simulation," closes out Part 6 with a wo
 2. A row-tile in Chapter 16 or Chapter 29 needs its neighboring rank's boundary row to correctly compute its own edge cells, so the strips must stay contiguous and adjacent for the halo exchange to make sense. Section 30.1's row-tiles have no such dependency -- each row's pixels are computed purely from the fixed scene and that row's own coordinates -- so any rank could be given any subset of rows with no effect on correctness.
 3. Section 30.2's own model shows this chapter's total communication cost stays fixed (the size of the final assembled image) no matter how many internal computational steps (ray bounces, samples per pixel) were taken, while every earlier Part 6 chapter's own cost model grows linearly (or worse) with the number of computational steps, because each of those chapters needed a communication step at every iteration.
 4. NVIDIA's own real documentation reveals that (a) real multi-GPU tiles use "a small overlap region between them" for filtering/denoising at tile edges, and (b) the renderer "automatically balances the amount of total path tracing work to be performed by each GPU," meaning real tiles are not simply equal-sized slices of the image.
-5. The tile overlap exists to make a post-processing filtering/denoising step look correct at the seam between two already-fully-computed tiles; it does not feed into the numerical result of any pixel's own color computation the way Chapter 16's halo exchange feeds directly into the next iteration's stencil values. It is a cosmetic-correctness exchange, not a computational-correctness one.
-6. Chapter 18's own weighted-sharding technique greedily assigns each unit of work to whichever rank currently holds the smallest accumulated weight, which naturally produces a non-contiguous, interleaved assignment when the per-unit weights vary unevenly across the sequence. That assignment is only valid in Section 30.2's setting because no rank ever needs another rank's row; the same technique could not be applied to Chapter 16's contiguous halo-exchange strips, where a rank's rows must stay adjacent to its neighbors' rows for the exchange to be meaningful.
+5. The tile overlap exists to make a post-processing filtering/denoising step look correct at the seam between two already-fully-computed tiles; it does not feed into the numerical result of any pixel's own color computation the way Chapter 16's halo exchange feeds directly into the next iteration's stencil values. It is part of the numerical contract of the final filtered image. The unfiltered per-pixel model can omit it, but a renderer claiming equivalent denoised output cannot.
+6. Chapter 18's own weighted-sharding technique greedily assigns each unit of work to whichever rank currently holds the smallest accumulated weight, which naturally produces a non-contiguous, interleaved assignment when the per-unit weights vary unevenly across the sequence. That assignment is only valid in Section 30.2's setting because no rank ever needs another rank's row; applying it to Chapter 16 would require rebuilding the owner/neighbor map and exchanging every newly created interface. Arbitrary noncontiguous ownership is possible, but the original fixed two-neighbor strip protocol would no longer suffice.
 7. Fouladi et al.'s real cited constraint is that a production scene can contain "up to a terabyte of geometry and texture data (where as little as 1/250th of the scene can fit on any one node)" -- meaning no single node has enough memory to hold the whole scene, forcing the scene's own data to be partitioned across many nodes before rendering can even begin.
 8. Once the scene's own data is partitioned across nodes because it does not fit on one device, a ray traveling through the scene can reach a region of geometry that is owned by a different node than the one currently tracing that ray; that ray's state (or the needed geometry) must then be communicated across node boundaries mid-render, something Section 30.1's clean model never needed because it assumed the entire scene was already available locally to every rank.
 

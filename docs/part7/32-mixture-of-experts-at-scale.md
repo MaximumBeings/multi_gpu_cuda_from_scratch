@@ -10,8 +10,6 @@
 
 ---
 
-Part 6 closed with eight case studies that each fit into one of three communication shapes this book had already built: a fixed communication pattern regardless of scale (Chapter 16's halo exchange), one that grows with the number of ranks (Chapter 27's N-body all-gather), or one with no communication at all during computation (Chapter 30's rendering). Part 7 opens with four industrial systems that are cutting-edge, real, and actively deployed today -- starting with Mixture-of-Experts, the architecture behind DeepSeek-V3, Mixtral, and GPT-4's rumored design, which turns out to need a FOURTH shape this book has never built: a communication pattern keyed by which TOKEN needs which EXPERT, decided fresh at every layer, for every batch, by a small neural network. Google's GShard paper (Lepikhin et al., 2020) gave this pattern its now-standard name -- "dispatch" to route each token to its chosen experts, "combine" to route each expert's output back -- and DeepSeek-AI's own real, open-source DeepEP library exists specifically because that dispatch/combine step, done at production scale across many GPUs, is expensive enough to deserve its own dedicated communication library, built directly on top of this book's own Chapter 22 (NVSHMEM) and Chapter 10 (all-to-all).
-
 ```text
 +------------------------------------------------------------------+
 |  Chapters 8-31 (every collective in this book so far):           |
@@ -30,6 +28,33 @@ Part 6 closed with eight case studies that each fit into one of three communicat
 |   and a top-k>=3 combine sum is grouping-dependent too)           |
 +------------------------------------------------------------------+
 ```
+
+<!-- mgpu:worked:start -->
+## Worked walkthrough — Route four tokens and invert the dispatch
+
+[![Route four tokens and invert the dispatch: numerical ownership, intermediate values and checks](../images/worked/ch32.svg)](../images/worked/ch32.svg)
+
+Consider a deliberately small MoE routing model: four token IDs 0–3, two experts E0/E1 on different ranks, hidden width H=4 and two-byte elements. Each token chooses one expert: `[E0,E1,E1,E0]`. Capacity initially holds both assigned tokens per expert. This is an industrial communication schematic, not a captured DeepEP model run.
+
+1. **Build counts before buffers.** Token-owner rank 0 starts with tokens 0–1 and rank 1 with tokens 2–3. Each sends one token to each expert, so the source-by-destination count matrix is `[[1,1],[1,1]]`. Counts are tokens, not bytes.
+2. **Pack with identity metadata.** E0 receives token IDs `[0,3]`; E1 receives `[1,2]`. Payload per token is `H*2=8` bytes, so total dispatched activation payload is 32 bytes. Of those, sixteen cross ranks under this placement; the rest remain local. Counts, IDs, padding and alignment add separate overhead.
+3. **Execute the selected experts.** For a hand check only, let expert E0 multiply its input by two and E1 by three. Scalar first components `[1,2,3,4]` become `[2,6,9,8]` when restored to token order. The other components follow the same declared toy functions.
+4. **Invert routing.** Return outputs to original owners using the recorded token IDs, not expert-local receive order. With top-1 weight one, no cross-expert sum is required per token. Top-k routing instead produces multiple contributions and requires the stated weighted combine.
+5. **Expose capacity semantics.** If capacity falls to one token per expert, two assignments overflow. Dropping, rerouting and padding are different policies. Changing the partition can change capacity groups, so identical router scores alone do not prove identical accepted tokens.
+
+An actual grouped `ncclSend`/`ncclRecv`, MPI variable-count exchange or NVSHMEM/DeepEP path needs matching counts, peer ordering, buffers and completion semantics. This routing table specifies the data contract; it is not a portable substitute for any library's dispatch API.
+
+**Expected check:** restored output ID order is 0,1,2,3 with the expected four components per token; each accepted assignment contributes exactly once. **Pitfall:** an equal aggregate byte count can conceal a permutation or overflowed token.
+
+??? question "Exercise: count a top-2 extension"
+
+    Every token now visits both experts, with the same H and datatype. Count payload before metadata and any padding.
+
+    **Worked answer:** eight token-expert assignments require 64 dispatch bytes and another 64 returned activation bytes if output width/type match. That is assignment traffic, not necessarily all remote network bytes; locality follows the actual owners.
+
+<!-- mgpu:worked:end -->
+
+The upper introductory ASCII panel illustrates a **reduction**, not every collective previously taught. Broadcast, all-gather and all-to-all have different data semantics; MoE dispatch/combine is a data-dependent routing use of those communication building blocks. The examples below do not claim every MoE implementation uses the same overflow policy.
 
 ## 32.1 Expert Parallelism and the Dispatch/Combine All-to-All
 
@@ -349,7 +374,6 @@ Part A: once capacity is enforced per group (per rank), the SAME tokens and the 
 
 <!-- execution:end:h100-rerun:93_moe_dispatch_combine_correctness_simulation.cpp -->
 
-
 <!-- execution:start:a100:93_moe_dispatch_combine_correctness_simulation.cpp -->
 > **Compiled and executed — 2026-11-17-a100: Host program/model (exit-only).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:05:34.609734+00:00`.
 
@@ -394,7 +418,6 @@ Part A: once capacity is enforced per group (per rank), the SAME tokens and the 
 
 <!-- execution:end:a100:93_moe_dispatch_combine_correctness_simulation.cpp -->
 
-
 <!-- execution:start:h100:93_moe_dispatch_combine_correctness_simulation.cpp -->
 > **Compiled and executed — 2026-11-17-h100: Host program/model (exit-only).** Hardware: 2 H100 GPUs. Execution record UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`.
 
@@ -438,7 +461,6 @@ Part A: once capacity is enforced per group (per rank), the SAME tokens and the 
 
 </details>
 <!-- execution:end:h100:93_moe_dispatch_combine_correctness_simulation.cpp -->
-
 
 Compile and run (a plain host `.cpp` file, no CUDA/NCCL/MPI/NVSHMEM linkage, so this was executed on the recorded H100 and A100 hosts):
 
@@ -605,7 +627,6 @@ Notice what DeepEP's own real documentation does NOT publish: no latency number 
 
 <!-- execution:end:h100-rerun:94_normal_vs_lowlatency_kernel_cost_model.cpp -->
 
-
 <!-- execution:start:a100:94_normal_vs_lowlatency_kernel_cost_model.cpp -->
 > **Compiled and executed — 2026-11-17-a100: Host program/model (exit-only).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:05:34.843719+00:00`.
 
@@ -646,7 +667,6 @@ Notice what DeepEP's own real documentation does NOT publish: no latency number 
 
 
 <!-- execution:end:a100:94_normal_vs_lowlatency_kernel_cost_model.cpp -->
-
 
 <!-- execution:start:h100:94_normal_vs_lowlatency_kernel_cost_model.cpp -->
 > **Compiled and executed — 2026-11-17-h100: Host program/model (exit-only).** Hardware: 2 H100 GPUs. Execution record UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`.
@@ -689,7 +709,6 @@ Notice what DeepEP's own real documentation does NOT publish: no latency number 
 </details>
 <!-- execution:end:h100:94_normal_vs_lowlatency_kernel_cost_model.cpp -->
 
-
 Compile and run (again a plain host `.cpp` file with no CUDA/NCCL/MPI/NVSHMEM linkage, executed on the recorded H100 and A100 hosts):
 
 ```bash
@@ -728,7 +747,6 @@ Chapter 10's all-to-all, and every MPI-based collective since Chapter 20, follow
 File 95 checks a host-callable NVSHMEM All-to-All and a kernel-initiated ring put. Each process selects its node-local GPU, initializes its symmetric buffers and checks every received value after completion.
 
 The [2026-11-17 H100 execution record](../validation-h100.md) covers two GPUs connected by local NV18. It distinguishes numerical checks, API probes and other executions; a successful exit alone does not establish GPU algorithm correctness.
-
 
 The [2026-11-17 H100 execution record](../validation-h100.md) covers two GPUs connected by local NV18. It distinguishes numerical checks, API probes and other executions; a successful exit alone does not establish GPU algorithm correctness.
 
@@ -853,7 +871,6 @@ VALIDATION PASS: 2 PEs, errors=0
 
 <!-- execution:end:h100-rerun:95_gpu_initiated_alltoall_and_put_demo.cu -->
 
-
 <!-- execution:start:a100:95_gpu_initiated_alltoall_and_put_demo.cu -->
 > **Compiled and executed — 2026-11-17-a100: Numerical/transport validation (recorded scope).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:05:42.982569+00:00`.
 
@@ -908,7 +925,6 @@ VALIDATION PASS: 8 PEs, errors=0
 
 
 <!-- execution:end:a100:95_gpu_initiated_alltoall_and_put_demo.cu -->
-
 
 <!-- execution:start:h100:95_gpu_initiated_alltoall_and_put_demo.cu -->
 > **Compiled and executed — 2026-11-17-h100: Numerical/transport validation (recorded scope).** Hardware: 2 H100 GPUs. Execution record UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`.
@@ -975,7 +991,6 @@ VALIDATION PASS: 2 PEs, errors=0
 </details>
 <!-- execution:end:h100:95_gpu_initiated_alltoall_and_put_demo.cu -->
 
-
 Compile and run with CUDA, NVSHMEM and MPI installed on the execution host. The dated H100 record captures the actual commands and dependency versions used:
 
 The [2026-11-17 H100 execution record](../validation-h100.md) covers two GPUs connected by local NV18. It distinguishes numerical checks, API probes and other executions; a successful exit alone does not establish GPU algorithm correctness.
@@ -995,7 +1010,6 @@ nvcc -rdc=true -ccbin mpicxx -arch=sm_90 \
 mpirun --allow-run-as-root -np 2 ./95_gpu_initiated_alltoall_and_put_demo
 ```
 
-
 The [2026-11-17 H100 execution record](../validation-h100.md) covers two GPUs connected by local NV18. It distinguishes numerical checks, API probes and other executions; a successful exit alone does not establish GPU algorithm correctness.
 
 The current File 95 passed its two-PE numerical check: initialized host-callable all-to-all buffers and a kernel-initiated ring put were verified by explicit CUDA readback. This establishes the selected local NVLink case, not InfiniBand, IBGDA transport selection, DeepEP execution or production MoE performance.
@@ -1004,7 +1018,7 @@ The [2026-11-17 H100 execution record](../validation-h100.md) covers two GPUs co
 
 ## Chapter Summary
 
-Mixture-of-Experts routing needs a communication shape this book had not yet built: a per-token dispatch/combine all-to-all, driven by a gating network's own choices rather than a fixed topology. Google's GShard paper gave this pattern its standard vocabulary -- dispatch, combine, expert capacity, and the silent residual-passthrough that real systems use for overflow -- and File 93 showed that MoE outputs are partition-dependent in two separate ways. First, GShard enforces capacity per group (per rank), so the same tokens and the same gate overflow differently at different P: 4 to 8 of 24 tokens changed output at every P > 1. Second, a token's combine is a sum of its top-k weighted expert outputs; at top-2 that two-term sum is bit-exact under any grouping because IEEE 754 addition is commutative, but at top-3 and beyond the grouping matters, and DeepSeek-V3-style top-8 routing changed about a third of tokens' last bits under a hierarchical combine. DeepSeek-AI's own real, open-source DeepEP library exists specifically to make that dispatch/combine step fast at production scale, and its own real published V1 numbers (File 94) show it ships two entirely separate kernel families -- a high-throughput "normal" kernel for training-sized batches and a pure-RDMA "low-latency" kernel for inference decoding -- because each is tuned for a different operating point. DeepEP's own real V1 design built its low-latency kernels on NVSHMEM's GPU-initiated RDMA (IBGDA), the same real Chapter 22 foundation this book already established, letting a GPU kernel issue a network operation without any CPU round-trip; File 95 passed initialized all-to-all and kernel-initiated ring-put checks with two PEs on the H100 pair. That local NV18 result validates neither IBGDA nor DeepEP itself. Finally, re-checking DeepEP's own repository found something this book's own Chapter 21 and Chapter 23 already warned about: DeepEP's V2 moved away from NVSHMEM to a "NCCL Gin backend," and a later release removed V1 and its documentation altogether, a reminder that even a cutting-edge production library's transport layer keeps evolving, and that any citation to "how a real system works" needs re-verifying against the current source, not memory of an earlier version.
+Mixture-of-Experts routing needs a communication shape this book had not yet built: a per-token dispatch/combine all-to-all, driven by a gating network's own choices rather than a fixed topology. Google's GShard paper gave this pattern its standard vocabulary -- dispatch, combine, expert capacity, and the silent residual-passthrough that real systems use for overflow -- and File 93 showed that MoE outputs are partition-dependent in two separate ways. First, GShard enforces capacity per group (per rank), so the same tokens and the same gate overflow differently at different P: 4 to 8 of 24 tokens changed output at every P > 1. Second, a token's combine is a sum of its top-k weighted expert outputs; at top-2 that two-term sum is bit-exact under any grouping because this finite two-term addition has the same result when its operands are reversed under the same rounding mode, but at top-3 and beyond the grouping matters, and DeepSeek-V3-style top-8 routing changed about a third of tokens' last bits under a hierarchical combine. DeepSeek-AI's own real, open-source DeepEP library exists specifically to make that dispatch/combine step fast at production scale, and its own real published V1 numbers (File 94) show it ships two entirely separate kernel families -- a high-throughput "normal" kernel for training-sized batches and a pure-RDMA "low-latency" kernel for inference decoding -- because each is tuned for a different operating point. DeepEP's own real V1 design built its low-latency kernels on NVSHMEM's GPU-initiated RDMA (IBGDA), the same real Chapter 22 foundation this book already established, letting a GPU kernel issue a network operation without any CPU round-trip; File 95 passed initialized all-to-all and kernel-initiated ring-put checks with two PEs on the H100 pair. That local NV18 result validates neither IBGDA nor DeepEP itself. Finally, re-checking DeepEP's own repository found something this book's own Chapter 21 and Chapter 23 already warned about: DeepEP's V2 moved away from NVSHMEM to a "NCCL Gin backend," and a later release removed V1 and its documentation altogether, a reminder that even a cutting-edge production library's transport layer keeps evolving, and that any citation to "how a real system works" needs re-verifying against the current source, not memory of an earlier version.
 
 The [2026-11-17 H100 execution record](../validation-h100.md) covers two GPUs connected by local NV18. It distinguishes numerical checks, API probes and other executions; a successful exit alone does not establish GPU algorithm correctness.
 
@@ -1028,7 +1042,7 @@ Chapter 33 stays inside the same real, cutting-edge deployment landscape but tur
 
 ## Worked Solutions
 
-1. IEEE 754 addition is commutative: `a + b` and `b + a` are bit-identical. With top-2 routing a token's combine is a sum of exactly two weighted terms, and there is only one way to group two terms, so whichever order the two contributions arrive in -- and whichever ranks they come from, which in expert parallelism is usually two different ranks -- the result is the same. Addition is NOT associative, though: with three or more terms, `(a + b) + c` and `a + (b + c)` can differ in the last bit. A hierarchical combine that first sums each rank's local contributions and then sums the per-rank partials groups the terms according to the expert-to-rank layout, so at top-3 and beyond the result depends on P. File 93's Part B found 0 mismatches at top-2 and hundreds to over a thousand of 4096 tokens at top-3 through top-8.
+1. For the finite, non-NaN operands and fixed rounding mode in this example, reversing a single two-term addition yields the same numerical result. This is not a blanket bit-pattern guarantee for every IEEE 754 input: NaN payload propagation and exceptional values need separate handling. With top-2 routing a token's combine is a sum of exactly two weighted terms, and there is only one way to group two terms, so whichever order the two contributions arrive in -- and whichever ranks they come from, which in expert parallelism is usually two different ranks -- the result is the same. Addition is NOT associative, though: with three or more terms, `(a + b) + c` and `a + (b + c)` can differ in the last bit. A hierarchical combine that first sums each rank's local contributions and then sums the per-rank partials groups the terms according to the expert-to-rank layout, so at top-3 and beyond the result depends on P. File 93's Part B found 0 mismatches at top-2 and hundreds to over a thousand of 4096 tokens at top-3 through top-8.
 2. If only ONE of a token's two chosen experts is full, that expert's term simply drops out of the weighted sum (contributes 0), while the other accepted expert's own weighted term still contributes normally, with no renormalization. If BOTH chosen experts are full, GShard's own real design passes the token's original (residual) value straight through, untouched by any expert. At P = 1 File 93 showed 19 overflowed (token, expert) slots out of 48, with 7 of the 24 tokens on the full-overflow (residual-passthrough) branch. The count changes with P because GShard gives each group (each rank's local batch) its own fractional capacity, checked in that group's own token order: which tokens compete for the same budget, and the rounding of `ceil(groupSize * 2 / E * 1.25)`, both depend on P -- the fully-overflowed count ranged from 0 (P = 24) to 6 (P = 2) across the tested splits.
 3. The gating scores were raw hash-derived values in the hundreds (further skewed by +500 for the two popular experts), and `std::exp()` of a value that large overflows `double` to `+inf`; dividing `+inf` by `(+inf + +inf)` produces NaN, not an error. The standard fix is a numerically-stable softmax: subtract the larger of the two scores before exponentiating (`1.0 / (1.0 + exp(s2 - s1))`), which never overflows since the exponent argument is always <= 0. The confusing part is that IEEE 754 defines `NaN != NaN`, so comparing two runs that BOTH independently produced NaN (identically, since both ran the identical broken arithmetic) still reports "not equal" -- making an overflow bug look, at the comparison step, exactly like a real cross-run mismatch.
 4. The 153-158 GB/s figure is the normal kernel's INTRANODE (NVLink) bandwidth, while the low-latency kernel is pure RDMA, so the two numbers measure different links. The like-for-like comparison is against the normal kernel's INTERNODE (RDMA) figures of 43-58 GB/s, and on that comparison the low-latency kernel's 98 GB/s at EP=8 is higher. Its bandwidth does fall steeply as EP grows (to 39 GB/s at EP=128-256), and the two tables were measured at different batch sizes, so neither table names a universal winner: benchmark at your own batch size and EP degree.
