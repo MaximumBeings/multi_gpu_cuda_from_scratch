@@ -2656,7 +2656,7 @@
 <ul>
 <li>Why every pointer in a modern multi-GPU CUDA program — host or device, no matter which device allocated it — lives in one single, flat address space, and what <code>cudaPointerGetAttributes()</code> can honestly tell you about any pointer in that space.</li>
 <li>Why "peer access" is a real, queryable, <em>unidirectional</em> permission between two specific devices, not an automatic consequence of Unified Virtual Addressing existing — and exactly which two Runtime API calls establish it.</li>
-<li>How this book verifies peer-to-peer transfer <em>logic</em> — which buffer goes where, under which topology — without a second real device, using the host-side simulation technique this book commits to using honestly whenever real multi-device hardware isn't available.</li>
+<li>How the GPU transfer checks validate real payloads, while the host simulation independently explores routing and buffer ownership.</li>
 </ul>
 <p><strong>What you need to know first:</strong></p>
 <ul>
@@ -2773,9 +2773,9 @@
 <a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a><span class="c1">// pair with cudaDeviceCanAccessPeer(), then enable access with</span>
 <a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a><span class="c1">// cudaDeviceEnablePeerAccess() -- called from the "current" side of the</span>
 <a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a><span class="c1">// pair, since (per the CUDA Runtime API docs) access granted this way</span>
-<a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a><span class="c1">// is unidirectional. Genuinely compiled with a real nvcc and genuinely</span>
-<a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a><span class="c1">// run; on this driver-less machine the loop body runs zero times, for</span>
-<a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a><span class="c1">// exactly the reason Chapter 3 already explained.</span>
+<a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a><span class="c1">// Peer access is directional; query and enable each ordered device pair.</span>
+<a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a><span class="c1">//</span>
+<a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a><span class="c1">//</span>
 <a id="__codelineno-5-11" name="__codelineno-5-11" href="#__codelineno-5-11"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;cstdio&gt;</span>
 <a id="__codelineno-5-12" name="__codelineno-5-12" href="#__codelineno-5-12"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;cuda_runtime.h&gt;</span>
 <a id="__codelineno-5-13" name="__codelineno-5-13" href="#__codelineno-5-13"></a>

@@ -2661,9 +2661,9 @@
 </ul>
 <p><strong>What you need to know first:</strong></p>
 <ul>
-<li>Chapter 11's real <code>ncclCommInitAll()</code> communicator and the honest error codes it returns in this environment.</li>
-<li>Chapter 17's real barrier (a throwaway <code>ncclAllReduce()</code> plus a required <code>cudaStreamSynchronize()</code>) -- this chapter's failures happen at exactly that kind of waiting point.</li>
-<li>Chapter 18's makespan framing: what a barrier costs when one rank is slower than the rest.</li>
+<li>Chapter 11’s communicator initialization and checked API results.</li>
+<li>Chapter 17’s dummy-element AllReduce and stream completion.</li>
+<li>Chapter 18’s model of straggler delays.</li>
 </ul>
 <hr />
 <p>A slow rank can delay a collective; a failed rank can prevent completion. This chapter separates communicator progress, error polling and application recovery, then models backup workers as a way to tolerate stragglers. The API probes check their declared cases; the timing models explain the scheduling tradeoff.</p>

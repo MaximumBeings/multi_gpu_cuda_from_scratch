@@ -2756,8 +2756,8 @@
 </code></pre></div>
 <p>Broadcast, Reduce, AllReduce, AllGather and ReduceScatter map directly to NCCL collectives. The tested NCCL 2.26.2 builds express All-to-All with grouped <code>ncclSend</code>/<code>ncclRecv</code> calls; dedicated All-to-All APIs are available in newer releases. Chapter 17 uses a dummy-element AllReduce plus stream completion as a barrier, with grouped submission when one host controls multiple ranks.</p>
 <div class="admonition warning">
-<p class="admonition-title">Warning</p>
-<p>A version number and a unique ID cost nothing -- a communicator costs a device. <code>ncclGetVersion()</code> and <code>ncclGetUniqueId()</code> are pure host-side bookkeeping and will succeed on a laptop with no GPU at all. <code>ncclCommInitRank()</code> is different: it genuinely tries to bind the communicator to a physical device, and on a machine with zero physical GPUs it fails every time, the same real, well-documented limitation Chapters 22, 23, and 32 already found for NVSHMEM init and for captured graph launches. Reading a version string back successfully is not evidence that a communicator will initialize.</p>
+<p class="admonition-title">[COMMON TRAP] Confusing a version query with communicator setup</p>
+<p>A version query reads library metadata. Communicator initialization binds ranks to CUDA devices and requires every participating rank to complete the setup protocol.</p>
 </div>
 <h3 id="code-and-verification">Code and Verification<a class="headerlink" href="#code-and-verification" title="Permanent link">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="c1">// 126_nccl_collective_reference.cu</span>

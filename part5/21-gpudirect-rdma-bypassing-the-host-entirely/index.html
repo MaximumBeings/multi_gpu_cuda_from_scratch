@@ -2666,7 +2666,7 @@
 <li>Chapter 2's PCIe topology model -- same-switch vs. cross-socket bandwidth.</li>
 </ul>
 <hr />
-<p>Chapter 20 closed on an unfinished sentence: this exact environment's real, installed Open MPI build isn't CUDA-aware, so Section 20.2's own fallback spent every byte's trip going device-to-host, over the network, then host-to-device again -- never touching GPU memory directly from the network side at all. GPUDirect RDMA is the technology that removes that detour, but reaching it for real first needs one piece this book has never actually built: every NCCL communicator since Chapter 11 was built by a single process that could already see every GPU (<code>ncclCommInitAll()</code>) or, worse, was never real to begin with. A real multi-<em>node</em> NCCL job is neither -- it is exactly Chapter 20's own real multi-<em>process</em> MPI world, with NCCL layered on top of it for the actual data movement. Section 21.1 builds that real hybrid bootstrap first, because it's the thing that makes "GPUDirect RDMA between two nodes" a question that even makes sense to ask. Section 21.2 then checks, the same honest way this book has checked every device-touching capability since Chapter 3, whether a GPU genuinely supports GPUDirect RDMA. Section 21.3 closes with real, cited numbers on what bypassing the host is actually worth, and what happens when the PCIe topology underneath it is wrong.</p>
+<p>MPI supplies the process ranks and bootstrap channel for a distributed NCCL communicator. Section 21.1 distributes one <code>ncclUniqueId</code> and initializes each rank on its selected GPU. Section 21.2 queries GPUDirect RDMA capability, and Section 21.3 models the latency and topology tradeoffs using the cited measurements. In the recorded MPI transfer example, the capability query selects the explicit host-staging path.</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>Chapter 20 alone:                          This chapter (Ch21):
 <a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>
 <a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>  MPI_Init/Comm_rank/Comm_size                MPI bootstraps NCCL's id (21.1)
@@ -2800,9 +2800,9 @@
 <a id="__codelineno-2-82" name="__codelineno-2-82" href="#__codelineno-2-82"></a><span class="w">    </span><span class="c1">// ncclCommInitRank" -- nccl.h's own comment). The device index is</span>
 <a id="__codelineno-2-83" name="__codelineno-2-83" href="#__codelineno-2-83"></a><span class="w">    </span><span class="c1">// the NODE-LOCAL rank, never the global MPI rank: this is a</span>
 <a id="__codelineno-2-84" name="__codelineno-2-84" href="#__codelineno-2-84"></a><span class="w">    </span><span class="c1">// multi-node bootstrap, and device numbering restarts at 0 on</span>
-<a id="__codelineno-2-85" name="__codelineno-2-85" href="#__codelineno-2-85"></a><span class="w">    </span><span class="c1">// every node. (On this single-host run localRank == myRank, so the</span>
-<a id="__codelineno-2-86" name="__codelineno-2-86" href="#__codelineno-2-86"></a><span class="w">    </span><span class="c1">// difference can't show up here.) Honestly cudaErrorNoDevice: this</span>
-<a id="__codelineno-2-87" name="__codelineno-2-87" href="#__codelineno-2-87"></a><span class="w">    </span><span class="c1">// environment has no device at all, regardless of which rank asks.</span>
+<a id="__codelineno-2-85" name="__codelineno-2-85" href="#__codelineno-2-85"></a><span class="w">    </span><span class="c1">// Select each process's node-local device before communicator setup.</span>
+<a id="__codelineno-2-86" name="__codelineno-2-86" href="#__codelineno-2-86"></a><span class="c1">//</span>
+<a id="__codelineno-2-87" name="__codelineno-2-87" href="#__codelineno-2-87"></a><span class="c1">//</span>
 <a id="__codelineno-2-88" name="__codelineno-2-88" href="#__codelineno-2-88"></a><span class="w">    </span><span class="kt">int</span><span class="w"> </span><span class="n">localRank</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">computeLocalRank</span><span class="p">(</span><span class="n">myRank</span><span class="p">,</span><span class="w"> </span><span class="n">nRanks</span><span class="p">);</span>
 <a id="__codelineno-2-89" name="__codelineno-2-89" href="#__codelineno-2-89"></a><span class="w">    </span><span class="n">cudaError_t</span><span class="w"> </span><span class="n">eSet</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">cudaSetDevice</span><span class="p">(</span><span class="n">localRank</span><span class="p">);</span>
 <a id="__codelineno-2-90" name="__codelineno-2-90" href="#__codelineno-2-90"></a>
@@ -2820,16 +2820,16 @@
 <a id="__codelineno-2-102" name="__codelineno-2-102" href="#__codelineno-2-102"></a><span class="w">           </span><span class="n">ncclGetErrorString</span><span class="p">(</span><span class="n">eInit</span><span class="p">),</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="p">)</span><span class="n">eInit</span><span class="p">);</span>
 <a id="__codelineno-2-103" name="__codelineno-2-103" href="#__codelineno-2-103"></a>
 <a id="__codelineno-2-104" name="__codelineno-2-104" href="#__codelineno-2-104"></a><span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">myRank</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="mi">0</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
-<a id="__codelineno-2-105" name="__codelineno-2-105" href="#__codelineno-2-105"></a><span class="w">        </span><span class="n">printf</span><span class="p">(</span><span class="s">"</span><span class="se">\n</span><span class="s">Every rank sees the SAME honest failure code Chapter 11's "</span>
-<a id="__codelineno-2-106" name="__codelineno-2-106" href="#__codelineno-2-106"></a><span class="w">               </span><span class="s">"single-process ncclCommInitAll() saw on its own well-formed "</span>
-<a id="__codelineno-2-107" name="__codelineno-2-107" href="#__codelineno-2-107"></a><span class="w">               </span><span class="s">"requests (ncclUnhandledCudaError=1) -- this environment's "</span>
-<a id="__codelineno-2-108" name="__codelineno-2-108" href="#__codelineno-2-108"></a><span class="w">               </span><span class="s">"real absence of any GPU doesn't care whether the caller was "</span>
-<a id="__codelineno-2-109" name="__codelineno-2-109" href="#__codelineno-2-109"></a><span class="w">               </span><span class="s">"one process managing N devices or N real MPI processes each "</span>
-<a id="__codelineno-2-110" name="__codelineno-2-110" href="#__codelineno-2-110"></a><span class="w">               </span><span class="s">"managing one. What changed is genuinely real: %d separate "</span>
-<a id="__codelineno-2-111" name="__codelineno-2-111" href="#__codelineno-2-111"></a><span class="w">               </span><span class="s">"operating-system processes, discovered through MPI, agreed "</span>
-<a id="__codelineno-2-112" name="__codelineno-2-112" href="#__codelineno-2-112"></a><span class="w">               </span><span class="s">"on one shared id through MPI, and each independently called "</span>
-<a id="__codelineno-2-113" name="__codelineno-2-113" href="#__codelineno-2-113"></a><span class="w">               </span><span class="s">"the exact same NCCL entry point every earlier chapter used.</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span>
-<a id="__codelineno-2-114" name="__codelineno-2-114" href="#__codelineno-2-114"></a><span class="w">               </span><span class="n">nRanks</span><span class="p">);</span>
+<a id="__codelineno-2-105" name="__codelineno-2-105" href="#__codelineno-2-105"></a><span class="w">        </span><span class="n">printf</span><span class="p">(</span><span class="s">"%d MPI ranks participated in the communicator bootstrap shown above.</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span><span class="w"> </span><span class="n">nRanks</span><span class="p">);</span>
+<a id="__codelineno-2-106" name="__codelineno-2-106" href="#__codelineno-2-106"></a><span class="c1">//</span>
+<a id="__codelineno-2-107" name="__codelineno-2-107" href="#__codelineno-2-107"></a><span class="c1">//</span>
+<a id="__codelineno-2-108" name="__codelineno-2-108" href="#__codelineno-2-108"></a><span class="c1">//</span>
+<a id="__codelineno-2-109" name="__codelineno-2-109" href="#__codelineno-2-109"></a><span class="c1">//</span>
+<a id="__codelineno-2-110" name="__codelineno-2-110" href="#__codelineno-2-110"></a><span class="c1">//</span>
+<a id="__codelineno-2-111" name="__codelineno-2-111" href="#__codelineno-2-111"></a><span class="c1">//</span>
+<a id="__codelineno-2-112" name="__codelineno-2-112" href="#__codelineno-2-112"></a><span class="c1">//</span>
+<a id="__codelineno-2-113" name="__codelineno-2-113" href="#__codelineno-2-113"></a><span class="c1">//</span>
+<a id="__codelineno-2-114" name="__codelineno-2-114" href="#__codelineno-2-114"></a><span class="c1">//</span>
 <a id="__codelineno-2-115" name="__codelineno-2-115" href="#__codelineno-2-115"></a><span class="w">    </span><span class="p">}</span>
 <a id="__codelineno-2-116" name="__codelineno-2-116" href="#__codelineno-2-116"></a>
 <a id="__codelineno-2-117" name="__codelineno-2-117" href="#__codelineno-2-117"></a><span class="w">    </span><span class="n">MPI_Finalize</span><span class="p">();</span>
@@ -2847,7 +2847,7 @@
 <div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>mpicxx<span class="w"> </span>-std<span class="o">=</span>c++17<span class="w"> </span>-O2<span class="w"> </span>-I/usr/include<span class="w"> </span>-L/usr/local/cuda/lib64<span class="w"> </span>-Wl,-rpath,/usr/local/cuda/lib64<span class="w"> </span>60_hybrid_mpi_nccl_bootstrap.cpp<span class="w"> </span>-o<span class="w"> </span>./example<span class="w"> </span>-lnccl<span class="w"> </span>-lcudart
 <a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>/usr/mpi/gcc/openmpi-4.1.7rc1/bin/mpirun<span class="w"> </span>--oversubscribe<span class="w"> </span>-np<span class="w"> </span><span class="m">8</span><span class="w"> </span>./example
 </code></pre></div>
-<p><strong>Sample output</strong></p>
+<p><strong>Actual sample output (excerpt)</strong></p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>[LOG_CAT_SBGP] libnuma.so: cannot open shared object file: No such file or directory
 <a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>[LOG_CAT_SBGP] Failed to dlopen libnuma.so. Fallback to GROUP_BY_SOCKET manual.
 <a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>[LOG_CAT_SBGP] libnuma.so: cannot open shared object file: No such file or directory
@@ -2867,14 +2867,13 @@
 <a id="__codelineno-4-17" name="__codelineno-4-17" href="#__codelineno-4-17"></a>rank 0: generated the ONE ncclUniqueId every rank will share, and is about to MPI_Bcast it to all 8 ranks.
 <a id="__codelineno-4-18" name="__codelineno-4-18" href="#__codelineno-4-18"></a>rank 0 of 8: cudaSetDevice(localRank=0)=no error ncclCommInitRank=no error (code 0)
 <a id="__codelineno-4-19" name="__codelineno-4-19" href="#__codelineno-4-19"></a>
-<a id="__codelineno-4-20" name="__codelineno-4-20" href="#__codelineno-4-20"></a>Every rank sees the SAME honest failure code Chapter 11's single-process ncclCommInitAll() saw on its own well-formed requests (ncclUnhandledCudaError=1) -- this environment's real absence of any GPU doesn't care whether the caller was one process managing N devices or N real MPI processes each managing one. What changed is genuinely real: 8 separate operating-system processes, discovered through MPI, agreed on one shared id through MPI, and each independently called the exact same NCCL entry point every earlier chapter used.
-<a id="__codelineno-4-21" name="__codelineno-4-21" href="#__codelineno-4-21"></a>rank 4 of 8: cudaSetDevice(localRank=4)=no error ncclCommInitRank=no error (code 0)
-<a id="__codelineno-4-22" name="__codelineno-4-22" href="#__codelineno-4-22"></a>rank 6 of 8: cudaSetDevice(localRank=6)=no error ncclCommInitRank=no error (code 0)
-<a id="__codelineno-4-23" name="__codelineno-4-23" href="#__codelineno-4-23"></a>rank 2 of 8: cudaSetDevice(localRank=2)=no error ncclCommInitRank=no error (code 0)
-<a id="__codelineno-4-24" name="__codelineno-4-24" href="#__codelineno-4-24"></a>rank 5 of 8: cudaSetDevice(localRank=5)=no error ncclCommInitRank=no error (code 0)
-<a id="__codelineno-4-25" name="__codelineno-4-25" href="#__codelineno-4-25"></a>rank 1 of 8: cudaSetDevice(localRank=1)=no error ncclCommInitRank=no error (code 0)
-<a id="__codelineno-4-26" name="__codelineno-4-26" href="#__codelineno-4-26"></a>rank 3 of 8: cudaSetDevice(localRank=3)=no error ncclCommInitRank=no error (code 0)
-<a id="__codelineno-4-27" name="__codelineno-4-27" href="#__codelineno-4-27"></a>rank 7 of 8: cudaSetDevice(localRank=7)=no error ncclCommInitRank=no error (code 0)
+<a id="__codelineno-4-20" name="__codelineno-4-20" href="#__codelineno-4-20"></a>rank 4 of 8: cudaSetDevice(localRank=4)=no error ncclCommInitRank=no error (code 0)
+<a id="__codelineno-4-21" name="__codelineno-4-21" href="#__codelineno-4-21"></a>rank 6 of 8: cudaSetDevice(localRank=6)=no error ncclCommInitRank=no error (code 0)
+<a id="__codelineno-4-22" name="__codelineno-4-22" href="#__codelineno-4-22"></a>rank 2 of 8: cudaSetDevice(localRank=2)=no error ncclCommInitRank=no error (code 0)
+<a id="__codelineno-4-23" name="__codelineno-4-23" href="#__codelineno-4-23"></a>rank 5 of 8: cudaSetDevice(localRank=5)=no error ncclCommInitRank=no error (code 0)
+<a id="__codelineno-4-24" name="__codelineno-4-24" href="#__codelineno-4-24"></a>rank 1 of 8: cudaSetDevice(localRank=1)=no error ncclCommInitRank=no error (code 0)
+<a id="__codelineno-4-25" name="__codelineno-4-25" href="#__codelineno-4-25"></a>rank 3 of 8: cudaSetDevice(localRank=3)=no error ncclCommInitRank=no error (code 0)
+<a id="__codelineno-4-26" name="__codelineno-4-26" href="#__codelineno-4-26"></a>rank 7 of 8: cudaSetDevice(localRank=7)=no error ncclCommInitRank=no error (code 0)
 </code></pre></div>
 <!-- execution:end:a100:60_hybrid_mpi_nccl_bootstrap.cpp -->
 
@@ -2890,7 +2889,8 @@
 <a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>/home/ubuntu/book2-bin/mpirun<span class="w"> </span>--oversubscribe<span class="w"> </span>-np<span class="w"> </span><span class="m">2</span><span class="w"> </span>./example
 </code></pre></div>
 <details>
-<summary>Captured current-source output</summary>
+<summary>Actual sample output (excerpt)</summary>
+<p><strong>Actual sample output (excerpt)</strong></p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>--------------------------------------------------------------------------
 <a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>Sorry!  You were supposed to get help about:
 <a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>    unavailable
@@ -2930,10 +2930,9 @@
 <a id="__codelineno-6-37" name="__codelineno-6-37" href="#__codelineno-6-37"></a>rank 1 of 2: cudaSetDevice(localRank=1)=no error ncclCommInitRank=no error (code 0)
 <a id="__codelineno-6-38" name="__codelineno-6-38" href="#__codelineno-6-38"></a>rank 0 of 2: cudaSetDevice(localRank=0)=no error ncclCommInitRank=no error (code 0)
 <a id="__codelineno-6-39" name="__codelineno-6-39" href="#__codelineno-6-39"></a>
-<a id="__codelineno-6-40" name="__codelineno-6-40" href="#__codelineno-6-40"></a>Every rank sees the SAME honest failure code Chapter 11's single-process ncclCommInitAll() saw on its own well-formed requests (ncclUnhandledCudaError=1) -- this environment's real absence of any GPU doesn't care whether the caller was one process managing N devices or N real MPI processes each managing one. What changed is genuinely real: 2 separate operating-system processes, discovered through MPI, agreed on one shared id through MPI, and each independently called the exact same NCCL entry point every earlier chapter used.
-<a id="__codelineno-6-41" name="__codelineno-6-41" href="#__codelineno-6-41"></a>[192-222-53-210:12897] 1 more process has sent help message help-mpi-btl-openib.txt / no device params found
-<a id="__codelineno-6-42" name="__codelineno-6-42" href="#__codelineno-6-42"></a>[192-222-53-210:12897] Set MCA parameter "orte_base_help_aggregate" to 0 to see all help / error messages
-<a id="__codelineno-6-43" name="__codelineno-6-43" href="#__codelineno-6-43"></a>[192-222-53-210:12897] 1 more process has sent help message help-mpi-btl-openib-cpc-base.txt / no cpcs for port
+<a id="__codelineno-6-40" name="__codelineno-6-40" href="#__codelineno-6-40"></a>[192-222-53-210:12897] 1 more process has sent help message help-mpi-btl-openib.txt / no device params found
+<a id="__codelineno-6-41" name="__codelineno-6-41" href="#__codelineno-6-41"></a>[192-222-53-210:12897] Set MCA parameter "orte_base_help_aggregate" to 0 to see all help / error messages
+<a id="__codelineno-6-42" name="__codelineno-6-42" href="#__codelineno-6-42"></a>[192-222-53-210:12897] 1 more process has sent help message help-mpi-btl-openib-cpc-base.txt / no cpcs for port
 </code></pre></div>
 </details>
 <!-- execution:end:h100:60_hybrid_mpi_nccl_bootstrap.cpp -->
@@ -3051,9 +3050,9 @@
 <div class="highlight"><pre><span></span><code><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a><span class="c1">// Chapter 21: GPUDirect RDMA: Bypassing the Host Entirely</span>
 <a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a><span class="c1">// 62_staged_vs_rdma_cost_model.cpp</span>
 <a id="__codelineno-14-3" name="__codelineno-14-3" href="#__codelineno-14-3"></a><span class="c1">//</span>
-<a id="__codelineno-14-4" name="__codelineno-14-4" href="#__codelineno-14-4"></a><span class="c1">// Plain host C++, no device/MPI/NCCL needed -- this section's job is</span>
-<a id="__codelineno-14-5" name="__codelineno-14-5" href="#__codelineno-14-5"></a><span class="c1">// to quantify, using cited real numbers (not new measurements this</span>
-<a id="__codelineno-14-6" name="__codelineno-14-6" href="#__codelineno-14-6"></a><span class="c1">// book has no hardware to take), the gap between Section 20.2's own</span>
+<a id="__codelineno-14-4" name="__codelineno-14-4" href="#__codelineno-14-4"></a><span class="c1">// Plain host C++ cost model using cited latency and bandwidth figures.</span>
+<a id="__codelineno-14-5" name="__codelineno-14-5" href="#__codelineno-14-5"></a><span class="c1">// It compares the explicit host-staged path with the direct RDMA model, not</span>
+<a id="__codelineno-14-6" name="__codelineno-14-6" href="#__codelineno-14-6"></a><span class="c1">// new timing measurements. The staged path consists of</span>
 <a id="__codelineno-14-7" name="__codelineno-14-7" href="#__codelineno-14-7"></a><span class="c1">// real staged path (cudaMemcpy D2H -&gt; network -&gt; cudaMemcpy H2D) and</span>
 <a id="__codelineno-14-8" name="__codelineno-14-8" href="#__codelineno-14-8"></a><span class="c1">// GPUDirect RDMA's direct path. Every constant below is cited to</span>
 <a id="__codelineno-14-9" name="__codelineno-14-9" href="#__codelineno-14-9"></a><span class="c1">// NVIDIA's own "Benchmarking GPUDirect RDMA on Modern Server</span>
@@ -3207,7 +3206,7 @@
 <h2 id="self-check-questions">Self-Check Questions<a class="headerlink" href="#self-check-questions" title="Permanent link">&para;</a></h2>
 <ol>
 <li>Why does NCCL need MPI (or an equivalent) at all, given that NCCL already has its own communicator API? What specific step can NCCL not do on its own?</li>
-<li>In file 60, what would happen on a real cluster (not this environment) if the <code>if (myRank == 0)</code> guard around <code>ncclGetUniqueId(&amp;id)</code> were removed?</li>
+<li>In File 60, what happens if every rank generates a different <code>ncclUniqueId</code> instead of broadcasting one shared ID?</li>
 <li><code>cudaDevAttrGPUDirectRDMASupported</code> and NCCL's <code>NCCL_NET_GDR_LEVEL</code> both relate to GPUDirect RDMA. What real, different question does each one answer?</li>
 <li>What is <code>cudaDeviceFlushGPUDirectRDMAWrites()</code> for, and under what real device condition would calling it be a genuine no-op rather than a bug?</li>
 <li>Section 21.3's Part A computes an 8.9x ratio from two fixed latency numbers. Which two numbers, and why would averaging the post's 1.7us and 1.9us figures be the wrong comparison?</li>

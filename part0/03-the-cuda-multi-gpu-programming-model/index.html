@@ -2922,10 +2922,10 @@
 <a id="__codelineno-8-21" name="__codelineno-8-21" href="#__codelineno-8-21"></a><span class="w">    </span><span class="kt">int</span><span class="w"> </span><span class="n">deviceCount</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
 <a id="__codelineno-8-22" name="__codelineno-8-22" href="#__codelineno-8-22"></a><span class="w">    </span><span class="n">cudaGetDeviceCount</span><span class="p">(</span><span class="o">&amp;</span><span class="n">deviceCount</span><span class="p">);</span>
 <a id="__codelineno-8-23" name="__codelineno-8-23" href="#__codelineno-8-23"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">"cudaGetDeviceCount() reports %d device(s).</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span><span class="w"> </span><span class="n">deviceCount</span><span class="p">);</span>
-<a id="__codelineno-8-24" name="__codelineno-8-24" href="#__codelineno-8-24"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">"The loop below runs its body exactly %d time(s) as a "</span>
-<a id="__codelineno-8-25" name="__codelineno-8-25" href="#__codelineno-8-25"></a><span class="w">           </span><span class="s">"direct consequence -- not a special case, just what a "</span>
-<a id="__codelineno-8-26" name="__codelineno-8-26" href="#__codelineno-8-26"></a><span class="w">           </span><span class="s">"correctly-guarded loop over a real count does when that "</span>
-<a id="__codelineno-8-27" name="__codelineno-8-27" href="#__codelineno-8-27"></a><span class="w">           </span><span class="s">"count happens to be zero.</span><span class="se">\n\n</span><span class="s">"</span><span class="p">,</span><span class="w"> </span><span class="n">deviceCount</span><span class="p">);</span>
+<a id="__codelineno-8-24" name="__codelineno-8-24" href="#__codelineno-8-24"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">"The loop body uses the detected device count: %d.</span><span class="se">\n\n</span><span class="s">"</span><span class="p">,</span><span class="w"> </span><span class="n">deviceCount</span><span class="p">);</span>
+<a id="__codelineno-8-25" name="__codelineno-8-25" href="#__codelineno-8-25"></a><span class="c1">//</span>
+<a id="__codelineno-8-26" name="__codelineno-8-26" href="#__codelineno-8-26"></a><span class="c1">//</span>
+<a id="__codelineno-8-27" name="__codelineno-8-27" href="#__codelineno-8-27"></a><span class="c1">//</span>
 <a id="__codelineno-8-28" name="__codelineno-8-28" href="#__codelineno-8-28"></a>
 <a id="__codelineno-8-29" name="__codelineno-8-29" href="#__codelineno-8-29"></a><span class="w">    </span><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">cudaStream_t</span><span class="o">&gt;</span><span class="w"> </span><span class="n">streams</span><span class="p">(</span><span class="n">deviceCount</span><span class="p">);</span>
 <a id="__codelineno-8-30" name="__codelineno-8-30" href="#__codelineno-8-30"></a><span class="w">    </span><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">*&gt;</span><span class="w"> </span><span class="n">buffers</span><span class="p">(</span><span class="n">deviceCount</span><span class="p">,</span><span class="w"> </span><span class="nb">nullptr</span><span class="p">);</span>
@@ -2964,12 +2964,12 @@
 <a id="__codelineno-8-63" name="__codelineno-8-63" href="#__codelineno-8-63"></a><span class="w">        </span><span class="n">cudaFree</span><span class="p">(</span><span class="n">buffers</span><span class="p">[</span><span class="n">i</span><span class="p">]);</span>
 <a id="__codelineno-8-64" name="__codelineno-8-64" href="#__codelineno-8-64"></a><span class="w">    </span><span class="p">}</span>
 <a id="__codelineno-8-65" name="__codelineno-8-65" href="#__codelineno-8-65"></a>
-<a id="__codelineno-8-66" name="__codelineno-8-66" href="#__codelineno-8-66"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">"Loop body executed %d time(s) total across all three "</span>
-<a id="__codelineno-8-67" name="__codelineno-8-67" href="#__codelineno-8-67"></a><span class="w">           </span><span class="s">"phases. On real N-GPU hardware, this exact, unmodified "</span>
-<a id="__codelineno-8-68" name="__codelineno-8-68" href="#__codelineno-8-68"></a><span class="w">           </span><span class="s">"source runs all N devices' kernels concurrently with no "</span>
-<a id="__codelineno-8-69" name="__codelineno-8-69" href="#__codelineno-8-69"></a><span class="w">           </span><span class="s">"code change -- that's the entire point of writing the loop "</span>
-<a id="__codelineno-8-70" name="__codelineno-8-70" href="#__codelineno-8-70"></a><span class="w">           </span><span class="s">"this way instead of hard-coding device 0 and device 1.</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span>
-<a id="__codelineno-8-71" name="__codelineno-8-71" href="#__codelineno-8-71"></a><span class="w">           </span><span class="n">deviceCount</span><span class="p">);</span>
+<a id="__codelineno-8-66" name="__codelineno-8-66" href="#__codelineno-8-66"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">"Completed setup, launch and cleanup for %d device(s).</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span><span class="w"> </span><span class="n">deviceCount</span><span class="p">);</span>
+<a id="__codelineno-8-67" name="__codelineno-8-67" href="#__codelineno-8-67"></a><span class="c1">//</span>
+<a id="__codelineno-8-68" name="__codelineno-8-68" href="#__codelineno-8-68"></a><span class="c1">//</span>
+<a id="__codelineno-8-69" name="__codelineno-8-69" href="#__codelineno-8-69"></a><span class="c1">//</span>
+<a id="__codelineno-8-70" name="__codelineno-8-70" href="#__codelineno-8-70"></a><span class="c1">//</span>
+<a id="__codelineno-8-71" name="__codelineno-8-71" href="#__codelineno-8-71"></a><span class="c1">//</span>
 <a id="__codelineno-8-72" name="__codelineno-8-72" href="#__codelineno-8-72"></a>
 <a id="__codelineno-8-73" name="__codelineno-8-73" href="#__codelineno-8-73"></a><span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
 <a id="__codelineno-8-74" name="__codelineno-8-74" href="#__codelineno-8-74"></a><span class="p">}</span>
@@ -2985,19 +2985,17 @@
 <div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>nvcc<span class="w"> </span>-std<span class="o">=</span>c++17<span class="w"> </span>-O2<span class="w"> </span>-arch<span class="o">=</span>sm_80<span class="w"> </span>07_multi_device_loop_pattern.cu<span class="w"> </span>-o<span class="w"> </span>./example
 <a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>./example
 </code></pre></div>
-<p><strong>Sample output</strong></p>
+<p><strong>Actual sample output (excerpt)</strong></p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>cudaGetDeviceCount() reports 8 device(s).
-<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>The loop below runs its body exactly 8 time(s) as a direct consequence -- not a special case, just what a correctly-guarded loop over a real count does when that count happens to be zero.
-<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>
-<a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a>Device 0: stream and buffer created while device 0 was current.
-<a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a>Device 1: stream and buffer created while device 1 was current.
-<a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a>Device 2: stream and buffer created while device 2 was current.
-<a id="__codelineno-10-7" name="__codelineno-10-7" href="#__codelineno-10-7"></a>Device 3: stream and buffer created while device 3 was current.
-<a id="__codelineno-10-8" name="__codelineno-10-8" href="#__codelineno-10-8"></a>Device 4: stream and buffer created while device 4 was current.
-<a id="__codelineno-10-9" name="__codelineno-10-9" href="#__codelineno-10-9"></a>Device 5: stream and buffer created while device 5 was current.
-<a id="__codelineno-10-10" name="__codelineno-10-10" href="#__codelineno-10-10"></a>Device 6: stream and buffer created while device 6 was current.
-<a id="__codelineno-10-11" name="__codelineno-10-11" href="#__codelineno-10-11"></a>Device 7: stream and buffer created while device 7 was current.
-<a id="__codelineno-10-12" name="__codelineno-10-12" href="#__codelineno-10-12"></a>Loop body executed 8 time(s) total across all three phases. On real N-GPU hardware, this exact, unmodified source runs all N devices' kernels concurrently with no code change -- that's the entire point of writing the loop this way instead of hard-coding device 0 and device 1.
+<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>
+<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>Device 0: stream and buffer created while device 0 was current.
+<a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a>Device 1: stream and buffer created while device 1 was current.
+<a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a>Device 2: stream and buffer created while device 2 was current.
+<a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a>Device 3: stream and buffer created while device 3 was current.
+<a id="__codelineno-10-7" name="__codelineno-10-7" href="#__codelineno-10-7"></a>Device 4: stream and buffer created while device 4 was current.
+<a id="__codelineno-10-8" name="__codelineno-10-8" href="#__codelineno-10-8"></a>Device 5: stream and buffer created while device 5 was current.
+<a id="__codelineno-10-9" name="__codelineno-10-9" href="#__codelineno-10-9"></a>Device 6: stream and buffer created while device 6 was current.
+<a id="__codelineno-10-10" name="__codelineno-10-10" href="#__codelineno-10-10"></a>Device 7: stream and buffer created while device 7 was current.
 </code></pre></div>
 <!-- execution:end:a100:07_multi_device_loop_pattern.cu -->
 
@@ -3013,13 +3011,12 @@
 <a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>./example
 </code></pre></div>
 <details>
-<summary>Captured current-source output</summary>
+<summary>Actual sample output (excerpt)</summary>
+<p><strong>Actual sample output (excerpt)</strong></p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>cudaGetDeviceCount() reports 2 device(s).
-<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a>The loop below runs its body exactly 2 time(s) as a direct consequence -- not a special case, just what a correctly-guarded loop over a real count does when that count happens to be zero.
-<a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a>
-<a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a>Device 0: stream and buffer created while device 0 was current.
-<a id="__codelineno-12-5" name="__codelineno-12-5" href="#__codelineno-12-5"></a>Device 1: stream and buffer created while device 1 was current.
-<a id="__codelineno-12-6" name="__codelineno-12-6" href="#__codelineno-12-6"></a>Loop body executed 2 time(s) total across all three phases. On real N-GPU hardware, this exact, unmodified source runs all N devices' kernels concurrently with no code change -- that's the entire point of writing the loop this way instead of hard-coding device 0 and device 1.
+<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a>
+<a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a>Device 0: stream and buffer created while device 0 was current.
+<a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a>Device 1: stream and buffer created while device 1 was current.
 </code></pre></div>
 </details>
 <!-- execution:end:h100:07_multi_device_loop_pattern.cu -->
@@ -3059,7 +3056,7 @@
 <li>A stream is created while device 0 is current. Later, with device 1 current, code issues both a kernel launch and a <code>cudaMemcpyAsync</code> to that same stream. Predict the outcome of each call separately, citing the documented asymmetry from Section 3.2.</li>
 <li>Phase 1's loop calls <code>cudaSetDevice(i)</code> exactly once per iteration, before both <code>cudaStreamCreate()</code> and <code>cudaMalloc()</code>. Phases 2 and 3 each call <code>cudaSetDevice(i)</code> again later. Is Phase 1's call load-bearing, or could it be deleted because the later phases set the device anyway? What would go wrong without it?</li>
 <li>Rewrite Section 3.3's three-phase loop as a single loop that launches and waits per device before moving to the next. What concurrency property does the rewritten version lose?</li>
-<li><code>06_single_device_setup.cu</code>'s <code>CHECK</code> macro stops the program at the first failing call. In this environment, which specific call fails first, and why does every call after it depend on that one having succeeded?</li>
+<li>How does the <code>CHECK</code> macro stop setup after an error, and why must device selection succeed before allocation and launch?</li>
 <li>A newly spawned host thread does not inherit its parent thread's current-device setting. Using Section 3.1's default-device-0 rule, predict what device a new thread's very first unguarded CUDA call would act on if that thread never calls <code>cudaSetDevice()</code> itself.</li>
 <li>Suppose a program spawns exactly one host thread per GPU, intending each thread to drive its own device. Using your answer to Question 6, describe the one line each thread must execute first to make that intention actually correct.</li>
 </ol>

@@ -2769,7 +2769,7 @@
 <a id="__codelineno-2-48" name="__codelineno-2-48" href="#__codelineno-2-48"></a><span class="w">        </span><span class="n">computeRowRange</span><span class="p">(</span><span class="n">GRID_ROWS</span><span class="p">,</span><span class="w"> </span><span class="n">deviceCount</span><span class="p">,</span><span class="w"> </span><span class="n">rank</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">start</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">end</span><span class="p">);</span>
 <a id="__codelineno-2-49" name="__codelineno-2-49" href="#__codelineno-2-49"></a><span class="w">        </span><span class="n">printf</span><span class="p">(</span><span class="s">"  rank %d: rows [%d, %d)</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span><span class="w"> </span><span class="n">rank</span><span class="p">,</span><span class="w"> </span><span class="n">start</span><span class="p">,</span><span class="w"> </span><span class="n">end</span><span class="p">);</span>
 <a id="__codelineno-2-50" name="__codelineno-2-50" href="#__codelineno-2-50"></a><span class="w">    </span><span class="p">}</span>
-<a id="__codelineno-2-51" name="__codelineno-2-51" href="#__codelineno-2-51"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">"  (%d device(s) -- nothing to print above.)</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span><span class="w"> </span><span class="n">deviceCount</span><span class="p">);</span>
+<a id="__codelineno-2-51" name="__codelineno-2-51" href="#__codelineno-2-51"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">"  (%d device(s) queried.)</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span><span class="w"> </span><span class="n">deviceCount</span><span class="p">);</span>
 <a id="__codelineno-2-52" name="__codelineno-2-52" href="#__codelineno-2-52"></a>
 <a id="__codelineno-2-53" name="__codelineno-2-53" href="#__codelineno-2-53"></a><span class="w">    </span><span class="c1">// Hypothetically, with 4 devices: every rank gets a different,</span>
 <a id="__codelineno-2-54" name="__codelineno-2-54" href="#__codelineno-2-54"></a><span class="w">    </span><span class="c1">// non-overlapping, equal-sized band of consecutive rows -- a</span>
@@ -2826,7 +2826,7 @@
 <div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>nvcc<span class="w"> </span>-std<span class="o">=</span>c++17<span class="w"> </span>-O2<span class="w"> </span>-arch<span class="o">=</span>sm_80<span class="w"> </span>45_domain_decomposition_row_range.cu<span class="w"> </span>-o<span class="w"> </span>./example
 <a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>./example
 </code></pre></div>
-<p><strong>Sample output</strong></p>
+<p><strong>Actual sample output (excerpt)</strong></p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>cudaGetDeviceCount(): 8 device(s).
 <a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>
 <a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>Partitioning a 16 x 8 grid's rows across this book's own real deviceCount (8):
@@ -2838,16 +2838,15 @@
 <a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a>  rank 5: rows [10, 12)
 <a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a>  rank 6: rows [12, 14)
 <a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a>  rank 7: rows [14, 16)
-<a id="__codelineno-4-12" name="__codelineno-4-12" href="#__codelineno-4-12"></a>  (8 device(s) -- nothing to print above.)
-<a id="__codelineno-4-13" name="__codelineno-4-13" href="#__codelineno-4-13"></a>
-<a id="__codelineno-4-14" name="__codelineno-4-14" href="#__codelineno-4-14"></a>The same formula, hypothetically, with world size 4:
-<a id="__codelineno-4-15" name="__codelineno-4-15" href="#__codelineno-4-15"></a>  rank 0: rows [0, 4)  above: domain boundary (fixed value)  below: rank below (real halo)
-<a id="__codelineno-4-16" name="__codelineno-4-16" href="#__codelineno-4-16"></a>  rank 1: rows [4, 8)  above: rank above (real halo)         below: rank below (real halo)
-<a id="__codelineno-4-17" name="__codelineno-4-17" href="#__codelineno-4-17"></a>  rank 2: rows [8, 12)  above: rank above (real halo)         below: rank below (real halo)
-<a id="__codelineno-4-18" name="__codelineno-4-18" href="#__codelineno-4-18"></a>  rank 3: rows [12, 16)  above: rank above (real halo)         below: domain boundary (fixed value)
-<a id="__codelineno-4-19" name="__codelineno-4-19" href="#__codelineno-4-19"></a>
-<a id="__codelineno-4-20" name="__codelineno-4-20" href="#__codelineno-4-20"></a>Five-point stencil (interior update): new(i,j) = 0.25 * (old(i-1,j) + old(i+1,j) + old(i,j-1) + old(i,j+1))
-<a id="__codelineno-4-21" name="__codelineno-4-21" href="#__codelineno-4-21"></a>The top row of every rank's own strip needs old(i-1,j) from the rank ABOVE it; the bottom row needs old(i+1,j) from the rank BELOW it. Neither value lives on this rank.
+<a id="__codelineno-4-12" name="__codelineno-4-12" href="#__codelineno-4-12"></a>
+<a id="__codelineno-4-13" name="__codelineno-4-13" href="#__codelineno-4-13"></a>The same formula, hypothetically, with world size 4:
+<a id="__codelineno-4-14" name="__codelineno-4-14" href="#__codelineno-4-14"></a>  rank 0: rows [0, 4)  above: domain boundary (fixed value)  below: rank below (real halo)
+<a id="__codelineno-4-15" name="__codelineno-4-15" href="#__codelineno-4-15"></a>  rank 1: rows [4, 8)  above: rank above (real halo)         below: rank below (real halo)
+<a id="__codelineno-4-16" name="__codelineno-4-16" href="#__codelineno-4-16"></a>  rank 2: rows [8, 12)  above: rank above (real halo)         below: rank below (real halo)
+<a id="__codelineno-4-17" name="__codelineno-4-17" href="#__codelineno-4-17"></a>  rank 3: rows [12, 16)  above: rank above (real halo)         below: domain boundary (fixed value)
+<a id="__codelineno-4-18" name="__codelineno-4-18" href="#__codelineno-4-18"></a>
+<a id="__codelineno-4-19" name="__codelineno-4-19" href="#__codelineno-4-19"></a>Five-point stencil (interior update): new(i,j) = 0.25 * (old(i-1,j) + old(i+1,j) + old(i,j-1) + old(i,j+1))
+<a id="__codelineno-4-20" name="__codelineno-4-20" href="#__codelineno-4-20"></a>The top row of every rank's own strip needs old(i-1,j) from the rank ABOVE it; the bottom row needs old(i+1,j) from the rank BELOW it. Neither value lives on this rank.
 </code></pre></div>
 <!-- execution:end:a100:45_domain_decomposition_row_range.cu -->
 
@@ -2863,22 +2862,22 @@
 <a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>./example
 </code></pre></div>
 <details>
-<summary>Captured current-source output</summary>
+<summary>Actual sample output (excerpt)</summary>
+<p><strong>Actual sample output (excerpt)</strong></p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>cudaGetDeviceCount(): 2 device(s).
 <a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>
 <a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>Partitioning a 16 x 8 grid's rows across this book's own real deviceCount (2):
 <a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>  rank 0: rows [0, 8)
 <a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>  rank 1: rows [8, 16)
-<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a>  (2 device(s) -- nothing to print above.)
-<a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a>
-<a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a>The same formula, hypothetically, with world size 4:
-<a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a>  rank 0: rows [0, 4)  above: domain boundary (fixed value)  below: rank below (real halo)
-<a id="__codelineno-6-10" name="__codelineno-6-10" href="#__codelineno-6-10"></a>  rank 1: rows [4, 8)  above: rank above (real halo)         below: rank below (real halo)
-<a id="__codelineno-6-11" name="__codelineno-6-11" href="#__codelineno-6-11"></a>  rank 2: rows [8, 12)  above: rank above (real halo)         below: rank below (real halo)
-<a id="__codelineno-6-12" name="__codelineno-6-12" href="#__codelineno-6-12"></a>  rank 3: rows [12, 16)  above: rank above (real halo)         below: domain boundary (fixed value)
-<a id="__codelineno-6-13" name="__codelineno-6-13" href="#__codelineno-6-13"></a>
-<a id="__codelineno-6-14" name="__codelineno-6-14" href="#__codelineno-6-14"></a>Five-point stencil (interior update): new(i,j) = 0.25 * (old(i-1,j) + old(i+1,j) + old(i,j-1) + old(i,j+1))
-<a id="__codelineno-6-15" name="__codelineno-6-15" href="#__codelineno-6-15"></a>The top row of every rank's own strip needs old(i-1,j) from the rank ABOVE it; the bottom row needs old(i+1,j) from the rank BELOW it. Neither value lives on this rank.
+<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a>
+<a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a>The same formula, hypothetically, with world size 4:
+<a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a>  rank 0: rows [0, 4)  above: domain boundary (fixed value)  below: rank below (real halo)
+<a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a>  rank 1: rows [4, 8)  above: rank above (real halo)         below: rank below (real halo)
+<a id="__codelineno-6-10" name="__codelineno-6-10" href="#__codelineno-6-10"></a>  rank 2: rows [8, 12)  above: rank above (real halo)         below: rank below (real halo)
+<a id="__codelineno-6-11" name="__codelineno-6-11" href="#__codelineno-6-11"></a>  rank 3: rows [12, 16)  above: rank above (real halo)         below: domain boundary (fixed value)
+<a id="__codelineno-6-12" name="__codelineno-6-12" href="#__codelineno-6-12"></a>
+<a id="__codelineno-6-13" name="__codelineno-6-13" href="#__codelineno-6-13"></a>Five-point stencil (interior update): new(i,j) = 0.25 * (old(i-1,j) + old(i+1,j) + old(i,j-1) + old(i,j+1))
+<a id="__codelineno-6-14" name="__codelineno-6-14" href="#__codelineno-6-14"></a>The top row of every rank's own strip needs old(i-1,j) from the rank ABOVE it; the bottom row needs old(i+1,j) from the rank BELOW it. Neither value lives on this rank.
 </code></pre></div>
 </details>
 <!-- execution:end:h100:45_domain_decomposition_row_range.cu -->
@@ -3052,8 +3051,8 @@
 <a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a><span class="c1">// Halo Exchange and Distributed Stencils</span>
 <a id="__codelineno-14-3" name="__codelineno-14-3" href="#__codelineno-14-3"></a><span class="c1">// 47_stencil_decomposition_simulation.cpp</span>
 <a id="__codelineno-14-4" name="__codelineno-14-4" href="#__codelineno-14-4"></a><span class="c1">//</span>
-<a id="__codelineno-14-5" name="__codelineno-14-5" href="#__codelineno-14-5"></a><span class="c1">// Plain host C++ -- this chapter's real verification, since no real</span>
-<a id="__codelineno-14-6" name="__codelineno-14-6" href="#__codelineno-14-6"></a><span class="c1">// device-to-device transfer could run on this machine. Part A checks</span>
+<a id="__codelineno-14-5" name="__codelineno-14-5" href="#__codelineno-14-5"></a><span class="c1">// Plain host C++ model of a decomposed stencil. Part A checks</span>
+<a id="__codelineno-14-6" name="__codelineno-14-6" href="#__codelineno-14-6"></a><span class="c1">//</span>
 <a id="__codelineno-14-7" name="__codelineno-14-7" href="#__codelineno-14-7"></a><span class="c1">// the one property that actually matters about domain decomposition:</span>
 <a id="__codelineno-14-8" name="__codelineno-14-8" href="#__codelineno-14-8"></a><span class="c1">// does a grid split across ranks, with halo exchange refreshing each</span>
 <a id="__codelineno-14-9" name="__codelineno-14-9" href="#__codelineno-14-9"></a><span class="c1">// rank's ghost rows every iteration (Section 16.2), compute the exact</span>
