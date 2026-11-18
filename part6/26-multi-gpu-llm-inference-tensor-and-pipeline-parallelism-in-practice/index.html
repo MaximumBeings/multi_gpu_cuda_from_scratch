@@ -837,7 +837,7 @@
   <span class="md-ellipsis">
     
   
-    9. Ring All-Reduce: The Algorithm Behind Every Multi-GPU Training Job
+    9. Ring All-Reduce: Reduce-Scatter and All-Gather by Hand
   
 
     
@@ -1608,6 +1608,17 @@
       Table of contents
     </label>
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#worked-example-keep-tensor-parallel-groups-inside-pipeline-stages" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Worked example — Keep tensor-parallel groups inside pipeline stages
+      
+    </span>
+  </a>
+  
+</li>
       
         <li class="md-nav__item">
   <a href="#261-one-real-2d-grid-tensor-parallelism-inside-pipeline-parallelism-across" class="md-nav__link">
@@ -2523,6 +2534,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#worked-example-keep-tensor-parallel-groups-inside-pipeline-stages" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Worked example — Keep tensor-parallel groups inside pipeline stages
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#261-one-real-2d-grid-tensor-parallelism-inside-pipeline-parallelism-across" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2738,13 +2760,37 @@
 <a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>                       |
 <a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>                 this chapter's own real, combined case study
 </code></pre></div>
+<!-- mgpu:worked:start -->
+
+<h2 id="worked-example-keep-tensor-parallel-groups-inside-pipeline-stages">Worked example — Keep tensor-parallel groups inside pipeline stages<a class="headerlink" href="#worked-example-keep-tensor-parallel-groups-inside-pipeline-stages" title="Permanent link">&para;</a></h2>
+<p>Use TP=2, PP=2 and rank=stage×2+lane. Here vectors are columns and each matrix row computes one output dot product (W x), the transpose convention of Chapter 14’s row-vector XW notation. This is a two-layer linear arithmetic model, not a complete transformer. Replicate input x=[1,2] across ranks 0 and 1.</p>
+<ol>
+<li>
+<p>Rank 0 owns first-layer rows [1,0] and [0,1], so h0=[1,2]. Rank 1 owns rows [1,1] and [2,1], so h1=[3,4].</p>
+</li>
+<li>
+<p>Send h0 from rank 0 to rank 2 and h1 from rank 1 to rank 3. The next layer has row [1,10,100,1000], partitioned along its input dimension.</p>
+</li>
+<li>
+<p>Rank 2 computes [1,10] dot h0=21. Rank 3 computes [100,1000] dot h1=4300. A sum inside communicator {2,3} produces 4321 on both second-stage ranks.</p>
+</li>
+</ol>
+<p><img alt="Numeric worked example: Keep tensor-parallel groups inside pipeline stages" src="../../images/worked/ch26.svg" /></p>
+<p><strong>API connection and scope.</strong> Column-parallel output shards can feed compatible row-parallel input shards without assembling the complete intermediate vector on every rank. Match pipeline sends/receives by microbatch and shard identity; use a tensor-parallel reduction only for the partial outputs of the same layer.</p>
+<p><strong>Expected check and pitfall.</strong> A world all-reduce across all four ranks mixes pipeline stages and changes the computation. Real transformer blocks add normalization, nonlinearities, attention and cache-layout contracts; the linear example isolates only ownership and reduction.</p>
+<details class="question">
+<summary>Guided exercise: Replace the final coefficient 1000 with 100. What changes?</summary>
+<p><strong>Worked answer.</strong> Rank 3 computes 100×3+100×4=700. Rank 2 remains 21, so the final value is 721.</p>
+</details>
+<!-- mgpu:worked:end -->
+
 <h2 id="261-one-real-2d-grid-tensor-parallelism-inside-pipeline-parallelism-across">26.1 One Real 2D Grid: Tensor Parallelism Inside, Pipeline Parallelism Across<a class="headerlink" href="#261-one-real-2d-grid-tensor-parallelism-inside-pipeline-parallelism-across" title="Permanent link">&para;</a></h2>
 <!-- mgpu:figure-1:start -->
 <p><a href="../../images/technical/ch26/1-tpgrid.svg"><img alt="Tensor parallelism inside pipeline stages" src="../../images/technical/ch26/1-tpgrid.svg" /></a></p>
 <!-- mgpu:figure-1:end -->
 
 <h3 id="intuition">Intuition<a class="headerlink" href="#intuition" title="Permanent link">&para;</a></h3>
-<p>Chapter 14's own tensor-parallel MLP split needed exactly one all-reduce, scoped to however many devices were splitting that ONE GEMM. Chapter 15's own pipeline schedule needed exactly one activation handoff, scoped to two ADJACENT stages. Combining them means every device in a real system now plays both roles at once: it belongs to a pipeline STAGE, and within that stage, it belongs to a tensor-parallel GROUP. The real correctness property this creates, and the one this section's own simulation is built to check, is that these two kinds of communication must never cross into each other: a tensor-parallel all-reduce stays inside its own stage's own group, and a pipeline handoff only ever carries a stage's ALREADY-combined result to the next stage -- never a partial, not-yet-reduced tensor-parallel shard. This chapter is about LLM INFERENCE specifically, which changes the pipeline shape from Chapter 15's own training loop in one real way: there is no backward pass, so the pipeline is forward-only, and Chapter 15's own bubble formula, built for a schedule with both a forward AND a backward phase per microbatch, does not apply here unchanged.</p>
+<p>Chapter 14's own tensor-parallel MLP split needed exactly one all-reduce, scoped to however many devices were splitting that ONE GEMM. Chapter 15's own pipeline schedule needed exactly one activation handoff, scoped to two ADJACENT stages. Combining them means every device in a real system now plays both roles at once: it belongs to a pipeline STAGE, and within that stage, it belongs to a tensor-parallel GROUP. The real correctness property this creates, and the one this section's own simulation is built to check, is that these two kinds of communication must never cross into each other: a tensor-parallel all-reduce stays inside its own stage's own group, and the full-MLP stage implementation below hands off its already-combined output. This is that implementation’s layout contract, not a universal ban on sharded pipeline boundaries: the opening two-layer worked model deliberately carries compatible activation shards between stages and reduces only the second layer’s contributions. This chapter is about LLM INFERENCE specifically, which changes the pipeline shape from Chapter 15's own training loop in one real way: there is no backward pass, so the pipeline is forward-only, and Chapter 15's own bubble formula, built for a schedule with both a forward AND a backward phase per microbatch, does not apply here unchanged.</p>
 <div class="language-text highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>A 2 x 2 grid: PP_STAGES=2, TP_DEGREE=2 (4 devices total)
 <a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>
 <a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>Stage 0                              Stage 1

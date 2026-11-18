@@ -572,6 +572,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#worked-example-a-route-is-constrained-by-its-slowest-link" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Worked example — A route is constrained by its slowest link
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#21-bandwidth-is-a-graph-not-a-number" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1123,7 +1134,7 @@
   <span class="md-ellipsis">
     
   
-    9. Ring All-Reduce: The Algorithm Behind Every Multi-GPU Training Job
+    9. Ring All-Reduce: Reduce-Scatter and All-Gather by Hand
   
 
     
@@ -2601,6 +2612,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#worked-example-a-route-is-constrained-by-its-slowest-link" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Worked example — A route is constrained by its slowest link
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#21-bandwidth-is-a-graph-not-a-number" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2878,6 +2900,29 @@
 </ul>
 <hr />
 <p>Chapter 1 established that splitting work across GPUs solves both the capacity wall and the throughput wall, but introduces a new one: the devices now have to talk to each other. This chapter is about the physical layer that conversation happens over.</p>
+<!-- mgpu:worked:start -->
+<h2 id="worked-example-a-route-is-constrained-by-its-slowest-link">Worked example — A route is constrained by its slowest link<a class="headerlink" href="#worked-example-a-route-is-constrained-by-its-slowest-link" title="Permanent link">&para;</a></h2>
+<p>Consider a hypothetical chain GPU 0—1—2—3 with one-way link capacities 48, 12 and 48 GB/s. Transfer a 12 MB payload (decimal units). Ignore startup, contention and protocol overhead; the times below are arithmetic lower bounds, not measurements.</p>
+<p><img alt="Numeric worked example: A route is constrained by its slowest link" src="../../images/worked/ch02.svg" /></p>
+<ol>
+<li>
+<p>Convert 12 MB to 0.012 GB.</p>
+</li>
+<li>
+<p>For GPU 0 to GPU 1, payload / capacity = 0.012 / 48 seconds = 0.25 ms.</p>
+</li>
+<li>
+<p>A route from GPU 0 to GPU 3 crosses the 12 GB/s link, so even perfectly pipelined steady-state delivery requires at least 0.012 / 12 = 1 ms.</p>
+</li>
+<li>
+<p>If complete messages are forwarded serially with no overlap, the three link times sum to 0.25 + 1 + 0.25 = 1.5 ms.</p>
+</li>
+</ol>
+<p><strong>Expected result and pitfall.</strong> The expected distinction is between a bottleneck lower bound and a particular store-and-forward model. Neither establishes that a CUDA transfer actually takes that route. Inspect topology and peer capability, then measure the selected operation.</p>
+<p><strong>Exercise.</strong> What is the bottleneck bound for 24 MB on the same route?</p>
+<p><strong>Worked answer.</strong> 0.024 / 12 seconds = 2 ms. Startup and interference can make actual time larger.</p>
+<!-- mgpu:worked:end -->
+
 <h2 id="21-bandwidth-is-a-graph-not-a-number">2.1 Bandwidth Is a Graph, Not a Number<a class="headerlink" href="#21-bandwidth-is-a-graph-not-a-number" title="Permanent link">&para;</a></h2>
 <!-- mgpu:figure-1:start -->
 <p><a href="../../images/technical/ch02/1-topology.svg"><img alt="A route belongs to a device pair" src="../../images/technical/ch02/1-topology.svg" /></a></p>
@@ -3518,7 +3563,7 @@
 <p><strong>1.</strong> The model assumes a same-switch ceiling equal to the generation bandwidth (31.5 GB/s for Gen4 x16). The cross-socket pair's transfer must additionally cross the inter-CPU link (e.g. Intel UPI or AMD Infinity Fabric) joining the two sockets — a separate, shared, finite resource that Section 2.2 models as halving the effective bandwidth, independent of what PCIe generation either GPU uses.</p>
 <p><strong>2.</strong> Check both topology and bandwidth convention. The 900 GB/s number is an aggregate bidirectional per-GPU budget, shared across peers. NVSwitch provides peer routes; it does not grant that budget independently to every pair. A partial mesh exposes different direct-link capacities and may require another supported route.</p>
 <p><strong>3.</strong> Because the model in Section 2.4 gives every non-wired pair the exact same constant fallback bandwidth (31.5 GB/s, plain PCIe 4.0 x16) rather than a range of degraded values — there's no partial credit for "almost" having a direct NVLink connection. A pair either has the direct wire (50 GB/s) or it doesn't, in which case it gets exactly the PCIe figure, with nothing in between in this model.</p>
-<p><strong>4.</strong> In a ring, every participating GPU both sends and receives on every round, so the round cannot complete faster than its slowest edge allows — a fast edge finishing early still has to wait for the slowest edge before the next round can begin, exactly like a relay team's total time being decided by its slowest leg no matter how fast the others run. Averaging would imply the fast edges could somehow compensate for the slow one, which they cannot in a synchronous ring.</p>
+<p><strong>4.</strong> In this synchronous ring-round model, every participating GPU both sends and receives on every round, so the round cannot complete faster than its slowest edge allows — a fast edge finishing early still has to wait for the slowest edge before the next round can begin, exactly like a relay team's total time being decided by its slowest leg no matter how fast the others run. Averaging would imply the fast edges could somehow compensate for the slow one, which they cannot in this synchronous model. Real collective implementations can pipeline chunks and do not necessarily impose a global barrier after every modeled round; the model is a bottleneck estimate, not a complete execution schedule.</p>
 <p><strong>5.</strong> The idealized NVSwitch matrix assigns every ring edge the same 450 GB/s per-direction ceiling; this is a model of a symmetric fabric, not an achieved bandwidth measurement. The partial mesh instead has two different bandwidth values (50 GB/s wired, 31.5 GB/s fallback) depending on which specific pair an edge connects, so the ring's bottleneck depends on which pairs the chosen order happens to use.</p>
 <p><strong>6.</strong> Making the call anyway, and reporting its real return code, is what lets this exact source run correctly and diagnostically on any machine — including one with fewer than 2 devices — without a separate code path. It also demonstrates, honestly, that the API doesn't crash or need special-casing for an invalid device id; it degrades to a clear error, which is itself useful information for a caller that didn't check the count first (Section 2.5's own Common Trap).</p>
 <p><strong>7.</strong> The partial-mesh system is far more sensitive. In this simplified NVSwitch model every ordering has the same edge ceiling. Real placement can still affect contention and routing. On the partial-mesh system, Section 2.4 showed a single wrong adjacent pair drops the ring's bottleneck by 37% (50 to 31.5 GB/s) — so the same collective's real performance on that system depends directly on whether the software's chosen ring order happens to match the physical NVLink wiring.</p>

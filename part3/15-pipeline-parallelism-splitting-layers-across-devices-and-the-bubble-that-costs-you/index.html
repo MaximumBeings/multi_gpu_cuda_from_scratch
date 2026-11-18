@@ -837,7 +837,7 @@
   <span class="md-ellipsis">
     
   
-    9. Ring All-Reduce: The Algorithm Behind Every Multi-GPU Training Job
+    9. Ring All-Reduce: Reduce-Scatter and All-Gather by Hand
   
 
     
@@ -1117,6 +1117,17 @@
       Table of contents
     </label>
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#worked-example-trace-the-pipeline-before-optimizing-it" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Worked example — Trace the pipeline before optimizing it
+      
+    </span>
+  </a>
+  
+</li>
       
         <li class="md-nav__item">
   <a href="#151-micro-batching-filling-the-bubble-chapter-13-left-empty" class="md-nav__link">
@@ -2523,6 +2534,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#worked-example-trace-the-pipeline-before-optimizing-it" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Worked example — Trace the pipeline before optimizing it
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#151-micro-batching-filling-the-bubble-chapter-13-left-empty" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2734,6 +2756,30 @@
 <a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>                                                   Idle time still exists (the empty
 <a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>                                                   corners above) -- but far less of it.
 </code></pre></div>
+<!-- mgpu:worked:start -->
+
+<h2 id="worked-example-trace-the-pipeline-before-optimizing-it">Worked example — Trace the pipeline before optimizing it<a class="headerlink" href="#worked-example-trace-the-pipeline-before-optimizing-it" title="Permanent link">&para;</a></h2>
+<p>Let P=3 stages and B=4 microbatches. Each stage takes one abstract slot; transfer and backward work are excluded. Stages apply f0(x)=x+1, f1(x)=2x and f2(x)=x−3, in that order. Inputs are [1,2,3,4].</p>
+<ol>
+<li>
+<p>Stage 0 produces [2,3,4,5] in slots 0–3. Stage 1 starts one slot later and produces [4,6,8,10] in slots 1–4.</p>
+</li>
+<li>
+<p>Stage 2 starts in slot 2 and produces [1,3,5,7] in slots 2–5. Every microbatch crosses both dependencies before its final output exists.</p>
+</li>
+<li>
+<p>The makespan is B+P−1=6 slots. There are P×B=12 useful stage-slots out of P×6=18 available: utilization is 2/3.</p>
+</li>
+</ol>
+<p><img alt="Numeric worked example: Trace the pipeline before optimizing it" src="../../images/worked/ch15.svg" /></p>
+<p><strong>API connection and scope.</strong> Connect each producer to its transfer and consumer with stream ordering and completion events, for example cudaEventRecord and cudaStreamWaitEvent where supported. Reusing a microbatch buffer requires its last reader to finish. The figure is a forward-only scheduling model, not a measured trace or a 1F1B training schedule.</p>
+<p><strong>Expected check and pitfall.</strong> Check all four outputs in their original order. A fast final event with swapped microbatch identities is still wrong. Unequal stage costs and communication change the timeline.</p>
+<details class="question">
+<summary>Guided exercise: What changes with one microbatch?</summary>
+<p><strong>Worked answer.</strong> The stages occupy three successive slots, only three of nine stage-slots do useful work, and utilization is 1/3. Input 1 still produces 1.</p>
+</details>
+<!-- mgpu:worked:end -->
+
 <h2 id="151-micro-batching-filling-the-bubble-chapter-13-left-empty">15.1 Micro-Batching: Filling the Bubble Chapter 13 Left Empty<a class="headerlink" href="#151-micro-batching-filling-the-bubble-chapter-13-left-empty" title="Permanent link">&para;</a></h2>
 <!-- mgpu:figure-1:start -->
 <p><a href="../../images/technical/ch15/1-pipeline.svg"><img alt="Microbatches fill successive stages" src="../../images/technical/ch15/1-pipeline.svg" /></a></p>

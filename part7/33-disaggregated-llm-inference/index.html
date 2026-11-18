@@ -837,7 +837,7 @@
   <span class="md-ellipsis">
     
   
-    9. Ring All-Reduce: The Algorithm Behind Every Multi-GPU Training Job
+    9. Ring All-Reduce: Reduce-Scatter and All-Gather by Hand
   
 
     
@@ -1867,6 +1867,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#worked-walkthrough-size-a-kv-handoff-and-reshard-it-explicitly" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Worked walkthrough — Size a KV handoff and reshard it explicitly
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#331-why-prefill-and-decode-need-different-resources" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2523,6 +2534,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#worked-walkthrough-size-a-kv-handoff-and-reshard-it-explicitly" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Worked walkthrough — Size a KV handoff and reshard it explicitly
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#331-why-prefill-and-decode-need-different-resources" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2725,6 +2747,25 @@
 <a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>|         NOT a collective)                                         |
 <a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>+------------------------------------------------------------------+
 </code></pre></div>
+<!-- mgpu:worked:start -->
+<h2 id="worked-walkthrough-size-a-kv-handoff-and-reshard-it-explicitly">Worked walkthrough — Size a KV handoff and reshard it explicitly<a class="headerlink" href="#worked-walkthrough-size-a-kv-handoff-and-reshard-it-explicitly" title="Permanent link">&para;</a></h2>
+<p><a href="../../images/worked/ch33.svg"><img alt="Size a KV handoff and reshard it explicitly: numerical ownership, intermediate values and checks" src="../../images/worked/ch33.svg" /></a></p>
+<p>Use a schematic request with prompt length S=8 tokens, L=2 layers, two KV heads, head dimension d=4 and two-byte KV elements. These intentionally tiny values illustrate storage, not a particular deployed model. Count both keys and values.</p>
+<ol>
+<li><strong>Count the complete request cache.</strong> <code>2*S*L*heads*d*2=512</code> bytes: the first factor two is K plus V, and the final two is bytes per element. Model weights, block metadata, scales and allocator padding are excluded.</li>
+<li><strong>Name the prefill ownership.</strong> Suppose two prefill ranks each hold one complete KV head at all layers/tokens: 256 bytes each. Tensor-parallel rank number is not a substitute for this explicit ownership description; some real models replicate KV heads.</li>
+<li><strong>Name the decode ownership.</strong> One decode worker now requires both heads, so it must receive both 256-byte pieces, yielding 512 logical bytes. The receiver places data by layer/token/head coordinates. Concatenating packets in arbitrary completion order does not establish the correct tensor layout.</li>
+<li><strong>Separate handoff from readiness.</strong> Decode must wait for every needed cache segment's transfer completion before reading it. An RPC acknowledgement that work was enqueued is not necessarily device completion. Transport APIs and framework streams determine the actual dependency mechanism.</li>
+<li><strong>Account for later growth.</strong> One generated token adds <code>2*L*heads*d*2=64</code> bytes under this representation. Four generated tokens add 256 bytes, giving 768 bytes of logical KV data if all tokens are retained. Sliding windows, quantization and page allocation change that contract.</li>
+</ol>
+<p><strong>Expected check:</strong> every KV coordinate at the receiver equals the sender's reference, and the first decode step uses the same attention mask, positions and model state. This arithmetic does not demonstrate DistServe execution or any time-to-first-token improvement. Prefill/decode splitting introduces queueing and network costs whose effect must be measured under a declared workload.</p>
+<details class="question">
+<summary>Exercise: split decode ownership instead</summary>
+<p>Two decode workers each require one head, but their head IDs are swapped relative to prefill owners. How much logical data moves if no cache is replicated?</p>
+<p><strong>Worked answer:</strong> exchange two 256-byte shards, 512 bytes total sender payload. Each receiver gets only its required head. An all-gather that replicates both heads changes ownership and memory use; it is not implied by this head-wise exchange.</p>
+</details>
+<!-- mgpu:worked:end -->
+
 <h2 id="331-why-prefill-and-decode-need-different-resources">33.1 Why Prefill and Decode Need Different Resources<a class="headerlink" href="#331-why-prefill-and-decode-need-different-resources" title="Permanent link">&para;</a></h2>
 <!-- mgpu:figure-1:start -->
 <p><a href="../../images/technical/ch33/1-layers.svg"><img alt="Separate pools serve different phases" src="../../images/technical/ch33/1-layers.svg" /></a></p>
@@ -3350,13 +3391,13 @@
 <p>Chapter 34 turns to another real, deployed industrial system with its own distinctive multi-GPU shape: NVIDIA Merlin HugeCTR's approach to GPU-accelerated recommendation systems, which combines dense data-parallel layers with model-parallel embedding tables far larger than any single GPU's memory -- a hybrid this book's own Chapter 12 through Chapter 14 each built separately but never needed to combine within one model.</p>
 <h2 id="worked-solutions">Worked Solutions<a class="headerlink" href="#worked-solutions" title="Permanent link">&para;</a></h2>
 <ol>
-<li>Producing one new token still requires reading the model's ENTIRE running memory of the conversation so far -- the KV cache -- which grows with every step. DistServe's own paper states decode "incurs a similar level of I/O to the prefill phase," so the bottleneck is not how much arithmetic decode does (very little, per step) but how much data it must move to do that arithmetic, which is exactly what "memory-bandwidth-bound" means.</li>
+<li>In the full-context dense-attention serving model discussed here, generating a token reads the retained KV cache needed by that attention layer. Sliding-window attention, pruning, cache quantization and other architectures change the retained set and byte volume. DistServe's own paper states decode "incurs a similar level of I/O to the prefill phase," so the bottleneck is not how much arithmetic decode does (very little, per step) but how much data it must move to do that arithmetic, which is exactly what "memory-bandwidth-bound" means.</li>
 <li>Goodput measures "the maximum request rate that can be served adhering to the SLO attainment goal... for each GPU provisioned." Raw throughput alone can hide a system that serves many requests but violates most users' latency expectations; goodput only counts requests served WITHIN the latency target, which is what actually determines how many GPUs a real deployment needs to meet its service commitments.</li>
-<li>Prefill is compute-bound, so once each device has enough arithmetic work to stay busy, adding more devices has diminishing returns (the same principle behind any compute-bound workload's parallel scaling limit) -- a smaller TP suffices. Decode is memory-bandwidth-bound, so each additional GPU added to the TP group contributes more AGGREGATE memory bandwidth for reading the growing KV cache, which is the actual bottleneck -- so a larger TP genuinely helps more.</li>
+<li>Under the cited serving workload, different tensor-parallel degrees can help prefill and decode differently. More TP ranks can add aggregate memory bandwidth and reduce per-rank weight/cache storage, but also add collective latency and layout costs. The best degree depends on batch size, model, attention/cache policy, topology and SLO; neither a larger decode TP nor a smaller prefill TP is a universal optimum.</li>
 <li>Yes, every Tp &gt; Td combination in File 97's own Sample output still matched the reference exactly. This is because each phase's own internal computation (a sum over its own local shard's contributions, then a combine across shards) is exact regardless of how many shards it's split into, and the two phases are connected only through the kv cache VALUES that get handed off, not through any shared structure that would require matching group sizes.</li>
-<li>Every collective this book built from Chapter 8 (broadcast/reduce) through Chapter 32 (MoE dispatch/combine) moves data among every member of some group of ranks, even when that "combining" happens per-token as in Chapter 32. The KV cache handoff instead moves data between exactly one sender and one receiver, a single one-time bulk transfer -- structurally closest to Chapter 5's explicit <code>cudaMemcpyPeer()</code> transfer and Chapter 21's GPUDirect RDMA, both of which are also point-to-point rather than collective.</li>
+<li>Every collective this book built from Chapter 8 (broadcast/reduce) through Chapter 32 (MoE dispatch/combine) moves data among every member of some group of ranks, even when that "combining" happens per-token as in Chapter 32. The simplest KV cache handoff moves data between one sender and one receiver; differing prefill/decode ownership can require multiple senders, receivers and a resharding -- structurally closest to Chapter 5's explicit <code>cudaMemcpyPeer()</code> transfer and Chapter 21's GPUDirect RDMA, both of which are also point-to-point rather than collective.</li>
 <li>Bidirectional aggregate counts both directions; the ideal one-direction endpoint ceiling is 300 GB/s. Thus 1.13 / 300 × 1000 ≈ 3.77 ms. For 800 Gbps, divide by eight to obtain 100 GB/s, giving 11.3 ms. Protocol overhead, packing and contention increase elapsed time; group-level striping must be modeled separately.</li>
-<li>"Non-blocking" means the GPU that just finished prefill does not have to sit idle waiting for the KV cache transfer to complete before doing other useful work -- per Dynamo's own documentation, "GPU forward passes... continue serving other requests during the transfer." It matters even though the transfer is already fast (single-digit-to-low-double-digit milliseconds) because at high request volume, even a small mandatory wait repeated across every single request adds up; overlapping it removes that wait entirely rather than merely shrinking it.</li>
+<li>"Non-blocking" means the GPU that just finished prefill does not have to sit idle waiting for the KV cache transfer to complete before doing other useful work -- per Dynamo's own documentation, "GPU forward passes... continue serving other requests during the transfer." It matters even though the transfer is already fast (single-digit-to-low-double-digit milliseconds) because at high request volume, even a small mandatory wait repeated across every single request adds up; overlapping can hide some transfer time behind other requests. The receiving request still waits for its own cache readiness; contention or insufficient independent work can leave transfer time exposed.</li>
 <li>Because this section's own question -- does splitting a request's two phases onto independently-sized device groups (different TP degrees) preserve correctness -- is a genuinely different question from whether floating-point summation is associative under different groupings, which Chapter 8, 25, 29, 31, and 32 already investigated thoroughly. Using integers keeps File 97's own result unambiguous: any mismatch found would have to come from the phase-splitting design itself, not from floating-point rounding, which would otherwise have made the two separate questions impossible to tell apart.</li>
 </ol>
 <hr />

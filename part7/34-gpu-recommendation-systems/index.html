@@ -837,7 +837,7 @@
   <span class="md-ellipsis">
     
   
-    9. Ring All-Reduce: The Algorithm Behind Every Multi-GPU Training Job
+    9. Ring All-Reduce: Reduce-Scatter and All-Gather by Hand
   
 
     
@@ -1895,6 +1895,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#worked-walkthrough-trace-embedding-requests-back-to-their-sample-owners" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Worked walkthrough — Trace embedding requests back to their sample owners
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#341-why-recommendation-models-need-both-data-and-model-parallelism" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2523,6 +2534,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#worked-walkthrough-trace-embedding-requests-back-to-their-sample-owners" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Worked walkthrough — Trace embedding requests back to their sample owners
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#341-why-recommendation-models-need-both-data-and-model-parallelism" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2725,6 +2747,25 @@
 <a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>|                                   batch dimension                  |
 <a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>+------------------------------------------------------------------+
 </code></pre></div>
+<!-- mgpu:worked:start -->
+<h2 id="worked-walkthrough-trace-embedding-requests-back-to-their-sample-owners">Worked walkthrough — Trace embedding requests back to their sample owners<a class="headerlink" href="#worked-walkthrough-trace-embedding-requests-back-to-their-sample-owners" title="Permanent link">&para;</a></h2>
+<p><a href="../../images/worked/ch34.svg"><img alt="Trace embedding requests back to their sample owners: numerical ownership, intermediate values and checks" src="../../images/worked/ch34.svg" /></a></p>
+<p>This is a row-sharded embedding lookup model, not a captured HugeCTR training run. A table has eight rows, embedding width D=4 and FP32 elements. Rank 0 owns IDs 0–3; rank 1 owns 4–7. Sample-owner rank 0 requests IDs <code>[1,6]</code>; rank 1 requests <code>[2,7]</code>.</p>
+<ol>
+<li><strong>Calculate table capacity.</strong> The full table is <code>8*4*4=128</code> bytes; each row shard stores 64 bytes of weights. Optimizer state, gradients, cache and communication buffers are excluded. Half the weights does not mean half the full training memory.</li>
+<li><strong>Partition requests by owner.</strong> Rank 0 serves local ID 1 and sends ID 6 to rank 1. Rank 1 serves local ID 7 and sends ID 2 to rank 0. Each lookup retains its sample and feature-slot identity.</li>
+<li><strong>Return vectors, not reduced scalars.</strong> Each embedding is <code>4*4=16</code> bytes. Two remote lookups return 32 payload bytes total. Request IDs consume additional bytes according to their actual integer type. A sum all-reduce would combine values rather than route the requested rows and is the wrong semantic operation.</li>
+<li><strong>Restore order.</strong> For a toy table <code>E[id,j]=10*id+j</code>, rank 0's assembled vectors are <code>[10,11,12,13]</code> then <code>[60,61,62,63]</code>. They remain in input feature-slot order even if the remote response completes first.</li>
+<li><strong>Reverse the training dependency.</strong> Backward gradients must reach the owners of their embedding rows. Duplicate IDs may require accumulation rather than a last-writer store. If ID 6 appears twice with gradient vectors of ones and twos, its total gradient is threes in every component under sum semantics.</li>
+</ol>
+<p><strong>Expected check:</strong> assembled rows and their sample positions match a direct lookup; row-owner updates match the declared reduction and optimizer. Deduplicating remote reads can reduce payload, but only if reconstruction retains multiplicity and backward accumulation. Row sharding here is one ownership policy, not a claim that all HugeCTR deployments shard every table identically.</p>
+<details class="question">
+<summary>Exercise: one more duplicate request</summary>
+<p>Rank 0 requests ID 6 twice. With read deduplication, how many remote vector bytes are needed and how many result slots must be filled?</p>
+<p><strong>Worked answer:</strong> one sixteen-byte vector can fill two logical result slots. Backward still combines two gradient contributions; suppressing the second contribution would change training.</p>
+</details>
+<!-- mgpu:worked:end -->
+
 <h2 id="341-why-recommendation-models-need-both-data-and-model-parallelism">34.1 Why Recommendation Models Need Both Data and Model Parallelism<a class="headerlink" href="#341-why-recommendation-models-need-both-data-and-model-parallelism" title="Permanent link">&para;</a></h2>
 <!-- mgpu:figure-1:start -->
 <p><a href="../../images/technical/ch34/1-hybrid.svg"><img alt="Embedding shards and dense replicas coexist" src="../../images/technical/ch34/1-hybrid.svg" /></a></p>
@@ -3446,13 +3487,13 @@
 <p>Chapter 35 turns to a very different industrial domain running on the same multi-GPU foundations: NVIDIA Earth-2's real FourCastNet weather-forecasting system, which replaces the classic stencil computation Chapter 16's domain decomposition was built around with a learned neural operator. Whether that neural operator inherits Chapter 16's halo-exchange communication shape -- a natural guess for a computation on a global grid -- is exactly the question Chapter 35 has to check rather than assume.</p>
 <h2 id="worked-solutions">Worked Solutions<a class="headerlink" href="#worked-solutions" title="Permanent link">&para;</a></h2>
 <ol>
-<li>Because embedding tables can reach a scale ("the total size of an embedding feature can exceed the memory capacity of a single GPU," per HugeCTR's own real paper) where no single GPU can hold a full replica, model parallelism (sharding, not copying) is the only way to fit them at all -- exactly Chapter 13's own technique, applied here because of raw size, not because of any computational property of embeddings themselves.</li>
+<li>Because embedding tables can reach a scale ("the total size of an embedding feature can exceed the memory capacity of a single GPU," per HugeCTR's own real paper) where no single GPU can hold a full replica, GPU-resident model-parallel sharding is one way to fit them; caching/offloading or another storage tier can also provide capacity, with different bandwidth and latency tradeoffs -- exactly Chapter 13's own technique, applied here because of raw size, not because of any computational property of embeddings themselves.</li>
 <li>Because the dense DNN layers stay small enough to replicate on every GPU with no capacity concern at all -- File 99's own Sample output shows a 2GB dense model is a small fraction of one A100's 80 GB at any table size tested. Once capacity is not the constraint, data parallelism (Chapter 12's technique, replicate and split the batch) is the natural, simpler choice, and HugeCTR's own real design uses it there.</li>
 <li>HugeCTR's own paper describes an all-to-all that, "after each local reduction step... share[s] the results of the lookup operation across all available GPUs along the batch dimension." It converts data from being sharded by FEATURE (each GPU holds a slice of features for the whole batch) to being sharded by BATCH SAMPLE (each GPU holds every feature for its own slice of samples).</li>
 <li>Chapter 32's MoE all-to-all routes each token to whichever expert a gating network decides on AT RUNTIME, and a real capacity limit can cause an overflowed token to be silently dropped or passed through unprocessed. This chapter's embedding all-to-all follows a FIXED schedule (feature index modulo P) known before the batch even arrives, with every value having one single, predetermined destination and no equivalent of capacity overflow at all.</li>
 <li>Using plain integers isolates the question File 100 is actually asking -- does the RESHARDING itself (pack on the sender, deliver, unpack on the receiver) put every value in the right (sample, feature) slot at any P -- from the floating-point associativity question earlier chapters investigated. Since nothing in this all-to-all ever adds two values together, there was never a risk of floating-point grouping mattering, and integers make that unambiguous. The buggy unpacker passed at P = 1 because one rank owns every feature, and at P = 12 = F because each rank owns exactly one feature -- in both cases the cyclic layout (f = r + k<em>P) and the contiguous layout (f = r</em>F/P + k) name the same features, so the bug is invisible. Testing only at the extremes would have missed it.</li>
 <li>At P=8, the off-rank fraction is 0.8750 (87.5%) of the payload. At P=128, it is 0.9922 (99.22%). The trend is a rapidly rising curve that flattens out: almost all of the payload crosses the network once P is moderately large, so total network traffic approaches the full payload (0.436 GB per step in File 101) and stops changing.</li>
-<li>The off-rank fraction (P-1)/P is a fraction of the WHOLE payload, and it rises toward 1.0 and saturates. The bytes each GPU sends are that total divided among P senders, payload*(P-1)/P^2, which keeps falling roughly as 1/P from P=2 on (109 MB at P=2, 3.4 MB at P=128 in File 101). Both are true because each GPU holds less to begin with even as a larger share of what it holds must leave. The per-GPU number is what matters when each GPU's own link is the bottleneck; the saturating aggregate is what matters when a shared resource -- a switch's bisection bandwidth or the inter-node fabric -- carries everyone's traffic, and per-message latency, which grows with P, is a further cost this volume-only model leaves out.</li>
+<li>The off-rank fraction (P-1)/P is a fraction of the WHOLE payload, and it rises toward 1.0 and saturates. The bytes each GPU sends are that total divided among P senders, payload*(P-1)/P^2, which keeps falling roughly as 1/P from P=2 on (109 MB at P=2, 3.4 MB at P=128 in File 101). Both are true because each GPU holds less to begin with even as a larger share of what it holds must leave. The per-GPU number is what matters when each GPU's own link is the bottleneck; the saturating aggregate is what matters when a shared resource -- a switch's bisection bandwidth or the inter-node fabric -- carries everyone's traffic, and message/startup and scheduling costs, whose dependence on P follows the chosen communication algorithm, are further costs this volume-only model leaves out.</li>
 <li>Capacity sets a MINIMUM: File 99 shows a 2TB table needs at least 26 A100-80GB GPUs (4 eight-GPU nodes) just to hold the rows, and more in practice since HBM also holds activations, the dense model and optimizer state. Above that minimum, File 101 shows more GPUs keep cutting each GPU's memory and each GPU's bytes sent, but not the aggregate traffic the fabric carries, which is already 87.5% of the payload at P=8 and nearly all of it beyond -- and once the job spans several nodes, much of that traffic is on the slower inter-node network. So a real team would pick P from the memory constraint and compute/throughput needs, then check whether the inter-node fabric can carry the near-full payload every step, rather than expect more P to make this all-to-all cheaper overall.</li>
 </ol>
 <hr />

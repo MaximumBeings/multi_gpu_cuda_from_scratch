@@ -689,6 +689,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#worked-example-peer-access-is-a-directional-permission" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Worked example — Peer access is a directional permission
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#41-unified-virtual-addressing-one-address-space-many-memories" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1045,7 +1056,7 @@
   <span class="md-ellipsis">
     
   
-    9. Ring All-Reduce: The Algorithm Behind Every Multi-GPU Training Job
+    9. Ring All-Reduce: Reduce-Scatter and All-Gather by Hand
   
 
     
@@ -2523,6 +2534,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#worked-example-peer-access-is-a-directional-permission" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Worked example — Peer access is a directional permission
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#41-unified-virtual-addressing-one-address-space-many-memories" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2722,6 +2744,29 @@
 </ul>
 <hr />
 <p>Part 0 established device selection, contexts and stream ownership. This chapter adds Unified Virtual Addressing and ordered-pair peer permissions, then checks how pointers and transfers cross device boundaries.</p>
+<!-- mgpu:worked:start -->
+<h2 id="worked-example-peer-access-is-a-directional-permission">Worked example — Peer access is a directional permission<a class="headerlink" href="#worked-example-peer-access-is-a-directional-permission" title="Permanent link">&para;</a></h2>
+<p>Assume GPU 1 owns p1 = [10, 20, 30] (three int32 values, 12 bytes). A hypothetical capability query reports that GPU 0 can access GPU 1, but the reverse query reports no access.</p>
+<p><img alt="Numeric worked example: Peer access is a directional permission" src="../../images/worked/ch04.svg" /></p>
+<ol>
+<li>
+<p>Call cudaDeviceCanAccessPeer(&amp;can, 0, 1): the first device is the prospective accessor and the second owns the memory. Here can = 1.</p>
+</li>
+<li>
+<p>Select GPU 0, then call cudaDeviceEnablePeerAccess(1, 0). This enables the supported access direction from the current device to peer 1.</p>
+</li>
+<li>
+<p>After GPU 1 has produced p1 and the consumer dependency is established, a GPU 0 kernel may read p1[1] = 20. Adding a local value 100 gives 120.</p>
+</li>
+<li>
+<p>Querying (1, 0) is a separate question. The successful first direction establishes no permission for the reverse direction.</p>
+</li>
+</ol>
+<p><strong>Expected result and pitfall.</strong> The expected value is 120. Enabling access does not copy the 12 bytes, establish producer completion, or extend the allocation lifetime. UVA identifies addresses; accessibility and ordering still need their own checks.</p>
+<p><strong>Exercise.</strong> How many payload bytes are copied merely by enabling peer access?</p>
+<p><strong>Worked answer.</strong> Zero in this example. A subsequent remote read or explicit copy moves data; the enable call grants permission.</p>
+<!-- mgpu:worked:end -->
+
 <h2 id="41-unified-virtual-addressing-one-address-space-many-memories">4.1 Unified Virtual Addressing: One Address Space, Many Memories<a class="headerlink" href="#41-unified-virtual-addressing-one-address-space-many-memories" title="Permanent link">&para;</a></h2>
 <!-- mgpu:figure-1:start -->
 <p><a href="../../images/technical/ch04/1-ownership.svg"><img alt="One address space, separate allocations" src="../../images/technical/ch04/1-ownership.svg" /></a></p>

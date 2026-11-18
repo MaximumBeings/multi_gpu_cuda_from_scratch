@@ -837,7 +837,7 @@
   <span class="md-ellipsis">
     
   
-    9. Ring All-Reduce: The Algorithm Behind Every Multi-GPU Training Job
+    9. Ring All-Reduce: Reduce-Scatter and All-Gather by Hand
   
 
     
@@ -1580,6 +1580,17 @@
       Table of contents
     </label>
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#worked-example-check-the-gradient-normalization-numerically" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Worked example — Check the gradient normalization numerically
+      
+    </span>
+  </a>
+  
+</li>
       
         <li class="md-nav__item">
   <a href="#251-the-real-loop-shape-steps-buckets-and-overlap" class="md-nav__link">
@@ -2523,6 +2534,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#worked-example-check-the-gradient-normalization-numerically" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Worked example — Check the gradient normalization numerically
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#251-the-real-loop-shape-steps-buckets-and-overlap" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2736,6 +2758,30 @@
 <a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>                                         | exactly why (25.2)       |
 <a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>                                         +--------------------------+
 </code></pre></div>
+<!-- mgpu:worked:start -->
+
+<h2 id="worked-example-check-the-gradient-normalization-numerically">Worked example — Check the gradient normalization numerically<a class="headerlink" href="#worked-example-check-the-gradient-normalization-numerically" title="Permanent link">&para;</a></h2>
+<p>Use scalar weight w=2, target y=x and per-sample loss (wx−y)^2/2. Rank 0 has x=[1,2]; rank 1 has x=[3,4]. Both local batches have two samples.</p>
+<ol>
+<li>
+<p>The derivative is (wx−y)x=x² at w=2. Rank 0’s mean derivative is (1+4)/2=2.5; rank 1’s is (9+16)/2=12.5.</p>
+</li>
+<li>
+<p>Sum the local means to 15 and divide by the two ranks, obtaining 7.5. This equals the global four-sample mean (1+4+9+16)/4.</p>
+</li>
+<li>
+<p>With learning rate 0.1, both replicas update to 2−0.1×7.5=1.25 after the reduction completes.</p>
+</li>
+</ol>
+<p><img alt="Numeric worked example: Check the gradient normalization numerically" src="../../images/worked/ch25.svg" /></p>
+<p><strong>API connection and scope.</strong> A common implementation uses ncclAllReduce with ncclSum and then scales by the world size, or a supported average reduction with the same intended normalization. The optimizer must consume the completed reduction in the correct stream. This scalar model explains normalization; it is not a newly measured training workload.</p>
+<p><strong>Expected check and pitfall.</strong> Summing without the division yields gradient 15 and weight 0.5, a different update convention. Equal-rank averaging is only equal-sample averaging when local batch sizes match or weighting is handled explicitly.</p>
+<details class="question">
+<summary>Guided exercise: Local sample counts are [1,3] and local mean gradients are [2,6]. What is the global sample mean?</summary>
+<p><strong>Worked answer.</strong> (1×2+3×6)/(1+3)=5. The unweighted rank mean is 4 and is incorrect for this sample-mean objective.</p>
+</details>
+<!-- mgpu:worked:end -->
+
 <h2 id="251-the-real-loop-shape-steps-buckets-and-overlap">25.1 The Real Loop Shape: Steps, Buckets, and Overlap<a class="headerlink" href="#251-the-real-loop-shape-steps-buckets-and-overlap" title="Permanent link">&para;</a></h2>
 <!-- mgpu:figure-1:start -->
 <p><a href="../../images/technical/ch25/1-buckets.svg"><img alt="Ready gradient buckets can communicate early" src="../../images/technical/ch25/1-buckets.svg" /></a></p>

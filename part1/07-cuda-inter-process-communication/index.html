@@ -773,6 +773,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#worked-example-an-ipc-handle-is-not-a-copied-pointer" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Worked example — An IPC handle is not a copied pointer
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#71-cudaipcgetmemhandle-cudaipcopenmemhandle-sharing-device-memory-across-processes" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1045,7 +1056,7 @@
   <span class="md-ellipsis">
     
   
-    9. Ring All-Reduce: The Algorithm Behind Every Multi-GPU Training Job
+    9. Ring All-Reduce: Reduce-Scatter and All-Gather by Hand
   
 
     
@@ -2523,6 +2534,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#worked-example-an-ipc-handle-is-not-a-copied-pointer" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Worked example — An IPC handle is not a copied pointer
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#71-cudaipcgetmemhandle-cudaipcopenmemhandle-sharing-device-memory-across-processes" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2748,6 +2770,29 @@
 <a id="__codelineno-0-23" name="__codelineno-0-23" href="#__codelineno-0-23"></a>                                      +------------------+
 </code></pre></div>
 <p>Everything above the last block was one process reaching across a device boundary it already controlled. This chapter is a process reaching across a boundary it does <em>not</em> control at all -- another process's own private address space -- which is why it needs its own explicit hand-off mechanism instead of just another flavor of the calls Chapters 4-6 already used.</p>
+<!-- mgpu:worked:start -->
+<h2 id="worked-example-an-ipc-handle-is-not-a-copied-pointer">Worked example — An IPC handle is not a copied pointer<a class="headerlink" href="#worked-example-an-ipc-handle-is-not-a-copied-pointer" title="Permanent link">&para;</a></h2>
+<p>An exporter process owns an IPC-exportable device allocation containing four int32 values [7, 11, 13, 17], totaling 16 bytes. An importer runs on a supported device/context configuration.</p>
+<p><img alt="Numeric worked example: An IPC handle is not a copied pointer" src="../../images/worked/ch07.svg" /></p>
+<ol>
+<li>
+<p>The exporter creates the allocation and obtains an opaque cudaIpcMemHandle_t with cudaIpcGetMemHandle. Send the handle through an ordinary inter-process channel.</p>
+</li>
+<li>
+<p>The importer opens it with cudaIpcOpenMemHandle. Use the returned local pointer; do not assume its numeric virtual address equals the exporter’s pointer.</p>
+</li>
+<li>
+<p>Coordinate production and consumption. An IPC event must be created with cudaEventInterprocess | cudaEventDisableTiming; export/open its handle and wait on the relevant recorded generation.</p>
+</li>
+<li>
+<p>After consumption completes, the importer closes its mapping with cudaIpcCloseMemHandle. Only after all users are finished may the exporter free the original allocation.</p>
+</li>
+</ol>
+<p><strong>Expected result and pitfall.</strong> The expected importer values are [7, 11, 13, 17] after synchronization. Opening a memory handle maps shared storage rather than creating a 16-byte snapshot. Keep both the allocation and synchronization protocol valid through the final consumer.</p>
+<p><strong>Exercise.</strong> If the exporter changes the first element to 19, does the importer hold an independent old copy?</p>
+<p><strong>Worked answer.</strong> No. It refers to shared storage. Observing 19 still requires correctly ordering the update and subsequent read; mapping alone is not a visibility protocol.</p>
+<!-- mgpu:worked:end -->
+
 <h2 id="71-cudaipcgetmemhandle-cudaipcopenmemhandle-sharing-device-memory-across-processes">7.1 cudaIpcGetMemHandle / cudaIpcOpenMemHandle: Sharing Device Memory Across Processes<a class="headerlink" href="#71-cudaipcgetmemhandle-cudaipcopenmemhandle-sharing-device-memory-across-processes" title="Permanent link">&para;</a></h2>
 <!-- mgpu:figure-1:start -->
 <p><a href="../../images/technical/ch07/1-ipc.svg"><img alt="Export a handle, not a pointer" src="../../images/technical/ch07/1-ipc.svg" /></a></p>

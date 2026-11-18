@@ -837,7 +837,7 @@
   <span class="md-ellipsis">
     
   
-    9. Ring All-Reduce: The Algorithm Behind Every Multi-GPU Training Job
+    9. Ring All-Reduce: Reduce-Scatter and All-Gather by Hand
   
 
     
@@ -1379,6 +1379,17 @@
       Table of contents
     </label>
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#worked-example-match-every-edge-of-a-three-rank-ring" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Worked example — Match every edge of a three-rank ring
+      
+    </span>
+  </a>
+  
+</li>
       
         <li class="md-nav__item">
   <a href="#201-mpi-basics-built-from-scratch-init-rank-size-and-a-real-point-to-point-ring" class="md-nav__link">
@@ -2523,6 +2534,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#worked-example-match-every-edge-of-a-three-rank-ring" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Worked example — Match every edge of a three-rank ring
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#201-mpi-basics-built-from-scratch-init-rank-size-and-a-real-point-to-point-ring" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2725,6 +2747,30 @@
 <hr />
 <p>MPI supplies independent operating-system processes and explicit rank identities. This chapter builds point-to-point communication, checks the installed CUDA-awareness capability and explains the host-staged alternative. These host/MPI examples were executed in the current H100 suite, but their successful exits must not be read as GPU-buffer transport or ULFM recovery validation.</p>
 <p>The <a href="../../validation-h100/">2026-11-17 H100 execution record</a> covers two GPUs connected by local NV18. It distinguishes numerical checks, API probes and other executions; a successful exit alone does not establish GPU algorithm correctness.</p>
+<!-- mgpu:worked:start -->
+
+<h2 id="worked-example-match-every-edge-of-a-three-rank-ring">Worked example — Match every edge of a three-rank ring<a class="headerlink" href="#worked-example-match-every-edge-of-a-three-rank-ring" title="Permanent link">&para;</a></h2>
+<p>Use ranks 0,1,2, each sending two host integers to its successor. Outgoing buffers are [10,11], [20,21] and [30,31]. Keep receive buffers separate.</p>
+<ol>
+<li>
+<p>At rank r, next=(r+1)%3 and previous=(r+2)%3. Rank 0 sends to 1 and receives from 2.</p>
+</li>
+<li>
+<p>Rank 1 sends to 2 and receives from 0; rank 2 sends to 0 and receives from 1. Use count 2, MPI_INT and matching tag 7 in MPI_Sendrecv.</p>
+</li>
+<li>
+<p>The completed receives must be rank 0:[30,31], rank 1:[10,11], rank 2:[20,21]. Validate every element before reusing buffers.</p>
+</li>
+</ol>
+<p><img alt="Numeric worked example: Match every edge of a three-rank ring" src="../../images/worked/ch20.svg" /></p>
+<p><strong>API connection and scope.</strong> MPI_Sendrecv expresses the paired exchange without depending on eager buffering. This host-buffer trace does not demonstrate CUDA-aware MPI or RDMA. Passing a device pointer requires a supporting MPI stack; otherwise use explicit staging and wait for device copies before MPI consumes their host buffers.</p>
+<p><strong>Expected check and pitfall.</strong> World rank is not a CUDA ordinal. CUDA_VISIBLE_DEVICES renumbers visible devices. An all-node-GPUs-visible one-process-per-GPU launch can select a valid local rank; a launcher exposing only one GPU to each process requires visible device 0. The recorded MPI example uses its stated localRank%device_count policy; check the launch mapping independently.</p>
+<details class="question">
+<summary>Guided exercise: Which rank and values must rank 1 receive?</summary>
+<p><strong>Worked answer.</strong> Its predecessor is rank 0, so [10,11]. Asking to receive from its successor instead changes matching and can leave the protocol waiting indefinitely.</p>
+</details>
+<!-- mgpu:worked:end -->
+
 <h2 id="201-mpi-basics-built-from-scratch-init-rank-size-and-a-real-point-to-point-ring">20.1 MPI Basics, Built From Scratch: Init, Rank, Size, and a Real Point-to-Point Ring<a class="headerlink" href="#201-mpi-basics-built-from-scratch-init-rank-size-and-a-real-point-to-point-ring" title="Permanent link">&para;</a></h2>
 <!-- mgpu:figure-1:start -->
 <p><a href="../../images/technical/ch20/1-ring.svg"><img alt="Ranks communicate beyond one node" src="../../images/technical/ch20/1-ring.svg" /></a></p>

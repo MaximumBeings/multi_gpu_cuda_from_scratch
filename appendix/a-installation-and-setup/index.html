@@ -837,7 +837,7 @@
   <span class="md-ellipsis">
     
   
-    9. Ring All-Reduce: The Algorithm Behind Every Multi-GPU Training Job
+    9. Ring All-Reduce: Reduce-Scatter and All-Gather by Hand
   
 
     
@@ -2152,6 +2152,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#worked-example-read-an-environment-check-without-conflating-its-layers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Worked example — Read an environment check without conflating its layers
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#a1-confirming-nvcc-and-g-and-why-apt-beats-pip-for-a-working-nvcc" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2573,6 +2584,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#worked-example-read-an-environment-check-without-conflating-its-layers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Worked example — Read an environment check without conflating its layers
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#a1-confirming-nvcc-and-g-and-why-apt-beats-pip-for-a-working-nvcc" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2811,6 +2833,29 @@
 <p>This appendix covers toolchain installation and build checks. The recorded H100 setup built all five Makefile recipes, and the program records show execution on H100 and A100 hardware. Select the compiler target and installed dependencies for your own machine.</p>
 <p>The <a href="../../validation-h100/">2026-11-17 H100 execution record</a> covers two GPUs connected by local NV18. It distinguishes numerical checks, API probes and other executions; a successful exit alone does not establish GPU algorithm correctness.</p>
 <p>For a fresh machine, follow the ordered <a href="../../getting-started/#choose-the-installation-path">Getting Started installation recipe</a>: driver, CUDA 12.8, cuBLAS, NCCL, Open MPI and NVSHMEM. This appendix explains toolchain checks and the existing Makefile recipes; the old distribution-package observations below are not an instruction to replace a working provider stack.</p>
+<!-- mgpu:worked:start -->
+<h2 id="worked-example-read-an-environment-check-without-conflating-its-layers">Worked example — Read an environment check without conflating its layers<a class="headerlink" href="#worked-example-read-an-environment-check-without-conflating-its-layers" title="Permanent link">&para;</a></h2>
+<p>This illustrative diagnostic uses compiler release 12.8, NCCL version 2.26.2 and two visible GPUs. It is a reading exercise, not an additional execution record. The dated captured records elsewhere in the appendix remain the evidence for actual tested systems.</p>
+<p><img alt="Numeric worked example: Read an environment check without conflating its layers" src="../../images/worked/appendix-a.svg" /></p>
+<ol>
+<li>
+<p>nvcc --version describes the selected compiler toolkit. The CUDA version shown by nvidia-smi describes driver compatibility; the two labels need not be identical.</p>
+</li>
+<li>
+<p>Decode an NCCL version integer using its documented encoding: 2×10000 + 26×100 + 2 = 22602 means version 2.26.2.</p>
+</li>
+<li>
+<p>A visible-device count of two proves only that the process enumerated two devices. It does not establish peer access, NVLink, RDMA, or numerical collective correctness.</p>
+</li>
+<li>
+<p>A four-element FP32 transfer uses 4 × 4 = 16 bytes. Test allocation, kernel execution, transfer and numerical output before progressing to an appropriate multi-rank collective test.</p>
+</li>
+</ol>
+<p><strong>Expected result and pitfall.</strong> The expected result is a layered diagnosis: driver visibility, compiler selection, libraries and real execution are separate checkpoints. Use the installation sections below for your distribution and toolkit version rather than treating these illustrative labels as universal installation targets.</p>
+<p><strong>Exercise.</strong> If nvidia-smi works but nvcc is missing, is the driver necessarily broken?</p>
+<p><strong>Worked answer.</strong> No. The toolkit compiler may be absent or outside PATH. Check the selected toolkit installation; reinstalling a functioning driver is not the first diagnosis.</p>
+<!-- mgpu:worked:end -->
+
 <h2 id="a1-confirming-nvcc-and-g-and-why-apt-beats-pip-for-a-working-nvcc">A.1 Confirming nvcc and g++, and Why apt Beats pip for a Working nvcc<a class="headerlink" href="#a1-confirming-nvcc-and-g-and-why-apt-beats-pip-for-a-working-nvcc" title="Permanent link">&para;</a></h2>
 <!-- mgpu:figure-1:start -->
 <p><a href="../../images/technical/appendix-a/1-flow.svg"><img alt="A toolkit and a device are separate prerequisites" src="../../images/technical/appendix-a/1-flow.svg" /></a></p>

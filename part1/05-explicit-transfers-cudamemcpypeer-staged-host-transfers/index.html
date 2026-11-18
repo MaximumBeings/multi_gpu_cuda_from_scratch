@@ -717,6 +717,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#worked-example-count-bytes-at-each-transfer-leg" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Worked example — Count bytes at each transfer leg
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#51-cudamemcpypeer-the-dedicated-cross-device-copy-call" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1045,7 +1056,7 @@
   <span class="md-ellipsis">
     
   
-    9. Ring All-Reduce: The Algorithm Behind Every Multi-GPU Training Job
+    9. Ring All-Reduce: Reduce-Scatter and All-Gather by Hand
   
 
     
@@ -2523,6 +2534,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#worked-example-count-bytes-at-each-transfer-leg" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Worked example — Count bytes at each transfer leg
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#51-cudamemcpypeer-the-dedicated-cross-device-copy-call" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2721,7 +2743,30 @@
 <li>Ordinary C++ and the CUDA Runtime API calls from Chapters 1-4. No new CUDA concepts beyond this chapter's own two functions.</li>
 </ul>
 <hr />
-<p>Chapter 4 established <em>whether</em> two devices are allowed to touch each other's memory directly. This chapter is about the calls that actually move the bytes once that permission exists -- and, just as importantly, about what happens when it doesn't. CUDA gives cross-device copies a dedicated function, <code>cudaMemcpyPeer()</code>, alongside the ordinary <code>cudaMemcpy()</code> interface (which also handles peer copies), and a peer copy's behavior quietly changes shape depending on Chapter 4's peer-access state: fast and direct when peer access is enabled, staged through the host and slower when it isn't, with the same function signature either way. This chapter makes both paths concrete, and then asks the question a real multi-GPU program actually has to answer: given a specific pair of devices and a specific topology, which route wins, and by how much?</p>
+<p>Chapter 4 established <em>whether</em> two devices are allowed to touch each other's memory directly. This chapter is about the calls that actually move the bytes once that permission exists -- and, just as importantly, about what happens when it doesn't. CUDA gives cross-device copies a dedicated function, <code>cudaMemcpyPeer()</code>, alongside the ordinary <code>cudaMemcpy()</code> interface (which also handles peer copies), and a peer copy's behavior quietly changes shape depending on Chapter 4's peer-access state: eligible to avoid host staging when supported peer access is enabled, with the same function signature either way. Neither API success nor peer capability alone measures the physical route or guarantees a speedup. This chapter makes both paths concrete, and then asks the question a real multi-GPU program actually has to answer: given a specific pair of devices and a specific topology, which route wins, and by how much?</p>
+<!-- mgpu:worked:start -->
+<h2 id="worked-example-count-bytes-at-each-transfer-leg">Worked example — Count bytes at each transfer leg<a class="headerlink" href="#worked-example-count-bytes-at-each-transfer-leg" title="Permanent link">&para;</a></h2>
+<p>Eight FP32 values [10, 11, 12, 13, 14, 15, 16, 17] occupy 8 × 4 = 32 bytes. Compare an explicit device-to-device copy with an explicitly staged algorithm using a pinned host buffer. These are logical byte counts, not physical bus counters or timing claims.</p>
+<p><img alt="Numeric worked example: Count bytes at each transfer leg" src="../../images/worked/ch05.svg" /></p>
+<ol>
+<li>
+<p>A direct copy operation has 32 bytes of useful payload. cudaMemcpyPeerAsync takes a byte count, so pass 32 rather than 8.</p>
+</li>
+<li>
+<p>Explicit staging first copies 32 bytes device-to-host and then 32 bytes host-to-device: 64 bytes counted across the two legs.</p>
+</li>
+<li>
+<p>Split into two chunks of four values: chunk 0 = [10, 11, 12, 13], chunk 1 = [14, 15, 16, 17], each 16 bytes. Each staged chunk still has two legs.</p>
+</li>
+<li>
+<p>Before overwriting a pinned slot, ensure its prior host-to-device read has completed. Before consuming a destination chunk, ensure its copy has completed.</p>
+</li>
+</ol>
+<p><strong>Expected result and pitfall.</strong> The expected destination is the original eight-value sequence. Chunking changes scheduling and temporary capacity, not the 64-byte two-leg total. A successful peer-copy API does not itself reveal the physical route used by the runtime.</p>
+<p><strong>Exercise.</strong> Can one 16-byte host slot be reused as soon as its device-to-host operation completes?</p>
+<p><strong>Worked answer.</strong> Not if its host-to-device operation is still reading that slot. Wait for that read to finish, or use a different slot with its own completion tracking.</p>
+<!-- mgpu:worked:end -->
+
 <h2 id="51-cudamemcpypeer-the-dedicated-cross-device-copy-call">5.1 cudaMemcpyPeer: The Dedicated Cross-Device Copy Call<a class="headerlink" href="#51-cudamemcpypeer-the-dedicated-cross-device-copy-call" title="Permanent link">&para;</a></h2>
 <!-- mgpu:figure-1:start -->
 <p><a href="../../images/technical/ch05/1-transfer.svg"><img alt="Peer copy names both endpoints" src="../../images/technical/ch05/1-transfer.svg" /></a></p>
@@ -2730,7 +2775,7 @@
 <h3 id="intuition">Intuition<a class="headerlink" href="#intuition" title="Permanent link">&para;</a></h3>
 <p><code>cudaMemcpy()</code> with <code>cudaMemcpyDefault</code> (Chapter 4) can infer a copy's direction because UVA makes every pointer's owner identifiable, and that includes a copy whose source and destination live on two different devices. The CUDA Programming Guide says so directly: on systems with unified addressing, a peer copy can be done with the ordinary <code>cudaMemcpy()</code> using <code>cudaMemcpyDeviceToDevice</code> or <code>cudaMemcpyDefault</code>, not only with the dedicated peer functions. CUDA also provides an explicit call, <code>cudaMemcpyPeer()</code>, that names both devices directly instead of leaving the runtime to work them out from the pointers. This chapter uses <code>cudaMemcpyPeer()</code> because naming the two devices keeps the cross-device nature of the copy visible in the code, but either way the route the bytes take depends on Chapter 4's peer-access state, which is per-pair, queryable, and can change at runtime. One copy, two very different execution paths underneath, chosen automatically based on whether Chapter 4's setup sequence has already run for that specific ordered pair.</p>
 <h3 id="background">Background<a class="headerlink" href="#background" title="Permanent link">&para;</a></h3>
-<p><code>cudaMemcpyPeer(dst, dstDevice, src, srcDevice, count)</code> copies <code>count</code> bytes from <code>src</code> on <code>srcDevice</code> to <code>dst</code> on <code>dstDevice</code>. Per the CUDA Runtime API documentation, this call "is asynchronous with respect to the host, but serialized with respect [to] all pending and future asynchronous work in the current device, <code>srcDevice</code>, and <code>dstDevice</code>" -- meaning it returns to the host immediately, but the copy itself still waits its turn against other work already queued on any of the three devices involved. <code>cudaMemcpyPeerAsync()</code> adds an explicit stream argument for finer-grained ordering against other stream-issued work, the same stream-ordering model Chapter 3 introduced. Crucially, the CUDA Programming Guide's multi-GPU chapter states plainly what determines the actual route taken: "If peer-to-peer access is enabled between two devices, ... peer-to-peer memory copies between these two devices no longer need to be staged through the host and are therefore faster." The function signature and its performance are two separate questions -- the call always works the same way from the caller's side; only its internal routing depends on Chapter 4's state.</p>
+<p><code>cudaMemcpyPeer(dst, dstDevice, src, srcDevice, count)</code> copies <code>count</code> bytes from <code>src</code> on <code>srcDevice</code> to <code>dst</code> on <code>dstDevice</code>. Per the CUDA Runtime API documentation, this call "is asynchronous with respect to the host, but serialized with respect [to] all pending and future asynchronous work in the current device, <code>srcDevice</code>, and <code>dstDevice</code>" -- describing host/device ordering rather than guaranteeing an immediate host return. CUDA API calls can block for internal resource management; the copy also has the documented ordering against work on the devices involved. <code>cudaMemcpyPeerAsync()</code> adds an explicit stream argument for finer-grained ordering against other stream-issued work, the same stream-ordering model Chapter 3 introduced. Crucially, the CUDA Programming Guide's multi-GPU chapter states plainly what determines the actual route taken: "If peer-to-peer access is enabled between two devices, ... peer-to-peer memory copies between these two devices no longer need to be staged through the host and are therefore faster." The function signature and its performance are two separate questions -- the call always works the same way from the caller's side; peer-access state affects whether host staging is needed, while topology, implementation and concurrent work affect the observed transfer.</p>
 <div class="language-cpp highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="c1">// Chapter 5: checked synchronous and asynchronous peer transfers.</span>
 <a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="c1">// 11_memcpy_peer.cu</span>
 <a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;cstdio&gt;</span>
@@ -2874,7 +2919,7 @@
 <h3 id="intuition_1">Intuition<a class="headerlink" href="#intuition_1" title="Permanent link">&para;</a></h3>
 <p>Section 5.1 quoted the documentation's own description of what happens when peer access isn't enabled: the copy is "staged through the host." That phrase describes a real, ordinary two-step process -- copy the source device's data to a host buffer, then copy that host buffer to the destination device -- using nothing more exotic than two calls this book already introduced in Chapter 3 and 4. Writing that fallback out explicitly, by hand, rather than only invoking it implicitly inside <code>cudaMemcpyPeer()</code>, makes concrete exactly what "staged" costs: two separate transfers over the host's PCIe links, each moving the <em>entire</em> payload, rather than one transfer over whatever direct link (if any) connects the two devices.</p>
 <h3 id="background_1">Background<a class="headerlink" href="#background_1" title="Permanent link">&para;</a></h3>
-<p>The staged pattern is two ordinary <code>cudaMemcpy()</code> calls with a host buffer as the waypoint: <code>cudaMemcpy(hostBuffer, srcDevicePtr, bytes, cudaMemcpyDeviceToHost)</code> followed by <code>cudaMemcpy(dstDevicePtr, hostBuffer, bytes, cudaMemcpyHostToDevice)</code>. This is the book's model of what the documentation calls being "staged through the host": the same two hops, device to host and host to device, made visible instead of hidden inside one function call. It is a model, not a copy of the driver's internals, which are not documented; a driver is free to pipeline the two hops in smaller chunks so they overlap, so treat the full two-transfer cost as an upper bound on what the hidden fallback costs. Using a pinned (<code>cudaMallocHost()</code>-allocated) host buffer as the waypoint matters here because a pinned allocation is a fixed, DMA-eligible physical address the driver can transfer to and from directly, rather than a page the OS might need to fault in or relocate mid-copy.</p>
+<p>The staged pattern is two ordinary <code>cudaMemcpy()</code> calls with a host buffer as the waypoint: <code>cudaMemcpy(hostBuffer, srcDevicePtr, bytes, cudaMemcpyDeviceToHost)</code> followed by <code>cudaMemcpy(dstDevicePtr, hostBuffer, bytes, cudaMemcpyHostToDevice)</code>. This is the book's model of what the documentation calls being "staged through the host": the same two hops, device to host and host to device, made visible instead of hidden inside one function call. It is a model, not a copy of the driver's internals, which are not documented; a driver is free to pipeline the two hops in smaller chunks so they overlap, so treat the full two-transfer cost as an idealized serial cost estimate, not a certified upper bound on hidden fallback time: overlap may reduce it, while startup, contention and other overhead may increase it. Using a pinned (<code>cudaMallocHost()</code>-allocated) host buffer as the waypoint matters here because a pinned allocation is a fixed, DMA-eligible physical address the driver can transfer to and from directly, rather than a page the OS might need to fault in or relocate mid-copy.</p>
 <div class="language-cpp highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="c1">// 12_staged_host_transfer.cu</span>
 <a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="c1">// Checked teaching implementation; serial host scheduling favors clarity, not speed.</span>
 <a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;cstdio&gt;</span>
@@ -3157,13 +3202,13 @@
 </details>
 <!-- execution:end:h100:13_when_each_wins_model.cpp -->
 
-<p>In this model, peer-direct wins whenever it's <em>available</em> -- by a factor of 2x when the direct link is itself PCIe (the model's staging pays that same rate twice, an upper bound since real staging may overlap the two hops), and by a larger 3.17x when the direct link is a faster NVLink wire. But "when each wins" has a sharper answer than a speed comparison alone: peer-direct is only ever a <em>choice</em> to make when Chapter 4's <code>cudaDeviceCanAccessPeer()</code> already says the pair has a direct link at all. When it doesn't, there is no decision to make -- staging isn't the slower option, it's the only one.</p>
+<p>In this model, peer-direct wins whenever it's <em>available</em> -- by a factor of 2x when the direct link is itself PCIe (the model's staging pays that same rate twice, an idealized serial estimate; real staging may overlap the hops and incur other overhead), and by a larger 3.17x when the direct link is a faster NVLink wire. But "when each wins" has a sharper answer than a speed comparison alone: peer-direct is only ever a <em>choice</em> to make when Chapter 4's <code>cudaDeviceCanAccessPeer()</code> reports support for the relevant access direction. When it doesn't, there is no decision to make -- staging isn't the slower option, it's the only one.</p>
 <div class="admonition warning">
 <p class="admonition-title">[COMMON TRAP] Treating this cost model's numbers as real, measured transfer times</p>
 <p>Every figure in this section's output is a closed-form arithmetic result from bandwidth numbers Chapter 2 already sourced and cited to real vendor documentation -- not a timing measurement taken on real hardware. Real transfer time also includes fixed per-call latency, driver overhead, and whatever else is competing for the same link, none of which this simple <code>size / bandwidth</code> model captures. This model answers "which route is structurally faster, and by roughly what multiple" honestly and exactly -- it does not, and cannot, stand in for benchmarking a real transfer on real GPUs.</p>
 </div>
 <h2 id="chapter-summary">Chapter Summary<a class="headerlink" href="#chapter-summary" title="Permanent link">&para;</a></h2>
-<p><code>cudaMemcpyPeer()</code> is CUDA's dedicated cross-device copy call, and per the CUDA Programming Guide's own words, its routing -- direct or staged through the host -- depends entirely on whether Chapter 4's peer-access permission has already been granted for that specific ordered pair, with the function's return value reporting only correctness, never which path ran (Section 5.1). The staged fallback, written out explicitly in Section 5.2 as two ordinary <code>cudaMemcpy()</code> calls through a pinned host buffer, makes concrete the book's cost model for staging: the full transfer cost paid twice, once per hop, an upper bound since the driver's undocumented internal staging may overlap the hops. Putting real, already-cited numbers into that shape (Section 5.3) shows peer-direct winning by up to 2x to 3.17x in that model whenever it's available, but also reframes the real question: peer-direct is a choice only when the specific pair supports peer access; when it doesn't, staging is not the slower option but the only one. Chapter 6 builds directly on this by bringing streams and events into the picture -- overlapping a transfer like this chapter's with concurrent kernel execution, and synchronizing correctly across devices when that overlap is in play.</p>
+<p><code>cudaMemcpyPeer()</code> is CUDA's dedicated cross-device copy call, and per the CUDA Programming Guide's own words, its routing -- direct or staged through the host -- can avoid host staging when the required supported peer access is enabled for that specific ordered pair, with the function's return value reporting only correctness, never which path ran (Section 5.1). The staged fallback, written out explicitly in Section 5.2 as two ordinary <code>cudaMemcpy()</code> calls through a pinned host buffer, makes concrete the book's cost model for staging: the full transfer cost paid twice, once per hop, an idealized serial estimate rather than a runtime bound; internal staging may overlap the hops or incur additional overhead. Putting real, already-cited numbers into that shape (Section 5.3) shows peer-direct winning by up to 2x to 3.17x in that model whenever it's available, but also reframes the real question: peer-direct is a choice only when the specific pair supports peer access; when it doesn't, staging is not the slower option but the only one. Chapter 6 builds directly on this by bringing streams and events into the picture -- overlapping a transfer like this chapter's with concurrent kernel execution, and synchronizing correctly across devices when that overlap is in play.</p>
 <h2 id="self-check-questions">Self-Check Questions<a class="headerlink" href="#self-check-questions" title="Permanent link">&para;</a></h2>
 <ol>
 <li><code>cudaMemcpyPeer()</code> returns <code>cudaSuccess</code> in both of the following cases: peer access was enabled and the copy went direct, and peer access was not enabled and the copy was staged through the host. What, if anything, in the function's return value tells the caller which case occurred?</li>
@@ -3181,7 +3226,7 @@
 <p><strong>1.</strong> Nothing. <code>cudaMemcpyPeer()</code>'s return value (a <code>cudaError_t</code>) reports API success or failure, not the internal route or device-side completion. <code>cudaDeviceCanAccessPeer()</code> establishes eligibility, not an achieved-bandwidth measurement. Synchronize the relevant work before validating the destination, and profile when route attribution matters.</p>
 <p><strong>2.</strong> A DMA (direct memory access) transfer engine reads or writes host memory using physical addresses, programmed once at the start of the transfer. If the underlying page could be moved or swapped out mid-transfer -- which an ordinary, non-pinned allocation permits, since the OS is free to relocate it -- the DMA engine's already-programmed physical address would become invalid partway through. A pinned (page-locked) allocation is guaranteed by the OS not to move or be paged out for as long as it's pinned, so its physical address stays valid for the DMA engine's entire operation.</p>
 <p><strong>3.</strong> Staged time doubles to <code>2 * (2.0/31.5) = 0.126984</code> s, and peer-direct-over-NVLink time doubles to <code>2.0/50.0 = 0.04</code> s. The speedup ratio (<code>stagedTime / peerTimeNVLink</code>) stays exactly the same, <code>3.1746</code>, because both times scaled by the identical factor (2x the data), and that common factor cancels out of the ratio -- the <em>relative</em> advantage of peer-direct over staging depends only on the bandwidth figures, not on the transfer size.</p>
-<p><strong>4.</strong> In Chapter 2's partial-mesh topology, a specific ordered pair of devices either has a direct wired NVLink connection between them or it doesn't -- there is no partial, intermediate wiring state for one specific pair. The pair's peer-direct bandwidth is therefore always exactly one of the two discrete figures (NVLink if wired, PCIe if the only direct route is PCIe), never an average or blend of the two, because a "half-wired" link isn't a real hardware configuration.</p>
+<p><strong>4.</strong> In the chapter's binary partial-mesh cost model, a pair is assigned either the chosen NVLink rate or the chosen PCIe rate. The model does not average those alternatives. Real pair bandwidth is not restricted to exactly those two numbers: link count/generation, routing, PCIe hierarchy, contention and operation size can change achieved throughput. Query capability and inspect topology, then measure the actual route; a successful copy or a binary wiring table does not determine its measured bandwidth.</p>
 <p><strong>5.</strong> Chapter 4's Section 4.2 established that <code>cudaDeviceEnablePeerAccess()</code> only succeeds (or is even meaningful to call) between pairs where <code>cudaDeviceCanAccessPeer()</code> already returns true -- meaning a supported peer-memory route exists. Calling it "for every pair" doesn't create a link that doesn't exist; between pairs without supported peer access, the enable call itself does nothing useful, and the program still has to use the staged route for those pairs regardless of intent. Peer access can traverse supported PCIe switches or NVSwitch; it does not require a dedicated point-to-point cable. Capability queries determine eligibility, while profiling determines the achieved route and bandwidth.</p>
 <p><strong>6.</strong> No -- this chapter's term "staged" specifically means routed <em>through host memory</em>, which is what <code>cudaMemcpy(..., cudaMemcpyDeviceToHost)</code> followed by <code>cudaMemcpy(..., cudaMemcpyHostToDevice)</code> does. A transfer from device 0 to device 2 that goes by way of device 1's memory (rather than the host's) would be a different thing entirely -- a multi-hop device-to-device relay, which Chapter 2's ring-bottleneck model already discussed in a different context (Section 2.4) and which this chapter's two functions don't perform on their own.</p>
 <p><strong>7.</strong> Chapter 2's figures were already sourced from real vendor documentation (PCIe and NVLink specification tables) and cited at the end of that chapter -- reusing them keeps this chapter's numbers traceable to the same real sources rather than introducing a second, unverified data point. Fabricating a plausible-sounding timing number instead would break this book's own stated honesty discipline: every number in this book is either a genuine, verified program output or a real, cited fact, and a made-up transfer time would be neither.</p>

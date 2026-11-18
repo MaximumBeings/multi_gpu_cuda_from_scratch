@@ -915,7 +915,7 @@
   <span class="md-ellipsis">
     
   
-    9. Ring All-Reduce: The Algorithm Behind Every Multi-GPU Training Job
+    9. Ring All-Reduce: Reduce-Scatter and All-Gather by Hand
   
 
     
@@ -2481,6 +2481,40 @@
 </li>
 </ul>
 <h2 id="how-to-read-this-book">How to read this book<a class="headerlink" href="#how-to-read-this-book" title="Permanent link">&para;</a></h2>
+<p>The worked walkthrough in each chapter and appendix gives you a small problem to solve before the longer implementations. Follow its numbered steps with the illustration open beside them: identify the owner of each value, trace the messages or memory locations, calculate the intermediate result, then compare with the explained check. The exercise changes one assumption so you can test whether you understand the rule.</p>
+<p>The worked figures distinguish <strong>logical values</strong>, <strong>ranks and device ordinals</strong>, <strong>element counts</strong>, <strong>payload bytes</strong> and <strong>time units</strong>. A paper cost model is an arithmetic illustration; actual hardware results have their own recorded source, commands, execution date and system. This distinction lets you learn the algorithm on a small example without mistaking its numbers for a measured application.</p>
+<table>
+<thead>
+<tr>
+<th>Start with this question</th>
+<th>Follow this route</th>
+<th>Be able to explain</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Who owns the memory, and who may use it?</td>
+<td><a href="part0/03-the-cuda-multi-gpu-programming-model/">Devices</a> → <a href="part1/04-peer-to-peer-memory-access-and-uva/">peer access</a> → <a href="part1/06-streams-events-and-cross-device-synchronization/">events</a></td>
+<td>The allocation owner, permitted access direction and readiness/reuse dependency</td>
+</tr>
+<tr>
+<td>Where does every rank's result come from?</td>
+<td><a href="part2/08-broadcast-and-reduce-the-first-two-collectives-by-hand/">Broadcast/reduce</a> → <a href="part2/09-ring-all-reduce-the-algorithm-behind-every-multi-gpu-training-job/">ring all-reduce</a> → <a href="part2/10-all-gather-reduce-scatter-and-all-to-all/">other collectives</a></td>
+<td>Each intermediate chunk and the final ownership, not only a checksum</td>
+</tr>
+<tr>
+<td>How should the workload be partitioned?</td>
+<td><a href="part3/12-data-parallelism-replicated-model-sharded-data/">Data parallelism</a> → <a href="part3/14-tensor-parallelism-splitting-a-single-matrix-multiply-across-devices/">tensor parallelism</a> → <a href="part3/16-domain-decomposition-for-scientific-computing-halo-exchange-and-distributed-stencils/">halos</a></td>
+<td>Which work is local, which data moves, and what remains on the critical path</td>
+</tr>
+<tr>
+<td>What changes beyond one node?</td>
+<td><a href="part5/20-mpi-from-scratch-then-cuda-aware-mpi-scaling-beyond-one-node/">MPI</a> → <a href="part5/21-gpudirect-rdma-bypassing-the-host-entirely/">RDMA</a> → <a href="part5/22-nvshmem-and-gpu-initiated-communication/">NVSHMEM</a></td>
+<td>Rank/device mapping, transport support, matching operations and completion scope</td>
+</tr>
+</tbody>
+</table>
+<p>Use <a href="appendix/e-profiling-and-benchmarking-multi-gpu-communication/">Appendix E</a> to define measurement boundaries and <a href="appendix/g-common-failure-modes-deadlocks-silent-corruption-topology-mismatches/">Appendix G</a> to trace a failed dependency. For every case study, predict the result of its small worked example before reading the full code.</p>
 <p>Every chapter develops intuition, complete implementations, worked examples, pitfalls and self-checks. All 145 programs have <a href="validation-h100/">H100</a> and <a href="validation-a100/">A100</a> execution records, with sample output beside the code. The eight-A100 supplement also checks all 56 ordered peer pairs, four collectives and three halo generations.</p>
 
 

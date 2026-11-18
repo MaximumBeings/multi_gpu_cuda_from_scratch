@@ -837,7 +837,7 @@
   <span class="md-ellipsis">
     
   
-    9. Ring All-Reduce: The Algorithm Behind Every Multi-GPU Training Job
+    9. Ring All-Reduce: Reduce-Scatter and All-Gather by Hand
   
 
     
@@ -1664,6 +1664,17 @@
       Table of contents
     </label>
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#worked-example-route-discoveries-to-owners-and-deduplicate" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Worked example — Route discoveries to owners and deduplicate
+      
+    </span>
+  </a>
+  
+</li>
       
         <li class="md-nav__item">
   <a href="#281-a-frontier-that-doesnt-know-where-its-going" class="md-nav__link">
@@ -2523,6 +2534,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#worked-example-route-discoveries-to-owners-and-deduplicate" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Worked example — Route discoveries to owners and deduplicate
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#281-a-frontier-that-doesnt-know-where-its-going" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2734,6 +2756,30 @@
 <a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>                      involved in the communication operation" --
 <a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>                      Yoo et al.'s own real WORST CASE, not a guarantee
 </code></pre></div>
+<!-- mgpu:worked:start -->
+
+<h2 id="worked-example-route-discoveries-to-owners-and-deduplicate">Worked example — Route discoveries to owners and deduplicate<a class="headerlink" href="#worked-example-route-discoveries-to-owners-and-deduplicate" title="Permanent link">&para;</a></h2>
+<p>Use directed edges 0→{1,2}, 1→{3}, 2→{3,4}, 3→{5}, 4→{5}. Vertex 5 has no outgoing edges. Owner(v)=floor(v/2): rank 0 owns {0,1}, rank 1 owns {2,3}, rank 2 owns {4,5}. Start from vertex 0.</p>
+<ol>
+<li>
+<p>Level 0 contains rank 0:{0}. Expanding it produces level 1 rank 0:{1}, rank 1:{2}, rank 2:empty.</p>
+</li>
+<li>
+<p>Vertices 1 and 2 both discover 3; its owner rank 1 accepts it once. Vertex 2 also discovers 4 on rank 2. Level 2 is rank 1:{3}, rank 2:{4}.</p>
+</li>
+<li>
+<p>Both 3 and 4 discover 5; rank 2 accepts it once at level 3. The next global frontier is empty. Distances are [0,1,1,2,2,3].</p>
+</li>
+</ol>
+<p><img alt="Numeric worked example: Route discoveries to owners and deduplicate" src="../../images/worked/ch28.svg" /></p>
+<p><strong>API connection and scope.</strong> Owner-routed candidate IDs can use MPI_Alltoallv or matched point-to-point messages. Owners deduplicate and record first visitation before constructing the next frontier. A global sum of next-frontier counts equal to zero provides termination for this level-synchronous protocol.</p>
+<p><strong>Expected check and pitfall.</strong> An empty local frontier does not mean global termination. Ranks with no local work still participate in the agreed exchange and termination protocol. Count units consistently: vertex IDs and message bytes are different quantities.</p>
+<details class="question">
+<summary>Guided exercise: Can rank 0 stop participating when it becomes empty at level 2?</summary>
+<p><strong>Worked answer.</strong> No. Ranks 1 and 2 still expand vertices and later discover 5. Rank 0 must continue matching communication until the globally empty next frontier is established.</p>
+</details>
+<!-- mgpu:worked:end -->
+
 <h2 id="281-a-frontier-that-doesnt-know-where-its-going">28.1 A Frontier That Doesn't Know Where It's Going<a class="headerlink" href="#281-a-frontier-that-doesnt-know-where-its-going" title="Permanent link">&para;</a></h2>
 <!-- mgpu:figure-1:start -->
 <p><a href="../../images/technical/ch28/1-frontier.svg"><img alt="The active frontier chooses remote owners" src="../../images/technical/ch28/1-frontier.svg" /></a></p>

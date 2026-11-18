@@ -837,7 +837,7 @@
   <span class="md-ellipsis">
     
   
-    9. Ring All-Reduce: The Algorithm Behind Every Multi-GPU Training Job
+    9. Ring All-Reduce: Reduce-Scatter and All-Gather by Hand
   
 
     
@@ -1061,6 +1061,17 @@
       Table of contents
     </label>
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#worked-example-compute-an-activation-boundary-by-hand" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Worked example — Compute an activation boundary by hand
+      
+    </span>
+  </a>
+  
+</li>
       
         <li class="md-nav__item">
   <a href="#131-why-split-the-model-itself-memory-capacity-revisited" class="md-nav__link">
@@ -2523,6 +2534,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#worked-example-compute-an-activation-boundary-by-hand" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Worked example — Compute an activation boundary by hand
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#131-why-split-the-model-itself-memory-capacity-revisited" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2736,6 +2758,29 @@
 <a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>  device in the first place.             layer boundary to cross a real
 <a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>                                          device-to-device transfer.
 </code></pre></div>
+<!-- mgpu:worked:start -->
+<h2 id="worked-example-compute-an-activation-boundary-by-hand">Worked example — Compute an activation boundary by hand<a class="headerlink" href="#worked-example-compute-an-activation-boundary-by-hand" title="Permanent link">&para;</a></h2>
+<p>A two-layer forward pass uses row-vector X = [1, 2] on GPU 0. W0 has rows [1, 0, 2] and [0, 1, 1]. GPU 1 owns W1 with rows [1], [2], [3]. All values are FP32; omit biases and nonlinearities for this small model.</p>
+<p><img alt="Numeric worked example: Compute an activation boundary by hand" src="../../images/worked/ch13.svg" /></p>
+<ol>
+<li>
+<p>Compute the three outputs of H = XW0: 1×1 + 2×0 = 1; 1×0 + 2×1 = 2; 1×2 + 2×1 = 4. Thus H = [1, 2, 4].</p>
+</li>
+<li>
+<p>Transfer the activation H to GPU 1 after GPU 0 finishes producing it. Three FP32 elements occupy 12 bytes.</p>
+</li>
+<li>
+<p>Compute Y = HW1 = 1×1 + 2×2 + 4×3 = 17 on GPU 1.</p>
+</li>
+<li>
+<p>W0 stores 2×3×4 = 24 bytes; W1 stores 3×1×4 = 12 bytes. Sharding these weights does not remove the activation dependency between layers.</p>
+</li>
+</ol>
+<p><strong>Expected result and pitfall.</strong> The expected scalar output is 17. This is a forward-only mathematical model, not a training-memory estimate: backward activation storage, gradients, optimizer state and reverse communication are additional costs.</p>
+<p><strong>Exercise.</strong> What activation crosses the boundary for input [2, 1]?</p>
+<p><strong>Worked answer.</strong> H = [2, 1, 5], so 12 bytes still cross. The output becomes 2 + 2 + 15 = 19.</p>
+<!-- mgpu:worked:end -->
+
 <h2 id="131-why-split-the-model-itself-memory-capacity-revisited">13.1 Why Split the Model Itself: Memory Capacity, Revisited<a class="headerlink" href="#131-why-split-the-model-itself-memory-capacity-revisited" title="Permanent link">&para;</a></h2>
 <!-- mgpu:figure-1:start -->
 <p><a href="../../images/technical/ch13/1-capacity.svg"><img alt="Partitioning changes memory ownership" src="../../images/technical/ch13/1-capacity.svg" /></a></p>

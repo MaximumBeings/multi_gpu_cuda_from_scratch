@@ -837,7 +837,7 @@
   <span class="md-ellipsis">
     
   
-    9. Ring All-Reduce: The Algorithm Behind Every Multi-GPU Training Job
+    9. Ring All-Reduce: Reduce-Scatter and All-Gather by Hand
   
 
     
@@ -2264,6 +2264,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#worked-example-measure-the-whole-phase-before-deriving-bandwidth" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Worked example — Measure the whole phase before deriving bandwidth
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#e1-why-this-book-counts-data-volume-instead-of-timing-it" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2562,6 +2573,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#worked-example-measure-the-whole-phase-before-deriving-bandwidth" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Worked example — Measure the whole phase before deriving bandwidth
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#e1-why-this-book-counts-data-volume-instead-of-timing-it" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2787,6 +2809,30 @@
 <!-- mgpu:opener:end -->
 
 <p>Communication volume, measured latency and achieved bandwidth answer different questions. This appendix separates deterministic algorithm models from measurements on a particular machine, distinguishes local GPU durations from end-to-end completion, and introduces NCCL logging and Nsight Systems.</p>
+<!-- mgpu:worked:start -->
+
+<h2 id="worked-example-measure-the-whole-phase-before-deriving-bandwidth">Worked example — Measure the whole phase before deriving bandwidth<a class="headerlink" href="#worked-example-measure-the-whole-phase-before-deriving-bandwidth" title="Permanent link">&para;</a></h2>
+<p>Use a hypothetical shared host-clock timeline in milliseconds. GPU 0 work spans [0,6]; GPU 1 spans [4,7]. This is not subtraction of raw CUDA timestamps from different devices.</p>
+<ol>
+<li>
+<p>Local durations are 6 ms and 3 ms. Their maximum is 6 ms, but the whole phase spans 0 through 7 ms and therefore takes 7 ms.</p>
+</li>
+<li>
+<p>For P=4 ranks and payload S=12 decimal MB, a ring all-reduce sends 2(P−1)S/P=18 MB per rank, and separately receives 18 MB. Bidirectional accounting totals 36 MB.</p>
+</li>
+<li>
+<p>Using whole-phase T=7 ms, algorithm bandwidth S/T=1.714 GB/s; modeled one-direction sent-volume bandwidth is 18/7=2.571 GB/s. State which numerator is used.</p>
+</li>
+</ol>
+<p><img alt="Numeric worked example: Measure the whole phase before deriving bandwidth" src="../../images/worked/appendix-e.svg" /></p>
+<p><strong>API connection and scope.</strong> Record CUDA event pairs on the same owning device/stream for local intervals. For end-to-end makespan, use a host monotonic clock before the first submission through completion of all participating work. Coordinate rank start/end scope explicitly when measuring multiple processes.</p>
+<p><strong>Expected check and pitfall.</strong> Do not take the maximum of differently started local durations as global elapsed time. These ring byte formulas are accounting models, not measured link utilization; topology, implementation and NCCL-tests bandwidth conventions require their own stated interpretation.</p>
+<details class="question">
+<summary>Guided exercise: If the measured whole phase were 8 ms, what would the two bandwidth numbers be?</summary>
+<p><strong>Worked answer.</strong> Algorithm bandwidth is 12/8=1.5 GB/s; one-direction sent-volume bandwidth is 18/8=2.25 GB/s. Receiving traffic is not added silently to the sent-byte numerator.</p>
+</details>
+<!-- mgpu:worked:end -->
+
 <h2 id="e1-why-this-book-counts-data-volume-instead-of-timing-it">E.1 Why This Book Counts Data Volume Instead of Timing It<a class="headerlink" href="#e1-why-this-book-counts-data-volume-instead-of-timing-it" title="Permanent link">&para;</a></h2>
 <h3 id="intuition">Intuition<a class="headerlink" href="#intuition" title="Permanent link">&para;</a></h3>
 <p>A wall-clock measurement of an NCCL call answers "how long did this all-reduce take, on this cluster, this one time" -- an answer that depends on network congestion, which other jobs share the interconnect, thermal throttling, and dozens of factors that have nothing to do with the algorithm itself. Chapter 9's own closed-form formula for how much data a ring all-reduce moves per GPU answers a different, more useful question: does this strategy inherently move less data than that one, for this many GPUs, regardless of what cluster runs it? This book has used exactly that formula as its evidence since Chapter 9, without treating those counts as measured throughput.</p>

@@ -837,7 +837,7 @@
   <span class="md-ellipsis">
     
   
-    9. Ring All-Reduce: The Algorithm Behind Every Multi-GPU Training Job
+    9. Ring All-Reduce: Reduce-Scatter and All-Gather by Hand
   
 
     
@@ -1979,6 +1979,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#worked-walkthrough-put-every-market-data-path-on-the-same-timing-boundary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Worked walkthrough — Put every market-data path on the same timing boundary
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#371-what-gets-market-data-to-memory-today-really" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2523,6 +2534,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#worked-walkthrough-put-every-market-data-path-on-the-same-timing-boundary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Worked walkthrough — Put every market-data path on the same timing boundary
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#371-what-gets-market-data-to-memory-today-really" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2725,6 +2747,25 @@
 <a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>|      CPU-driven writes and reads have different performance     |
 <a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>+------------------------------------------------------------------+
 </code></pre></div>
+<!-- mgpu:worked:start -->
+<h2 id="worked-walkthrough-put-every-market-data-path-on-the-same-timing-boundary">Worked walkthrough — Put every market-data path on the same timing boundary<a class="headerlink" href="#worked-walkthrough-put-every-market-data-path-on-the-same-timing-boundary" title="Permanent link">&para;</a></h2>
+<p><a href="../../images/worked/ch37.svg"><img alt="Put every market-data path on the same timing boundary: numerical ownership, intermediate values and checks" src="../../images/worked/ch37.svg" /></a></p>
+<p>Use a hypothetical eight-message batch, each message 256 bytes. The batch carries 2048 payload bytes. Define the useful-result boundary as GPU computation finishing after it has consumed all eight messages. This is path accounting, not a measured trading system or a latency guarantee.</p>
+<ol>
+<li><strong>Name the host-staged path.</strong> NIC delivery into host memory is followed by a CPU/transport ownership handoff, host-to-device transfer, GPU dependency and processing. Kernel bypass on the NIC-to-host portion does not automatically remove the host-to-device portion.</li>
+<li><strong>Name a direct path separately.</strong> A supported NIC-to-GPU path must register the actual GPU buffer and establish the transport's required completion/visibility ordering before the kernel consumes it. A GPU pointer or successful memory registration alone does not prove application-level readiness.</li>
+<li><strong>Apply an explicit serial cost model.</strong> Suppose host arrival costs three microseconds, host-to-device setup costs two, the payload transfer costs one and GPU processing costs four. Without overlap, useful-result latency is ten microseconds. Removing the modeled three-microsecond H2D stage would give seven only if the direct route's own added costs were zero; that is an assumption to test, not a free speedup.</li>
+<li><strong>Distinguish GDRCopy.</strong> A CPU mapping of GPU memory permits CPU-driven access under its documented API contract; it is not a NIC-initiated transfer. Reads and writes can have very different performance and ordering. Account for map/registration setup and reuse separately.</li>
+<li><strong>Check throughput too.</strong> A batch every ten microseconds corresponds to 800000 messages/s and <code>2048/10e-6=204.8 MB/s</code> of payload in the serial toy schedule. Protocol bytes and concurrent pipelining alter the relationship; one latency number does not establish maximum packet rate.</li>
+</ol>
+<p><strong>Expected check:</strong> the GPU sees every message's sequence ID and payload exactly as required, and the timer ends after the last result. Use actual transport documentation for ordering and a trace for overlap. None of this paper arithmetic establishes deployment status, order execution latency or strategy profitability.</p>
+<details class="question">
+<summary>Exercise: add direct-route setup</summary>
+<p>A direct route takes four microseconds to deliver GPU-visible input, then four for processing. What is its modeled serial result latency relative to the ten-microsecond staged example?</p>
+<p><strong>Worked answer:</strong> eight microseconds, a two-microsecond reduction for this declared boundary. Compare complete paths under the same message/batch contract; do not subtract an unrelated published NIC-only latency.</p>
+</details>
+<!-- mgpu:worked:end -->
+
 <h2 id="371-what-gets-market-data-to-memory-today-really">37.1 What Gets Market Data to Memory Today, Really<a class="headerlink" href="#371-what-gets-market-data-to-memory-today-really" title="Permanent link">&para;</a></h2>
 <!-- mgpu:figure-1:start -->
 <p><a href="../../images/technical/ch37/1-staging.svg"><img alt="A deployed host-memory path is a distinct baseline" src="../../images/technical/ch37/1-staging.svg" /></a></p>

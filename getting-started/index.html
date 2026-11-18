@@ -597,6 +597,17 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#work-through-the-setup-before-the-larger-examples" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Work through the setup before the larger examples
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -1127,7 +1138,7 @@
   <span class="md-ellipsis">
     
   
-    9. Ring All-Reduce: The Algorithm Behind Every Multi-GPU Training Job
+    9. Ring All-Reduce: Reduce-Scatter and All-Gather by Hand
   
 
     
@@ -2847,6 +2858,17 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#work-through-the-setup-before-the-larger-examples" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Work through the setup before the larger examples
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -3134,6 +3156,8 @@
 </ul>
 <h2 id="prerequisites">Prerequisites<a class="headerlink" href="#prerequisites" title="Permanent link">&para;</a></h2>
 <p>This book assumes working knowledge of C++ (structs, templates, pointers, RAII) and prior single-GPU CUDA experience at the level of "you have written and launched a kernel before" -- it does not re-derive the CUDA execution and memory model from nothing the way a first CUDA book would, though Part 0 does rebuild everything specific to <em>multiple</em> devices from scratch. No prior MPI experience is assumed; Part 5's own Chapter 20 builds plain MPI from nothing before it ever adds CUDA to the picture.</p>
+<h2 id="work-through-the-setup-before-the-larger-examples">Work through the setup before the larger examples<a class="headerlink" href="#work-through-the-setup-before-the-larger-examples" title="Permanent link">&para;</a></h2>
+<p>The <a href="../appendix/a-installation-and-setup/">worked setup example in Appendix A</a> separates host tools, device discovery, rank/device mapping and the first checked result. After setup, follow the numerical walkthrough in each chapter before copying its longer implementation. Preserve the exact compile command and compare complete results with the documented reference; a successful launch alone does not establish the intended multi-GPU computation.</p>
 
 
 

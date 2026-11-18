@@ -837,7 +837,7 @@
   <span class="md-ellipsis">
     
   
-    9. Ring All-Reduce: The Algorithm Behind Every Multi-GPU Training Job
+    9. Ring All-Reduce: Reduce-Scatter and All-Gather by Hand
   
 
     
@@ -1951,6 +1951,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#worked-walkthrough-net-trades-before-flooring-and-keep-the-date-axis" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Worked walkthrough — Net trades before flooring and keep the date axis
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#361-from-one-reduction-to-a-full-exposure-profile" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2523,6 +2534,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#worked-walkthrough-net-trades-before-flooring-and-keep-the-date-axis" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Worked walkthrough — Net trades before flooring and keep the date axis
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#361-from-one-reduction-to-a-full-exposure-profile" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2727,6 +2749,25 @@
 <a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>| BEFORE any cross-rank reduction -- sum the trades, THEN floor     |
 <a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>+------------------------------------------------------------------+
 </code></pre></div>
+<!-- mgpu:worked:start -->
+<h2 id="worked-walkthrough-net-trades-before-flooring-and-keep-the-date-axis">Worked walkthrough — Net trades before flooring and keep the date axis<a class="headerlink" href="#worked-walkthrough-net-trades-before-flooring-and-keep-the-date-axis" title="Permanent link">&para;</a></h2>
+<p><a href="../../images/worked/ch36.svg"><img alt="Net trades before flooring and keep the date axis: numerical ownership, intermediate values and checks" src="../../images/worked/ch36.svg" /></a></p>
+<p>Use two trades in one netting set, two equally weighted simulated paths and two observation dates. Values are toy monetary units; no calibration, discounting or default model is implied. Rank 0 owns path A, rank 1 path B.</p>
+<ol>
+<li><strong>Value every trade on its path.</strong> At date 1, path A has trade values <code>[10,-8]</code>; path B <code>[-4,6]</code>. At date 2, path A has <code>[3,-5]</code>; path B <code>[7,-1]</code>.</li>
+<li><strong>Net within each path/date.</strong> Net portfolio values are <code>[2,2]</code> across paths at date 1, and <code>[-2,6]</code> at date 2. Trades must be in the same legally modeled netting set for this operation; the numerical example does not establish legal netting eligibility.</li>
+<li><strong>Apply the positive floor after netting.</strong> Exposure samples become <code>[2,2]</code> and <code>[0,6]</code>. The per-date means are <code>EE(t1)=2</code>, <code>EE(t2)=3</code>. Averaging date-1 positive trade values before netting would yield <code>(10+6)/2=8</code>, a different quantity.</li>
+<li><strong>Reduce each date's sum and count.</strong> The ranks contribute vectors <code>[2,0]</code> and <code>[2,6]</code>. Elementwise sum gives <code>[4,6]</code>; divide by global path count two. A raw sum of rank means would require correction for unequal path counts.</li>
+<li><strong>Keep time aggregation explicit.</strong> If the two dates represent intervals of lengths one and three, a stated time-weighted EPE approximation is <code>(1*2+3*3)/4=2.75</code>. This differs from the unweighted mean 2.5. CVA additionally needs default probabilities, discounting and other specified assumptions; EE alone is not CVA.</li>
+</ol>
+<p><strong>Expected check:</strong> each date's distributed EE matches direct pathwise netting/flooring/averaging. Quantiles of exposures need sample or distribution information, not only means/M2. The toy dates and paths are not a financial recommendation or a validated portfolio model.</p>
+<details class="question">
+<summary>Exercise: unequal path counts</summary>
+<p>One rank owns one exposure sample 2; another owns three samples 0,2,8 at a date. What is global EE?</p>
+<p><strong>Worked answer:</strong> <code>(2+0+2+8)/4=3</code>. Averaging the rank means gives <code>(2+10/3)/2=8/3</code>, which is wrong because the ranks have unequal counts. Combine sums/counts or weighted means.</p>
+</details>
+<!-- mgpu:worked:end -->
+
 <h2 id="361-from-one-reduction-to-a-full-exposure-profile">36.1 From One Reduction to a Full Exposure Profile<a class="headerlink" href="#361-from-one-reduction-to-a-full-exposure-profile" title="Permanent link">&para;</a></h2>
 <!-- mgpu:figure-1:start -->
 <p><a href="../../images/technical/ch36/1-profile.svg"><img alt="Exposure is a time-indexed result" src="../../images/technical/ch36/1-profile.svg" /></a></p>

@@ -837,7 +837,7 @@
   <span class="md-ellipsis">
     
   
-    9. Ring All-Reduce: The Algorithm Behind Every Multi-GPU Training Job
+    9. Ring All-Reduce: Reduce-Scatter and All-Gather by Hand
   
 
     
@@ -1435,6 +1435,17 @@
       Table of contents
     </label>
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#worked-example-trace-a-symmetric-ring-put-by-receiving-pe" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Worked example — Trace a symmetric ring put by receiving PE
+      
+    </span>
+  </a>
+  
+</li>
       
         <li class="md-nav__item">
   <a href="#221-nvshmems-pgas-model-and-the-symmetric-heap" class="md-nav__link">
@@ -2523,6 +2534,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#worked-example-trace-a-symmetric-ring-put-by-receiving-pe" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Worked example — Trace a symmetric ring put by receiving PE
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#221-nvshmems-pgas-model-and-the-symmetric-heap" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2742,6 +2764,30 @@
 <a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a>                                                   | round-trip at all   |
 <a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a>                                                   +----------------------+
 </code></pre></div>
+<!-- mgpu:worked:start -->
+
+<h2 id="worked-example-trace-a-symmetric-ring-put-by-receiving-pe">Worked example — Trace a symmetric ring put by receiving PE<a class="headerlink" href="#worked-example-trace-a-symmetric-ring-put-by-receiving-pe" title="Permanent link">&para;</a></h2>
+<p>Use a three-PE paper trace with one symmetric integer target per PE, initialized to −1. PE p writes value 777+p to target PE (p+1)%3. This extends the protocol arithmetically; it is not a claim of an additional three-PE execution.</p>
+<ol>
+<li>
+<p>PE 0 writes 777 to PE 1. PE 1 writes 778 to PE 2. PE 2 writes 779 to PE 0. Each target has exactly one writer.</p>
+</li>
+<li>
+<p>After initialization and a rendezvous, launch the matched communication work. The issuing thread performs nvshmem_int_p and nvshmem_quiet; quiet completes its outstanding operations according to NVSHMEM semantics.</p>
+</li>
+<li>
+<p>Complete issuing kernels, then use the agreed cross-PE rendezvous before reading targets. Expected targets are PE 0:779, PE 1:777, PE 2:778.</p>
+</li>
+</ol>
+<p><img alt="Numeric worked example: Trace a symmetric ring put by receiving PE" src="../../images/worked/ch22.svg" /></p>
+<p><strong>API connection and scope.</strong> A symmetric allocation identifies corresponding objects across PEs; their numeric virtual addresses need not match. Completion at the issuer and notification of a consumer are distinct obligations. The host-coordinated protocol in this example makes those phases explicit rather than treating quiet as a universal consumer barrier.</p>
+<p><strong>Expected check and pitfall.</strong> The recorded examples assume all node GPUs are visible and one process per GPU, selecting a valid node-local rank. CUDA_VISIBLE_DEVICES renumbers ordinals: if the launcher masks each process to one device, select visible device 0 instead. Never substitute the global PE number blindly.</p>
+<details class="question">
+<summary>Guided exercise: Why should PE 1 read 777 rather than 778?</summary>
+<p><strong>Worked answer.</strong> It receives from predecessor PE 0. The value 778 was issued by PE 1 but belongs to PE 2’s target.</p>
+</details>
+<!-- mgpu:worked:end -->
+
 <h2 id="221-nvshmems-pgas-model-and-the-symmetric-heap">22.1 NVSHMEM's PGAS Model and the Symmetric Heap<a class="headerlink" href="#221-nvshmems-pgas-model-and-the-symmetric-heap" title="Permanent link">&para;</a></h2>
 <!-- mgpu:figure-1:start -->
 <p><a href="../../images/technical/ch22/1-symmetric.svg"><img alt="Symmetric objects have a common logical identity" src="../../images/technical/ch22/1-symmetric.svg" /></a></p>
@@ -2763,7 +2809,7 @@
 <a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a>                                             asking that PE first.
 </code></pre></div>
 <h3 id="background">Background<a class="headerlink" href="#background" title="Permanent link">&para;</a></h3>
-<p>The code below calls <code>nvshmem_init()</code> with no bootstrap plugin selected at all -- NVSHMEM's own default path when nothing else (a launcher like Hydra or Slurm, or this chapter's own later MPI bootstrap) has told it how to find other processes.</p>
+<p>File 63 explicitly initializes MPI, binds the selected visible GPU, and initializes NVSHMEM with that MPI communicator. Run it with one MPI process for its intentional single-PE allocation check; it does not rely on automatic discovery of other processes.</p>
 <p>The <a href="../../validation-h100/">2026-11-17 H100 execution record</a> covers two GPUs connected by local NV18. It distinguishes numerical checks, API probes and other executions; a successful exit alone does not establish GPU algorithm correctness.</p>
 <div class="language-cpp highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="c1">// 63_nvshmem_init_single_pe.cu</span>
 <a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="c1">// Launch with mpirun -np 1: explicit MPI bootstrap, checked symmetric allocation.</span>
@@ -2960,7 +3006,8 @@
 </div>
 <h2 id="222-real-multi-pe-nvshmem-via-mpi-bootstrap">22.2 Real Multi-PE NVSHMEM via MPI Bootstrap<a class="headerlink" href="#222-real-multi-pe-nvshmem-via-mpi-bootstrap" title="Permanent link">&para;</a></h2>
 <h3 id="intuition_1">Intuition<a class="headerlink" href="#intuition_1" title="Permanent link">&para;</a></h3>
-<p>Section 22.1's single-PE fallback is what NVSHMEM does when nothing tells it how to find other processes. Chapter 20 already solved that exact discovery problem once, for MPI itself; Chapter 21 reused MPI a second time, to bootstrap NCCL's own <code>ncclUniqueId</code>. NVSHMEM ships the same real answer as a first-class option: <code>NVSHMEMX_INIT_WITH_MPI_COMM</code>, set via <code>nvshmemx_set_attr_mpi_comm_args()</code>, hands NVSHMEM a real <code>MPI_Comm</code> this book has already built genuine multi-process programs on top of. (NVSHMEM also ships a second, structurally different bootstrap path, <code>NVSHMEMX_INIT_WITH_UNIQUEID</code> -- a uniqueid generated once and distributed to every PE, exactly like Chapter 21's own <code>ncclUniqueId</code> + <code>MPI_Bcast()</code> pattern; this section uses the MPI path because MPI is already present and simpler to reach for.) Once NVSHMEM has a real <code>MPI_Comm</code> to query, <code>nvshmem_my_pe()</code> and <code>nvshmem_n_pes()</code> stop answering "1" and start answering with the real number of processes MPI itself discovered -- the same real multi-process world every earlier Part 5 chapter has built, now handed to a third real library.</p>
+<p>Section 22.1 deliberately bootstraps a one-process MPI world. Section 22.2 uses the same explicit bootstrap with multiple processes. Chapter 20 already solved that exact discovery problem once, for MPI itself; Chapter 21 reused MPI a second time, to bootstrap NCCL's own <code>ncclUniqueId</code>. NVSHMEM ships the same real answer as a first-class option: <code>NVSHMEMX_INIT_WITH_MPI_COMM</code>, set via <code>nvshmemx_set_attr_mpi_comm_args()</code>, hands NVSHMEM a real <code>MPI_Comm</code> this book has already built genuine multi-process programs on top of. (NVSHMEM also ships a second, structurally different bootstrap path, <code>NVSHMEMX_INIT_WITH_UNIQUEID</code> -- a uniqueid generated once and distributed to every PE, exactly like Chapter 21's own <code>ncclUniqueId</code> + <code>MPI_Bcast()</code> pattern; this section uses the MPI path because MPI is already present and simpler to reach for.) Once NVSHMEM has a real <code>MPI_Comm</code> to query, <code>nvshmem_my_pe()</code> identifies each PE from 0 through P−1 and <code>nvshmem_n_pes()</code> returns P, the number of processes in the supplied communicator -- the same real multi-process world every earlier Part 5 chapter has built, now handed to a third real library.</p>
+<p>The conceptual panel below contrasts implicit single-PE discovery with an explicitly supplied multi-process world. Its “no bootstrap” label is conceptual; current File 63 explicitly bootstraps a one-process MPI communicator.</p>
 <div class="language-text highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>Section 22.1 (no bootstrap):
 <a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>+----------------+     +------------------+
 <a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>| nvshmem_init() | --&gt; | n_pes=1, my_pe=0 |  (correct -- but the whole real
@@ -3191,7 +3238,7 @@
 <p>With <code>NVSHMEM_HOME</code>, <code>LIBDIR</code>, and the <code>nvshmem_link</code> symlink from Section 22.1 in place, compiled with <code>nvcc -rdc=true -ccbin mpicxx -gencode=arch=compute_70,code=sm_70 -I $NVSHMEM_HOME/include 64_nvshmem_mpi_bootstrap.cu -o 64_nvshmem_mpi_bootstrap -L nvshmem_link -L $LIBDIR -lnvshmem_host -lnvshmem_device -lcuda -lmpi</code> (the same real <code>mpicxx</code>-as-host-compiler trick Chapter 20/21 already established, now driving <code>nvcc</code> itself rather than the other way around) and genuinely run with <code>LD_LIBRARY_PATH=$LIBDIR mpirun --allow-run-as-root --oversubscribe -x LD_LIBRARY_PATH -np 2 ./64_nvshmem_mpi_bootstrap</code>. Note the setup: <code>attr</code> starts from the header's own <code>NVSHMEMX_INIT_ATTR_INITIALIZER</code>, and <code>nvshmemx_set_attr_mpi_comm_args()</code> records the communicator -- declaring a bare <code>nvshmemx_init_attr_t attr;</code> and assigning only <code>attr.mpi_comm</code> would leave its version fields and every other argument as stack garbage, and only happens to work because <code>nvshmemx_init_attr()</code> patches version fields it doesn't recognize. Sample output (stdout and NVSHMEM's stderr diagnostics from both PEs share one terminal, and NVSHMEM's <code>Cuda failure</code> messages end without a newline, so exactly how the lines interleave differs from run to run; the content does not):</p>
 <div class="admonition warning">
 <p class="admonition-title">[COMMON TRAP] Assuming nvshmemx_init_attr()'s rc=0 means the symmetric heap is usable</p>
-<p><code>rc=0</code> from <code>nvshmemx_init_attr()</code> reports only that NVSHMEM's OWN bootstrap step succeeded -- MPI genuinely discovered 2 processes and NVSHMEM genuinely accepted that world. It says nothing about whether the underlying CUDA context that the symmetric heap depends on is usable, and this section's own Sample output proves the gap directly: <code>rc=0</code> on both PEs, immediately followed by <code>nvshmem_malloc()</code> honestly returning <code>NULL</code> on both. A real program that checks only <code>nvshmemx_init_attr()</code>'s return value and assumes <code>nvshmem_malloc()</code> will therefore succeed is checking the wrong layer -- bootstrap success and symmetric-heap availability are two separate real facts, exactly the same kind of two-layer gap Chapter 21 named between <code>cudaDevAttrGPUDirectRDMASupported</code> (device capability) and PCIe topology (whether that capability is actually fast).</p>
+<p>Successful initialization is only the first check. Validate the symmetric allocation, CUDA initialization copies and readback as the current File 64 does. Its current successful output does not show an allocation failure; treating an unchecked initialization return as proof of usable memory would still be an error.</p>
 </div>
 <h2 id="223-gpu-initiated-communication-a-kernel-that-puts-to-a-remote-pe-by-itself">22.3 GPU-Initiated Communication: A Kernel That Puts to a Remote PE, By Itself<a class="headerlink" href="#223-gpu-initiated-communication-a-kernel-that-puts-to-a-remote-pe-by-itself" title="Permanent link">&para;</a></h2>
 <!-- mgpu:figure-3:start -->
@@ -3199,7 +3246,7 @@
 <!-- mgpu:figure-3:end -->
 
 <h3 id="intuition_2">Intuition<a class="headerlink" href="#intuition_2" title="Permanent link">&para;</a></h3>
-<p>Sections 22.1 and 22.2 only ever called NVSHMEM from the host -- <code>nvshmem_init()</code>, <code>nvshmem_malloc()</code>, <code>nvshmem_finalize()</code>. Every one of those calls could, in principle, be a slightly stranger <code>cudaMalloc()</code>. This section builds the one capability no earlier chapter's API could offer at all, host or device: a CUDA kernel that issues a PUT to another PE's memory itself, from device code, while that thread is still executing. NVSHMEM's own documentation is direct about this: "Device-side APIs can be called by CUDA kernel threads to efficiently access locations in symmetric memory through one-sided read (get), write (put), and atomic update API calls." A plain <code>&lt;&lt;&lt;&gt;&gt;&gt;</code> launch is not enough for a kernel that will call NVSHMEM's own synchronizing device APIs -- <code>nvshmemx_collective_launch()</code> exists specifically to coordinate with NVSHMEM's internal state before handing control to the GPU, the real reason this section's own kernel is launched through it rather than through the syntax every earlier chapter has used since Chapter 3.</p>
+<p>Sections 22.1 and 22.2 only ever called NVSHMEM from the host -- <code>nvshmem_init()</code>, <code>nvshmem_malloc()</code>, <code>nvshmem_finalize()</code>. Every one of those calls could, in principle, be a slightly stranger <code>cudaMalloc()</code>. This section builds the one capability no earlier chapter's API could offer at all, host or device: a CUDA kernel that issues a PUT to another PE's memory itself, from device code, while that thread is still executing. NVSHMEM's own documentation is direct about this: "Device-side APIs can be called by CUDA kernel threads to efficiently access locations in symmetric memory through one-sided read (get), write (put), and atomic update API calls." File 65 uses <code>nvshmemx_collective_launch()</code>, a supported launch path. The general rule is more specific than ‘every NVSHMEM kernel requires it’: kernels using NVSHMEM synchronization or collective APIs require collective launch for its progress guarantees; communication-only kernels can also use ordinary CUDA launch interfaces. Follow the documented requirements for the APIs actually called.</p>
 <div class="language-text highlight"><pre><span></span><code><a id="__codelineno-18-1" name="__codelineno-18-1" href="#__codelineno-18-1"></a>Every kernel launch since Ch3:                 This section's own launch:
 <a id="__codelineno-18-2" name="__codelineno-18-2" href="#__codelineno-18-2"></a>
 <a id="__codelineno-18-3" name="__codelineno-18-3" href="#__codelineno-18-3"></a>+----------------------------+                 +----------------------------------+
@@ -3454,17 +3501,17 @@
 </ol>
 <p>The <a href="../../validation-h100/">2026-11-17 H100 execution record</a> covers two GPUs connected by local NV18. It distinguishes numerical checks, API probes and other executions; a successful exit alone does not establish GPU algorithm correctness.</p>
 <h2 id="where-we-go-next">Where We Go Next<a class="headerlink" href="#where-we-go-next" title="Permanent link">&para;</a></h2>
-<p>Chapter 22 built the one thing every earlier chapter's API genuinely couldn't: communication issued by a still-running kernel, not by the host. Chapter 23 returns to something more familiar in shape -- CUDA graphs, first built single-device in earlier books this series assumes -- and asks what changes when a single graph has to span multiple GPUs and multiple nodes at once: which parts of a graph can legitimately cross a device boundary, and which of this book's own real communication primitives (peer copies, NCCL collectives, MPI calls) can actually be captured as graph nodes rather than issued one at a time.</p>
+<p>Chapter 22 demonstrated communication issued by a still-running kernel, extending the host-enqueued interfaces used in the earlier examples. Chapter 23 returns to something more familiar in shape -- CUDA graphs, first built single-device in earlier books this series assumes -- and asks what changes when a single graph has to span multiple GPUs and multiple nodes at once: which parts of a graph can legitimately cross a device boundary, and which of this book's own real communication primitives (peer copies, NCCL collectives, MPI calls) can actually be captured as graph nodes rather than issued one at a time.</p>
 <h2 id="worked-solutions">Worked Solutions<a class="headerlink" href="#worked-solutions" title="Permanent link">&para;</a></h2>
 <p><strong>1.</strong> A partitioned global address space means every participating process (PE) contributes memory to one logical address space, even though the underlying memory is physically distributed across separate devices -- any PE can, in principle, name and address any other PE's contribution. NVSHMEM's own symmetric heap is a real implementation of this: every PE calls <code>nvshmem_malloc()</code> together with the same size, so every PE's copy of a given allocation sits at the corresponding offset in its own heap. A plain <code>cudaMalloc()</code> allocation, by contrast, belongs to exactly one device and is not automatically nameable from any other device at all -- reaching it from elsewhere always needed an explicit mechanism this book built one chapter at a time (<code>cudaMemcpyPeer()</code>, IPC handles, GPUDirect RDMA).</p>
 <p><strong>2.</strong> Current File 63 explicitly bootstraps a one-rank MPI communicator, binds its GPU and checks symmetric allocation by CUDA copy/readback. Its one-PE world is intentional, not automatic discovery of every process or GPU on the machine.</p>
 <p><strong>3.</strong> <code>NVSHMEMX_INIT_WITH_MPI_COMM</code> (used in this chapter) hands NVSHMEM a real <code>MPI_Comm</code>, mirroring Chapter 20's own real <code>MPI_Init</code>/<code>MPI_Comm_rank</code>/<code>MPI_Comm_size</code> discovery. <code>NVSHMEMX_INIT_WITH_UNIQUEID</code> (mentioned but not used) generates one id and distributes it to every PE, structurally identical to Chapter 21's own <code>ncclGetUniqueId()</code> + <code>MPI_Bcast()</code> + <code>ncclCommInitRank()</code> pattern.</p>
-<p><strong>4.</strong> It proves that bootstrap success and symmetric-heap availability are two separate real facts, checked at two different layers. <code>rc=0</code> only reports that NVSHMEM's own process-discovery step (via MPI) succeeded -- both PEs agreed on a real 2-process world. It says nothing about whether the CUDA context underneath the symmetric heap is usable, and this section's own output shows that gap directly: bootstrap succeeds on both PEs, and the very next call, <code>nvshmem_malloc()</code>, honestly fails on both.</p>
-<p><strong>5.</strong> Because the kernel's body calls <code>nvshmem_int_p()</code>, a real device-side NVSHMEM API that needs NVSHMEM's own internal per-device state to be coordinated before the kernel starts running. A plain <code>&lt;&lt;&lt;&gt;&gt;&gt;</code> launch has no way to perform that coordination; <code>nvshmemx_collective_launch()</code> exists specifically to launch kernels that will call NVSHMEM's own synchronizing device APIs.</p>
-<p><strong>6.</strong> The older no-device transcript ended in an NVSHMEM internal-state failure and an MPI job abort; that was not successful GPU communication. The current File 65 checks a real two-PE ring put and passes on H100. Neither result is a fault-injection or recovery test.</p>
+<p><strong>4.</strong> Initialization, allocation and readback check separate layers. A successful initialization does not guarantee that later allocations succeed or that received numerical values are correct. Current File 64 checks the symmetric allocation and round-trip values; its captured result is successful.</p>
+<p><strong>5.</strong> File 65 uses collective launch, checks its return, completes the issuing device kernels, and performs a matching host rendezvous before reading the targets. Each issuing thread calls quiet for its own communication. Collective launch is required for device synchronization/collective APIs; the mere presence of a put is not by itself that requirement.</p>
+<p><strong>6.</strong> File 65’s successful two-PE H100 ring-put check establishes the stated kernel-initiated local exchange and numerical readback after completion. It is not a fault-injection or recovery test and does not establish an RDMA transport path.</p>
 <p>The <a href="../../validation-h100/">2026-11-17 H100 execution record</a> covers two GPUs connected by local NV18. It distinguishes numerical checks, API probes and other executions; a successful exit alone does not establish GPU algorithm correctness.</p>
 <p><strong>7.</strong> It moves the DECISION of when to communicate from the host to the device. In every earlier chapter, a CPU thread decided the exact moment a collective or send call happened, and the GPU simply executed whatever the CPU had already enqueued. With NVSHMEM's device-side APIs, a GPU thread that is still running can decide, on its own, to issue a put or get -- the host's only role was launching the kernel that contains that decision, not making the decision itself.</p>
-<p><strong>8.</strong> Because <code>nvshmem_finalize()</code>'s own cleanup work depends on the SAME per-device internal state that <code>nvshmemx_collective_launch()</code>'s failed check was trying to verify in the first place. In Sections 22.1 and 22.2, that internal state was never exercised by anything beyond <code>nvshmem_malloc()</code>'s own honest <code>NULL</code> return, so finalize's cleanup path logged the same <code>Unable to properly unregister device state</code> warning but did not abort, and both programs exited 0. In Section 22.3, the collective-launch attempt left NVSHMEM's internal bookkeeping in a state finalize could not cleanly unwind, and it failed too.</p>
+<p><strong>8.</strong> A local NV18 ring-put result validates the stated local PE exchange and numerical readback. It does not show that a NIC or RDMA transport carried the bytes, and no rank failure is injected. Transport diagnostics and a separate fault/recovery experiment would be needed for those claims.</p>
 <hr />
 <p><strong>Sources cited in this chapter:</strong></p>
 <ul>

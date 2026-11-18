@@ -1,7 +1,8 @@
 /* Original book artwork remains within the text column on desktop and mobile. */
 .md-content, .md-content__inner, .md-typeset { min-width: 0; }
 .md-typeset img[src*="images/chapter-openers/"],
-.md-typeset img[src*="images/technical/"] {
+.md-typeset img[src*="images/technical/"],
+.md-typeset img[src*="images/worked/"] {
   display: block;
   width: 100%;
   max-width: 100%;
@@ -9,11 +10,13 @@
   margin: 1.35rem auto;
   border-radius: .45rem;
 }
-.md-typeset a:has(> img[src*="images/technical/"]) {
+.md-typeset a:has(> img[src*="images/technical/"]),
+.md-typeset a:has(> img[src*="images/worked/"]) {
   display: block;
   max-width: 100%;
 }
 @media (max-width: 600px) {
   .md-typeset img[src*="images/chapter-openers/"],
-  .md-typeset img[src*="images/technical/"] { border-radius: .3rem; }
+  .md-typeset img[src*="images/technical/"],
+  .md-typeset img[src*="images/worked/"] { border-radius: .3rem; }
 }

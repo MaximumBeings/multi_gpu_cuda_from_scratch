@@ -837,7 +837,7 @@
   <span class="md-ellipsis">
     
   
-    9. Ring All-Reduce: The Algorithm Behind Every Multi-GPU Training Job
+    9. Ring All-Reduce: Reduce-Scatter and All-Gather by Hand
   
 
     
@@ -1145,6 +1145,17 @@
       Table of contents
     </label>
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#worked-example-compute-both-sides-of-a-halo-boundary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Worked example — Compute both sides of a halo boundary
+      
+    </span>
+  </a>
+  
+</li>
       
         <li class="md-nav__item">
   <a href="#161-domain-decomposition-splitting-the-grid-itself" class="md-nav__link">
@@ -2523,6 +2534,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#worked-example-compute-both-sides-of-a-halo-boundary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Worked example — Compute both sides of a halo boundary
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#161-domain-decomposition-splitting-the-grid-itself" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2743,6 +2765,30 @@
 <a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a>  Shards never talk to each other          Every rank needs its neighbors' boundary
 <a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a>  between the periodic all-reduces.        data EVERY single iteration.
 </code></pre></div>
+<!-- mgpu:worked:start -->
+
+<h2 id="worked-example-compute-both-sides-of-a-halo-boundary">Worked example — Compute both sides of a halo boundary<a class="headerlink" href="#worked-example-compute-both-sides-of-a-halo-boundary" title="Permanent link">&para;</a></h2>
+<p>Use six old cells [0,1,2,3,4,5], split into three cells per rank. Fix the two external ghost cells at zero. One update is new[i]=(old[i−1]+old[i]+old[i+1])/3; all operands belong to the old generation.</p>
+<ol>
+<li>
+<p>Rank 0 owns indices 0–2. Its left ghost is 0; it receives old[3]=3 from rank 1 as its right ghost. Its new values are [1/3,1,2].</p>
+</li>
+<li>
+<p>Rank 1 owns indices 3–5. It receives old[2]=2 from rank 0 and uses external right ghost 0. Its new values are [3,4,3].</p>
+</li>
+<li>
+<p>Assemble [1/3,1,2,3,4,3]. In particular the interface outputs are (1+2+3)/3=2 and (2+3+4)/3=3.</p>
+</li>
+</ol>
+<p><img alt="Numeric worked example: Compute both sides of a halo boundary" src="../../images/worked/ch16.svg" /></p>
+<p><strong>API connection and scope.</strong> A peer-copy implementation can overlap interior computation with halo transfers, then order boundary kernels after the copy-completion events. With MPI, post matching receives and sends, complete the requests, and only then consume received boundary values. This arithmetic is a model, not additional execution evidence.</p>
+<p><strong>Expected check and pitfall.</strong> Keep old and new generations distinct. An in-place update can accidentally use a neighbor already advanced to the next step even when all memory accesses are in bounds.</p>
+<details class="question">
+<summary>Guided exercise: What does rank 0 compute at index 2 if its right halo is incorrectly zero?</summary>
+<p><strong>Worked answer.</strong> (1+2+0)/3=1, instead of 2. A local bounds check cannot detect this numerical error.</p>
+</details>
+<!-- mgpu:worked:end -->
+
 <h2 id="161-domain-decomposition-splitting-the-grid-itself">16.1 Domain Decomposition: Splitting the Grid Itself<a class="headerlink" href="#161-domain-decomposition-splitting-the-grid-itself" title="Permanent link">&para;</a></h2>
 <!-- mgpu:figure-1:start -->
 <p><a href="../../images/technical/ch16/1-halo.svg"><img alt="Interiors belong to ranks; halos mirror neighbors" src="../../images/technical/ch16/1-halo.svg" /></a></p>

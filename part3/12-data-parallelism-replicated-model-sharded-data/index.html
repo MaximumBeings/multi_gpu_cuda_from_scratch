@@ -837,7 +837,7 @@
   <span class="md-ellipsis">
     
   
-    9. Ring All-Reduce: The Algorithm Behind Every Multi-GPU Training Job
+    9. Ring All-Reduce: Reduce-Scatter and All-Gather by Hand
   
 
     
@@ -1033,6 +1033,17 @@
       Table of contents
     </label>
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#worked-example-weight-gradients-by-the-number-of-samples" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Worked example — Weight gradients by the number of samples
+      
+    </span>
+  </a>
+  
+</li>
       
         <li class="md-nav__item">
   <a href="#121-same-model-different-data-what-replica-actually-means" class="md-nav__link">
@@ -2523,6 +2534,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#worked-example-weight-gradients-by-the-number-of-samples" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Worked example — Weight gradients by the number of samples
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#121-same-model-different-data-what-replica-actually-means" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2736,6 +2758,29 @@
 <a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>shard, then all four gradients are AVERAGED (ncclAllReduce, ncclAvg)
 <a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>before anyone updates -- so every device's weights stay identical.
 </code></pre></div>
+<!-- mgpu:worked:start -->
+<h2 id="worked-example-weight-gradients-by-the-number-of-samples">Worked example — Weight gradients by the number of samples<a class="headerlink" href="#worked-example-weight-gradients-by-the-number-of-samples" title="Permanent link">&para;</a></h2>
+<p>Two data-parallel ranks process unequal local batch sizes. Rank 0 processes n0 = 2 samples with mean gradient [2, 4]; rank 1 processes n1 = 6 with mean gradient [6, 8]. Assume both local means use the same loss normalization convention.</p>
+<p><img alt="Numeric worked example: Weight gradients by the number of samples" src="../../images/worked/ch12.svg" /></p>
+<ol>
+<li>
+<p>Recover local gradient sums: 2 × [2, 4] = [4, 8] and 6 × [6, 8] = [36, 48].</p>
+</li>
+<li>
+<p>All-reduce SUM the gradient sums to obtain [40, 56]. Sum sample counts to obtain N = 2 + 6 = 8.</p>
+</li>
+<li>
+<p>Divide by N: the sample-weighted global mean is [5, 7]. Averaging the two rank means instead gives [4, 6], which weights ranks rather than samples.</p>
+</li>
+<li>
+<p>For parameters w = [10, 20] and learning rate η = 0.1, an SGD update is w − ηg = [9.5, 19.3].</p>
+</li>
+</ol>
+<p><strong>Expected result and pitfall.</strong> The expected synchronized update is identical on both ranks. NCCL SUM does not infer the loss convention or automatically divide by the correct sample count. Handle empty local batches, accumulation and masked tokens using the actual objective’s denominator.</p>
+<p><strong>Exercise.</strong> If both ranks process four samples, is the mean of their mean gradients correct?</p>
+<p><strong>Worked answer.</strong> Yes, with equal nonzero denominators: (4g0 + 4g1)/8 = (g0 + g1)/2. Unequal denominators require weighted sums.</p>
+<!-- mgpu:worked:end -->
+
 <h2 id="121-same-model-different-data-what-replica-actually-means">12.1 Same Model, Different Data: What "Replica" Actually Means<a class="headerlink" href="#121-same-model-different-data-what-replica-actually-means" title="Permanent link">&para;</a></h2>
 <!-- mgpu:figure-1:start -->
 <p><a href="../../images/technical/ch12/1-replicas.svg"><img alt="Replicate the model; partition samples" src="../../images/technical/ch12/1-replicas.svg" /></a></p>

@@ -837,7 +837,7 @@
   <span class="md-ellipsis">
     
   
-    9. Ring All-Reduce: The Algorithm Behind Every Multi-GPU Training Job
+    9. Ring All-Reduce: Reduce-Scatter and All-Gather by Hand
   
 
     
@@ -2236,6 +2236,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#worked-example-update-a-graph-parameter-without-changing-the-contract" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Worked example — Update a graph parameter without changing the contract
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#d1-updating-an-executable-graph" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2562,6 +2573,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#worked-example-update-a-graph-parameter-without-changing-the-contract" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Worked example — Update a graph parameter without changing the contract
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#d1-updating-an-executable-graph" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2788,6 +2810,30 @@
 
 <p>Chapter 23 established two real capabilities and left two natural follow-up questions unanswered. It showed that one CUDA graph can genuinely span two devices, joined by a captured <code>cudaEventRecord()</code>/<code>cudaStreamWaitEvent()</code> pair (Section 23.1), and that a real NCCL collective needs no new API at all to be captured into that same graph (Section 23.2) -- but it never asked what happens when the SAME graph shape needs to run again and again with only its data changing, which is the ordinary shape of a real training loop. Separately, DSA's own sibling Appendix D showed <code>cg::this_grid()</code>/<code>grid.sync()</code> reaching every block of one kernel on one device -- but this book's own subject is multiple devices, and CUDA has a same-named, similarly-shaped idea for exactly that: a cooperative kernel launched across SEVERAL devices at once. This appendix separates current checked examples from earlier CUDA 12.0 header observations: Section D.1 covers <code>cudaGraphExecUpdate()</code>, the API for updating an instantiated graph from a compatible graph description; constructing that description may itself involve recapture. Section D.2 covers <code>cudaLaunchCooperativeKernelMultiDevice()</code> and its device-side counterpart <code>cg::this_multi_grid()</code>/<code>multi_grid_group::sync()</code> -- and reports, directly from the compiler and from NVIDIA's own header comments, that both are genuinely deprecated in this toolkit. Section D.3 builds the currently-supported replacement, composed entirely from tools this book has already established as current. Section D.4 closes with the practical decision both new tools raise.</p>
 <p><a id="d1-updating-a-captured-graph-without-recapturing"></a></p>
+<!-- mgpu:worked:start -->
+
+<h2 id="worked-example-update-a-graph-parameter-without-changing-the-contract">Worked example — Update a graph parameter without changing the contract<a class="headerlink" href="#worked-example-update-a-graph-parameter-without-changing-the-contract" title="Permanent link">&para;</a></h2>
+<p>Take a two-node scalar model: node A computes t=x+c and node B computes y=2t. Use x=3,c=1 and an edge A→B.</p>
+<ol>
+<li>
+<p>The initial graph produces t=4 and y=8. The edge is essential: B consumes A’s output.</p>
+</li>
+<li>
+<p>Change c to 2 while preserving the represented dependency. The expected values become t=5,y=10.</p>
+</li>
+<li>
+<p>For a known kernel node, cudaGraphExecKernelNodeSetParams can update supported parameters. For a replacement graph, call cudaGraphExecUpdate and inspect both the API status and detailed update result; reinstantiate if the update is rejected.</p>
+</li>
+</ol>
+<p><img alt="Numeric worked example: Update a graph parameter without changing the contract" src="../../images/worked/appendix-d.svg" /></p>
+<p><strong>API connection and scope.</strong> This arithmetic trace is not a new GPU timing result. Update compatibility depends on the actual node types and changes, not merely the number of nodes. Keep allocations and kernel argument storage valid for the required lifetime and execution context.</p>
+<p><strong>Expected check and pitfall.</strong> A per-device cooperative grid synchronization is not a cross-device barrier. Do not infer modern portability from the legacy deprecated multi-device cooperative launch API. Cross-device dependencies need a supported explicit protocol.</p>
+<details class="question">
+<summary>Guided exercise: With updated c=2 and x=4, what output should the graph produce?</summary>
+<p><strong>Worked answer.</strong> A produces 6 and B produces 12. A stale parameter would instead yield 10, making this a useful update check.</p>
+</details>
+<!-- mgpu:worked:end -->
+
 <h2 id="d1-updating-an-executable-graph">D.1 Updating an Executable Graph<a class="headerlink" href="#d1-updating-an-executable-graph" title="Permanent link">&para;</a></h2>
 <!-- mgpu:figure-1:start -->
 <p><a href="../../images/technical/appendix-d/1-graph.svg"><img alt="Reuse an executable dependency graph" src="../../images/technical/appendix-d/1-graph.svg" /></a></p>

@@ -837,7 +837,7 @@
   <span class="md-ellipsis">
     
   
-    9. Ring All-Reduce: The Algorithm Behind Every Multi-GPU Training Job
+    9. Ring All-Reduce: Reduce-Scatter and All-Gather by Hand
   
 
     
@@ -1262,6 +1262,17 @@
       Table of contents
     </label>
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#worked-example-turn-device-speeds-into-an-integer-partition" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Worked example — Turn device speeds into an integer partition
+      
+    </span>
+  </a>
+  
+</li>
       
         <li class="md-nav__item">
   <a href="#181-the-problem-real-clusters-are-not-homogeneous" class="md-nav__link">
@@ -2523,6 +2534,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#worked-example-turn-device-speeds-into-an-integer-partition" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Worked example — Turn device speeds into an integer partition
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#181-the-problem-real-clusters-are-not-homogeneous" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2736,6 +2758,30 @@
 <a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>  wildly different finish times.              runs, but there's little left to
 <a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>                                               wait for.
 </code></pre></div>
+<!-- mgpu:worked:start -->
+
+<h2 id="worked-example-turn-device-speeds-into-an-integer-partition">Worked example — Turn device speeds into an integer partition<a class="headerlink" href="#worked-example-turn-device-speeds-into-an-integer-partition" title="Permanent link">&para;</a></h2>
+<p>Suppose W=12 independent work units and assumed target-task speeds are s=[1,2,1] units/s. These chosen numbers define a planning model, not a hardware benchmark.</p>
+<ol>
+<li>
+<p>An equal split [4,4,4] gives times [4,2,4] seconds, so the modeled makespan is 4 seconds.</p>
+</li>
+<li>
+<p>The speed sum is 4. Ideal counts W×s/4 are [3,6,3], giving [3,3,3] seconds and a 3-second makespan.</p>
+</li>
+<li>
+<p>For integral ranges, compute boundaries floor(W×cumulative_speed/4), including endpoints 0 and W. At W=12 these are [0,3,9,12], so every index belongs to exactly one rank.</p>
+</li>
+</ol>
+<p><img alt="Numeric worked example: Turn device speeds into an integer partition" src="../../images/worked/ch18.svg" /></p>
+<p><strong>API connection and scope.</strong> Implement this as a host-side range planner feeding per-device kernel launch ranges. Profile the actual kernel to estimate speeds: SM count alone does not establish throughput. Enforce memory-capacity limits and include transfer costs before accepting a partition.</p>
+<p><strong>Expected check and pitfall.</strong> Check monotone boundaries, total count W, no overlap and identical numerical results to the unsplit workload. Rounding can erase a theoretical balance improvement for tiny jobs.</p>
+<details class="question">
+<summary>Guided exercise: Use the same speeds with W=11. What ranges result?</summary>
+<p><strong>Worked answer.</strong> Boundaries are [0,2,8,11], giving counts [2,6,3] and times [2,3,3] seconds. Coverage remains exact, and the modeled makespan is 3 seconds.</p>
+</details>
+<!-- mgpu:worked:end -->
+
 <h2 id="181-the-problem-real-clusters-are-not-homogeneous">18.1 The Problem: Real Clusters Are Not Homogeneous<a class="headerlink" href="#181-the-problem-real-clusters-are-not-homogeneous" title="Permanent link">&para;</a></h2>
 <!-- mgpu:figure-1:start -->
 <p><a href="../../images/technical/ch18/1-balance.svg"><img alt="Equal work can finish at different times" src="../../images/technical/ch18/1-balance.svg" /></a></p>
@@ -3531,7 +3577,7 @@
 <p>It's tempting to compute a weighted split once -- query each device's speed, call <code>computeWeightedShard()</code>, done -- and assume the imbalance problem is solved for the life of the job. Section 18.1 already named a source of slowdown that a one-time query can't see: thermal throttling, which changes a device's <em>effective</em> speed over time without changing anything <code>cudaGetDeviceProperties()</code> can report. A real system has to re-measure actual per-rank finish times periodically and re-weight the split when they drift, not just partition once at startup and trust the initial numbers forever. This chapter's own simulation used fixed, given speeds precisely to isolate the <em>partitioning</em> technique from the <em>measurement</em> problem -- a real deployment still has to solve both.</p>
 </div>
 <h2 id="chapter-summary">Chapter Summary<a class="headerlink" href="#chapter-summary" title="Permanent link">&para;</a></h2>
-<p>This chapter addressed a gap every one of Part 3's own partitioning functions left open: <code>computeShard()</code>, <code>computeLayerRange()</code>, and <code>computeRowRange()</code> all divide a total by the number of ranks, and none of them has ever asked how fast any given rank actually is. Section 18.1 established why that matters in practice -- real clusters mix GPU generations and suffer real thermal throttling, and a real, cited paper on heterogeneous GPU clusters states the direct consequence: training is bottlenecked by the slowest device, leaving faster ones idle, which is exactly Chapter 17's barrier guarantee turned into wasted time. Section 18.2 built the fix real systems actually use -- <code>computeWeightedShard()</code>, splitting work proportionally to each rank's own relative speed instead of evenly -- while being careful to flag a real, documented pitfall: a compute-proportional split is not automatically a memory-proportional one, since the two constraints can move independently, most visibly on a throttled device whose memory capacity never changed at all. Section 18.3 quantified what the fix buys: a continuous, algebraically exact 2x reduction in makespan for this chapter's own example cluster, and a real, empirically checked 1.99x reduction once the split is rounded to whole work units -- an honest, small gap between the ideal and the measured result, not an assumption papered over. Chapter 19 asks the question a barrier's own definition raises but this chapter didn't answer: what happens when a rank doesn't just run slow, but doesn't arrive at all.</p>
+<p>This chapter addressed a gap every one of Part 3's own partitioning functions left open: <code>computeShard()</code>, <code>computeLayerRange()</code>, and <code>computeRowRange()</code> all divide a total by the number of ranks, and none of them has ever asked how fast any given rank actually is. Section 18.1 established why that matters in practice -- real clusters mix GPU generations and suffer real thermal throttling, and a real, cited paper on heterogeneous GPU clusters states the direct consequence: training is bottlenecked by the slowest device, leaving faster ones idle, which is exactly Chapter 17's barrier guarantee turned into wasted time. Section 18.2 built the fix real systems actually use -- <code>computeWeightedShard()</code>, splitting work proportionally to each rank's own relative speed instead of evenly -- while being careful to flag a real, documented pitfall: a compute-proportional split is not automatically a memory-proportional one, since the two constraints can move independently, most visibly on a throttled device whose memory capacity never changed at all. Section 18.3 quantified what the fix buys: a continuous, algebraically exact 2x reduction in makespan for this chapter's own example cluster, and a 1.99x reduction calculated and checked by the host simulation after rounding to whole work units -- a small gap between the continuous and integer planning models, not a measured GPU speedup, not an assumption papered over. Chapter 19 asks the question a barrier's own definition raises but this chapter didn't answer: what happens when a rank doesn't just run slow, but doesn't arrive at all.</p>
 <h2 id="self-check-questions">Self-Check Questions<a class="headerlink" href="#self-check-questions" title="Permanent link">&para;</a></h2>
 <ol>
 <li>Name the three equal-split functions this chapter references from earlier chapters, and explain the one input none of them has ever taken.</li>

@@ -837,7 +837,7 @@
   <span class="md-ellipsis">
     
   
-    9. Ring All-Reduce: The Algorithm Behind Every Multi-GPU Training Job
+    9. Ring All-Reduce: Reduce-Scatter and All-Gather by Hand
   
 
     
@@ -1694,6 +1694,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#worked-walkthrough-trace-one-jacobi-sweep-and-its-stopping-decision" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Worked walkthrough — Trace one Jacobi sweep and its stopping decision
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#291-the-update-step-chapter-16s-halo-exchange-unchanged" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2523,6 +2534,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#worked-walkthrough-trace-one-jacobi-sweep-and-its-stopping-decision" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Worked walkthrough — Trace one Jacobi sweep and its stopping decision
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#291-the-update-step-chapter-16s-halo-exchange-unchanged" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2731,6 +2753,25 @@
 <a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a>                                               |
 <a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a>                                             done
 </code></pre></div>
+<!-- mgpu:worked:start -->
+<h2 id="worked-walkthrough-trace-one-jacobi-sweep-and-its-stopping-decision">Worked walkthrough — Trace one Jacobi sweep and its stopping decision<a class="headerlink" href="#worked-walkthrough-trace-one-jacobi-sweep-and-its-stopping-decision" title="Permanent link">&para;</a></h2>
+<p><a href="../../images/worked/ch29.svg"><img alt="Trace one Jacobi sweep and its stopping decision: numerical ownership, intermediate values and checks" src="../../images/worked/ch29.svg" /></a></p>
+<p>This is a hand-computed 1D analogue of the chapter's distributed stencil, not an additional captured GPU run. Let the interior unknowns be <code>x=[0,0,0,0]</code>, fixed endpoint values be one and zero, and <code>b_i=1</code>. Define the interior matrix <code>A</code> by diagonal two and off-diagonal minus one. The fixed left endpoint makes the effective interior right-hand side <code>[2,1,1,1]</code>; equivalently the stencil form uses <code>x_new[i]=(b_i+x_old[i-1]+x_old[i+1])/2</code>. Rank 0 owns unknowns 1–2; rank 1 owns 3–4. Indices count unknowns; values and norms are dimensionless in this toy system.</p>
+<ol>
+<li><strong>Exchange the old interface values.</strong> Rank 0 sends old x2=0 to rank 1; rank 1 sends old x3=0 to rank 0. Boundary values one and zero belong to the fixed physical endpoints, not to another rank.</li>
+<li><strong>Compute into another buffer.</strong> The new vector is <code>[1,0.5,0.5,0.5]</code>. For example x1 becomes <code>(1+1+0)/2=1</code>, while x2 uses old x1=0 and old x3=0, giving 0.5. Using freshly computed x1 would silently change the method.</li>
+<li><strong>Name the stopping statistic.</strong> The update norm is <code>sqrt(1+0.25+0.25+0.25)=sqrt(1.75)</code>. This is not automatically the true residual norm. To evaluate <code>r=b_effective-A*x_new</code>, with <code>b_effective=[2,1,1,1]</code>, exchange the new interface values first.</li>
+<li><strong>Compute the actual residual.</strong> Using the interior matrix, unknown 1 has <code>Ax=2*1-0.5=1.5</code> and effective right-hand side two, giving residual 0.5; at unknown 2, <code>Ax=1-1-0.5=-0.5</code> against right-hand side one. The complete residual is <code>[0.5,1.5,1,0.5]</code>. Local squared sums are 2.5 and 1.25; a sum all-reduce gives 3.75 and global norm <code>sqrt(3.75)</code>.</li>
+<li><strong>Agree before continuing.</strong> Every rank compares the same global statistic with the same tolerance. <code>MPI_Allreduce</code> with <code>MPI_SUM</code>, or the corresponding supported NCCL sum reduction, combines squared contributions; take the square root afterward. A library call does not choose which statistic your program actually computed.</li>
+</ol>
+<p><strong>Expected check:</strong> both ranks obtain the same stopping norm and the concatenated iterate matches the serial Jacobi sweep. <strong>Pitfall:</strong> accepting rank 1's local norm alone can stop while another partition has a larger residual. Checking every q iterations changes synchronization frequency and may perform extra sweeps; it does not make the unchecked local norm global.</p>
+<details class="question">
+<summary>Exercise: residual after the next sweep</summary>
+<p>Compute the next iterate using only <code>[1,0.5,0.5,0.5]</code> as old data.</p>
+<p><strong>Worked answer:</strong> <code>[1.25,1.25,1,0.75]</code>. For unknown 2, <code>(1+1+0.5)/2=1.25</code>. Preserve the old/new separation and exchange the appropriate generation before another residual evaluation.</p>
+</details>
+<!-- mgpu:worked:end -->
+
 <h2 id="291-the-update-step-chapter-16s-halo-exchange-unchanged">29.1 The Update Step: Chapter 16's Halo Exchange, Unchanged<a class="headerlink" href="#291-the-update-step-chapter-16s-halo-exchange-unchanged" title="Permanent link">&para;</a></h2>
 <!-- mgpu:figure-1:start -->
 <p><a href="../../images/technical/ch29/1-halo.svg"><img alt="Local Jacobi updates consume neighbor values" src="../../images/technical/ch29/1-halo.svg" /></a></p>
@@ -3076,7 +3117,7 @@
 <!-- mgpu:figure-2:end -->
 
 <h3 id="intuition_1">Intuition<a class="headerlink" href="#intuition_1" title="Permanent link">&para;</a></h3>
-<p>The halo exchange has a fixed cost per iteration that never depends on how many ranks there are -- each rank only ever has two neighbors, and Chapter 16 already established that. The residual-norm Allreduce is the opposite: every single rank must participate, and for a naive algorithm the number of communication rounds needed grows with the number of ranks. Checking convergence every single iteration means paying that scaling cost every single iteration; checking it less often means paying it less often, at the cost of running a few extra iterations past the point where the solver actually converged.</p>
+<p>The halo exchange has a bounded neighbor count per rank: at most two in this row-strip decomposition. Its measured cost is not independent of rank count: local strip size, message size, contention, topology and synchronization can change as P changes. The residual-norm Allreduce is the opposite: every single rank must participate, and for a naive algorithm the number of communication rounds needed grows with the number of ranks. Checking convergence every single iteration means paying that scaling cost every single iteration; checking it less often means paying it less often, at the cost of running a few extra iterations past the point where the solver actually converged.</p>
 <h3 id="background_1">Background<a class="headerlink" href="#background_1" title="Permanent link">&para;</a></h3>
 <p>NVIDIA's own real repository exposes exactly this tradeoff as a command-line flag: "<code>-nccheck</code>: How often to check for convergence (default 1)", and even ships a dedicated variant described as "Multi Threaded with OpenMP using GPUDirect P2P mappings for inter GPU communication with delayed norm execution" -- built specifically to decouple the norm computation from every iteration. PETSc's own real user manual states plainly why this matters as rank counts grow: "Standard Krylov methods have one or more global reductions resulting from the computations of inner products or norms in each iteration. These reductions need to block until all MPI processes have received the results. For a large number of MPI processes (this number is machine dependent but can be above 10,000 processes) this synchronization is very time consuming and can significantly slow the computation."</p>
 <p>This section's own model quantifies that tradeoff using this book's own established tools: Chapter 9's ring round-count formula and Chapter 11's ring-vs-tree contrast, applied here to a single-scalar reduction rather than a large gradient buffer -- so, per Chapter 26's own finding, it is the <strong>round count</strong>, not the payload size, that matters.</p>
@@ -3622,7 +3663,7 @@
 <p>Every collective call and cost tradeoff in this chapter is real and reused by production libraries. The Jacobi <em>method</em> itself is not what those libraries actually run at scale -- Demmel's own real complexity table shows Multigrid needing only O(N) serial work against Jacobi's O(N^2), and NVIDIA's own real AmgX library is built around Multigrid, not Jacobi, for exactly that reason. Learning this chapter's communication pattern transfers directly to reading or building a real production solver; assuming the <em>numerical method</em> transfers too does not.</p>
 </div>
 <h2 id="chapter-summary">Chapter Summary<a class="headerlink" href="#chapter-summary" title="Permanent link">&para;</a></h2>
-<p>Distributed Jacobi combines two ingredients this book already built separately: Chapter 16's fixed-neighbor halo exchange for the local update step, verified in Section 29.1 to still be bit-exact across every partition tested, and a global residual-norm Allreduce -- the first genuinely new requirement an <em>iterative solver</em> adds on top of a fixed-step stencil sweep. Section 29.1 showed that the update step's exactness does not automatically extend to the reduction: summing the residual as P separate partial sums, then combining them, produced a real one-bit mismatch against a single flat pass, for the non-associativity reason Chapter 8 cautioned about -- a genuine, verified instance of that caution in this book. Section 29.2 quantified the reduction's real cost using Chapter 9's round-count model and Chapter 11's ring-vs-tree contrast, and showed -- using NVIDIA's own real <code>-nccheck</code> tunable and PETSc's own real statement about large-P reduction cost -- that checking convergence every K iterations divides the reduction's total overhead by K. Section 29.3 closed with the Jacobi convergence rate from Demmel's notes (about 2 ln2 ((n+1)/pi)^2 iterations per halving of the error), showing Jacobi's O(N^2) serial complexity makes it impractical at production grid sizes, and pointed to NVIDIA's own real AmgX library as a production successor that reuses this exact communication pattern around a faster-converging method.</p>
+<p>Distributed Jacobi combines two ingredients this book already built separately: Chapter 16's fixed-neighbor halo exchange for the local update step, verified in Section 29.1 to still be bit-exact across every partition tested, and a global residual-norm Allreduce -- the first genuinely new requirement an <em>iterative solver</em> adds on top of a fixed-step stencil sweep. Section 29.1 showed that the update step's exactness does not automatically extend to the reduction: summing the residual as P separate partial sums, then combining them, produced a real one-bit mismatch against a single flat pass, for the non-associativity reason Chapter 8 cautioned about -- a genuine, verified instance of that caution in this book. Section 29.2 quantified the reduction's real cost using Chapter 9's round-count model and Chapter 11's ring-vs-tree contrast, and showed -- using NVIDIA's own real <code>-nccheck</code> tunable and PETSc's own real statement about large-P reduction cost -- that checking convergence every K iterations divides the number of scheduled checks by approximately K for a fixed iteration count. Section 29.3 closed with the Jacobi convergence rate from Demmel's notes (about 2 ln2 ((n+1)/pi)^2 iterations per halving of the error), showing Jacobi's O(N^2) serial complexity makes it impractical at production grid sizes, and pointed to NVIDIA's own real AmgX library as a production successor that reuses this exact communication pattern around a faster-converging method.</p>
 <h2 id="self-check-questions">Self-Check Questions<a class="headerlink" href="#self-check-questions" title="Permanent link">&para;</a></h2>
 <ol>
 <li>Why does Section 29.1's distributed Jacobi <em>update</em> step match a single-process reference bit-for-bit at every tested value of P, while the <em>residual norm</em> does not?</li>

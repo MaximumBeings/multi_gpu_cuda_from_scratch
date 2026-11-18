@@ -837,7 +837,7 @@
   <span class="md-ellipsis">
     
   
-    9. Ring All-Reduce: The Algorithm Behind Every Multi-GPU Training Job
+    9. Ring All-Reduce: Reduce-Scatter and All-Gather by Hand
   
 
     
@@ -916,6 +916,17 @@
       Table of contents
     </label>
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#worked-example-distinguish-three-rank-layouts" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Worked example — Distinguish three rank layouts
+      
+    </span>
+  </a>
+  
+</li>
       
         <li class="md-nav__item">
   <a href="#101-all-gather-collecting-without-reducing" class="md-nav__link">
@@ -2523,6 +2534,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#worked-example-distinguish-three-rank-layouts" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Worked example — Distinguish three rank layouts
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#101-all-gather-collecting-without-reducing" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2747,6 +2769,29 @@
 <a id="__codelineno-0-23" name="__codelineno-0-23" href="#__codelineno-0-23"></a>  after: dev1 holds "01" (received from dev0), dev2 holds "02" (from dev0),
 <a id="__codelineno-0-24" name="__codelineno-0-24" href="#__codelineno-0-24"></a>  dev0 holds "10" (from dev1), and so on -- a full transpose, no combining.
 </code></pre></div>
+<!-- mgpu:worked:start -->
+<h2 id="worked-example-distinguish-three-rank-layouts">Worked example — Distinguish three rank layouts<a class="headerlink" href="#worked-example-distinguish-three-rank-layouts" title="Permanent link">&para;</a></h2>
+<p>Use three ranks and int32 elements. In these logical collective layouts, arrays are written in communicator-rank order. Counts below are element counts, not byte counts.</p>
+<p><img alt="Numeric worked example: Distinguish three rank layouts" src="../../images/worked/ch10.svg" /></p>
+<ol>
+<li>
+<p>All-gather: rank inputs [0, 10], [1, 11], [2, 12] each contain 2 elements. Each output is [0, 10, 1, 11, 2, 12], six elements or 24 bytes.</p>
+</li>
+<li>
+<p>Reduce-scatter: rank r contributes six values 10r + i for i = 0…5. Their elementwise sum is [30, 33, 36, 39, 42, 45].</p>
+</li>
+<li>
+<p>With receive count 2, reduce-scatter returns [30, 33] at rank 0, [36, 39] at rank 1 and [42, 45] at rank 2. Each input must contain P × recvcount = 6 elements.</p>
+</li>
+<li>
+<p>All-to-all: source rank r sends value 10r + d to destination d. Destination 0 receives [0, 10, 20]; destination 1 [1, 11, 21]; destination 2 [2, 12, 22].</p>
+</li>
+</ol>
+<p><strong>Expected result and pitfall.</strong> The expected distinction is concatenation, reduction followed by partition, and exchange by destination. For the book’s recorded NCCL version, grouped ncclSend/ncclRecv calls implement the all-to-all exchange; newer API availability must be checked against the installed version.</p>
+<p><strong>Exercise.</strong> For reduce-scatter receive count 2 and three ranks, is a two-element send buffer sufficient?</p>
+<p><strong>Worked answer.</strong> No. Each rank contributes the full six-element reduction input; the operation returns only its two-element result shard.</p>
+<!-- mgpu:worked:end -->
+
 <h2 id="101-all-gather-collecting-without-reducing">10.1 All-Gather: Collecting Without Reducing<a class="headerlink" href="#101-all-gather-collecting-without-reducing" title="Permanent link">&para;</a></h2>
 <!-- mgpu:figure-1:start -->
 <p><a href="../../images/technical/ch10/1-gather.svg"><img alt="All-gather concatenates rank contributions" src="../../images/technical/ch10/1-gather.svg" /></a></p>
@@ -3577,7 +3622,7 @@
       <nav class="md-footer__inner md-grid" aria-label="Footer" >
         
           
-          <a href="../09-ring-all-reduce-the-algorithm-behind-every-multi-gpu-training-job/" class="md-footer__link md-footer__link--prev" aria-label="Previous: 9. Ring All-Reduce: The Algorithm Behind Every Multi-GPU Training Job">
+          <a href="../09-ring-all-reduce-the-algorithm-behind-every-multi-gpu-training-job/" class="md-footer__link md-footer__link--prev" aria-label="Previous: 9. Ring All-Reduce: Reduce-Scatter and All-Gather by Hand">
             <div class="md-footer__button md-icon">
               
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
@@ -3587,7 +3632,7 @@
                 Previous
               </span>
               <div class="md-ellipsis">
-                9. Ring All-Reduce: The Algorithm Behind Every Multi-GPU Training Job
+                9. Ring All-Reduce: Reduce-Scatter and All-Gather by Hand
               </div>
             </div>
           </a>

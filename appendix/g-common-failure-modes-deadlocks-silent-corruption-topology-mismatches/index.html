@@ -835,7 +835,7 @@
   <span class="md-ellipsis">
     
   
-    9. Ring All-Reduce: The Algorithm Behind Every Multi-GPU Training Job
+    9. Ring All-Reduce: Reduce-Scatter and All-Gather by Hand
   
 
     
@@ -2318,6 +2318,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#worked-walkthrough-trace-the-wait-cycle-and-reject-a-plausible-wrong-result" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Worked walkthrough — Trace the wait cycle and reject a plausible wrong result
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#g1-deadlocks-when-every-process-waits-for-a-call-another-process-never-makes" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2532,6 +2543,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#worked-walkthrough-trace-the-wait-cycle-and-reject-a-plausible-wrong-result" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Worked walkthrough — Trace the wait cycle and reject a plausible wrong result
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#g1-deadlocks-when-every-process-waits-for-a-call-another-process-never-makes" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2729,6 +2751,25 @@
 <!-- mgpu:opener:end -->
 
 <p>Every chapter in this book has reported one specific real finding at a time. This closing appendix collects three failure modes that have each surfaced, piece by piece, across many of those chapters -- Chapter 17 and Chapter 20's own real deadlocks, Chapter 6's own cross-device event semantics, Chapter 16 and Chapter 40's own halo-sync corruption, Chapter 4's own peer-access query, Chapter 2's own topology model -- and names each one directly, with one new, genuinely tested demonstration per failure mode rather than a repeat of an earlier chapter's own example. None of the three failure modes below announces itself with an error message. A deadlocked program hangs silently; a program with a missed synchronization step returns a wrong answer with <code>cudaSuccess</code> on every call; a program built on an assumed topology runs correctly, just slower than planned, with nothing in any return code to say why. That is precisely what makes all three worth a dedicated closing appendix: each one is a program that never crashes and never reports an error, right up until someone notices the number is wrong.</p>
+<!-- mgpu:worked:start -->
+<h2 id="worked-walkthrough-trace-the-wait-cycle-and-reject-a-plausible-wrong-result">Worked walkthrough — Trace the wait cycle and reject a plausible wrong result<a class="headerlink" href="#worked-walkthrough-trace-the-wait-cycle-and-reject-a-plausible-wrong-result" title="Permanent link">&para;</a></h2>
+<p><a href="../../images/worked/appendix-g.svg"><img alt="Trace the wait cycle and reject a plausible wrong result: numerical ownership, intermediate values and checks" src="../../images/worked/appendix-g.svg" /></a></p>
+<p>Use two ranks exchanging one FP32 value. Rank 0 owns value three, rank 1 value seven. The intended operation is to exchange the values and compute their sum ten on each rank. This is a protocol model, not an extra deliberately hanging run.</p>
+<ol>
+<li><strong>Draw a receive-first cycle.</strong> Rank 0 blocks in <code>MPI_Recv(from=1)</code> before sending; rank 1 blocks in <code>MPI_Recv(from=0)</code> before sending. Each waits for a send that control flow has not reached. Small messages do not fix a cycle made entirely of unmatched blocking receives.</li>
+<li><strong>Change the communication schedule.</strong> <code>MPI_Sendrecv</code> expresses a paired exchange without this particular receive-first ordering, provided source/destination, tags, counts, communicator and participation match. Alternatively, post matching nonblocking receives/sends and complete the requests before consuming the buffers. Nonblocking initiation alone is not completion.</li>
+<li><strong>Check generation and readiness.</strong> Suppose rank 0's incoming buffer still contains last iteration's value two. Reading it before the current exchange completes produces <code>3+2=5</code>. Every earlier launch can have returned success while the result is still logically wrong.</li>
+<li><strong>Validate more than a checksum.</strong> Check received sequence/iteration ID, owner ID and nonuniform value at each destination. If rank 1 simultaneously consumes stale six, the pair of wrong results can sometimes conceal a checksum error under other inputs. Distinct identities expose a permutation or stale generation.</li>
+<li><strong>Separate topology from correctness.</strong> A peer-access query is directional and device-pair-specific. Unsupported direct access needs a supported transfer path. A slower route can be correct; a fast route missing ordering can be wrong. Measure route cost after verifying data and dependencies.</li>
+</ol>
+<p><strong>Expected check:</strong> both ranks consume the current peer's value and obtain ten; outstanding requests and device work finish before buffer reuse/free. For NCCL, all participants must also enter compatible collective order; matching only bytes is insufficient if one rank calls a different collective.</p>
+<details class="question">
+<summary>Exercise: why a later wait cannot repair an earlier read</summary>
+<p>Rank 0 reads stale value two, computes five, then waits for a transfer that writes seven. Is the previously computed five corrected automatically?</p>
+<p><strong>Worked answer:</strong> no. The wait makes the new data available for subsequent correctly ordered work; it does not replay a computation that already consumed stale data. Place the dependency before the consumer or recompute after completion.</p>
+</details>
+<!-- mgpu:worked:end -->
+
 <h2 id="g1-deadlocks-when-every-process-waits-for-a-call-another-process-never-makes">G.1 Deadlocks: When Every Process Waits for a Call Another Process Never Makes<a class="headerlink" href="#g1-deadlocks-when-every-process-waits-for-a-call-another-process-never-makes" title="Permanent link">&para;</a></h2>
 <!-- mgpu:figure-1:start -->
 <p><a href="../../images/technical/appendix-g/1-failure.svg"><img alt="A cycle of waits prevents progress" src="../../images/technical/appendix-g/1-failure.svg" /></a></p>
@@ -2755,7 +2796,7 @@
 <a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a>  rank1(odd)  --Send-&gt; rank2(even, now in Recv)     : delivered immediately
 <a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a>  rank3(odd)  --Send-&gt; rank0(even, now in Recv)     : delivered immediately
 </code></pre></div>
-<p><code>MPI_Recv()</code> genuinely blocks until a matching message arrives -- there is no buffering variant of receiving, unlike <code>MPI_Send()</code>, which the MPI standard (already quoted in Chapter 20) allows an implementation to complete early by copying into a temporary system buffer. So a ring where every rank calls <code>MPI_Recv()</code> first has no size-dependent way out: every rank is genuinely, permanently blocked waiting for a <code>MPI_Send()</code> call that no rank has reached, because every rank is stuck at the exact same point in the exact same cycle. The real, standard fix does not remove either call -- it breaks the cycle by having half the ranks issue their <code>MPI_Send()</code> first: even-numbered ranks send, then receive; odd-numbered ranks receive, then send. An even rank's <code>MPI_Send()</code> has an odd rank already waiting in <code>MPI_Recv()</code> to receive it, so it completes immediately; that same odd rank's own subsequent <code>MPI_Send()</code> then has the next even rank waiting for it, and the pattern propagates around the entire ring without a single rank ever blocking on a call nobody has issued.</p>
+<p><code>MPI_Recv()</code> genuinely blocks until a matching message arrives -- there is no buffering variant of receiving, unlike <code>MPI_Send()</code>, which the MPI standard (already quoted in Chapter 20) allows an implementation to complete early by copying into a temporary system buffer. So a ring where every rank calls <code>MPI_Recv()</code> first has no size-dependent way out: every rank is genuinely, permanently blocked waiting for a <code>MPI_Send()</code> call that no rank has reached, because every rank is stuck at the exact same point in the exact same cycle. The real, standard fix does not remove either call -- it breaks the cycle by having half the ranks issue their <code>MPI_Send()</code> first: even-numbered ranks send, then receive; odd-numbered ranks receive, then send. An even rank's <code>MPI_Send()</code> has an odd rank already waiting in <code>MPI_Recv()</code> to receive it, so it can complete once the matching receive and required data movement progress; that same odd rank's own subsequent <code>MPI_Send()</code> then has the next even rank waiting for it, and the pattern propagates around the entire ring without a single rank ever blocking on a call nobody has issued.</p>
 <div class="admonition warning">
 <p class="admonition-title">[COMMON TRAP] Assuming a deadlock is a message-size problem because the last one was</p>
 <p>Chapter 20's own deadlock depended on crossing a real buffering threshold, which makes it tempting to treat "keep messages small" as a general defense against MPI deadlocks. It is not. This section's own recv-first deadlock hangs at a single <code>int</code> exactly as completely as it would at a million -- there is no buffer to exploit, because the blocking call at fault (<code>MPI_Recv()</code>) was never eligible for buffering in the first place. The real, general rule has nothing to do with size: every rank's <em>sequence</em> of blocking calls has to be constructed so that some rank is always in a position to unblock another, at every point in the program. A size threshold is Chapter 20's own specific symptom of a specific call shape (<code>Send</code>-then-<code>Recv</code>, everywhere); it is not the underlying disease.</p>
@@ -3201,7 +3242,7 @@
 <p><strong>Sample input:</strong> none -- every value is either a real return code from the CUDA Runtime API or a compile-time-fixed description of the two enqueue orders being compared.</p>
 <h2 id="g3-topology-mismatches-when-code-assumes-a-link-that-isnt-there">G.3 Topology Mismatches: When Code Assumes a Link That Isn't There<a class="headerlink" href="#g3-topology-mismatches-when-code-assumes-a-link-that-isnt-there" title="Permanent link">&para;</a></h2>
 <h3 id="intuition_2">Intuition<a class="headerlink" href="#intuition_2" title="Permanent link">&para;</a></h3>
-<p>Chapter 4's own File 9 built the real, idiomatic sequence: check <code>cudaDeviceCanAccessPeer()</code> for a device pair before assuming anything about it, then enable access only where it genuinely exists. Chapter 5's own File 11 and File 13 showed why skipping that query never produces a wrong <em>answer</em> -- <code>cudaMemcpyPeer()</code> falls back to a staged host copy transparently, for any pair that never had peer access enabled, with no error and no corrupted data either way. What skipping the query can still silently break is a <em>performance</em> assumption baked into the code around those calls -- a capacity plan, a scheduling deadline, a batch size chosen assuming a specific link class -- because Chapter 2's own partial-mesh topology model already established that not every device pair on the same real machine shares the same link.</p>
+<p>Chapter 4's own File 9 built the real, idiomatic sequence: check <code>cudaDeviceCanAccessPeer()</code> for a device pair before assuming anything about it, then enable access only where it genuinely exists. Chapter 5's own File 11 and File 13 showed why a supported peer-copy path can still produce the right answer without explicit peer mapping -- <code>cudaMemcpyPeer()</code> falls back to a staged host copy transparently, for any pair that never had peer access enabled, with no error and no corrupted data either way. What skipping the query can still silently break is a <em>performance</em> assumption baked into the code around those calls -- a capacity plan, a scheduling deadline, a batch size chosen assuming a specific link class -- because Chapter 2's own partial-mesh topology model already established that not every device pair on the same real machine shares the same link.</p>
 <h3 id="the-concept-in-detail_2">The Concept, In Detail<a class="headerlink" href="#the-concept-in-detail_2" title="Permanent link">&para;</a></h3>
 <div class="language-text highlight"><pre><span></span><code><a id="__codelineno-19-1" name="__codelineno-19-1" href="#__codelineno-19-1"></a>  real transfer time for 1.0 GB, by ACTUAL topology (Ch2/Ch5 figures)
 <a id="__codelineno-19-2" name="__codelineno-19-2" href="#__codelineno-19-2"></a>
@@ -3215,7 +3256,7 @@
 <a id="__codelineno-19-10" name="__codelineno-19-10" href="#__codelineno-19-10"></a>  1.59x (PCIe-only) to 3.17x (no direct link) more than planned,
 <a id="__codelineno-19-11" name="__codelineno-19-11" href="#__codelineno-19-11"></a>  with zero error code anywhere
 </code></pre></div>
-<p>Chapter 5's own File 13 already built the closed-form cost comparison between a direct peer transfer and a two-hop staged transfer, using Chapter 2's own already-cited bandwidth figures (31.5 GB/s PCIe 4.0 x16, 50 GB/s a directly-wired NVLink pair). This section reuses that exact model for a different question: not "which route does <code>cudaMemcpyPeer()</code> actually take," which Chapter 5 already answered, but "what happens to code that assumed one row of this table and never checked which row actually applies to the pair it is running on." Because <code>cudaMemcpyPeer()</code> and <code>cudaMemcpyPeerAsync()</code> route correctly regardless -- Chapter 5's own real finding -- nothing in their return code will ever reveal that the assumption was wrong. A capacity plan, a communication-computation overlap budget, or a training-step deadline built around the NVLink row of this table has a modeled transfer-time ratio of 1.59 for the assumed direct PCIe bandwidth, or 3.17 for the assumed serialized host-staging bandwidth -- exactly the two-hop cost Chapter 5's own File 12 already measured the call pattern for.</p>
+<p>Chapter 5's own File 13 already built the closed-form cost comparison between a direct peer transfer and a two-hop staged transfer, using Chapter 2's own already-cited bandwidth figures (31.5 GB/s PCIe 4.0 x16, 50 GB/s a directly-wired NVLink pair). This section reuses that exact model for a different question: not "which route does <code>cudaMemcpyPeer()</code> actually take," which Chapter 5 already answered, but "what happens to code that assumed one row of this table and never checked which row actually applies to the pair it is running on." When the peer-copy operation is supported and completes successfully -- Chapter 5's own real finding -- a successful return code alone does not reveal the realized bandwidth or route. A capacity plan, a communication-computation overlap budget, or a training-step deadline built around the NVLink row of this table has a modeled transfer-time ratio of 1.59 for the assumed direct PCIe bandwidth, or 3.17 for the assumed serialized host-staging bandwidth -- exactly the two-hop cost Chapter 5's own File 12 already measured the call pattern for.</p>
 <div class="admonition warning">
 <p class="admonition-title">[COMMON TRAP] Trusting a topology number that was measured on a different machine</p>
 <p>It is tempting to treat a bandwidth or link-class figure as a property of the <em>code</em>, once it has been measured or read off a vendor spec sheet -- something that can be hardcoded into a constant and reused everywhere the same code runs. It is a property of the specific <em>deployment</em>, not the code. Chapter 2's own partial-mesh topology model is itself the proof: two GPUs in the same server can be NVLink-wired while another pair in the same server share only a PCIe switch, and a cluster's own topology can differ node to node even running the identical binary. <code>cudaDeviceCanAccessPeer()</code> and <code>cudaDeviceGetP2PAttribute()</code> query the <em>actual</em> topology of the <em>actual</em> devices at <em>actual</em> runtime -- use these capability queries together with a saved topology report and measured transfer rates; they do not by themselves establish NVLink wiring or achieved bandwidth; a number copied from one cluster's own topology report into a shared constant is a silent liability the moment the code runs anywhere else.</p>

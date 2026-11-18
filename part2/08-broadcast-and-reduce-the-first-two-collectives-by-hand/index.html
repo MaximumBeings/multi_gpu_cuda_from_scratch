@@ -862,6 +862,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#worked-example-broadcast-copies-reduction-combines" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Worked example — Broadcast copies; reduction combines
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#81-broadcast-by-hand-one-to-many-correctly" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1045,7 +1056,7 @@
   <span class="md-ellipsis">
     
   
-    9. Ring All-Reduce: The Algorithm Behind Every Multi-GPU Training Job
+    9. Ring All-Reduce: Reduce-Scatter and All-Gather by Hand
   
 
     
@@ -2523,6 +2534,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#worked-example-broadcast-copies-reduction-combines" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Worked example — Broadcast copies; reduction combines
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#81-broadcast-by-hand-one-to-many-correctly" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2721,6 +2743,29 @@
 </ul>
 <hr />
 <p>Everything in Part 1 was about moving data or coordinating exactly two participants at a time -- one source device and one destination, one device's stream waiting on another's event, one process's memory shared with one other process's. A collective operation involves an entire group of devices at once, all participating in a single, coordinated communication pattern. Broadcast and reduce are the two simplest collectives, and this chapter builds both by hand, directly on top of Part 1's primitives: broadcast is one device's data reaching every other device, and reduce is every device's data being combined into one. Because correctness here is inherently a question about <em>multiple</em> devices' data ending up in the <em>right relationship to each other</em>, this chapter also marks a shift in how this book verifies itself: from here through the rest of Part 2, the host-side simulation technique introduced in Chapter 4 stops being an occasional tool and becomes the primary way this book proves a multi-device algorithm is actually correct.</p>
+<!-- mgpu:worked:start -->
+<h2 id="worked-example-broadcast-copies-reduction-combines">Worked example — Broadcast copies; reduction combines<a class="headerlink" href="#worked-example-broadcast-copies-reduction-combines" title="Permanent link">&para;</a></h2>
+<p>Four ranks r = 0, 1, 2, 3 each hold two int32 values [r + 1, 10(r + 1)]. Each local vector is 8 bytes. Choose root rank 2; rank numbers are communicator identities, not necessarily CUDA device IDs.</p>
+<p><img alt="Numeric worked example: Broadcast copies; reduction combines" src="../../images/worked/ch08.svg" /></p>
+<ol>
+<li>
+<p>Write the inputs: rank 0 [1, 10], rank 1 [2, 20], rank 2 [3, 30], rank 3 [4, 40].</p>
+</li>
+<li>
+<p>Broadcast root 2’s two elements: every rank receives [3, 30]. With NCCL, the element count is 2 and datatype ncclInt32; every rank participates.</p>
+</li>
+<li>
+<p>For SUM reduction instead, add the first coordinates: 1 + 2 + 3 + 4 = 10. Add the second: 10 + 20 + 30 + 40 = 100.</p>
+</li>
+<li>
+<p>The reduce result [10, 100] is defined at root rank 2. Receiving that result on every rank would require all-reduce or a subsequent broadcast.</p>
+</li>
+</ol>
+<p><strong>Expected result and pitfall.</strong> The expected broadcast output is [3, 30] everywhere; the expected reduce output is [10, 100] at the root. These are separate operations on the original inputs, not reduce applied after overwriting them with broadcast output.</p>
+<p><strong>Exercise.</strong> What would SUM reduce produce if you first broadcast and then reduced those overwritten buffers?</p>
+<p><strong>Worked answer.</strong> Four copies of [3, 30] sum to [12, 120]. Preserve or reconstruct the original inputs when comparing the two operations.</p>
+<!-- mgpu:worked:end -->
+
 <h2 id="81-broadcast-by-hand-one-to-many-correctly">8.1 Broadcast, By Hand: One-to-Many, Correctly<a class="headerlink" href="#81-broadcast-by-hand-one-to-many-correctly" title="Permanent link">&para;</a></h2>
 <!-- mgpu:figure-1:start -->
 <p><a href="../../images/technical/ch08/1-broadcast.svg"><img alt="Broadcast preserves one root value" src="../../images/technical/ch08/1-broadcast.svg" /></a></p>
@@ -2891,7 +2936,7 @@
 <h3 id="intuition_1">Intuition<a class="headerlink" href="#intuition_1" title="Permanent link">&para;</a></h3>
 <p>Reduce is broadcast's mirror image: instead of one device's data reaching everyone, every device's data has to be combined into one result. Without a device-side kernel to do the combining on-GPU, the most direct way to build this by hand is to bring each device's data to the host, one at a time, and accumulate it there -- exactly the staged-transfer pattern Chapter 5 already introduced, just called once per device in a loop, with an accumulator standing in for the collective's combining operation.</p>
 <h3 id="background_1">Background<a class="headerlink" href="#background_1" title="Permanent link">&para;</a></h3>
-<p>The loop first makes the source device current with <code>cudaSetDevice(src)</code> (Chapter 3's rule -- without it, every iteration would allocate and read on device 0), then stages that device's buffer to the host with an ordinary <code>cudaMemcpy(..., cudaMemcpyDeviceToHost)</code>, and adds it, element by element, into a running host-side accumulator. Nothing here needs a device kernel: the accumulation itself is plain host arithmetic, run once per device, and the combining operation -- sum, in this section's code -- is entirely a property of what the accumulator does with each staged buffer, not of the transfer mechanism itself. A different combining operation (max, say, or a bitwise AND) would only change one line of host code; the transfer loop around it stays identical.</p>
+<p>The loop first selects the source device with <code>cudaSetDevice(src)</code> to make its device context explicit, then stages that device's buffer to the host with an ordinary <code>cudaMemcpy(..., cudaMemcpyDeviceToHost)</code>, and adds it, element by element, into a running host-side accumulator. Nothing here needs a device kernel: the accumulation itself is plain host arithmetic, run once per device, and the combining operation -- sum, in this section's code -- is entirely a property of what the accumulator does with each staged buffer, not of the transfer mechanism itself. A different combining operation (max, say, or a bitwise AND) would only change one line of host code; the transfer loop around it stays identical.</p>
 <div class="language-cpp highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="c1">// 21_reduce_by_hand.cu</span>
 <a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="c1">// Checked teaching implementation; serial host scheduling favors clarity, not speed.</span>
 <a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;cstdio&gt;</span>
@@ -3046,7 +3091,7 @@
 <p>The <a href="../../validation-h100/">2026-11-17 H100 execution record</a> covers two GPUs connected by local NV18. It distinguishes numerical checks, API probes and other executions; a successful exit alone does not establish GPU algorithm correctness.</p>
 <div class="admonition warning">
 <p class="admonition-title">[COMMON TRAP] Assuming the accumulation order in this loop doesn't matter, for any data type</p>
-<p>For the <code>int</code> (widened to <code>long long</code> during accumulation) data this section's code uses, addition is exactly associative and commutative -- summing device 0 then device 1 then device 2 gives the bit-for-bit identical result as summing device 2 then device 0 then device 1. That guarantee is specific to integer arithmetic. It does <strong>not</strong> carry over to floating-point data, where, per NVIDIA's own Floating Point and IEEE 754 documentation, "the results corresponding to the sum <code>rn(rn(A + B) + C)</code> and the sum <code>rn(A + rn(B + C))</code> are different from each other" -- meaning a real floating-point reduce's <em>exact</em> result can depend on the order devices are visited in, even though every individual addition is performed correctly. Section 8.3 verifies this distinction directly rather than asserting it.</p>
+<p>For the <code>int</code> (widened to <code>long long</code> during accumulation) data this section's code uses, addition is exactly associative and commutative -- summing device 0 then device 1 then device 2 gives the bit-for-bit identical result as summing device 2 then device 0 then device 1. For these bounded inputs, every intermediate fits the chosen accumulator and the result also fits its destination type. Integer arithmetic is not an unconditional escape from overflow: signed C++ overflow is undefined, and final narrowing can lose a correct wide sum. It does <strong>not</strong> carry over to floating-point data, where, per NVIDIA's own Floating Point and IEEE 754 documentation, "the results corresponding to the sum <code>rn(rn(A + B) + C)</code> and the sum <code>rn(A + rn(B + C))</code> are different from each other" -- meaning a real floating-point reduce's <em>exact</em> result can depend on the order devices are visited in, even though every individual addition is performed correctly. Section 8.3 verifies this distinction directly rather than asserting it.</p>
 </div>
 <h2 id="83-verifying-broadcast-and-reduce-at-n-devices-and-why-order-matters-for-one-but-not-the-other">8.3 Verifying Broadcast and Reduce at N Devices, and Why Order Matters for One But Not the Other<a class="headerlink" href="#83-verifying-broadcast-and-reduce-at-n-devices-and-why-order-matters-for-one-but-not-the-other" title="Permanent link">&para;</a></h2>
 <h3 id="intuition_2">Intuition<a class="headerlink" href="#intuition_2" title="Permanent link">&para;</a></h3>
@@ -3245,7 +3290,7 @@
 <li>This chapter states that host-side simulation "becomes the primary way this book verifies correctness" starting here. Referencing Chapters 1-7's own verification style, explain what specifically changed about the kind of claim this chapter needed to verify, that made a single honest API call (like <code>cudaErrorNoDevice</code> reporting) insufficient on its own.</li>
 </ol>
 <h2 id="where-we-go-next">Where We Go Next<a class="headerlink" href="#where-we-go-next" title="Permanent link">&para;</a></h2>
-<p>Chapter 9 builds ring all-reduce -- the algorithm that combines every device's data into an identical result on <em>every</em> device (not just one root, as this chapter's reduce did), using a bandwidth-efficient ring topology instead of a root-centered star, and the algorithm behind essentially every real multi-GPU training job's gradient synchronization step.</p>
+<p>Chapter 9 builds ring all-reduce -- the algorithm that combines every device's data into an identical result on <em>every</em> device (not just one root, as this chapter's reduce did), using a bandwidth-efficient ring topology instead of a root-centered star, and an important building block for gradient synchronization, alongside the other algorithms selected by production collective libraries.</p>
 <h2 id="worked-solutions">Worked Solutions<a class="headerlink" href="#worked-solutions" title="Permanent link">&para;</a></h2>
 <p><strong>1.</strong> The root's buffer is never written to by the broadcast loop itself -- every iteration only reads from it. Since nothing in the loop changes that buffer's contents, every iteration sees the identical data whether it re-reads defensively or not; re-reading would simply retrieve the same bytes again, at the cost of extra work, without changing the algorithm's correctness in any way.</p>
 <p><strong>2.</strong> Only the single line inside the accumulation loop that combines the staged buffer into the running result would change -- <code>accumulator[i] += hostStaging[i];</code> would become something like <code>accumulator[i] = std::max(accumulator[i], (long long)hostStaging[i]);</code>. The transfer loop around it -- the <code>cudaMalloc</code>, <code>cudaMemcpy(..., cudaMemcpyDeviceToHost)</code>, and the per-device iteration itself -- stays completely identical, because the combining operation and the transfer mechanism are genuinely independent, exactly as Section 8.2's Background states.</p>
@@ -3312,13 +3357,13 @@
         
         
           
-          <a href="../09-ring-all-reduce-the-algorithm-behind-every-multi-gpu-training-job/" class="md-footer__link md-footer__link--next" aria-label="Next: 9. Ring All-Reduce: The Algorithm Behind Every Multi-GPU Training Job">
+          <a href="../09-ring-all-reduce-the-algorithm-behind-every-multi-gpu-training-job/" class="md-footer__link md-footer__link--next" aria-label="Next: 9. Ring All-Reduce: Reduce-Scatter and All-Gather by Hand">
             <div class="md-footer__title">
               <span class="md-footer__direction">
                 Next
               </span>
               <div class="md-ellipsis">
-                9. Ring All-Reduce: The Algorithm Behind Every Multi-GPU Training Job
+                9. Ring All-Reduce: Reduce-Scatter and All-Gather by Hand
               </div>
             </div>
             <div class="md-footer__button md-icon">

@@ -837,7 +837,7 @@
   <span class="md-ellipsis">
     
   
-    9. Ring All-Reduce: The Algorithm Behind Every Multi-GPU Training Job
+    9. Ring All-Reduce: Reduce-Scatter and All-Gather by Hand
   
 
     
@@ -1089,6 +1089,17 @@
       Table of contents
     </label>
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#worked-example-add-a-replicated-bias-after-reducing-partial-outputs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Worked example — Add a replicated bias after reducing partial outputs
+      
+    </span>
+  </a>
+  
+</li>
       
         <li class="md-nav__item">
   <a href="#141-column-parallel-linear-layers-splitting-the-output-no-communication-needed" class="md-nav__link">
@@ -2523,6 +2534,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#worked-example-add-a-replicated-bias-after-reducing-partial-outputs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Worked example — Add a replicated bias after reducing partial outputs
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#141-column-parallel-linear-layers-splitting-the-output-no-communication-needed" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2743,6 +2765,29 @@
 <a id="__codelineno-0-19" name="__codelineno-0-19" href="#__codelineno-0-19"></a>                v
 <a id="__codelineno-0-20" name="__codelineno-0-20" href="#__codelineno-0-20"></a>         Z = Z0 + Z1  (the block's real output)
 </code></pre></div>
+<!-- mgpu:worked:start -->
+<h2 id="worked-example-add-a-replicated-bias-after-reducing-partial-outputs">Worked example — Add a replicated bias after reducing partial outputs<a class="headerlink" href="#worked-example-add-a-replicated-bias-after-reducing-partial-outputs" title="Permanent link">&para;</a></h2>
+<p>Use X = [1, 2]. The first weight matrix has rows [1, 2, 3, 4] and [5, 6, 7, 8]. Split its columns evenly across two ranks. A second matrix has rows [1, 0], [0, 1], [1, 1], [2, 1], split by corresponding input rows.</p>
+<p><img alt="Numeric worked example: Add a replicated bias after reducing partial outputs" src="../../images/worked/ch14.svg" /></p>
+<ol>
+<li>
+<p>Column-parallel first multiplication gives rank 0 values [11, 14] and rank 1 values [17, 20]: for example 1×1 + 2×5 = 11.</p>
+</li>
+<li>
+<p>For the second multiplication, rank 0 uses its local two activations and first two weight rows: [11, 14]. Rank 1 computes [17, 20] × [[1, 1], [2, 1]] = [57, 37].</p>
+</li>
+<li>
+<p>All-reduce SUM the two-element partial outputs: [11, 14] + [57, 37] = [68, 51]. Each partial is two FP32 elements, 8 bytes.</p>
+</li>
+<li>
+<p>Add the replicated bias b = [1, −1] once after reduction: [69, 50]. If both ranks add b before SUM, the result is [70, 49], incorrectly counting the bias twice.</p>
+</li>
+</ol>
+<p><strong>Expected result and pitfall.</strong> The expected final output is [69, 50]. “Column” and “row” describe this chapter’s XW mathematical convention, not a blanket rule about physical storage layout. Match each shard’s dimensions before selecting a collective.</p>
+<p><strong>Exercise.</strong> Can ReLU always be applied to each second-layer partial before SUM?</p>
+<p><strong>Worked answer.</strong> No. In general ReLU(a) + ReLU(b) differs from ReLU(a + b). Reduce contributions first, then apply an activation that belongs to the combined output.</p>
+<!-- mgpu:worked:end -->
+
 <h2 id="141-column-parallel-linear-layers-splitting-the-output-no-communication-needed">14.1 Column-Parallel Linear Layers: Splitting the Output, No Communication Needed<a class="headerlink" href="#141-column-parallel-linear-layers-splitting-the-output-no-communication-needed" title="Permanent link">&para;</a></h2>
 <!-- mgpu:figure-1:start -->
 <p><a href="../../images/technical/ch14/1-column.svg"><img alt="Column parallelism partitions output features" src="../../images/technical/ch14/1-column.svg" /></a></p>
@@ -3553,7 +3598,7 @@
 <p><strong>3.</strong> Rank 0's partial product (<code>[0.22, 0.11]</code>) only sums over rows 0 and 1 of <code>B</code>, weighted by <code>H[0]</code> and <code>H[1]</code> -- it is missing every contribution from <code>H[2]</code> and <code>H[3]</code> entirely. Rank 1's partial (<code>[1.95, 2.26]</code>) is missing the opposite half. Since the correct final value is the sum of contributions from all four rows, a partial sum over only half of them is, by construction, not the answer -- it's exactly half of the addition that produces the answer.</p>
 <p><strong>4.</strong> File 40 uses <code>ncclAllReduce</code> with <code>ncclSum</code> to combine row-parallel partial products. Its reference check compares every rank’s completed result with the unsplit matrix product.</p>
 <p><strong>5.</strong> The first test input, <code>(1.00, 2.00)</code>, produced the non-bit-identical result -- its second output component was <code>2.3700000000000001</code> in the unsplit reference versus <code>2.3699999999999997</code> in the tensor-parallel version. This happened because the row-parallel combine step computes <code>(partial_rank0 + partial_rank1)</code>, summing two already-summed partial dot products, while the unsplit reference computes one accumulator that adds all four terms in a single, uninterrupted sequence -- a different grouping of the same four real-number terms, which IEEE 754 floating-point arithmetic does not guarantee will round to the identical bit pattern.</p>
-<p><strong>6.</strong> Chapter 13's guarantee is structurally stronger: it is unconditional, because a layer-wise split only ever <em>relocates</em> a strictly sequential chain of operations, never regrouping or reordering any of them, so there is nothing for floating-point rounding to catch. This chapter's row-parallel combine step is a genuine summation of independently-computed partial results -- structurally the same category of operation as Chapter 8's reduce -- so it inherits reduce's weaker, checked-not-assumed guarantee: correct to within floating-point rounding, but not bit-identical in general, exactly as Section 14.3's own Sample output demonstrated.</p>
+<p><strong>6.</strong> Chapter 13's exact-equality result applies to its unchanged scalar layer function, operation order and representations. Merely moving a layer boundary does not regroup that function's arithmetic in that model. A real implementation may select another GEMM kernel, precision, contraction policy or fusion when device/shape changes, so layer-wise distribution alone is not an unconditional bit-identity guarantee. This chapter's row-parallel combination explicitly regroups partial sums even with the same scalar arithmetic and therefore has an additional source of floating-point differences. Validate each implementation against its stated numerical criterion.</p>
 <p><strong>7.</strong> A naive design has no reason to know that Section 14.1's nonlinearity commutes with a column split -- treated as two independent matrix multiplies, each one's result would need to be reassembled into a full, correct tensor before the next operation could safely run, requiring one synchronizing collective after GEMM 1 and a second after GEMM 2. Megatron-LM's design specifically arranges the split (column then matching row) so that the intermediate result after GEMM 1 never needs to be reassembled at all -- every device already has everything it needs for GEMM 2 -- collapsing the requirement to a single collective after GEMM 2 alone.</p>
 <p><strong>8.</strong> Section 14.1 needed zero collectives only because of the <em>specific</em> combination of a column split followed by an elementwise operation -- that combination is what makes each device's partial result already complete and independent. Section 14.2's row split, built from the exact same "split a big matrix across devices" philosophy, needs a real collective because its partial results are incomplete summands, not independent slices. Tensor parallelism as a whole isn't "cheaper" than model parallelism in some blanket sense -- whether a given split needs communication depends on which dimension gets split and what operation follows it, not on which broad category ("tensor parallel" vs. "model parallel") the split belongs to.</p>
 <hr />

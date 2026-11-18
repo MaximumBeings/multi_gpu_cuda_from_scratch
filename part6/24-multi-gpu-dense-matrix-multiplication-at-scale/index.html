@@ -837,7 +837,7 @@
   <span class="md-ellipsis">
     
   
-    9. Ring All-Reduce: The Algorithm Behind Every Multi-GPU Training Job
+    9. Ring All-Reduce: Reduce-Scatter and All-Gather by Hand
   
 
     
@@ -1552,6 +1552,17 @@
       Table of contents
     </label>
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#worked-example-accumulate-two-summa-panels-on-four-owners" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Worked example — Accumulate two SUMMA panels on four owners
+      
+    </span>
+  </a>
+  
+</li>
       
         <li class="md-nav__item">
   <a href="#241-the-memory-wall-for-a-gemms-three-operands" class="md-nav__link">
@@ -2523,6 +2534,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#worked-example-accumulate-two-summa-panels-on-four-owners" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Worked example — Accumulate two SUMMA panels on four owners
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#241-the-memory-wall-for-a-gemms-three-operands" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2735,6 +2757,30 @@
 <a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>                          one case study, three real layers:
 <a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>                          capacity, algorithm, production API
 </code></pre></div>
+<!-- mgpu:worked:start -->
+
+<h2 id="worked-example-accumulate-two-summa-panels-on-four-owners">Worked example — Accumulate two SUMMA panels on four owners<a class="headerlink" href="#worked-example-accumulate-two-summa-panels-on-four-owners" title="Permanent link">&para;</a></h2>
+<p>Let A have rows [1,2], [3,4], [5,6], [7,8], and B have rows [1,2,3,4], [10,20,30,40]. Thus M=4,K=2,N=4. A 2×2 process grid gives each owner a 2×2 C tile.</p>
+<ol>
+<li>
+<p>For k=0, owner (0,0) forms outer product [1,3]×[1,2]=[[1,2],[3,6]]. Owner (0,1) uses [3,4] instead, producing [[3,4],[9,12]].</p>
+</li>
+<li>
+<p>At k=1, owner (0,0) adds [2,4]×[10,20]=[[20,40],[40,80]], reaching [[21,42],[43,86]].</p>
+</li>
+<li>
+<p>The four final tiles are shown below. Check the opposite corner independently: C[3,3]=7×4+8×40=348.</p>
+</li>
+</ol>
+<p><img alt="Numeric worked example: Accumulate two SUMMA panels on four owners" src="../../images/worked/ch24.svg" /></p>
+<p><strong>API connection and scope.</strong> SUMMA broadcasts an A panel along each process row and a B panel down each process column, then performs a local matrix multiply. MPI_Bcast on row and column communicators plus a local GEMM is one implementation. This tiny paper trace is not an additional distributed GPU run.</p>
+<p><strong>Expected check and pitfall.</strong> For C=AB, initialize the first accumulation correctly and retain earlier panels; a GEMM implementation may use beta=0 first and beta=1 thereafter. Panel ownership and collective matching matter as much as tile dimensions. Validate the entire assembled matrix against an independent reference.</p>
+<details class="question">
+<summary>Guided exercise: What happens if owner (0,0) overwrites C with only its second panel?</summary>
+<p><strong>Worked answer.</strong> It returns [[20,40],[40,80]], losing [[1,2],[3,6]]. The correct tile is [[21,42],[43,86]].</p>
+</details>
+<!-- mgpu:worked:end -->
+
 <h2 id="241-the-memory-wall-for-a-gemms-three-operands">24.1 The Memory Wall for a GEMM's THREE Operands<a class="headerlink" href="#241-the-memory-wall-for-a-gemms-three-operands" title="Permanent link">&para;</a></h2>
 <!-- mgpu:figure-1:start -->
 <p><a href="../../images/technical/ch24/1-capacity.svg"><img alt="A GEMM working set includes three operands" src="../../images/technical/ch24/1-capacity.svg" /></a></p>
