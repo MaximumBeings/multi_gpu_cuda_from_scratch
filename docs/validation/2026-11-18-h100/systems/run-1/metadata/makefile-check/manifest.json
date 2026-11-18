@@ -1,0 +1,72 @@
+[
+  {
+    "command": [
+      "make",
+      "NVCC_ARCH=-arch=sm_90",
+      "all"
+    ],
+    "started_utc": "2026-11-18T11:26:58.881073+00:00",
+    "exit_code": 0,
+    "finished_utc": "2026-11-18T11:27:05.222567+00:00",
+    "log": "0.log",
+    "log_sha256": "03aae20e478f73cb6c6172fd9e20ed18b268a28159501f198f104f65c35c4179"
+  },
+  {
+    "command": [
+      "./host_only"
+    ],
+    "started_utc": "2026-11-18T11:27:05.222640+00:00",
+    "exit_code": 0,
+    "finished_utc": "2026-11-18T11:27:05.223284+00:00",
+    "log": "1.log",
+    "log_sha256": "b7e8bec2cc5efd885dc7b1611daefa28ff5c91aa860e5fa6e59ff0726d2f2e92"
+  },
+  {
+    "command": [
+      "./cuda_only"
+    ],
+    "started_utc": "2026-11-18T11:27:05.223313+00:00",
+    "exit_code": 0,
+    "finished_utc": "2026-11-18T11:27:05.224013+00:00",
+    "log": "2.log",
+    "log_sha256": "7eb4fab8c9c7bbca2a1ac759adb55be6d2eba3642e73d676e5b2074113bec9d4"
+  },
+  {
+    "command": [
+      "./cuda_nccl"
+    ],
+    "started_utc": "2026-11-18T11:27:05.224037+00:00",
+    "exit_code": 0,
+    "finished_utc": "2026-11-18T11:27:05.224722+00:00",
+    "log": "3.log",
+    "log_sha256": "ed8696172f82a4f3b7a4c749424f766a253a96ebfeade889cecf25e3e1ad3a7b"
+  },
+  {
+    "command": [
+      "mpirun",
+      "--oversubscribe",
+      "-np",
+      "2",
+      "./mpi_only"
+    ],
+    "started_utc": "2026-11-18T11:27:05.224752+00:00",
+    "exit_code": 0,
+    "finished_utc": "2026-11-18T11:27:06.461049+00:00",
+    "log": "4.log",
+    "log_sha256": "426f1000adae52d366863b2924ad702c7bcf9d41d0ced4c70b251848158514d8"
+  },
+  {
+    "command": [
+      "mpirun",
+      "--oversubscribe",
+      "-np",
+      "1",
+      "./cuda_nvshmem_mpi"
+    ],
+    "started_utc": "2026-11-18T11:27:06.461108+00:00",
+    "exit_code": 0,
+    "finished_utc": "2026-11-18T11:27:07.005941+00:00",
+    "log": "5.log",
+    "log_sha256": "0c8380eba7f5f1cc2676e8e495d888d15a6886ec2b5cf9059a8e308e2e0b685e"
+  }
+]

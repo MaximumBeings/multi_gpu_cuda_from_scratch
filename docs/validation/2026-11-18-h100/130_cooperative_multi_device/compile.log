@@ -1,0 +1,1 @@
+$ nvcc -std=c++17 -O2 -arch=sm_90 -rdc=true /home/ubuntu/full-gpu-rerun-20261118/mgpu/docs/appendix/code/130_cooperative_multi_device.cu -o /home/ubuntu/full-gpu-rerun-20261118/mgpu/results/130_cooperative_multi_device/example -lcudadevrt

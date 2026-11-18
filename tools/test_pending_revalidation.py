@@ -21,7 +21,7 @@ class PendingTests(unittest.TestCase):
             bad.write_bytes(current[key].read_bytes()+b'\nint unexpected_change;\n')
             changed = dict(current); changed[key] = bad
             with self.assertRaises(ValueError): pending(ROOT, changed, recorded)
-        changed = dict(recorded); changed[key] = revisions[key]['current_sha256']
+        changed = dict(recorded); changed[key] = 'f'*64
         with self.assertRaises(ValueError): pending(ROOT, current, changed)
 
 if __name__ == '__main__': unittest.main()

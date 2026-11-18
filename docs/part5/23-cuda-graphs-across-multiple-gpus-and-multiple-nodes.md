@@ -135,6 +135,29 @@ int main() {
 }
 ```
 
+<!-- execution:start:h100-rerun:66_cross_device_graph_capture.cu -->
+> **Compiled and executed — 2026-11-18-h100: Numerical/transport validation (recorded scope).** Hardware: 2 H100 GPUs. Executed UTC: `2026-11-18T11:22:24.670639+00:00`.
+
+<!-- execution:metadata Source SHA-256: 15c5b1df7eab956645fdf841f40ca8a923706bcb746e8e83dc200231e4587e16; recorded UTC (program start): 2026-11-18T11:22:24.005233+00:00 -->
+
+[Exact tested source](../validation/2026-11-18-h100/66_cross_device_graph_capture/66_cross_device_graph_capture.cu) · [Compiler log](../validation/2026-11-18-h100/66_cross_device_graph_capture/compile.log) · [Execution log](../validation/2026-11-18-h100/66_cross_device_graph_capture/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+nvcc -std=c++17 -O2 -arch=sm_90 66_cross_device_graph_capture.cu -o ./example
+./example
+```
+
+**Sample output**
+
+```text
+VALIDATION PASS: 3 replays, 512 checked values, errors=0
+```
+
+<!-- execution:end:h100-rerun:66_cross_device_graph_capture.cu -->
+
+
 <!-- execution:start:a100:66_cross_device_graph_capture.cu -->
 > **Compiled and executed — 2026-11-17-a100: Numerical/transport validation (recorded scope).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:04:45.684173+00:00`.
 
@@ -281,6 +304,29 @@ int main(int argc, char **argv) {
 }
 ```
 
+<!-- execution:start:h100-rerun:67_nccl_captured_in_graph.cu -->
+> **Compiled and executed — 2026-11-18-h100: Numerical/transport validation (recorded scope).** Hardware: 2 H100 GPUs. Executed UTC: `2026-11-18T11:22:26.504382+00:00`.
+
+<!-- execution:metadata Source SHA-256: 1b95a0066781d7efbe953afc74ce9b98f79100a3657b814ad59cc34e4008172a; recorded UTC (program start): 2026-11-18T11:22:25.237532+00:00 -->
+
+[Exact tested source](../validation/2026-11-18-h100/67_nccl_captured_in_graph/67_nccl_captured_in_graph.cu) · [Compiler log](../validation/2026-11-18-h100/67_nccl_captured_in_graph/compile.log) · [Execution log](../validation/2026-11-18-h100/67_nccl_captured_in_graph/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+nvcc -std=c++17 -O2 -arch=sm_90 -ccbin mpicxx 67_nccl_captured_in_graph.cu -o ./example -lnccl
+mpirun --oversubscribe -np 2 ./example
+```
+
+**Sample output**
+
+```text
+VALIDATION PASS: 2 ranks, 3 graph replays, errors=0
+```
+
+<!-- execution:end:h100-rerun:67_nccl_captured_in_graph.cu -->
+
+
 <!-- execution:start:a100:67_nccl_captured_in_graph.cu -->
 > **Compiled and executed — 2026-11-17-a100: Numerical/transport validation (recorded scope).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:04:51.229630+00:00`.
 
@@ -292,7 +338,7 @@ Commands below use local source/binary names; raw logs retain host paths. Execut
 
 ```bash
 nvcc -std=c++17 -O2 -arch=sm_80 -ccbin mpicxx 67_nccl_captured_in_graph.cu -o ./example -lnccl
-/usr/mpi/gcc/openmpi-4.1.7rc1/bin/mpirun --oversubscribe -np 8 ./example
+mpirun --oversubscribe -np 8 ./example
 ```
 
 **Sample output**
@@ -332,7 +378,7 @@ Commands below use local source/binary names; raw logs retain host paths. Execut
 
 ```bash
 nvcc -std=c++17 -O2 -arch=sm_90 -ccbin mpicxx 67_nccl_captured_in_graph.cu -o ./example -lnccl
-/home/ubuntu/book2-bin/mpirun --oversubscribe -np 2 ./example
+mpirun --oversubscribe -np 2 ./example
 ```
 
 <details markdown="1"><summary>Captured current-source output</summary>
@@ -460,6 +506,29 @@ int main() {
  return errors?1:0;
 }
 ```
+
+<!-- execution:start:h100-rerun:68_host_node_and_multi_process_graphs.cu -->
+> **Compiled and executed — 2026-11-18-h100: API validation (recorded scope).** Hardware: 2 H100 GPUs. Executed UTC: `2026-11-18T11:22:29.239944+00:00`.
+
+<!-- execution:metadata Source SHA-256: 3b74456e01300c377b645c44256f853350cf0bd0449b36da5ba13c4c5266fbdb; recorded UTC (program start): 2026-11-18T11:22:28.624350+00:00 -->
+
+[Exact tested source](../validation/2026-11-18-h100/68_host_node_and_multi_process_graphs/68_host_node_and_multi_process_graphs.cu) · [Compiler log](../validation/2026-11-18-h100/68_host_node_and_multi_process_graphs/compile.log) · [Execution log](../validation/2026-11-18-h100/68_host_node_and_multi_process_graphs/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+nvcc -std=c++17 -O2 -arch=sm_90 68_host_node_and_multi_process_graphs.cu -o ./example
+./example
+```
+
+**Sample output**
+
+```text
+API PROBE PASS: local graph host callbacks=3 expected=3, errors=0
+```
+
+<!-- execution:end:h100-rerun:68_host_node_and_multi_process_graphs.cu -->
+
 
 <!-- execution:start:a100:68_host_node_and_multi_process_graphs.cu -->
 > **Compiled and executed — 2026-11-17-a100: API validation (recorded scope).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:05:02.186670+00:00`.

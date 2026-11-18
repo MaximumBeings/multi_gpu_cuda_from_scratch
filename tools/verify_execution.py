@@ -84,10 +84,10 @@ def verify(root, public, docs=None, summary_text=None):
             errors.append(f'Expected one displayed execution block: {rel}')
             continue
         section = sections[0]
-        if rel in revisions and ('GPU revalidation pending' not in section
+        if rel in revisions and ((('GPU revalidation pending' if revisions[rel]['status'] == 'pending_gpu_revalidation' else 'Correction verified on November 18') not in section)
                 or revisions[rel]['current_sha256'] not in section):
             errors.append(f'Corrected source needs a visible pending notice and exact new hash: {rel}')
-        if label == 'a100' and ('<details' in section or not any(title in section for title in ('**Sample output**', '**Actual sample output (excerpt)**'))):
+        if label in {'a100','h100-rerun'} and ('<details' in section or not any(title in section for title in ('**Sample output**', '**Actual sample output (excerpt)**'))):
             errors.append(f'Latest A100 sample output must be inline and visible: {rel}')
         run_started = row.get('run_started_utc') or row.get('run', {}).get('started_utc')
         if output != raw_output and '**Actual sample output (excerpt)**' not in section:

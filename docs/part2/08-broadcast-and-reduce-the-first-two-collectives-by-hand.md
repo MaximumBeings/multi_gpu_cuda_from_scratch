@@ -67,6 +67,29 @@ int main() {
 }
 ```
 
+<!-- execution:start:h100-rerun:20_broadcast_by_hand.cu -->
+> **Compiled and executed — 2026-11-18-h100: Numerical/transport validation (recorded scope).** Hardware: 2 H100 GPUs. Executed UTC: `2026-11-18T11:21:05.411617+00:00`.
+
+<!-- execution:metadata Source SHA-256: b4f21489e3581a967b24259f6387068c0b98a38ac1ac98ae519b622d4f065433; recorded UTC (program start): 2026-11-18T11:21:04.495840+00:00 -->
+
+[Exact tested source](../validation/2026-11-18-h100/20_broadcast_by_hand/20_broadcast_by_hand.cu) · [Compiler log](../validation/2026-11-18-h100/20_broadcast_by_hand/compile.log) · [Execution log](../validation/2026-11-18-h100/20_broadcast_by_hand/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+nvcc -std=c++17 -O2 -arch=sm_90 20_broadcast_by_hand.cu -o ./example
+./example
+```
+
+**Sample output**
+
+```text
+PASS: broadcast on 2 GPUs, all nonuniform output values checked.
+```
+
+<!-- execution:end:h100-rerun:20_broadcast_by_hand.cu -->
+
+
 <!-- execution:start:a100:20_broadcast_by_hand.cu -->
 > **Compiled and executed — 2026-11-17-a100: Numerical/transport validation (recorded scope).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:01:10.712404+00:00`.
 
@@ -171,6 +194,29 @@ int main() {
  return 0;
 }
 ```
+
+<!-- execution:start:h100-rerun:21_reduce_by_hand.cu -->
+> **Compiled and executed — 2026-11-18-h100: Numerical/transport validation (recorded scope).** Hardware: 2 H100 GPUs. Executed UTC: `2026-11-18T11:21:06.893901+00:00`.
+
+<!-- execution:metadata Source SHA-256: 31af26d63bb08f04ea9be7f5ff0c894aebeda6eb77b8a8462d4e33ee843fe5a9; recorded UTC (program start): 2026-11-18T11:21:05.978002+00:00 -->
+
+[Exact tested source](../validation/2026-11-18-h100/21_reduce_by_hand/21_reduce_by_hand.cu) · [Compiler log](../validation/2026-11-18-h100/21_reduce_by_hand/compile.log) · [Execution log](../validation/2026-11-18-h100/21_reduce_by_hand/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+nvcc -std=c++17 -O2 -arch=sm_90 21_reduce_by_hand.cu -o ./example
+./example
+```
+
+**Sample output**
+
+```text
+PASS: host-staged reduce to root on 2 GPUs, all nonuniform output values checked.
+```
+
+<!-- execution:end:h100-rerun:21_reduce_by_hand.cu -->
+
 
 <!-- execution:start:a100:21_reduce_by_hand.cu -->
 > **Compiled and executed — 2026-11-17-a100: Numerical/transport validation (recorded scope).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:01:16.106772+00:00`.
@@ -340,6 +386,32 @@ int main() {
     return (broadcastPass && reduceInOrderPass && reduceReversePass && orderIndependent) ? 0 : 1;
 }
 ```
+
+<!-- execution:start:h100-rerun:22_collectives_simulation.cpp -->
+> **Compiled and executed — 2026-11-18-h100: Host program/model (exit-only).** Hardware: 2 H100 GPUs. Executed UTC: `2026-11-18T11:21:07.724928+00:00`.
+
+<!-- execution:metadata Source SHA-256: d4ae2885d106db3e9db093ebcad90a1438c83d898eb8f87062a7c9dfc0a8acbb; recorded UTC (program start): 2026-11-18T11:21:07.460225+00:00 -->
+
+[Exact tested source](../validation/2026-11-18-h100/22_collectives_simulation/22_collectives_simulation.cpp) · [Compiler log](../validation/2026-11-18-h100/22_collectives_simulation/compile.log) · [Execution log](../validation/2026-11-18-h100/22_collectives_simulation/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+g++ -std=c++17 -O2 22_collectives_simulation.cpp -o ./example
+./example
+```
+
+**Sample output**
+
+```text
+Broadcast: all 4 devices hold an identical copy of the root's data: PASS
+Reduce (device order 0..3): result matches independent reference: PASS
+Reduce (device order 3..0): result matches independent reference: PASS
+Both accumulation orders produce the IDENTICAL result (true for integers; NOT guaranteed for floating point): PASS
+```
+
+<!-- execution:end:h100-rerun:22_collectives_simulation.cpp -->
+
 
 <!-- execution:start:a100:22_collectives_simulation.cpp -->
 > **Compiled and executed — 2026-11-17-a100: Host program/model (exit-only).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:01:20.298089+00:00`.

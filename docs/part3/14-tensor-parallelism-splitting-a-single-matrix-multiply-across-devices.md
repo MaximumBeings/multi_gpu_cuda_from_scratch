@@ -170,6 +170,46 @@ int main() {
 }
 ```
 
+<!-- execution:start:h100-rerun:39_column_parallel_linear.cu -->
+> **Compiled and executed — 2026-11-18-h100: API/host demonstration (exit-only).** Hardware: 2 H100 GPUs. Executed UTC: `2026-11-18T11:21:29.370200+00:00`.
+
+<!-- execution:metadata Source SHA-256: 3848720f3b511e7f79c3a3b1cd250ace02014c296eb63f822abb9e03212d8f8d; recorded UTC (program start): 2026-11-18T11:21:28.754980+00:00 -->
+
+[Exact tested source](../validation/2026-11-18-h100/39_column_parallel_linear/39_column_parallel_linear.cu) · [Compiler log](../validation/2026-11-18-h100/39_column_parallel_linear/compile.log) · [Execution log](../validation/2026-11-18-h100/39_column_parallel_linear/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+nvcc -std=c++17 -O2 -arch=sm_90 39_column_parallel_linear.cu -o ./example
+./example
+```
+
+**Sample output**
+
+```text
+cudaGetDeviceCount(): 2 device(s).
+
+Unsplit reference H = ReLU(X * A): [1.1000, 0.0000, 1.1000, 2.0000]
+rank 0 computes columns [0, 2) independently: [1.1000, 0.0000]
+rank 1 computes columns [2, 4) independently: [1.1000, 2.0000]
+
+Concatenating both ranks' independently-computed columns matches the unsplit reference exactly: PASS (bit-identical)
+
+Notice what this section did NOT need: no cudaMemcpyPeer(),
+no ncclBroadcast(), no ncclAllReduce() -- nothing beyond the
+device count query above. Splitting a GEMM's OUTPUT columns,
+followed by an elementwise nonlinearity, is the one shape of
+tensor-parallel split this book will show that needs no real
+collective at all, PROVIDED every device already holds an
+identical copy of X -- which itself had to get there via a
+real broadcast (Chapter 8, Chapter 12), before this section's
+code ever ran. Section 14.2 shows the very next GEMM in the
+same block, where that free ride ends.
+```
+
+<!-- execution:end:h100-rerun:39_column_parallel_linear.cu -->
+
+
 <!-- execution:start:a100:39_column_parallel_linear.cu -->
 > **Compiled and executed — 2026-11-17-a100: API/host demonstration (exit-only).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:02:21.220651+00:00`.
 
@@ -317,6 +357,29 @@ int main(){
  printf("PASS: row-parallel partial GEMM plus NCCL AllReduce on %d GPUs; all reference values checked.\n",world);return 0;
 }
 ```
+
+<!-- execution:start:h100-rerun:40_row_parallel_allreduce.cu -->
+> **Compiled and executed — 2026-11-18-h100: Numerical/transport validation (recorded scope).** Hardware: 2 H100 GPUs. Executed UTC: `2026-11-18T11:21:31.053001+00:00`.
+
+<!-- execution:metadata Source SHA-256: 8568061f3a5e3c9943595f7419d7c63bdfd6c8ff817a2c67c01af9333b2464f1; recorded UTC (program start): 2026-11-18T11:21:29.686149+00:00 -->
+
+[Exact tested source](../validation/2026-11-18-h100/40_row_parallel_allreduce/40_row_parallel_allreduce.cu) · [Compiler log](../validation/2026-11-18-h100/40_row_parallel_allreduce/compile.log) · [Execution log](../validation/2026-11-18-h100/40_row_parallel_allreduce/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+nvcc -std=c++17 -O2 -arch=sm_90 40_row_parallel_allreduce.cu -o ./example -lnccl
+./example
+```
+
+**Sample output**
+
+```text
+PASS: row-parallel partial GEMM plus NCCL AllReduce on 2 GPUs; all reference values checked.
+```
+
+<!-- execution:end:h100-rerun:40_row_parallel_allreduce.cu -->
+
 
 <!-- execution:start:a100:40_row_parallel_allreduce.cu -->
 > **Compiled and executed — 2026-11-17-a100: Numerical/transport validation (recorded scope).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:02:26.363351+00:00`.
@@ -550,6 +613,58 @@ int main() {
     return allCloseEnough ? 0 : 1;
 }
 ```
+
+<!-- execution:start:h100-rerun:41_tensor_parallel_mlp_simulation.cpp -->
+> **Compiled and executed — 2026-11-18-h100: Host program/model (exit-only).** Hardware: 2 H100 GPUs. Executed UTC: `2026-11-18T11:21:32.986179+00:00`.
+
+<!-- execution:metadata Source SHA-256: 0818a5967109ccfea689b11cb6433505bffe6830a5c57797afcc81cc9fbf9b66; recorded UTC (program start): 2026-11-18T11:21:32.821569+00:00 -->
+
+[Exact tested source](../validation/2026-11-18-h100/41_tensor_parallel_mlp_simulation/41_tensor_parallel_mlp_simulation.cpp) · [Compiler log](../validation/2026-11-18-h100/41_tensor_parallel_mlp_simulation/compile.log) · [Execution log](../validation/2026-11-18-h100/41_tensor_parallel_mlp_simulation/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+g++ -std=c++17 -O2 41_tensor_parallel_mlp_simulation.cpp -o ./example
+./example
+```
+
+**Sample output**
+
+```text
+input (1.00, 2.00):
+  unsplit reference       = (2.1699999999999999, 2.3700000000000001)
+  tensor-parallel (2-way) = (2.1699999999999999, 2.3699999999999997)
+  differs in the last representable bit only (still correct to full display precision)
+input (-1.00, 0.50):
+  unsplit reference       = (0.35499999999999998, 0.40499999999999997)
+  tensor-parallel (2-way) = (0.35499999999999998, 0.40499999999999997)
+  bit-identical
+input (3.00, -2.00):
+  unsplit reference       = (0.54000000000000004, 0.72000000000000008)
+  tensor-parallel (2-way) = (0.54000000000000004, 0.72000000000000008)
+  bit-identical
+
+2 of 3 input(s) bit-identical between the unsplit reference and the 2-way tensor-parallel MLP block; every input matches to within 1e-09: PASS
+
+This is the real floating-point reassociation risk this book
+flagged back in Chapter 8's reduce, showing up empirically: summing
+two partial dot products, (a0+a1)+(b0+b1), is not guaranteed by IEEE
+754 to equal one accumulator visiting all four terms in order,
+a0+a1+b0+b1 -- even though both are the exact same real-number sum.
+Unlike Chapter 13's sequential relocation (always bit-identical,
+since no operation's order ever changed), a row-parallel GEMM's
+combine step is structurally the same kind of operation as Chapter 8's
+reduce, and inherits the exact same honest caveat -- correct,
+but not bit-for-bit, in general.
+
+Collectives needed for this 2-GEMM MLP block:
+  naive (synchronize after every GEMM):          2
+  Megatron-LM's column+row split (this chapter): 1
+Megatron-LM's own paper states this directly: this design "requires only a single all-reduce operation in the forward pass."
+```
+
+<!-- execution:end:h100-rerun:41_tensor_parallel_mlp_simulation.cpp -->
+
 
 <!-- execution:start:a100:41_tensor_parallel_mlp_simulation.cpp -->
 > **Compiled and executed — 2026-11-17-a100: Host program/model (exit-only).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:02:31.857633+00:00`.

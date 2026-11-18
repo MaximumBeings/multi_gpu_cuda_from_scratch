@@ -140,6 +140,30 @@ int main(int argc, char** argv) {
 }
 ```
 
+<!-- execution:start:h100-rerun:57_mpi_ring_send_recv.c -->
+> **Compiled and executed — 2026-11-18-h100: API/host demonstration (exit-only).** Hardware: 2 H100 GPUs. Executed UTC: `2026-11-18T11:21:50.297325+00:00`.
+
+<!-- execution:metadata Source SHA-256: 114a5d40b179b9f3f3734ccab571a7f456662988dd9d51df781bc827b5e2df7d; recorded UTC (program start): 2026-11-18T11:21:50.233277+00:00 -->
+
+[Exact tested source](../validation/2026-11-18-h100/57_mpi_ring_send_recv/57_mpi_ring_send_recv.c) · [Compiler log](../validation/2026-11-18-h100/57_mpi_ring_send_recv/compile.log) · [Execution log](../validation/2026-11-18-h100/57_mpi_ring_send_recv/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+mpicc -std=c11 -O2 57_mpi_ring_send_recv.c -o ./example
+mpirun --oversubscribe -np 2 ./example 1000000 sendrecv
+```
+
+**Sample output**
+
+```text
+rank 1 of 2: sent 100, received 0 (elems=1000000, mode=sendrecv)
+rank 0 of 2: sent 0, received 100 (elems=1000000, mode=sendrecv)
+```
+
+<!-- execution:end:h100-rerun:57_mpi_ring_send_recv.c -->
+
+
 <!-- execution:start:a100:57_mpi_ring_send_recv.c -->
 > **Compiled and executed — 2026-11-17-a100: API/host demonstration (exit-only).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:03:15.913714+00:00`.
 
@@ -151,7 +175,7 @@ Commands below use local source/binary names; raw logs retain host paths. Execut
 
 ```bash
 mpicc -std=c11 -O2 57_mpi_ring_send_recv.c -o ./example
-/usr/mpi/gcc/openmpi-4.1.7rc1/bin/mpirun --oversubscribe -np 8 ./example 1000000 sendrecv
+mpirun --oversubscribe -np 8 ./example 1000000 sendrecv
 ```
 
 **Sample output**
@@ -198,7 +222,7 @@ Commands below use local source/binary names; raw logs retain host paths. Execut
 
 ```bash
 mpicc -std=c11 -O2 57_mpi_ring_send_recv.c -o ./example
-/home/ubuntu/book2-bin/mpirun --oversubscribe -np 2 ./example 1000000 sendrecv
+mpirun --oversubscribe -np 2 ./example 1000000 sendrecv
 ```
 
 <details markdown="1"><summary>Captured current-source output</summary>
@@ -286,7 +310,7 @@ CUDA-aware MPI (if MPIX_Query_cuda_support()==1):    NOT CUDA-aware (this build,
 
 ### Background
 
-The corrected example queries Open MPI’s CUDA support, then explicitly stages a rank-specific GPU payload through host buffers. It binds each local rank to a GPU, checks CUDA/MPI results and compares all 4096 received values against the preceding rank’s independent reference. The earlier exit-only record below exposed an uninitialized device buffer; it covers the archived source. The corrected listing awaits a GPU rerun.
+The corrected example queries Open MPI’s CUDA support, then explicitly stages a rank-specific GPU payload through host buffers. It binds each local rank to a GPU, checks CUDA/MPI results and compares all 4096 received values against the preceding rank’s independent reference. The earlier exit-only record below exposed an uninitialized device buffer; it covers the archived source. The corrected listing passed the November 18 two-H100 numerical rerun, checking all 4096 values per rank.
 
 ```cpp
 // Chapter 20: checked host-staged MPI transport between GPU-backed ranks.
@@ -370,11 +394,35 @@ int main(int argc, char** argv) {
     return totalErrors ? 1 : 0;
 }
 ```
+
+<!-- execution:start:h100-rerun:58_mpi_cuda_aware_query_and_fallback.cpp -->
+> **Compiled and executed — 2026-11-18-h100: Numerical/transport validation (recorded scope).** Hardware: 2 H100 GPUs. Executed UTC: `2026-11-18T11:21:50.878263+00:00`.
+
+<!-- execution:metadata Source SHA-256: 5d704c3b6f6289637b800a9eed5c479f4d6da99cf8b5fca1d70bef9c3539b754; recorded UTC (program start): 2026-11-18T11:21:50.663586+00:00 -->
+
+[Exact tested source](../validation/2026-11-18-h100/58_mpi_cuda_aware_query_and_fallback/58_mpi_cuda_aware_query_and_fallback.cpp) · [Compiler log](../validation/2026-11-18-h100/58_mpi_cuda_aware_query_and_fallback/compile.log) · [Execution log](../validation/2026-11-18-h100/58_mpi_cuda_aware_query_and_fallback/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+mpicxx -std=c++17 -O2 -I/usr/include -L/usr/lib64 -Wl,-rpath,/usr/lib64 58_mpi_cuda_aware_query_and_fallback.cpp -o ./example -lcudart
+mpirun --oversubscribe -np 2 ./example
+```
+
+**Sample output**
+
+```text
+CUDA-aware MPI: build=0 runtime=0; using host staging
+VALIDATION PASS: host-staged MPI, 2 ranks, 4096 values/rank, errors=0
+```
+
+<!-- execution:end:h100-rerun:58_mpi_cuda_aware_query_and_fallback.cpp -->
+
 > **Pending GPU revalidation:** the listing above corrects an uninitialized staging buffer and adds rank-to-GPU binding, checked APIs, and a 4096-value receive oracle. The dated execution records below belong to the earlier source and do not validate this corrected version.
 
 
 <!-- execution:start:a100:58_mpi_cuda_aware_query_and_fallback.cpp -->
-> **GPU revalidation pending:** this dated record tests the earlier source, not the corrected listing above. Current source SHA-256: `5d704c3b6f6289637b800a9eed5c479f4d6da99cf8b5fca1d70bef9c3539b754`.
+> **Correction verified on November 18:** the current listing passed a two-H100 numerical rerun and memory check. This older dated record still covers its archived revision. Current source SHA-256: `5d704c3b6f6289637b800a9eed5c479f4d6da99cf8b5fca1d70bef9c3539b754`.
 > **Compiled and executed — 2026-11-17-a100: API/host demonstration (exit-only).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:03:16.899282+00:00`.
 
 <!-- execution:metadata Source SHA-256: 516c7b932f5994492accfb5674fca28c5ef8694544fa0baf324dc96e71309010; recorded UTC (program start): 2026-11-18T00:03:16.733571+00:00 -->
@@ -385,7 +433,7 @@ Commands below use local source/binary names; raw logs retain host paths. Execut
 
 ```bash
 mpicxx -std=c++17 -O2 -I/usr/include -L/usr/local/cuda/lib64 -Wl,-rpath,/usr/local/cuda/lib64 58_mpi_cuda_aware_query_and_fallback.cpp -o ./example -lcudart
-/usr/mpi/gcc/openmpi-4.1.7rc1/bin/mpirun --oversubscribe -np 8 ./example
+mpirun --oversubscribe -np 8 ./example
 ```
 
 **Sample output**
@@ -420,7 +468,7 @@ rank 1: cudaMalloc()=no error cudaMemcpy(H2D)=no error
 
 
 <!-- execution:start:h100:58_mpi_cuda_aware_query_and_fallback.cpp -->
-> **GPU revalidation pending:** this dated record tests the earlier source, not the corrected listing above. Current source SHA-256: `5d704c3b6f6289637b800a9eed5c479f4d6da99cf8b5fca1d70bef9c3539b754`.
+> **Correction verified on November 18:** the current listing passed a two-H100 numerical rerun and memory check. This older dated record still covers its archived revision. Current source SHA-256: `5d704c3b6f6289637b800a9eed5c479f4d6da99cf8b5fca1d70bef9c3539b754`.
 > **Compiled and executed — 2026-11-17-h100: API/host demonstration (exit-only).** Hardware: 2 H100 GPUs. Execution record UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`.
 
 <!-- execution:metadata Source SHA-256: 516c7b932f5994492accfb5674fca28c5ef8694544fa0baf324dc96e71309010; recorded UTC (run-batch start; per-program time unrecorded): 2026-11-17T23:48:18.967387+00:00 -->
@@ -431,7 +479,7 @@ Commands below use local source/binary names; raw logs retain host paths. Execut
 
 ```bash
 mpicxx -std=c++17 -O2 -I/usr/include -L/usr/local/cuda/lib64 -Wl,-rpath,/usr/local/cuda/lib64 58_mpi_cuda_aware_query_and_fallback.cpp -o ./example -lcudart
-/home/ubuntu/book2-bin/mpirun --oversubscribe -np 2 ./example
+mpirun --oversubscribe -np 2 ./example
 ```
 
 <details markdown="1"><summary>Captured current-source output</summary>
@@ -579,6 +627,71 @@ int main(int argc, char** argv) {
 }
 ```
 
+<!-- execution:start:h100-rerun:59_mpi_errhandler_return.c -->
+> **Compiled and executed — 2026-11-18-h100: API/host demonstration (exit-only).** Hardware: 2 H100 GPUs. Executed UTC: `2026-11-18T11:24:44.079149+00:00`.
+
+<!-- execution:metadata Source SHA-256: 104caef5326cfbba709ecba2f08b68ea6ede3a40f5a767c6f6d0846bff331145; recorded UTC (program start): 2026-11-18T11:24:44.015093+00:00 -->
+
+[Exact tested source](../validation/2026-11-18-h100/59_mpi_errhandler_return/59_mpi_errhandler_return.c) · [Compiler log](../validation/2026-11-18-h100/59_mpi_errhandler_return/compile.log) · [Execution log](../validation/2026-11-18-h100/59_mpi_errhandler_return/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+mpicc -std=c11 -O2 59_mpi_errhandler_return.c -o ./example
+mpirun --oversubscribe -np 2 ./example
+```
+
+**Sample output**
+
+```text
+--------------------------------------------------------------------------
+Sorry!  You were supposed to get help about:
+    unavailable
+But I couldn't open the help file:
+    /usr/lib/x86_64-linux-gnu/pmix2/share/pmix/help-pcompress.txt: No such file or directory.  Sorry!
+--------------------------------------------------------------------------
+libibverbs: Warning: couldn't load driver 'libvmw_pvrdma-rdmav34.so': libvmw_pvrdma-rdmav34.so: cannot open shared object file: No such file or directory
+libibverbs: Warning: couldn't load driver 'libvmw_pvrdma-rdmav34.so': libvmw_pvrdma-rdmav34.so: cannot open shared object file: No such file or directory
+--------------------------------------------------------------------------
+WARNING: No preset parameters were found for the device that Open MPI
+detected:
+
+  Local host:            192-222-55-107
+  Device name:           mlx5_0
+  Device vendor ID:      0x02c9
+  Device vendor part ID: 4126
+
+Default device parameters will be used, which may result in lower
+performance.  You can edit any of the files specified by the
+btl_openib_device_param_files MCA parameter to set values for your
+device.
+
+NOTE: You can turn off this warning by setting the MCA parameter
+      btl_openib_warn_no_device_params_found to 0.
+--------------------------------------------------------------------------
+--------------------------------------------------------------------------
+No OpenFabrics connection schemes reported that they were able to be
+used on a specific port.  As such, the openib BTL (OpenFabrics
+support) will be disabled for this port.
+
+  Local host:           192-222-55-107
+  Local device:         mlx5_0
+  Local port:           1
+  CPCs attempted:       udcm
+--------------------------------------------------------------------------
+rank 0: about to MPI_Send to invalid destination rank 999 (real world size 2), now under MPI_ERRORS_RETURN
+rank 0: MPI_Send RETURNED rc=6 (MPI_ERR_RANK: invalid rank) -- this process did NOT abort
+rank 0: NOTE -- the MPI standard's own words on this: 'the state of MPI is undefined' after an error is detected, even under MPI_ERRORS_RETURN. Catching rc above is real, but it is NOT the same guarantee as ULFM's own MPIX_Comm_revoke()/MPIX_Comm_shrink(), which define exactly what a communicator's surviving ranks may do next.
+rank 0 of 2: reached MPI_Finalize
+rank 1 of 2: reached MPI_Finalize
+[192-222-55-107:08934] 1 more process has sent help message help-mpi-btl-openib.txt / no device params found
+[192-222-55-107:08934] Set MCA parameter "orte_base_help_aggregate" to 0 to see all help / error messages
+[192-222-55-107:08934] 1 more process has sent help message help-mpi-btl-openib-cpc-base.txt / no cpcs for port
+```
+
+<!-- execution:end:h100-rerun:59_mpi_errhandler_return.c -->
+
+
 <!-- execution:start:a100:59_mpi_errhandler_return.c -->
 > **Compiled and executed — 2026-11-17-a100: API/host demonstration (exit-only).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:03:24.549262+00:00`.
 
@@ -590,7 +703,7 @@ Commands below use local source/binary names; raw logs retain host paths. Execut
 
 ```bash
 mpicc -std=c11 -O2 59_mpi_errhandler_return.c -o ./example
-/usr/mpi/gcc/openmpi-4.1.7rc1/bin/mpirun --oversubscribe -np 8 ./example
+mpirun --oversubscribe -np 8 ./example
 ```
 
 **Sample output**
@@ -642,7 +755,7 @@ Commands below use local source/binary names; raw logs retain host paths. Execut
 
 ```bash
 mpicc -std=c11 -O2 59_mpi_errhandler_return.c -o ./example
-/home/ubuntu/book2-bin/mpirun --oversubscribe -np 2 ./example
+mpirun --oversubscribe -np 2 ./example
 ```
 
 <details markdown="1"><summary>Captured current-source output</summary>

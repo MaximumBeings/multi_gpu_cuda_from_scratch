@@ -65,6 +65,7 @@ plugins:
 nav:
   - Home: index.md
   - Getting Started: getting-started.md
+  - November 18 H100 Rerun: validation-h100-rerun.md
   - A100 Execution Validation: validation-a100.md
   - H100 Execution Validation: validation-h100.md
   - "Part 0 -- Why Multi-GPU, and the Hardware Underneath It":

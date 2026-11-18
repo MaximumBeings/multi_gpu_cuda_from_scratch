@@ -1,0 +1,1 @@
+$ nvcc -std=c++17 -O2 -arch=sm_90 /home/ubuntu/full-gpu-rerun-20261118/mgpu/docs/part4/code/54_blocking_vs_nonblocking_comm.cu -o /home/ubuntu/full-gpu-rerun-20261118/mgpu/results/54_blocking_vs_nonblocking_comm/example -lnccl

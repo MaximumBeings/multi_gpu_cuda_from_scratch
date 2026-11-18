@@ -1,0 +1,1 @@
+$ nvcc -std=c++17 -O2 -arch=sm_90 /home/ubuntu/full-gpu-rerun-20261118/mgpu/docs/part2/code/24_ring_step_by_hand.cu -o /home/ubuntu/full-gpu-rerun-20261118/mgpu/results/24_ring_step_by_hand/example

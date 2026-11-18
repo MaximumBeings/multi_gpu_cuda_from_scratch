@@ -1,0 +1,2 @@
+$ /home/ubuntu/full-gpu-rerun-20261118/mgpu/results/27_reducescatter_by_hand/example
+PASS: host-staged rank-ordered reduce-scatter on 2 GPUs, all nonuniform output values checked.

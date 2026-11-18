@@ -1,0 +1,18 @@
+$ /home/ubuntu/full-gpu-rerun-20261118/mgpu/results/73_distributed_sgd_convergence_simulation/example
+After 20 steps (M=8 samples, N=4 replicas, lr=0.010):
+  Reference (full-batch, single process): w=3.221214533 b=0.702814102
+  Replica 0 (sharded + ring all-reduce):  w=3.221214533 b=0.702814102
+  Replica 1 (sharded + ring all-reduce):  w=3.221214533 b=0.702814102
+  Replica 2 (sharded + ring all-reduce):  w=3.221214533 b=0.702814102
+  Replica 3 (sharded + ring all-reduce):  w=3.221214533 b=0.702814102
+
+Every replica identical to each other: YES
+Distributed result EXACTLY matches full-batch reference: YES
+Elements sent per replica per all-reduce: 6 (= 2(N-1)/N * L with L=4, Ch9's formula)
+
+Contrast -- every replica sums all 4 values itself, own order:
+  Replica 0:  w=3.221214533 b=0.702814102
+  Replica 1:  w=3.221214533 b=0.702814102
+  Replica 2:  w=3.221214533 b=0.702814102
+  Replica 3:  w=3.221214771 b=0.702814102
+Every replica identical to each other: NO

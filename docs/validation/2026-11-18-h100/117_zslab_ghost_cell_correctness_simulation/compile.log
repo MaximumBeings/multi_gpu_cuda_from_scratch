@@ -1,0 +1,1 @@
+$ g++ -std=c++17 -O2 /home/ubuntu/full-gpu-rerun-20261118/mgpu/docs/part7/code/117_zslab_ghost_cell_correctness_simulation.cpp -o /home/ubuntu/full-gpu-rerun-20261118/mgpu/results/117_zslab_ghost_cell_correctness_simulation/example

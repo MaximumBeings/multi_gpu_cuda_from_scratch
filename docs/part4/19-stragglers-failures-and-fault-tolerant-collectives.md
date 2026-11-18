@@ -96,6 +96,29 @@ int main() {
 }
 ```
 
+<!-- execution:start:h100-rerun:54_blocking_vs_nonblocking_comm.cu -->
+> **Compiled and executed — 2026-11-18-h100: API validation (recorded scope).** Hardware: 2 H100 GPUs. Executed UTC: `2026-11-18T11:21:44.307556+00:00`.
+
+<!-- execution:metadata Source SHA-256: 527cec6ac2cffe900da522d9e34f7d6362041294890831649623032560b81a18; recorded UTC (program start): 2026-11-18T11:21:43.091186+00:00 -->
+
+[Exact tested source](../validation/2026-11-18-h100/54_blocking_vs_nonblocking_comm/54_blocking_vs_nonblocking_comm.cu) · [Compiler log](../validation/2026-11-18-h100/54_blocking_vs_nonblocking_comm/compile.log) · [Execution log](../validation/2026-11-18-h100/54_blocking_vs_nonblocking_comm/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+nvcc -std=c++17 -O2 -arch=sm_90 54_blocking_vs_nonblocking_comm.cu -o ./example -lnccl
+./example
+```
+
+**Sample output**
+
+```text
+API PROBE PASS: one-rank nonblocking init/poll/abort only; no fault recovery tested, errors=0
+```
+
+<!-- execution:end:h100-rerun:54_blocking_vs_nonblocking_comm.cu -->
+
+
 <!-- execution:start:a100:54_blocking_vs_nonblocking_comm.cu -->
 > **Compiled and executed — 2026-11-17-a100: API validation (recorded scope).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:03:06.193299+00:00`.
 
@@ -213,6 +236,29 @@ int main() {
  return errors?1:0;
 }
 ```
+
+<!-- execution:start:h100-rerun:55_nccl_async_detect_and_recover.cu -->
+> **Compiled and executed — 2026-11-18-h100: API validation (recorded scope).** Hardware: 2 H100 GPUs. Executed UTC: `2026-11-18T11:21:48.045318+00:00`.
+
+<!-- execution:metadata Source SHA-256: 31673a5258b42bca2b98b88c9e3664446ae87f8204281b77b33ccd527608314a; recorded UTC (program start): 2026-11-18T11:21:46.828244+00:00 -->
+
+[Exact tested source](../validation/2026-11-18-h100/55_nccl_async_detect_and_recover/55_nccl_async_detect_and_recover.cu) · [Compiler log](../validation/2026-11-18-h100/55_nccl_async_detect_and_recover/compile.log) · [Execution log](../validation/2026-11-18-h100/55_nccl_async_detect_and_recover/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+nvcc -std=c++17 -O2 -arch=sm_90 55_nccl_async_detect_and_recover.cu -o ./example -lnccl
+./example
+```
+
+**Sample output**
+
+```text
+API PROBE PASS: one-rank nonblocking init/poll/abort only; no fault recovery tested, errors=0
+```
+
+<!-- execution:end:h100-rerun:55_nccl_async_detect_and_recover.cu -->
+
 
 <!-- execution:start:a100:55_nccl_async_detect_and_recover.cu -->
 > **Compiled and executed — 2026-11-17-a100: API validation (recorded scope).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:03:12.197715+00:00`.
@@ -425,6 +471,54 @@ int main() {
     return allInvariantsHold ? 0 : 1;
 }
 ```
+
+<!-- execution:start:h100-rerun:56_backup_workers_simulation.cpp -->
+> **Compiled and executed — 2026-11-18-h100: Host program/model (exit-only).** Hardware: 2 H100 GPUs. Executed UTC: `2026-11-18T11:21:50.229881+00:00`.
+
+<!-- execution:metadata Source SHA-256: 17769870b0835023844462f57d5caec3fb3c556a77c2987fc61bc6702d708bf3; recorded UTC (program start): 2026-11-18T11:21:49.914909+00:00 -->
+
+[Exact tested source](../validation/2026-11-18-h100/56_backup_workers_simulation/56_backup_workers_simulation.cpp) · [Compiler log](../validation/2026-11-18-h100/56_backup_workers_simulation/compile.log) · [Execution log](../validation/2026-11-18-h100/56_backup_workers_simulation/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+g++ -std=c++17 -O2 56_backup_workers_simulation.cpp -o ./example
+./example
+```
+
+**Sample output**
+
+```text
+Section 19.3: backup workers, N=4 required + b=2 backup, 3 fixed scenarios.
+
+Scenario: no true straggler
+  required times: [10.0, 11.0, 9.0, 12.0]   backup times: [10.5, 11.5]
+  without backups (max of the 4 required):        12.0
+  with backups (4th-fastest of all 6, pooled):     11.0
+  with <= without: PASS
+  Nothing is actually hung -- every one of the 6 workers finishes in ordinary time. Even here, backups still help: the 4th-fastest of all 6 (11.0) beats the slowest of the 4 originally-required ones (12.0), purely from having two extra chances at the draw.
+
+Scenario: a required worker catastrophically straggles
+  required times: [10.0, 11.0, 9.0, 1000000.0]   backup times: [12.0, 13.0]
+  without backups (max of the 4 required):        1000000.0
+  with backups (4th-fastest of all 6, pooled):     12.0
+  with <= without: PASS
+  One of the 4 ORIGINALLY-REQUIRED workers is the real target case -- effectively hung (a straggler so slow it may as well be Section 19.1's dead peer). Without backups, the whole step is held hostage to it. With 2 backups in flight, the pool has 4 OTHER finishers well under the straggler's time, so the step proceeds without ever waiting on it at all.
+
+Scenario: slow backups, no downside
+  required times: [10.0, 11.0, 9.0, 12.0]   backup times: [500.0, 600.0]
+  without backups (max of the 4 required):        12.0
+  with backups (4th-fastest of all 6, pooled):     12.0
+  with <= without: PASS
+  The backups themselves are the slow ones this time, far slower than any required worker. That costs nothing: the first 4 finishers are still the 4 required workers (9,10,11,12), so the backups' own results are simply dropped, unused, exactly as designed.
+
+Invariant across every scenario above -- waiting for backups is never slower than waiting for the fixed required set alone -- holds in all 3/3 cases: PASS
+
+This is exactly Chen et al.'s own real claim, checked here on fixed numbers rather than assumed: taking the n-th order statistic of a LARGER pool can only ever be less than or equal to the max of one FIXED subset of that same pool's own n members, for any numbers at all -- adding more candidates and picking the best n of them never makes the n-th-best candidate's time worse.
+```
+
+<!-- execution:end:h100-rerun:56_backup_workers_simulation.cpp -->
+
 
 <!-- execution:start:a100:56_backup_workers_simulation.cpp -->
 > **Compiled and executed — 2026-11-17-a100: Host program/model (exit-only).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:03:15.791011+00:00`.

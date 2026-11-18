@@ -1,0 +1,5 @@
+$ /home/ubuntu/full-gpu-rerun-20261118/mgpu/results/120_toolchain_version_check/example
+C++ language level: 201703
+GNU-compatible host compiler macros: 13.3.0
+CUDA compiler: 12.8.93
+Compiler identity: PASS (installation source is not inferred)

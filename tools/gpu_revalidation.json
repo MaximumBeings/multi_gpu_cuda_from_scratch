@@ -2,10 +2,11 @@
   {
     "source": "docs/part5/code/58_mpi_cuda_aware_query_and_fallback.cpp",
     "current_sha256": "5d704c3b6f6289637b800a9eed5c479f4d6da99cf8b5fca1d70bef9c3539b754",
-    "status": "pending_gpu_revalidation",
+    "status": "verified_gpu_revalidation",
     "reason": "Initialize device payload before D2H; bind local ranks; check CUDA/MPI calls; validate every received value; release resources. Earlier source exited successfully but copied uninitialized device memory.",
     "expected_marker": "VALIDATION PASS: host-staged MPI,",
     "oracle_values_per_rank": 4096,
-    "archived_sha256": "516c7b932f5994492accfb5674fca28c5ef8694544fa0baf324dc96e71309010"
+    "archived_sha256": "516c7b932f5994492accfb5674fca28c5ef8694544fa0baf324dc96e71309010",
+    "dataset": "2026-11-18-h100"
   }
 ]

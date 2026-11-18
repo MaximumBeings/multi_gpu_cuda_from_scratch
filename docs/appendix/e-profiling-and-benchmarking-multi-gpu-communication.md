@@ -104,6 +104,53 @@ int main() {
 }
 ```
 
+<!-- execution:start:h100-rerun:132_round_count_vs_timing.cpp -->
+> **Compiled and executed — 2026-11-18-h100: Host program/model (exit-only).** Hardware: 2 H100 GPUs. Executed UTC: `2026-11-18T11:20:27.738122+00:00`.
+
+<!-- execution:metadata Source SHA-256: 4220a8cc3a93130070541cc7b0f3faaafe31ef2215617c2028aed722521abc68; recorded UTC (program start): 2026-11-18T11:20:27.573668+00:00 -->
+
+[Exact tested source](../validation/2026-11-18-h100/132_round_count_vs_timing/132_round_count_vs_timing.cpp) · [Compiler log](../validation/2026-11-18-h100/132_round_count_vs_timing/compile.log) · [Execution log](../validation/2026-11-18-h100/132_round_count_vs_timing/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+g++ -std=c++17 -O2 132_round_count_vs_timing.cpp -o ./example
+./example
+```
+
+**Sample output**
+
+```text
+=== Section E.1: comparing two all-reduce strategies by DATA VOLUME MOVED, not wall-clock time ===
+
+Chapter 9's own real formulas, reused here directly with no clock involved:
+  naive (direct-send) all-reduce: each of N GPUs sends its own buffer to
+    every other GPU -- (N-1) sends per GPU, each of the FULL buffer size K
+  ring all-reduce:                two phases (reduce-scatter + all-gather),
+    2(N-1) total steps, but each step moves only K/N of the buffer
+
+N      naive: volume/GPU (x K)      ring: volume/GPU (x K)       ring/naive
+2      1.0000                       1.0000                       1.0000
+4      3.0000                       1.5000                       0.5000
+8      7.0000                       1.7500                       0.2500
+16     15.0000                      1.8750                       0.1250
+32     31.0000                      1.9375                       0.0625
+64     63.0000                      1.9688                       0.0312
+
+none of the numbers above came from running anything -- they are all read
+directly off Chapter 9's own closed-form formulas, computed identically and
+reproducibly on ANY machine, ANY run, ANY compiler, unlike a wall-clock
+measurement of an actual NCCL call would be.
+
+self-check: ring's own volume-per-GPU never exceeds naive's at any tested N,
+and is strictly less for every N > 2 (approaching but never reaching 2x K as N
+grows large -- 1.9688 at N=64, vs naive's 63x K at the same N); N=2 is the one
+honest exception, where both strategies reduce to the same single transfer: confirmed
+```
+
+<!-- execution:end:h100-rerun:132_round_count_vs_timing.cpp -->
+
+
 <!-- execution:start:a100:132_round_count_vs_timing.cpp -->
 > **Compiled and executed — 2026-11-17-a100: Host program/model (exit-only).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-17T23:59:26.587447+00:00`.
 
@@ -273,6 +320,34 @@ int main(){
 }
 ```
 
+<!-- execution:start:h100-rerun:133_multi_device_timing.cu -->
+> **Compiled and executed — 2026-11-18-h100: Numerical/transport validation (recorded scope).** Hardware: 2 H100 GPUs. Executed UTC: `2026-11-18T11:20:28.756175+00:00`.
+
+<!-- execution:metadata Source SHA-256: da98b4a2287bda14c04e113592f02ec19d29dbf9c31ec3e8f53f6bd40ed4c90d; recorded UTC (program start): 2026-11-18T11:20:27.740179+00:00 -->
+
+[Exact tested source](../validation/2026-11-18-h100/133_multi_device_timing/133_multi_device_timing.cu) · [Compiler log](../validation/2026-11-18-h100/133_multi_device_timing/compile.log) · [Execution log](../validation/2026-11-18-h100/133_multi_device_timing/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+nvcc -std=c++17 -O2 -arch=sm_90 133_multi_device_timing.cu -o ./example
+./example
+```
+
+**Sample output**
+
+```text
+GPU 0 local stream duration: 0.070016 ms
+GPU 1 local stream duration: 0.025600 ms
+Maximum local duration: 0.070016 ms (GPU clocks are not a shared timeline)
+Host launch-to-all-complete: 0.111414 ms (includes submission and completion waits)
+Independent kernels only; this is not a collective bandwidth benchmark.
+VALIDATION PASS: errors=0
+```
+
+<!-- execution:end:h100-rerun:133_multi_device_timing.cu -->
+
+
 <!-- execution:start:a100:133_multi_device_timing.cu -->
 > **Compiled and executed — 2026-11-17-a100: Numerical/transport validation (recorded scope).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-17T23:59:28.362034+00:00`.
 
@@ -393,6 +468,30 @@ int main(){
     printf("Set NCCL_DEBUG=INFO before starting the process; library logging is separate from application output.\n");return 0;
 }
 ```
+
+<!-- execution:start:h100-rerun:134_nccl_debug_and_nsys.cu -->
+> **Compiled and executed — 2026-11-18-h100: API validation (recorded scope).** Hardware: 2 H100 GPUs. Executed UTC: `2026-11-18T11:20:30.437832+00:00`.
+
+<!-- execution:metadata Source SHA-256: 6da46382d3ee32e45342d2e6e612e242132881e5684c6f1d61ff20880ebfa01f; recorded UTC (program start): 2026-11-18T11:20:29.421864+00:00 -->
+
+[Exact tested source](../validation/2026-11-18-h100/134_nccl_debug_and_nsys/134_nccl_debug_and_nsys.cu) · [Compiler log](../validation/2026-11-18-h100/134_nccl_debug_and_nsys/compile.log) · [Execution log](../validation/2026-11-18-h100/134_nccl_debug_and_nsys/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+nvcc -std=c++17 -O2 -arch=sm_90 134_nccl_debug_and_nsys.cu -o ./example -lnccl
+./example
+```
+
+**Sample output**
+
+```text
+API PROBE PASS: errors=0; one-rank initialization and cleanup, no collective throughput measured.
+Set NCCL_DEBUG=INFO before starting the process; library logging is separate from application output.
+```
+
+<!-- execution:end:h100-rerun:134_nccl_debug_and_nsys.cu -->
+
 
 <!-- execution:start:a100:134_nccl_debug_and_nsys.cu -->
 > **Compiled and executed — 2026-11-17-a100: API validation (recorded scope).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-17T23:59:33.953891+00:00`.

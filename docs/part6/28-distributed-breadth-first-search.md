@@ -235,6 +235,47 @@ int main() {
 }
 ```
 
+<!-- execution:start:h100-rerun:81_distributed_bfs_correctness_simulation.cpp -->
+> **Compiled and executed — 2026-11-18-h100: Host program/model (exit-only).** Hardware: 2 H100 GPUs. Executed UTC: `2026-11-18T11:22:37.372015+00:00`.
+
+<!-- execution:metadata Source SHA-256: 3c0525c5f7bc301f372b7eddadd09c059604b0a4cfb8a3a0184d6f59dd673121; recorded UTC (program start): 2026-11-18T11:22:37.007276+00:00 -->
+
+[Exact tested source](../validation/2026-11-18-h100/81_distributed_bfs_correctness_simulation/81_distributed_bfs_correctness_simulation.cpp) · [Compiler log](../validation/2026-11-18-h100/81_distributed_bfs_correctness_simulation/compile.log) · [Execution log](../validation/2026-11-18-h100/81_distributed_bfs_correctness_simulation/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+g++ -std=c++17 -O2 81_distributed_bfs_correctness_simulation.cpp -o ./example
+./example
+```
+
+**Sample output**
+
+```text
+Graph: 12 vertices, 17 edges, 1D-partitioned across 3 ranks (4 vertices/rank). Source vertex: 0.
+
+Vertex  0 (owner rank 0): naive level= 0  distributed level= 0  EXACT MATCH
+Vertex  1 (owner rank 0): naive level= 1  distributed level= 1  EXACT MATCH
+Vertex  2 (owner rank 0): naive level= 2  distributed level= 2  EXACT MATCH
+Vertex  3 (owner rank 0): naive level= 3  distributed level= 3  EXACT MATCH
+Vertex  4 (owner rank 1): naive level= 1  distributed level= 1  EXACT MATCH
+Vertex  5 (owner rank 1): naive level= 2  distributed level= 2  EXACT MATCH
+Vertex  6 (owner rank 1): naive level= 3  distributed level= 3  EXACT MATCH
+Vertex  7 (owner rank 1): naive level= 3  distributed level= 3  EXACT MATCH
+Vertex  8 (owner rank 2): naive level= 2  distributed level= 2  EXACT MATCH
+Vertex  9 (owner rank 2): naive level= 1  distributed level= 1  EXACT MATCH
+Vertex 10 (owner rank 2): naive level= 2  distributed level= 2  EXACT MATCH
+Vertex 11 (owner rank 2): naive level= 3  distributed level= 3  EXACT MATCH
+
+All 12 vertex levels EXACT MATCH between naive centralized BFS and distributed level-synchronous BFS: YES
+
+Distinct (sender rank -> receiver/owner rank) pairs actually used across the whole run: (0->0) (0->1) (0->2) (1->1) (1->2) (2->1) (2->2)
+Total distinct pairs: 7 out of 9 possible ordered pairs (3 ranks) -- which pairs are used depends on THIS graph's own structure and frontier, not on a fixed neighbor list the way Chapter 16's halo exchange always used the same (r-1, r+1) pairs.
+```
+
+<!-- execution:end:h100-rerun:81_distributed_bfs_correctness_simulation.cpp -->
+
+
 <!-- execution:start:a100:81_distributed_bfs_correctness_simulation.cpp -->
 > **Compiled and executed — 2026-11-17-a100: Host program/model (exit-only).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:05:26.507401+00:00`.
 
@@ -413,6 +454,51 @@ int main() {
     return 0;
 }
 ```
+
+<!-- execution:start:h100-rerun:82_1d_partitioning_participant_count_model.cpp -->
+> **Compiled and executed — 2026-11-18-h100: Host program/model (exit-only).** Hardware: 2 H100 GPUs. Executed UTC: `2026-11-18T11:22:37.439837+00:00`.
+
+<!-- execution:metadata Source SHA-256: 9d43dc8d00cf47d2b37e07974f8666ac9eed931e9419e9837505885a797320be; recorded UTC (program start): 2026-11-18T11:22:37.375722+00:00 -->
+
+[Exact tested source](../validation/2026-11-18-h100/82_1d_partitioning_participant_count_model/82_1d_partitioning_participant_count_model.cpp) · [Compiler log](../validation/2026-11-18-h100/82_1d_partitioning_participant_count_model/compile.log) · [Execution log](../validation/2026-11-18-h100/82_1d_partitioning_participant_count_model/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+g++ -std=c++17 -O2 82_1d_partitioning_participant_count_model.cpp -o ./example
+./example
+```
+
+**Sample output**
+
+```text
+P        Ch16 halo partners/rank  Ch27 all-gather partners/rank Ch28 1D-BFS WORST CASE/rank
+--------------------------------------------------------------------------------
+4        2                        3                        3
+16       2                        15                       15
+64       2                        63                       63
+256      2                        255                      255
+1024     2                        1023                     1023
+4096     2                        4095                     4095
+
+Chapter 16's own halo-exchange partner count stays FIXED at 2, regardless of P -- it never depends on problem scale.
+Chapter 27's own all-gather partner count is P-1, EVERY single step, UNAVOIDABLY -- the physics (no cutoff radius) leaves no choice.
+This chapter's own 1D-partitioned BFS partner count can reach the SAME P-1 ceiling Chapter 27 has -- but only in the worst case, only on SOME levels, and only for graphs whose edges happen to spread across every rank -- it is graph-dependent, not physics-mandated.
+
+--- Yoo et al.'s own real fix: 2D partitioning ---
+P        1D worst case: P-1       2D partitioning: sqrt(P) reduction factor
+4        3                        2.0                      1.5             x
+16       15                       4.0                      3.8             x
+64       63                       8.0                      7.9             x
+256      255                      16.0                     15.9            x
+1024     1023                     32.0                     32.0            x
+4096     4095                     64.0                     64.0            x
+
+Yoo et al.'s own real quote: "With the 2D partitioning, the number of processes involved in collective communications is O(sqrt(P)) in contrast to O(P) of 1D partitioning." The reduction factor itself GROWS with P -- exactly the shape that makes 2D partitioning matter more, not less, as a cluster scales up.
+```
+
+<!-- execution:end:h100-rerun:82_1d_partitioning_participant_count_model.cpp -->
+
 
 <!-- execution:start:a100:82_1d_partitioning_participant_count_model.cpp -->
 > **Compiled and executed — 2026-11-17-a100: Host program/model (exit-only).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:05:26.630049+00:00`.
@@ -624,6 +710,46 @@ int main() {
     return 0;
 }
 ```
+
+<!-- execution:start:h100-rerun:83_direction_optimizing_and_2d_partitioning_model.cpp -->
+> **Compiled and executed — 2026-11-18-h100: Host program/model (exit-only).** Hardware: 2 H100 GPUs. Executed UTC: `2026-11-18T11:22:37.507517+00:00`.
+
+<!-- execution:metadata Source SHA-256: 10121ba794e3f796e22534eabd83cdc3850089c4eaf28d3941d94dffc2ef2840; recorded UTC (program start): 2026-11-18T11:22:37.443503+00:00 -->
+
+[Exact tested source](../validation/2026-11-18-h100/83_direction_optimizing_and_2d_partitioning_model/83_direction_optimizing_and_2d_partitioning_model.cpp) · [Compiler log](../validation/2026-11-18-h100/83_direction_optimizing_and_2d_partitioning_model/compile.log) · [Execution log](../validation/2026-11-18-h100/83_direction_optimizing_and_2d_partitioning_model/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+g++ -std=c++17 -O2 83_direction_optimizing_and_2d_partitioning_model.cpp -o ./example
+./example
+```
+
+**Sample output**
+
+```text
+--- Beamer et al.'s own real direction-optimizing idea, illustrated (NOT a real graph's measured data) ---
+This chapter's own illustrative frontier-fraction progression across 6 BFS levels of a hypothetical graph (chosen only to show the real SHAPE Beamer et al. describe, summing to 1.0):
+
+Level    frontier frac    undiscovered frac top-down cost ~ f*d      bottom-up cost ~ u*d
+0        0.0002           0.9998           0.003                    15.997
+1        0.0200           0.9798           0.320                    15.677
+2        0.3500           0.6298           5.600                    10.077
+3        0.5500           0.0798           8.800                    1.277                    <- bottom-up cheaper here
+4        0.0750           0.0048           1.200                    0.077                    <- bottom-up cheaper here
+5        0.0048           0.0000           0.077                    0.000                    <- bottom-up cheaper here
+
+At the levels where the frontier is LARGE, the undiscovered fraction has already shrunk enough that bottom-up's own worst-case cost (checking every undiscovered vertex) undercuts top-down's cost (checking every frontier vertex's full neighbor list) -- exactly Beamer et al.'s own real stated rationale: "the bottom-up approach is advantageous when a large fraction of the vertices are in the frontier." Real bottom-up implementations do even better than this simple model shows, because "once a vertex has found a parent, it does not need to check the rest of its neighbors" -- an early-exit saving this illustrative model does not attempt to quantify.
+
+--- Yoo et al.'s own real 2D partitioning definition ---
+"A 2D partitioning of a graph is a partitioning of its edges such that each edge is owned by one processor" -- reducing collective-communication participants from O(P) (Section 28.2's own 1D worst case) to O(sqrt(P)).
+
+--- Real, cited result at supercomputer scale (NOT computed by this program) ---
+Graph500 BFS benchmark, June 2024 list: Fugaku (RIKEN), SCALE 42, 166,029 GTEPS (giga-traversed-edges-per-second) -- RIKEN's own stated reason for the improvement: "we enhanced performance to 166,029 GTEPS by developing a feature that removes unnecessary vertices."
+```
+
+<!-- execution:end:h100-rerun:83_direction_optimizing_and_2d_partitioning_model.cpp -->
+
 
 <!-- execution:start:a100:83_direction_optimizing_and_2d_partitioning_model.cpp -->
 > **Compiled and executed — 2026-11-17-a100: Host program/model (exit-only).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:05:26.751799+00:00`.

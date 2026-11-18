@@ -1,0 +1,14 @@
+$ /home/ubuntu/full-gpu-rerun-20261118/mgpu/results/110_gdrcopy_fixed_overhead_vs_latency_budget_model/example
+Real cited fixed per-call overhead (NVIDIA/gdrcopy README):
+- Ordinary cudaMemcpy round trip: 6.0-7.0 microseconds
+- GDRCopy (CPU-mapped direct read via GPUDirect RDMA): 1.08762 microseconds (real cited A40 ping-pong result)
+
+Real cited TOTAL P99 inference latency budgets (NVIDIA capital-markets blog):
+- GH200, four LSTM_A instances: 4.61 microseconds p99
+- RTX PRO 6000 Blackwell, small model: 4.30 microseconds p99
+
+Comparison                                     vs GH200 budget    vs RTX PRO 6000 budget
+cudaMemcpy overhead alone (low end, 6us)       130.2            % 139.5            %
+GDRCopy round trip alone                       23.6             % 25.3             %
+
+A plain cudaMemcpy round trip's own real cited FIXED overhead (6.0-7.0us) is, by itself, 130%-140% of these real total P99 latency budgets -- at the low end of NVIDIA's own cited range, it alone would consume MORE than the entire real RTX PRO 6000 budget, before a single byte of the actual input vector or model computation is counted. GDRCopy's own real cited round trip (1.08762us) is small enough, by contrast, to leave the vast majority of either real budget for the model's own computation. This is the opposite lesson from every earlier chapter's own cost model: there, a fixed per-call cost eventually became negligible as payload grew; here, the payload (one small input vector) was always tiny, so it is the FIXED overhead itself, not any volume, that threatens to consume the entire real latency budget -- exactly the real problem GDRCopy's own GPUDirect-RDMA-based CPU mapping exists to solve.

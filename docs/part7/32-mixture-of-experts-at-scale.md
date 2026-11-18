@@ -306,6 +306,50 @@ int main() {
 }
 ```
 
+<!-- execution:start:h100-rerun:93_moe_dispatch_combine_correctness_simulation.cpp -->
+> **Compiled and executed — 2026-11-18-h100: Host program/model (exit-only).** Hardware: 2 H100 GPUs. Executed UTC: `2026-11-18T11:22:42.702261+00:00`.
+
+<!-- execution:metadata Source SHA-256: 0716eaa8aa725282e651da3a00418941f9d494352c04f917ea717a60237a12b0; recorded UTC (program start): 2026-11-18T11:22:42.237435+00:00 -->
+
+[Exact tested source](../validation/2026-11-18-h100/93_moe_dispatch_combine_correctness_simulation/93_moe_dispatch_combine_correctness_simulation.cpp) · [Compiler log](../validation/2026-11-18-h100/93_moe_dispatch_combine_correctness_simulation/compile.log) · [Execution log](../validation/2026-11-18-h100/93_moe_dispatch_combine_correctness_simulation/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+g++ -std=c++17 -O2 93_moe_dispatch_combine_correctness_simulation.cpp -o ./example
+./example
+```
+
+**Sample output**
+
+```text
+Part A -- GShard-style per-group capacity, 24 tokens, 6 experts, top-2, capacity factor 1.25
+Reference (P=1, whole batch is one group): 19 overflowed (token,expert) slots of 48, 7 tokens fully overflowed.
+
+P    cap/group  overflow slots   fully overflowed  tokens changed  max |y - reference.y|
+1    10         19               7                 0               0
+2    5          19               6                 4               36
+3    4          15               4                 5               42.3
+4    3          16               5                 6               42.3
+6    2          16               5                 4               30
+8    2          9                2                 4               42.3
+12   1          16               5                 8               42.3
+24   1          0                0                 4               42.3
+
+Part B -- hierarchical combine (per-rank partial sums, then a sum of partials), 4096 tokens, 32 experts sharded contiguously across P ranks.
+Tokens whose combined output differs from the P=1 left-to-right sum:
+top-k   P=2       P=4       P=8       P=16      P=32
+2       0         0         0         0         0
+3       429       295       142       58        0
+4       696       553       290       109       0
+8       1332      1232      867       364       0
+
+Part A: once capacity is enforced per group (per rank), the SAME tokens and the SAME gate give different outputs for different P -- which tokens overflow depends on which tokens share a capacity budget. Part B: with top-2 routing a token's combine is a 2-term sum, and IEEE 754 addition is commutative, so no grouping can change it; at top-3 and beyond the grouping of the terms matters and the result depends on how experts are spread across ranks.
+```
+
+<!-- execution:end:h100-rerun:93_moe_dispatch_combine_correctness_simulation.cpp -->
+
+
 <!-- execution:start:a100:93_moe_dispatch_combine_correctness_simulation.cpp -->
 > **Compiled and executed — 2026-11-17-a100: Host program/model (exit-only).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:05:34.609734+00:00`.
 
@@ -520,6 +564,47 @@ int main() {
     return 0;
 }
 ```
+
+<!-- execution:start:h100-rerun:94_normal_vs_lowlatency_kernel_cost_model.cpp -->
+> **Compiled and executed — 2026-11-18-h100: Host program/model (exit-only).** Hardware: 2 H100 GPUs. Executed UTC: `2026-11-18T11:22:42.832939+00:00`.
+
+<!-- execution:metadata Source SHA-256: 34335d753cb7c58850cc4203491ecaf9656d3da978b285ebd9a05d2051efc098; recorded UTC (program start): 2026-11-18T11:22:42.768905+00:00 -->
+
+[Exact tested source](../validation/2026-11-18-h100/94_normal_vs_lowlatency_kernel_cost_model/94_normal_vs_lowlatency_kernel_cost_model.cpp) · [Compiler log](../validation/2026-11-18-h100/94_normal_vs_lowlatency_kernel_cost_model/compile.log) · [Execution log](../validation/2026-11-18-h100/94_normal_vs_lowlatency_kernel_cost_model/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+g++ -std=c++17 -O2 94_normal_vs_lowlatency_kernel_cost_model.cpp -o ./example
+./example
+```
+
+**Sample output**
+
+```text
+DeepEP V1 -- Normal kernels (real cited data, docs/legacy.md):
+Type       EP     Dispatch BW (GB/s)   Combine BW (GB/s)
+Intranode  8      153.0                158.0
+Internode  16     43.0                 43.0
+Internode  32     58.0                 57.0
+Internode  64     51.0                 50.0
+
+DeepEP V1 -- Low-latency kernels (real cited data, 128 tokens/batch):
+EP     Dispatch us    Dispatch GB/s    Combine us     Combine GB/s     us/token (dispatch)
+8      77.0           98.0             114.0          127.0            0.602
+16     118.0          63.0             195.0          74.0             0.922
+32     155.0          48.0             273.0          53.0             1.211
+64     173.0          43.0             314.0          46.0             1.352
+128    192.0          39.0             369.0          39.0             1.500
+256    194.0          39.0             360.0          40.0             1.516
+
+Low-latency dispatch bandwidth falls from 98 GB/s at EP=8 to 39 GB/s at EP=256 -- a 2.51x drop -- as latency simultaneously RISES from 77 us to 194 us, a 2.52x increase. Both real numbers move in the same direction as EP grows: more experts to reach means more small, separate RDMA operations per token, not one bigger one.
+
+Notice what DeepEP's own real documentation does NOT publish: no latency number at all for the normal kernels, at any EP degree. That omission is itself informative -- normal kernels are benchmarked and tuned purely as a throughput number because they are meant to move whole TRAINING batches (thousands of tokens) where per-call fixed overhead is amortized away; low-latency kernels report latency because at INFERENCE-DECODE batch sizes (the 128-token, 8-to-256-expert range above) that fixed overhead is exactly what a user waiting on a response feels. This mirrors Chapter 18's own finding that no single load-balancing strategy dominates across every workload shape: here, no single ALL-TO-ALL KERNEL dominates across every batch size either, which is exactly why DeepEP ships both.
+```
+
+<!-- execution:end:h100-rerun:94_normal_vs_lowlatency_kernel_cost_model.cpp -->
+
 
 <!-- execution:start:a100:94_normal_vs_lowlatency_kernel_cost_model.cpp -->
 > **Compiled and executed — 2026-11-17-a100: Host program/model (exit-only).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:05:34.843719+00:00`.
@@ -742,6 +827,33 @@ int main(int argc, char **argv) {
 }
 ```
 
+<!-- execution:start:h100-rerun:95_gpu_initiated_alltoall_and_put_demo.cu -->
+> **Compiled and executed — 2026-11-18-h100: Numerical/transport validation (recorded scope).** Hardware: 2 H100 GPUs. Executed UTC: `2026-11-18T11:22:47.712123+00:00`.
+
+<!-- execution:metadata Source SHA-256: 4b3e85ccf3af9bdd91b9c33e0903bb67ca67521af886b6b82732f1d0ad6e371d; recorded UTC (program start): 2026-11-18T11:22:42.838435+00:00 -->
+
+[Exact tested source](../validation/2026-11-18-h100/95_gpu_initiated_alltoall_and_put_demo/95_gpu_initiated_alltoall_and_put_demo.cu) · [Compiler log](../validation/2026-11-18-h100/95_gpu_initiated_alltoall_and_put_demo/compile.log) · [Execution log](../validation/2026-11-18-h100/95_gpu_initiated_alltoall_and_put_demo/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+nvcc -std=c++17 -O2 -arch=sm_90 -ccbin mpicxx -rdc=true -I/home/ubuntu/book-validation-deps-20261118/lib/python3.12/site-packages/nvidia/nvshmem/include -L/home/ubuntu/book-validation-deps-20261118/lib/python3.12/site-packages/nvidia/nvshmem/lib -Xlinker=-rpath=/home/ubuntu/book-validation-deps-20261118/lib/python3.12/site-packages/nvidia/nvshmem/lib 95_gpu_initiated_alltoall_and_put_demo.cu -o ./example -lnvshmem_host -lnvshmem_device -lcuda
+mpirun --oversubscribe -np 2 ./example
+```
+
+**Sample output**
+
+```text
+PE 1 all-to-all: checked 2 source elements, errors=0
+PE 0 all-to-all: checked 2 source elements, errors=0
+PE 1 ring put: received=777 expected=777
+PE 0 ring put: received=778 expected=778
+VALIDATION PASS: 2 PEs, errors=0
+```
+
+<!-- execution:end:h100-rerun:95_gpu_initiated_alltoall_and_put_demo.cu -->
+
+
 <!-- execution:start:a100:95_gpu_initiated_alltoall_and_put_demo.cu -->
 > **Compiled and executed — 2026-11-17-a100: Numerical/transport validation (recorded scope).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:05:42.982569+00:00`.
 
@@ -753,7 +865,7 @@ Commands below use local source/binary names; raw logs retain host paths. Execut
 
 ```bash
 nvcc -std=c++17 -O2 -arch=sm_80 -ccbin mpicxx -rdc=true -I/home/ubuntu/book2-deps/lib/python3.12/site-packages/nvidia/nvshmem/include -L/home/ubuntu/book2-deps/lib/python3.12/site-packages/nvidia/nvshmem/lib -Xlinker=-rpath=/home/ubuntu/book2-deps/lib/python3.12/site-packages/nvidia/nvshmem/lib 95_gpu_initiated_alltoall_and_put_demo.cu -o ./example -lnvshmem_host -lnvshmem_device -lcuda
-/usr/mpi/gcc/openmpi-4.1.7rc1/bin/mpirun --oversubscribe -np 8 ./example
+mpirun --oversubscribe -np 8 ./example
 ```
 
 **Sample output**
@@ -809,7 +921,7 @@ Commands below use local source/binary names; raw logs retain host paths. Execut
 
 ```bash
 nvcc -std=c++17 -O2 -arch=sm_90 -ccbin mpicxx -rdc=true -I/home/ubuntu/book2-deps/lib/python3.12/site-packages/nvidia/nvshmem/include -L/home/ubuntu/book2-deps/lib/python3.12/site-packages/nvidia/nvshmem/lib -Xlinker=-rpath=/home/ubuntu/book2-deps/lib/python3.12/site-packages/nvidia/nvshmem/lib 95_gpu_initiated_alltoall_and_put_demo.cu -o ./example -lnvshmem_host -lnvshmem_device -lcuda
-/home/ubuntu/book2-bin/mpirun --oversubscribe -np 2 ./example
+mpirun --oversubscribe -np 2 ./example
 ```
 
 <details markdown="1"><summary>Captured current-source output</summary>

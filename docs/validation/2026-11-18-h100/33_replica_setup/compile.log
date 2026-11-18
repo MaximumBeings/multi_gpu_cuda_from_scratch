@@ -1,0 +1,1 @@
+$ nvcc -std=c++17 -O2 -arch=sm_90 /home/ubuntu/full-gpu-rerun-20261118/mgpu/docs/part3/code/33_replica_setup.cu -o /home/ubuntu/full-gpu-rerun-20261118/mgpu/results/33_replica_setup/example -lnccl

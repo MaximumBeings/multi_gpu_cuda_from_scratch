@@ -67,6 +67,36 @@ int main(){
 }
 ```
 
+<!-- execution:start:h100-rerun:135_torch_distributed_collectives_mapped.cu -->
+> **Compiled and executed — 2026-11-18-h100: API validation (recorded scope).** Hardware: 2 H100 GPUs. Executed UTC: `2026-11-18T11:20:32.770889+00:00`.
+
+<!-- execution:metadata Source SHA-256: 10e70990c1fdffe0d5c5bbb8e29dbd0bd152c283c4b8359c336f03f462620d51; recorded UTC (program start): 2026-11-18T11:20:31.754790+00:00 -->
+
+[Exact tested source](../validation/2026-11-18-h100/135_torch_distributed_collectives_mapped/135_torch_distributed_collectives_mapped.cu) · [Compiler log](../validation/2026-11-18-h100/135_torch_distributed_collectives_mapped/compile.log) · [Execution log](../validation/2026-11-18-h100/135_torch_distributed_collectives_mapped/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+nvcc -std=c++17 -O2 -arch=sm_90 135_torch_distributed_collectives_mapped.cu -o ./example -lnccl
+./example
+```
+
+**Sample output**
+
+```text
+dist.broadcast           -> ncclBroadcast (CUDA/NCCL backend)
+dist.reduce              -> ncclReduce (CUDA/NCCL backend)
+dist.all_reduce          -> ncclAllReduce (CUDA/NCCL backend)
+dist.all_gather          -> ncclAllGather (CUDA/NCCL backend)
+dist.reduce_scatter      -> ncclReduceScatter (CUDA/NCCL backend)
+dist.isend / dist.irecv  -> ncclSend / ncclRecv (CUDA/NCCL backend)
+C++ linked NCCL: 2.26.2. A PyTorch installation may load a different NCCL build.
+API PROBE PASS: errors=0; semantic mapping and one-rank C++ setup, not a PyTorch execution test.
+```
+
+<!-- execution:end:h100-rerun:135_torch_distributed_collectives_mapped.cu -->
+
+
 <!-- execution:start:a100:135_torch_distributed_collectives_mapped.cu -->
 > **Compiled and executed — 2026-11-17-a100: API validation (recorded scope).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-17T23:59:39.446489+00:00`.
 
@@ -300,6 +330,53 @@ int main() {
     printf("VALIDATION %s: errors=%d\n",errors?"FAIL":"PASS",errors);return errors?1:0;
 }
 ```
+
+<!-- execution:start:h100-rerun:136_ddp_bucketed_allreduce.cu -->
+> **Compiled and executed — 2026-11-18-h100: Numerical/transport validation (recorded scope).** Hardware: 2 H100 GPUs. Executed UTC: `2026-11-18T11:20:35.504884+00:00`.
+
+<!-- execution:metadata Source SHA-256: 0405ad49912c9511aff376fffee8b52c7efdc2420bc4de073509e34ac7956feb; recorded UTC (program start): 2026-11-18T11:20:34.138026+00:00 -->
+
+[Exact tested source](../validation/2026-11-18-h100/136_ddp_bucketed_allreduce/136_ddp_bucketed_allreduce.cu) · [Compiler log](../validation/2026-11-18-h100/136_ddp_bucketed_allreduce/compile.log) · [Execution log](../validation/2026-11-18-h100/136_ddp_bucketed_allreduce/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+nvcc -std=c++17 -O2 -arch=sm_90 136_ddp_bucketed_allreduce.cu -o ./example -lnccl
+./example
+```
+
+**Sample output**
+
+```text
+=== Section F.2: DistributedDataParallel's bucketed all-reduce, built on
+    Chapter 12's own ncclAllReduce(..., ncclAvg, ...) call ===
+
+bucket assignment (reverse of Model.parameters() order 0..5):
+param#     bucket#
+0          2
+1          2
+2          1
+3          1
+4          0
+5          0
+
+simulated backward-pass hook firing order produces this bucket READY order:
+  bucket 0 (tick 1) -> bucket 2 (tick 3) -> bucket 1 (tick 5)
+
+real DDP rule (PyTorch's own docs, quoted directly): allreduce is always
+issued in BUCKET INDEX order, never actual ready order -- so despite bucket
+2 becoming ready before bucket 1 above, the real issue order is:
+  bucket 0 -> bucket 1 -> bucket 2
+
+Bucket 0: two-GPU average checked, cumulative errors=0
+Bucket 1: two-GPU average checked, cumulative errors=0
+Bucket 2: two-GPU average checked, cumulative errors=0
+Readiness is a host model; actual two-GPU averages follow bucket index order. No autograd/overlap claim.
+VALIDATION PASS: errors=0
+```
+
+<!-- execution:end:h100-rerun:136_ddp_bucketed_allreduce.cu -->
+
 
 <!-- execution:start:a100:136_ddp_bucketed_allreduce.cu -->
 > **Compiled and executed — 2026-11-17-a100: Numerical/transport validation (recorded scope).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-17T23:59:44.337668+00:00`.
@@ -548,6 +625,75 @@ int main() {
     return 0;
 }
 ```
+
+<!-- execution:start:h100-rerun:137_zero_stage_memory_model.cpp -->
+> **Compiled and executed — 2026-11-18-h100: Host program/model (exit-only).** Hardware: 2 H100 GPUs. Executed UTC: `2026-11-18T11:20:37.387781+00:00`.
+
+<!-- execution:metadata Source SHA-256: b502e695c6f4cbce805c540c253e71b7aa78992cfbef3558aba2e1aa85f28bf7; recorded UTC (program start): 2026-11-18T11:20:37.223063+00:00 -->
+
+[Exact tested source](../validation/2026-11-18-h100/137_zero_stage_memory_model/137_zero_stage_memory_model.cpp) · [Compiler log](../validation/2026-11-18-h100/137_zero_stage_memory_model/compile.log) · [Execution log](../validation/2026-11-18-h100/137_zero_stage_memory_model/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+g++ -std=c++17 -O2 137_zero_stage_memory_model.cpp -o ./example
+./example
+```
+
+**Sample output**
+
+```text
+=== Section F.3: DeepSpeed's ZeRO stages, derived from Chapter 13's own
+    16-bytes-per-parameter breakdown, not a new formula ===
+
+Chapter 13's own real per-parameter breakdown (mixed-precision Adam):
+  2 bytes fp16 parameter   + 2 bytes fp16 gradient   = 4 bytes  (unsharded by Pos/Pos+g)
+  4 bytes fp32 parameter + 4 bytes momentum + 4 bytes variance = 12 bytes  (DeepSpeed's own "optimizer states")
+  total: 16 bytes/parameter, exactly Chapter 13's own already-locked figure
+
+DeepSpeed's own real documented stages (deepspeed.readthedocs.io, quoted):
+  stage 1 (Pos):     "optimizer states...are partitioned across the
+                      processes, so that each process updates only its
+                      partition"
+  stage 2 (Pos+g):   "the reduced 16-bit gradients...are also partitioned
+                      such that each process retains only the gradients
+                      corresponding to its portion of the optimizer states"
+  stage 3 (Pos+g+p): "the 16-bit model parameters are partitioned across
+                      the processes. ZeRO-3 will automatically collect and
+                      partition them during the forward and backward
+                      passes"
+  config: DeepSpeedZeroConfig's own "stage" field, 1/2/3, inside the
+  zero_optimization dict -- a real, documented config key, not renamed here.
+
+self-consistency check against the ZeRO paper's own published 7.5B-param,
+Nd=64 worked example (31.4 / 16.6 / 1.9 GB):
+  Pos     = 31.4 GB
+  Pos+g   = 16.6 GB
+  Pos+g+p = 1.9 GB
+  matches published figures: PASS
+
+applying the SAME validated formula to Chapter 13's own GPT-3 figure,
+sharded across Chapter 12's own REPLICAS=8 data-parallel group:
+
+configuration                GB/replica
+no ZeRO (Ch13 baseline)          2800.0
+ZeRO stage 1 (Pos)                962.5
+ZeRO stage 2 (Pos+g)              656.2
+ZeRO stage 3 (Pos+g+p)            350.0
+
+note what ZeRO does NOT change: Chapter 13's own model-parallel shard
+count (35 H100 SXM GPUs, from its own File 36) answers a different question
+-- how many devices must COOPERATE to hold one copy at all -- and ZeRO stage
+3's own 350.0 GB/replica figure above is still larger than one H100 SXM's 80
+GB, meaning GPT-3 at this size needs BOTH: Chapter 13's model parallelism to
+split the model itself, and ZeRO-style sharding within each data-parallel
+replica group -- exactly the combination real large-model training uses, and
+exactly why DeepSpeed documents ZeRO stage 3 alongside, not instead of,
+model-parallel/tensor-parallel splitting.
+```
+
+<!-- execution:end:h100-rerun:137_zero_stage_memory_model.cpp -->
+
 
 <!-- execution:start:a100:137_zero_stage_memory_model.cpp -->
 > **Compiled and executed — 2026-11-17-a100: Host program/model (exit-only).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-17T23:59:46.623671+00:00`.

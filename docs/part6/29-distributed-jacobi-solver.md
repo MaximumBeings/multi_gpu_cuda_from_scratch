@@ -255,6 +255,38 @@ int main() {
 }
 ```
 
+<!-- execution:start:h100-rerun:84_distributed_jacobi_correctness_simulation.cpp -->
+> **Compiled and executed — 2026-11-18-h100: Host program/model (exit-only).** Hardware: 2 H100 GPUs. Executed UTC: `2026-11-18T11:22:37.875580+00:00`.
+
+<!-- execution:metadata Source SHA-256: bf510f914a7e0602fd1109321f6c48a7042bbbc061dbbef8cd4ae6b12a4e98b8; recorded UTC (program start): 2026-11-18T11:22:37.511043+00:00 -->
+
+[Exact tested source](../validation/2026-11-18-h100/84_distributed_jacobi_correctness_simulation/84_distributed_jacobi_correctness_simulation.cpp) · [Compiler log](../validation/2026-11-18-h100/84_distributed_jacobi_correctness_simulation/compile.log) · [Execution log](../validation/2026-11-18-h100/84_distributed_jacobi_correctness_simulation/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+g++ -std=c++17 -O2 84_distributed_jacobi_correctness_simulation.cpp -o ./example
+./example
+```
+
+**Sample output**
+
+```text
+Reference (single-process) 12x8-grid Jacobi solve, 40 iterations.
+Global residual norm (full-grid single-pass sum): 1.3874786747088721
+
+P      grid EXACT match?    residual norm (per-rank sums) norm match?
+1      YES                  1.3874786747088721           YES
+2      YES                  1.3874786747088719           NO
+3      YES                  1.3874786747088719           NO
+4      YES                  1.3874786747088719           NO
+6      YES                  1.3874786747088719           NO
+12     YES                  1.3874786747088719           NO
+```
+
+<!-- execution:end:h100-rerun:84_distributed_jacobi_correctness_simulation.cpp -->
+
+
 <!-- execution:start:a100:84_distributed_jacobi_correctness_simulation.cpp -->
 > **Compiled and executed — 2026-11-17-a100: Host program/model (exit-only).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:05:27.272809+00:00`.
 
@@ -455,6 +487,55 @@ int main() {
     return 0;
 }
 ```
+
+<!-- execution:start:h100-rerun:85_allreduce_check_frequency_cost_model.cpp -->
+> **Compiled and executed — 2026-11-18-h100: Host program/model (exit-only).** Hardware: 2 H100 GPUs. Executed UTC: `2026-11-18T11:22:38.043749+00:00`.
+
+<!-- execution:metadata Source SHA-256: 03c2044f50834000b599c623243b2ab893061afc53070a18cc7351203f63c15b; recorded UTC (program start): 2026-11-18T11:22:37.879499+00:00 -->
+
+[Exact tested source](../validation/2026-11-18-h100/85_allreduce_check_frequency_cost_model/85_allreduce_check_frequency_cost_model.cpp) · [Compiler log](../validation/2026-11-18-h100/85_allreduce_check_frequency_cost_model/compile.log) · [Execution log](../validation/2026-11-18-h100/85_allreduce_check_frequency_cost_model/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+g++ -std=c++17 -O2 85_allreduce_check_frequency_cost_model.cpp -o ./example
+./example
+```
+
+**Sample output**
+
+```text
+--- Per-ITERATION cost: halo exchange (Section 29.1's update step) ---
+Chapter 16's own real finding still holds here unchanged: each rank talks to exactly 2 fixed neighbors (top, bottom), exchanging NX doubles per side, REGARDLESS of P. This chapter's own 8-column grid (Section 29.1) means a fixed 2*8 = 16 doubles per rank per iteration, whether P is 2 or 4096 -- it never depends on P.
+
+--- Per-CHECK cost: global residual Allreduce (this chapter's new element) ---
+Unlike the halo exchange, an Allreduce's ROUND count (not its tiny 8-byte payload) is what dominates its cost for a single scalar, per this book's own Chapter 26 finding ("round count, not volume"). Two real algorithm choices, per this book's own Chapter 9/11 models:
+P        naive ring rounds: 2(P-1)    tree rounds: 2*ceil(log2(P))
+4        6                            4
+16       30                           8
+64       126                          12
+256      510                          16
+1024     2046                         20
+4096     8190                         24
+
+Even for this chapter's single-scalar residual norm, a naive ring Allreduce's round count still grows LINEARLY with P (same shape as Chapter 27's mandatory all-gather), while a tree Allreduce's grows only logarithmically -- confirming Chapter 11's own real reason production NCCL prefers tree/double-binary-tree algorithms for small messages at large P.
+
+--- Amortizing the check: NVIDIA's own real '-nccheck K' ---
+Checking convergence every K iterations (K=1 is NVIDIA's own real default) turns a FIXED per-check round cost into a total overhead that divides by K across a full solve of ITERS iterations. Using this chapter's own tree-round model at a representative P:
+
+Fixed for this table: ITERS = 1000 total Jacobi iterations, P = 1024 ranks, tree Allreduce = 20 rounds per check.
+
+K        # convergence checks total Allreduce rounds       overhead reduction
+1        1000                 20000                        1.0             x
+10       100                  2000                         10.0            x
+100      10                   200                          100.0           x
+1000     1                    20                           1000.0          x
+
+The reduction factor is exactly K, by construction -- the same shape as Chapter 25's own bucketing tradeoff, but for a collective's CALL FREQUENCY rather than its per-call MESSAGE SIZE. This is exactly why NVIDIA's own real repo ships a 'delayed norm execution' variant: 'GPUDirect P2P mappings for inter GPU communication with delayed norm execution' -- checking less often is a genuine, real, production optimization, not a hypothetical one.
+```
+
+<!-- execution:end:h100-rerun:85_allreduce_check_frequency_cost_model.cpp -->
+
 
 <!-- execution:start:a100:85_allreduce_check_frequency_cost_model.cpp -->
 > **Compiled and executed — 2026-11-17-a100: Host program/model (exit-only).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:05:27.495466+00:00`.
@@ -699,6 +780,51 @@ int main() {
     return 0;
 }
 ```
+
+<!-- execution:start:h100-rerun:86_jacobi_convergence_rate_model.cpp -->
+> **Compiled and executed — 2026-11-18-h100: Host program/model (exit-only).** Hardware: 2 H100 GPUs. Executed UTC: `2026-11-18T11:22:38.161542+00:00`.
+
+<!-- execution:metadata Source SHA-256: 195cb07d6b6200b16d232f9da4c21918ef3ebec595286234e95f8236801058e9; recorded UTC (program start): 2026-11-18T11:22:38.047459+00:00 -->
+
+[Exact tested source](../validation/2026-11-18-h100/86_jacobi_convergence_rate_model/86_jacobi_convergence_rate_model.cpp) · [Compiler log](../validation/2026-11-18-h100/86_jacobi_convergence_rate_model/compile.log) · [Execution log](../validation/2026-11-18-h100/86_jacobi_convergence_rate_model/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+g++ -std=c++17 -O2 86_jacobi_convergence_rate_model.cpp -o ./example
+./example
+```
+
+**Sample output**
+
+```text
+--- Jacobi iterations to HALVE the error, n x n grid ---
+rho_Jacobi = cos(pi/(n+1)) ~ 1 - pi^2/(2(n+1)^2)  (Demmel, CS267)
+m_half ~ 2*ln(2)*((n+1)/pi)^2
+
+n (grid)   m: iters to halve error  iters for error <= 1e-6 (~20 halvings)
+10         17.0                     338.8
+100        1432.8                   28558.8
+1000       140742.0                 2805209.8
+10000      14048907.9               280016771.4
+
+For n = 10,000 (a 10,000 x 10,000 grid, N = 10^8 unknowns -- a realistic production PDE mesh size), Jacobi alone would need on the order of 280016771 iterations just to reach a modest 1e-6 relative error. This is exactly why this chapter's own solver is a DIDACTIC vehicle for the communication pattern, not a claim that Jacobi itself is production-grade.
+
+--- Demmel's own real serial/PRAM complexity table (N = n^2 unknowns) ---
+Method         Serial         PRAM (parallel depth)
+Jacobi         N^2            N
+CG             N^1.5          N^0.5 * log N
+SOR            N^1.5          N^0.5
+Multigrid      N              (log N)^2
+
+Gauss-Seidel's own real relation to Jacobi (Demmel, CS267): "converge[s] twice as fast (rho_GaussSeidel(n) = rho_Jacobi(n)^2)" -- a real, easy, one-line improvement this chapter's own solver deliberately does NOT take, precisely because Gauss-Seidel's own update makes each cell depend on NEIGHBOR VALUES ALREADY UPDATED THIS SWEEP, which breaks the clean halo-exchange-once-per-iteration pattern Section 29.1 relied on for its bit-exact correctness check.
+
+--- Real production successor: NVIDIA AmgX ---
+Naumov, Arsaev, Castonguay, Cohen, Demouth, Eaton, Layton, Markovskiy, Reguly, Sakharnykh, Sellappan & Strzodka, "AmgX: A Library for GPU Accelerated Algebraic Multigrid and Preconditioned Iterative Methods," SIAM J. Sci. Comput. 37(5):S602-S626, 2015. Real cited result: "The algebraic multigrid algorithm implemented in the AmgX library achieves 2-5x speedup on a single GPU against a competitive implementation on the CPU." AmgX's own multi-GPU solves reuse the exact same two ingredients this chapter built by hand: neighbor halo exchange for the local sparse matrix-vector product, and a global Allreduce for the residual norm/inner products the method's convergence check needs -- just wrapped around Multigrid instead of Jacobi.
+```
+
+<!-- execution:end:h100-rerun:86_jacobi_convergence_rate_model.cpp -->
+
 
 <!-- execution:start:a100:86_jacobi_convergence_rate_model.cpp -->
 > **Compiled and executed — 2026-11-17-a100: Host program/model (exit-only).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:05:27.716552+00:00`.

@@ -1,0 +1,10 @@
+$ /home/ubuntu/full-gpu-rerun-20261118/mgpu/results/98_kv_cache_handoff_transfer_cost_model/example
+DistServe's own real cited KV cache example: a single 512-token OPT-66B request's KV cache is approximately 1.13 GB.
+
+Link                         GB/s         Transfer time (ms)
+Intra-node NVLink (A100)     600.0        1.883           
+Cross-node InfiniBand        100.0        11.300          
+
+At real NVLink bandwidth, moving this real 1.13GB KV cache takes about 1.88 milliseconds; even over real cross-node InfiniBand, about 11.30 milliseconds. Both numbers are small enough next to a real LLM serving request's own end-to-end latency (typically hundreds of milliseconds to multiple seconds for a multi-hundred-token response) that DistServe's own paper calls the transmission overhead "negligible" -- this is the exact arithmetic behind that real conclusion, not a new estimate this book is introducing.
+
+NVIDIA's own real Dynamo documentation adds one further real design point this arithmetic alone does not show: the transfer does not even need to be on the critical path at all -- "the KV transfer is non-blocking, allowing GPU forward passes to continue serving other requests during the transfer." A cost small enough to call negligible AND overlapped with other useful work is the real, two-part reason production disaggregated serving systems treat this handoff as a solved problem rather than their main bottleneck.

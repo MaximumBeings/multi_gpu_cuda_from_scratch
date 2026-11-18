@@ -82,6 +82,35 @@ int main(){
 }
 ```
 
+<!-- execution:start:h100-rerun:126_nccl_collective_reference.cu -->
+> **Compiled and executed — 2026-11-18-h100: Numerical/transport validation (recorded scope).** Hardware: 2 H100 GPUs. Executed UTC: `2026-11-18T11:20:07.980001+00:00`.
+
+<!-- execution:metadata Source SHA-256: b47b447984378093482ae894fce5f20796a82be9677255090bfa681c8fc7330a; recorded UTC (program start): 2026-11-18T11:20:06.763562+00:00 -->
+
+[Exact tested source](../validation/2026-11-18-h100/126_nccl_collective_reference/126_nccl_collective_reference.cu) · [Compiler log](../validation/2026-11-18-h100/126_nccl_collective_reference/compile.log) · [Execution log](../validation/2026-11-18-h100/126_nccl_collective_reference/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+nvcc -std=c++17 -O2 -arch=sm_90 126_nccl_collective_reference.cu -o ./example -lnccl
+./example
+```
+
+**Sample output**
+
+```text
+Broadcast checked; cumulative errors=0
+Reduce checked; cumulative errors=0
+AllReduce checked; cumulative errors=0
+AllGather checked; cumulative errors=0
+ReduceScatter checked; cumulative errors=0
+Grouped Send/Recv all-to-all checked; cumulative errors=0
+VALIDATION PASS: errors=0
+```
+
+<!-- execution:end:h100-rerun:126_nccl_collective_reference.cu -->
+
+
 <!-- execution:start:a100:126_nccl_collective_reference.cu -->
 > **Compiled and executed — 2026-11-17-a100: Numerical/transport validation (recorded scope).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-17T23:58:34.577004+00:00`.
 
@@ -211,6 +240,30 @@ int main(){
     printf("VALIDATION %s: errors=%d\n",errors?"FAIL":"PASS",errors);return errors?1:0;
 }
 ```
+
+<!-- execution:start:h100-rerun:127_nccl_point_to_point.cu -->
+> **Compiled and executed — 2026-11-18-h100: Numerical/transport validation (recorded scope).** Hardware: 2 H100 GPUs. Executed UTC: `2026-11-18T11:20:10.864330+00:00`.
+
+<!-- execution:metadata Source SHA-256: 77eda8517f9944b216c53328297c2b610295555cd52472baa1e3cdf361f42497; recorded UTC (program start): 2026-11-18T11:20:09.697849+00:00 -->
+
+[Exact tested source](../validation/2026-11-18-h100/127_nccl_point_to_point/127_nccl_point_to_point.cu) · [Compiler log](../validation/2026-11-18-h100/127_nccl_point_to_point/compile.log) · [Execution log](../validation/2026-11-18-h100/127_nccl_point_to_point/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+nvcc -std=c++17 -O2 -arch=sm_90 127_nccl_point_to_point.cu -o ./example -lnccl
+./example
+```
+
+**Sample output**
+
+```text
+Same-peer message results: 100 101. This two-GPU test does not test scheduling among different remote peers.
+VALIDATION PASS: errors=0
+```
+
+<!-- execution:end:h100-rerun:127_nccl_point_to_point.cu -->
+
 
 <!-- execution:start:a100:127_nccl_point_to_point.cu -->
 > **Compiled and executed — 2026-11-17-a100: Numerical/transport validation (recorded scope).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-17T23:58:41.470172+00:00`.
@@ -392,6 +445,31 @@ int main(int argc, char **argv) {
 }
 ```
 
+<!-- execution:start:h100-rerun:128_nvshmem_api_reference.cu -->
+> **Compiled and executed — 2026-11-18-h100: Numerical/transport validation (recorded scope).** Hardware: 2 H100 GPUs. Executed UTC: `2026-11-18T11:20:17.305882+00:00`.
+
+<!-- execution:metadata Source SHA-256: 6f66c81a0066abc91a379db68a84940ebcb5e3580bf57a18123904a8764c4ebb; recorded UTC (program start): 2026-11-18T11:20:12.381663+00:00 -->
+
+[Exact tested source](../validation/2026-11-18-h100/128_nvshmem_api_reference/128_nvshmem_api_reference.cu) · [Compiler log](../validation/2026-11-18-h100/128_nvshmem_api_reference/compile.log) · [Execution log](../validation/2026-11-18-h100/128_nvshmem_api_reference/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+nvcc -std=c++17 -O2 -arch=sm_90 -ccbin mpicxx -rdc=true -I/home/ubuntu/book-validation-deps-20261118/lib/python3.12/site-packages/nvidia/nvshmem/include -L/home/ubuntu/book-validation-deps-20261118/lib/python3.12/site-packages/nvidia/nvshmem/lib -Xlinker=-rpath=/home/ubuntu/book-validation-deps-20261118/lib/python3.12/site-packages/nvidia/nvshmem/lib 128_nvshmem_api_reference.cu -o ./example -lnvshmem_host -lnvshmem_device -lcuda
+mpirun --oversubscribe -np 2 ./example
+```
+
+**Sample output**
+
+```text
+PE 0: neighbor=1 received=20 counter=2
+VALIDATION PASS: 2 PEs, errors=0
+PE 1: neighbor=0 received=10 counter=0
+```
+
+<!-- execution:end:h100-rerun:128_nvshmem_api_reference.cu -->
+
+
 <!-- execution:start:a100:128_nvshmem_api_reference.cu -->
 > **Compiled and executed — 2026-11-17-a100: Numerical/transport validation (recorded scope).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-17T23:58:54.078674+00:00`.
 
@@ -403,7 +481,7 @@ Commands below use local source/binary names; raw logs retain host paths. Execut
 
 ```bash
 nvcc -std=c++17 -O2 -arch=sm_80 -ccbin mpicxx -rdc=true -I/home/ubuntu/book2-deps/lib/python3.12/site-packages/nvidia/nvshmem/include -L/home/ubuntu/book2-deps/lib/python3.12/site-packages/nvidia/nvshmem/lib -Xlinker=-rpath=/home/ubuntu/book2-deps/lib/python3.12/site-packages/nvidia/nvshmem/lib 128_nvshmem_api_reference.cu -o ./example -lnvshmem_host -lnvshmem_device -lcuda
-/usr/mpi/gcc/openmpi-4.1.7rc1/bin/mpirun --oversubscribe -np 8 ./example
+mpirun --oversubscribe -np 8 ./example
 ```
 
 **Sample output**
@@ -451,7 +529,7 @@ Commands below use local source/binary names; raw logs retain host paths. Execut
 
 ```bash
 nvcc -std=c++17 -O2 -arch=sm_90 -ccbin mpicxx -rdc=true -I/home/ubuntu/book2-deps/lib/python3.12/site-packages/nvidia/nvshmem/include -L/home/ubuntu/book2-deps/lib/python3.12/site-packages/nvidia/nvshmem/lib -Xlinker=-rpath=/home/ubuntu/book2-deps/lib/python3.12/site-packages/nvidia/nvshmem/lib 128_nvshmem_api_reference.cu -o ./example -lnvshmem_host -lnvshmem_device -lcuda
-/home/ubuntu/book2-bin/mpirun --oversubscribe -np 2 ./example
+mpirun --oversubscribe -np 2 ./example
 ```
 
 <details markdown="1"><summary>Captured current-source output</summary>

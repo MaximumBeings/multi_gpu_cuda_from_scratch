@@ -1,0 +1,17 @@
+$ /home/ubuntu/full-gpu-rerun-20261118/mgpu/results/78_all_pairs_nbody_correctness_simulation/example
+N=12 bodies, P=3 shards (4 bodies/shard). Each shard must ALL-GATHER every other shard's bodies before computing forces -- unlike Chapter 16's own halo exchange, which only ever moved BOUNDARY-adjacent data.
+
+Body  0 (x=-15, mass=1): naive force=     540  distributed force=     540  EXACT MATCH
+Body  1 (x=-12, mass=2): naive force=     900  distributed force=     900  EXACT MATCH
+Body  2 (x= -9, mass=3): naive force=    1080  distributed force=    1080  EXACT MATCH
+Body  3 (x= -6, mass=4): naive force=    1080  distributed force=    1080  EXACT MATCH
+Body  4 (x= -3, mass=1): naive force=     180  distributed force=     180  EXACT MATCH
+Body  5 (x=  0, mass=2): naive force=     180  distributed force=     180  EXACT MATCH
+Body  6 (x=  3, mass=3): naive force=       0  distributed force=       0  EXACT MATCH
+Body  7 (x=  6, mass=4): naive force=    -360  distributed force=    -360  EXACT MATCH
+Body  8 (x=  9, mass=1): naive force=    -180  distributed force=    -180  EXACT MATCH
+Body  9 (x= 12, mass=2): naive force=    -540  distributed force=    -540  EXACT MATCH
+Body 10 (x= 15, mass=3): naive force=   -1080  distributed force=   -1080  EXACT MATCH
+Body 11 (x= 18, mass=4): naive force=   -1800  distributed force=   -1800  EXACT MATCH
+
+All 12 bodies EXACT MATCH between naive all-pairs and distributed (shard + all-gather) all-pairs: YES

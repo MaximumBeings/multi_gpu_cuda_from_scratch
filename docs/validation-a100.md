@@ -2,7 +2,7 @@
 
 Dataset: **2026-11-17-a100**. All **145 archived source revisions compiled and executed with exit status zero**. The categories below describe evidence scope; an API probe or a host model is not a successful numerical GPU workload.
 
-The final review corrected the staged MPI example (58): device-buffer initialization, local-rank GPU binding, error checks and a full receive oracle. **144 current sources match their execution records; example 58 awaits GPU revalidation.** Its dated output below belongs to the archived revision.
+The corrected staged-MPI example (58) passed the November 18 two-H100 numerical rerun and memory check. **All 145 current sources have successful execution records.** See the [additional dated H100 results](validation-h100-rerun.md) for commands, system information and sample outputs.
 
 | Evidence category | Programs |
 | --- | ---: |

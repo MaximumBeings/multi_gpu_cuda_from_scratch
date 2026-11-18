@@ -1,0 +1,16 @@
+$ /home/ubuntu/full-gpu-rerun-20261118/mgpu/results/115_embarrassingly_parallel_genomics_correctness_simulation/example
+Reference (single-process): 10007 independent units processed, first 3 results: 655503 892643 662023
+
+P      all match  max slice size (load imbalance)
+1      YES        max=10007  min=10007  (diff=0)
+2      YES        max=5004   min=5003   (diff=1)
+3      YES        max=3336   min=3335   (diff=1)
+4      YES        max=2502   min=2501   (diff=1)
+5      YES        max=2002   min=2001   (diff=1)
+7      YES        max=1430   min=1429   (diff=1)
+8      YES        max=1251   min=1250   (diff=1)
+16     YES        max=626    min=625    (diff=1)
+32     YES        max=313    min=312    (diff=1)
+64     YES        max=157    min=156    (diff=1)
+
+Every P reproduces the exact same 10007 results as the single-process reference, at every tested P from 1 to 64. This is not the same correctness-by-construction reasoning Chapter 30's ray tracing used (zero communication during rendering because each ray's OWNERSHIP is decided by a fixed spatial partition of one shared scene) -- here, zero communication is possible because the real cited scientific fact is that unit i's own result never depends on unit j's data AT ALL, for any i != j, not merely that a chosen scheduling policy happens to avoid asking for it. The only imperfection visible above is the small max-min slice-size difference at P values that do not evenly divide 10007 -- ordinary integer remainder handling, the same real load-imbalance category Chapter 18 built an entire chapter around, but bounded here by at most 1 unit per worker (this file's own contiguous-slice split), never the large, data-dependent imbalance Chapter 18's own heterogeneous-GPU story required.

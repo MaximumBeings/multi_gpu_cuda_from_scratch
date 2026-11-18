@@ -1,0 +1,4 @@
+$ /home/ubuntu/full-gpu-rerun-20261118/mgpu/results/139_stream_wait_enqueue_order/example
+Consumer before production: 0; after a too-late wait: 0; correctly ordered copy: 42
+The early copy is deliberately completed first, avoiding an intentional data race.
+VALIDATION PASS: errors=0

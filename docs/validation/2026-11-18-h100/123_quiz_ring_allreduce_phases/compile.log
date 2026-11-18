@@ -1,0 +1,1 @@
+$ g++ -std=c++17 -O2 /home/ubuntu/full-gpu-rerun-20261118/mgpu/docs/appendix/code/123_quiz_ring_allreduce_phases.cpp -o /home/ubuntu/full-gpu-rerun-20261118/mgpu/results/123_quiz_ring_allreduce_phases/example

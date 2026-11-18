@@ -180,6 +180,42 @@ int main() {
 }
 ```
 
+<!-- execution:start:h100-rerun:45_domain_decomposition_row_range.cu -->
+> **Compiled and executed — 2026-11-18-h100: API/host demonstration (exit-only).** Hardware: 2 H100 GPUs. Executed UTC: `2026-11-18T11:21:35.020523+00:00`.
+
+<!-- execution:metadata Source SHA-256: 1a658cfb964f0cd32da7592f287d1bd4b4a529042afe7d7a276056f4ac839ba2; recorded UTC (program start): 2026-11-18T11:21:34.405255+00:00 -->
+
+[Exact tested source](../validation/2026-11-18-h100/45_domain_decomposition_row_range/45_domain_decomposition_row_range.cu) · [Compiler log](../validation/2026-11-18-h100/45_domain_decomposition_row_range/compile.log) · [Execution log](../validation/2026-11-18-h100/45_domain_decomposition_row_range/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+nvcc -std=c++17 -O2 -arch=sm_90 45_domain_decomposition_row_range.cu -o ./example
+./example
+```
+
+**Actual sample output (excerpt)**
+
+```text
+cudaGetDeviceCount(): 2 device(s).
+
+Partitioning a 16 x 8 grid's rows across this book's own real deviceCount (2):
+  rank 0: rows [0, 8)
+  rank 1: rows [8, 16)
+
+The same formula, hypothetically, with world size 4:
+  rank 0: rows [0, 4)  above: domain boundary (fixed value)  below: rank below (real halo)
+  rank 1: rows [4, 8)  above: rank above (real halo)         below: rank below (real halo)
+  rank 2: rows [8, 12)  above: rank above (real halo)         below: rank below (real halo)
+  rank 3: rows [12, 16)  above: rank above (real halo)         below: domain boundary (fixed value)
+
+Five-point stencil (interior update): new(i,j) = 0.25 * (old(i-1,j) + old(i+1,j) + old(i,j-1) + old(i,j+1))
+The top row of every rank's own strip needs old(i-1,j) from the rank ABOVE it; the bottom row needs old(i+1,j) from the rank BELOW it. Neither value lives on this rank.
+```
+
+<!-- execution:end:h100-rerun:45_domain_decomposition_row_range.cu -->
+
+
 <!-- execution:start:a100:45_domain_decomposition_row_range.cu -->
 > **Compiled and executed — 2026-11-17-a100: API/host demonstration (exit-only).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:02:37.672522+00:00`.
 
@@ -374,6 +410,30 @@ int main() {
     return 0;
 }
 ```
+
+<!-- execution:start:h100-rerun:46_halo_exchange.cu -->
+> **Compiled and executed — 2026-11-18-h100: Numerical/transport validation (recorded scope).** Hardware: 2 H100 GPUs. Executed UTC: `2026-11-18T11:21:36.202606+00:00`.
+
+<!-- execution:metadata Source SHA-256: b42cfd48dd942f176fdaa604f43a16dce4d5d1cf9c5dc59c320e0c4b9a72e1bb; recorded UTC (program start): 2026-11-18T11:21:35.286565+00:00 -->
+
+[Exact tested source](../validation/2026-11-18-h100/46_halo_exchange/46_halo_exchange.cu) · [Compiler log](../validation/2026-11-18-h100/46_halo_exchange/compile.log) · [Execution log](../validation/2026-11-18-h100/46_halo_exchange/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+nvcc -std=c++17 -O2 -arch=sm_90 46_halo_exchange.cu -o ./example
+./example
+```
+
+**Sample output**
+
+```text
+PASS: 2 GPUs, 3 halo generations; all interior/halo/boundary values verified.
+Scope: halo transport and boundary preservation, not a stencil-kernel benchmark.
+```
+
+<!-- execution:end:h100-rerun:46_halo_exchange.cu -->
+
 
 <!-- execution:start:a100:46_halo_exchange.cu -->
 > **Compiled and executed — 2026-11-17-a100: Numerical/transport validation (recorded scope).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:02:42.071869+00:00`.
@@ -706,6 +766,54 @@ int main() {
     return (mismatches == 0) ? 0 : 1;
 }
 ```
+
+<!-- execution:start:h100-rerun:47_stencil_decomposition_simulation.cpp -->
+> **Compiled and executed — 2026-11-18-h100: Host program/model (exit-only).** Hardware: 2 H100 GPUs. Executed UTC: `2026-11-18T11:21:37.284696+00:00`.
+
+<!-- execution:metadata Source SHA-256: a0d34ac294fecc35f366126991089e39149573b79054af11f5318894e08f9885; recorded UTC (program start): 2026-11-18T11:21:36.969833+00:00 -->
+
+[Exact tested source](../validation/2026-11-18-h100/47_stencil_decomposition_simulation/47_stencil_decomposition_simulation.cpp) · [Compiler log](../validation/2026-11-18-h100/47_stencil_decomposition_simulation/compile.log) · [Execution log](../validation/2026-11-18-h100/47_stencil_decomposition_simulation/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+g++ -std=c++17 -O2 47_stencil_decomposition_simulation.cpp -o ./example
+./example
+```
+
+**Sample output**
+
+```text
+Part A: domain-decomposed vs. unsplit Jacobi stencil, 30 iterations, 16 x 8 interior grid, 4-way row-strip decomposition (4 rows/rank).
+
+Sample interior cell values (row, col are 1-indexed into the 16 x 8 interior):
+  (row  1, col 4): unsplit = 75.112944216675984   decomposed = 75.112944216675984   bit-identical
+  (row  4, col 4): unsplit = 23.531589206336115   decomposed = 23.531589206336115   bit-identical
+  (row  8, col 4): unsplit = 2.6290237654413451   decomposed = 2.6290237654413451   bit-identical
+  (row 12, col 4): unsplit = 0.121397771948485   decomposed = 0.121397771948485   bit-identical
+  (row 16, col 4): unsplit = 0.0017304024518540947   decomposed = 0.0017304024518540947   bit-identical
+
+0 of 180 total grid cells (including fixed boundary cells) mismatched between the unsplit reference and the 4-way domain-decomposed run: PASS (bit-identical)
+
+This is Chapter 13's own structural argument, showing up again in a completely different setting: a stencil update reads a FIXED set of neighbor values and applies the SAME arithmetic regardless of which device happens to store each operand. Splitting the grid into row-strips only relocates WHERE each cell's data lives; halo exchange delivers the exact same bit pattern a neighboring cell would have held in an unsplit array. No operation's order changes, and -- unlike Chapter 14's row-parallel combine, which really does sum partial results in a different order -- no reduction happens here at all, so exact `==` is a valid check, not merely a convenient one.
+
+Part B: data moved per iteration -- halo exchange vs. giving every rank the whole domain every iteration.
+
+  this chapter's own grid: 16 x 8 interior grid, 4-way decomposition
+    halo exchange (Section 16.2):        48 elements/iteration
+    full-domain replication every iter:  512 elements/iteration
+    halo exchange moves 10.7x less data
+
+  a more realistic grid: 1024 x 1024 interior grid, 8-way decomposition
+    halo exchange (Section 16.2):        14336 elements/iteration
+    full-domain replication every iter:  8388608 elements/iteration
+    halo exchange moves 585.1x less data
+
+Halo-exchange traffic scales with each rank's BOUNDARY -- its perimeter, GRID_COLS elements per shared edge -- while full-domain replication scales with the entire domain's VOLUME, every rank re-receiving every cell every iteration. This is exactly the "surface/volume behavior" William Gropp's own halo-exchange lecture names as the reason domain decomposition communicates only what changed at a boundary, not the whole state.
+```
+
+<!-- execution:end:h100-rerun:47_stencil_decomposition_simulation.cpp -->
+
 
 <!-- execution:start:a100:47_stencil_decomposition_simulation.cpp -->
 > **Compiled and executed — 2026-11-17-a100: Host program/model (exit-only).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:02:46.414039+00:00`.

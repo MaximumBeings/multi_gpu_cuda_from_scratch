@@ -114,6 +114,36 @@ int main(int argc, char** argv) {
 }
 ```
 
+<!-- execution:start:h100-rerun:138_collective_order_deadlock.c -->
+> **Compiled and executed — 2026-11-18-h100: API/host demonstration (exit-only).** Hardware: 2 H100 GPUs. Executed UTC: `2026-11-18T11:20:37.503983+00:00`.
+
+<!-- execution:metadata Source SHA-256: 7fa763d838b7360e84d88b1860f258077dc2de0a455da5cb40bddb9a4ea86718; recorded UTC (program start): 2026-11-18T11:20:37.389876+00:00 -->
+
+[Exact tested source](../validation/2026-11-18-h100/138_collective_order_deadlock/138_collective_order_deadlock.c) · [Compiler log](../validation/2026-11-18-h100/138_collective_order_deadlock/compile.log) · [Execution log](../validation/2026-11-18-h100/138_collective_order_deadlock/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+mpicc -std=c11 -O2 138_collective_order_deadlock.c -o ./example
+mpirun --oversubscribe -np 2 ./example fixed
+```
+
+**Sample output**
+
+```text
+rank 1: about to MPI_Recv from 0 (recv-first order)
+rank 1: MPI_Recv returned; about to MPI_Send to 0
+rank 1: MPI_Send returned
+rank 0 (even, fixed order): about to MPI_Send to 1
+rank 0: MPI_Send returned; about to MPI_Recv from 1
+rank 0: MPI_Recv returned
+rank 1 done, recvVal=0 (expected 0)
+rank 0 done, recvVal=1 (expected 1)
+```
+
+<!-- execution:end:h100-rerun:138_collective_order_deadlock.c -->
+
+
 <!-- execution:start:a100:138_collective_order_deadlock.c -->
 > **Compiled and executed — 2026-11-17-a100: API/host demonstration (exit-only).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-17T23:59:46.741810+00:00`.
 
@@ -125,7 +155,7 @@ Commands below use local source/binary names; raw logs retain host paths. Execut
 
 ```bash
 mpicc -std=c11 -O2 138_collective_order_deadlock.c -o ./example
-/usr/mpi/gcc/openmpi-4.1.7rc1/bin/mpirun --oversubscribe -np 8 ./example fixed
+mpirun --oversubscribe -np 8 ./example fixed
 ```
 
 **Sample output**
@@ -196,7 +226,7 @@ Commands below use local source/binary names; raw logs retain host paths. Execut
 
 ```bash
 mpicc -std=c11 -O2 138_collective_order_deadlock.c -o ./example
-/home/ubuntu/book2-bin/mpirun --oversubscribe -np 2 ./example fixed
+mpirun --oversubscribe -np 2 ./example fixed
 ```
 
 <details markdown="1"><summary>Captured current-source output</summary>
@@ -339,6 +369,31 @@ int main(){
     return errors?1:0;
 }
 ```
+
+<!-- execution:start:h100-rerun:139_stream_wait_enqueue_order.cu -->
+> **Compiled and executed — 2026-11-18-h100: Numerical/transport validation (recorded scope).** Hardware: 2 H100 GPUs. Executed UTC: `2026-11-18T11:20:38.534574+00:00`.
+
+<!-- execution:metadata Source SHA-256: c1461e987bc84659aa73ab3f5c10d20f2f15f665775dd91c614adae3fdd995ea; recorded UTC (program start): 2026-11-18T11:20:37.869042+00:00 -->
+
+[Exact tested source](../validation/2026-11-18-h100/139_stream_wait_enqueue_order/139_stream_wait_enqueue_order.cu) · [Compiler log](../validation/2026-11-18-h100/139_stream_wait_enqueue_order/compile.log) · [Execution log](../validation/2026-11-18-h100/139_stream_wait_enqueue_order/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+nvcc -std=c++17 -O2 -arch=sm_90 139_stream_wait_enqueue_order.cu -o ./example
+./example
+```
+
+**Sample output**
+
+```text
+Consumer before production: 0; after a too-late wait: 0; correctly ordered copy: 42
+The early copy is deliberately completed first, avoiding an intentional data race.
+VALIDATION PASS: errors=0
+```
+
+<!-- execution:end:h100-rerun:139_stream_wait_enqueue_order.cu -->
+
 
 <!-- execution:start:a100:139_stream_wait_enqueue_order.cu -->
 > **Compiled and executed — 2026-11-17-a100: Numerical/transport validation (recorded scope).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-17T23:59:48.680783+00:00`.
@@ -535,6 +590,82 @@ int main() {
     return (orderingCorrect && slowdownsPositive) ? 0 : 1;
 }
 ```
+
+<!-- execution:start:h100-rerun:140_topology_assumption_cost.cpp -->
+> **Compiled and executed — 2026-11-18-h100: Host program/model (exit-only).** Hardware: 2 H100 GPUs. Executed UTC: `2026-11-18T11:20:39.465136+00:00`.
+
+<!-- execution:metadata Source SHA-256: efff2db21c05fd964f3eb08a49f3cae199d6a7e965aaedd4323c52d504666c02; recorded UTC (program start): 2026-11-18T11:20:39.300777+00:00 -->
+
+[Exact tested source](../validation/2026-11-18-h100/140_topology_assumption_cost/140_topology_assumption_cost.cpp) · [Compiler log](../validation/2026-11-18-h100/140_topology_assumption_cost/compile.log) · [Execution log](../validation/2026-11-18-h100/140_topology_assumption_cost/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+g++ -std=c++17 -O2 140_topology_assumption_cost.cpp -o ./example
+./example
+```
+
+**Sample output**
+
+```text
+=== Section G.3: assuming a topology class instead of querying it ===
+
+Chapter 4's own real idiom (File 9): cudaDeviceCanAccessPeer(&canAccess,
+i, j), checked for every ordered pair, BEFORE calling
+cudaDeviceEnablePeerAccess(). Chapter 5's own File 11/13 showed why
+skipping it never breaks CORRECTNESS -- cudaMemcpyPeer() falls back to a
+staged host copy transparently for any pair without enabled peer access.
+What it CAN silently break is a performance assumption baked into calling
+code that never re-queries the real topology for the deployment it is
+actually running on.
+
+Chapter 2/5's own three real topology classes for a device pair, and the
+real transfer time for 1.0 GB under each:
+
+actual topology class             real time (s)
+NVLink-wired pair (1 hop)              0.020000
+PCIe-only direct pair (1 hop)          0.031746
+no direct link (2-hop staged)          0.063492
+
+=== the silent cost of code that ASSUMED NVLink and never re-queried ===
+
+code that hardcodes the NVLink figure (a real, common shortcut when a
+number is copied from one cluster's own topology report into a capacity
+plan or a scheduling deadline) pays NO error and NO crash when deployed
+on a DIFFERENT pair's real topology -- cudaMemcpyPeer() still returns
+cudaSuccess either way -- only a silent multiple of the assumed number:
+
+actual topology at runtime        real time (s)    x assumed
+NVLink (assumption correct)            0.020000       1.0000
+PCIe-only direct                       0.031746       1.5873
+no direct link (staged)                0.063492       3.1746
+
+a schedule or capacity plan built around the NVLink number silently runs
+1.5873x slower than planned on a PCIe-only-direct pair, and 3.1746x slower on
+a pair with no direct link at all -- Chapter 2's own partial-mesh topology
+model already established that NOT every pair on a real multi-GPU machine
+shares the same link class, so this is not a hypothetical: two GPUs on the
+SAME machine can genuinely fall into different rows of this table.
+
+=== the real fix: query, don't assume ===
+
+Chapter 4's own File 9 sequence -- cudaDeviceCanAccessPeer() for the
+SPECIFIC pair actually in use, re-run on the actual deployment rather than
+hardcoded from a different one -- is the only way to know which row of
+this table applies BEFORE building a schedule or capacity plan around it.
+Real device attribute queries (Chapter 2's own cudaDeviceProp fields, and
+cudaDeviceGetP2PAttribute() for the specific link's own reported
+performance rank) are what genuinely observe the topology; nothing about
+cudaMemcpyPeer()'s own return code ever will.
+
+self-check: the three real topology classes are strictly ordered fastest-
+to-slowest (NVLink < PCIe-direct < staged, confirmed), and an NVLink-based
+assumption's own real slowdown strictly increases as the actual topology
+gets worse (confirmed): confirmed
+```
+
+<!-- execution:end:h100-rerun:140_topology_assumption_cost.cpp -->
+
 
 <!-- execution:start:a100:140_topology_assumption_cost.cpp -->
 > **Compiled and executed — 2026-11-17-a100: Host program/model (exit-only).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-17T23:59:52.168468+00:00`.

@@ -1,0 +1,11 @@
+$ /home/ubuntu/full-gpu-rerun-20261118/mgpu/results/52_weighted_shard_partition/example
+4-device cluster, relative measured speeds: rank0=1.0x, rank1=1.0x, rank2=1.5x (faster H100), rank3=0.5x (throttled A100). Total work to split: 900 units.
+
+rank   speed      equal      weighted       weighted/speed
+0      1.0        225        225            225.00        
+1      1.0        225        225            225.00        
+2      1.5        225        337            224.67        
+3      0.5        225        113            226.00        
+total: equal split sums to 900, weighted split sums to 900 (both must equal 900): PASS
+
+Every rank's equal share is identical (225 units each) regardless of speed -- exactly what every computeShard()-style function in this book has done since Chapter 12. The weighted share instead scales with each rank's own speed: rank 2 (the faster H100) gets the largest share, rank 3 (throttled) gets the smallest. Section 18.3 checks what this buys, concretely: whether it actually equalizes how long each rank takes to finish its own share.

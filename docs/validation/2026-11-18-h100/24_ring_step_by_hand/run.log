@@ -1,0 +1,2 @@
+$ /home/ubuntu/full-gpu-rerun-20261118/mgpu/results/24_ring_step_by_hand/example
+PASS: one ring step (distinct send/receive storage) on 2 GPUs, all nonuniform output values checked.

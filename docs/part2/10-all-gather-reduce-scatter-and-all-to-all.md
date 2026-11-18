@@ -106,6 +106,29 @@ int main() {
 }
 ```
 
+<!-- execution:start:h100-rerun:26_allgather_by_hand.cu -->
+> **Compiled and executed — 2026-11-18-h100: Numerical/transport validation (recorded scope).** Hardware: 2 H100 GPUs. Executed UTC: `2026-11-18T11:21:12.025544+00:00`.
+
+<!-- execution:metadata Source SHA-256: 7aebce9afa5c1fae9a892659b95242e60185232d2a90cab7df1f6bb6fc159d90; recorded UTC (program start): 2026-11-18T11:21:11.109799+00:00 -->
+
+[Exact tested source](../validation/2026-11-18-h100/26_allgather_by_hand/26_allgather_by_hand.cu) · [Compiler log](../validation/2026-11-18-h100/26_allgather_by_hand/compile.log) · [Execution log](../validation/2026-11-18-h100/26_allgather_by_hand/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+nvcc -std=c++17 -O2 -arch=sm_90 26_allgather_by_hand.cu -o ./example
+./example
+```
+
+**Sample output**
+
+```text
+PASS: rank-ordered all-gather on 2 GPUs, all nonuniform output values checked.
+```
+
+<!-- execution:end:h100-rerun:26_allgather_by_hand.cu -->
+
+
 <!-- execution:start:a100:26_allgather_by_hand.cu -->
 > **Compiled and executed — 2026-11-17-a100: Numerical/transport validation (recorded scope).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:01:33.020046+00:00`.
 
@@ -224,6 +247,29 @@ int main() {
  return 0;
 }
 ```
+
+<!-- execution:start:h100-rerun:27_reducescatter_by_hand.cu -->
+> **Compiled and executed — 2026-11-18-h100: Numerical/transport validation (recorded scope).** Hardware: 2 H100 GPUs. Executed UTC: `2026-11-18T11:21:13.508122+00:00`.
+
+<!-- execution:metadata Source SHA-256: 1e06d82c07020b03e80788e5723e95642c58c6af4343d7e81413c0f0262c7f4a; recorded UTC (program start): 2026-11-18T11:21:12.592029+00:00 -->
+
+[Exact tested source](../validation/2026-11-18-h100/27_reducescatter_by_hand/27_reducescatter_by_hand.cu) · [Compiler log](../validation/2026-11-18-h100/27_reducescatter_by_hand/compile.log) · [Execution log](../validation/2026-11-18-h100/27_reducescatter_by_hand/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+nvcc -std=c++17 -O2 -arch=sm_90 27_reducescatter_by_hand.cu -o ./example
+./example
+```
+
+**Sample output**
+
+```text
+PASS: host-staged rank-ordered reduce-scatter on 2 GPUs, all nonuniform output values checked.
+```
+
+<!-- execution:end:h100-rerun:27_reducescatter_by_hand.cu -->
+
 
 <!-- execution:start:a100:27_reducescatter_by_hand.cu -->
 > **Compiled and executed — 2026-11-17-a100: Numerical/transport validation (recorded scope).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:01:38.414973+00:00`.
@@ -344,6 +390,29 @@ int main() {
  return 0;
 }
 ```
+
+<!-- execution:start:h100-rerun:28_alltoall_by_hand.cu -->
+> **Compiled and executed — 2026-11-18-h100: Numerical/transport validation (recorded scope).** Hardware: 2 H100 GPUs. Executed UTC: `2026-11-18T11:21:15.040689+00:00`.
+
+<!-- execution:metadata Source SHA-256: 4e9ca7b00c130e7c5f97b17cc7e43960421ce609cb3df7e1d40281608601a2c4; recorded UTC (program start): 2026-11-18T11:21:14.124459+00:00 -->
+
+[Exact tested source](../validation/2026-11-18-h100/28_alltoall_by_hand/28_alltoall_by_hand.cu) · [Compiler log](../validation/2026-11-18-h100/28_alltoall_by_hand/compile.log) · [Execution log](../validation/2026-11-18-h100/28_alltoall_by_hand/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+nvcc -std=c++17 -O2 -arch=sm_90 28_alltoall_by_hand.cu -o ./example
+./example
+```
+
+**Sample output**
+
+```text
+PASS: destination-specific all-to-all on 2 GPUs, all nonuniform output values checked.
+```
+
+<!-- execution:end:h100-rerun:28_alltoall_by_hand.cu -->
+
 
 <!-- execution:start:a100:28_alltoall_by_hand.cu -->
 > **Compiled and executed — 2026-11-17-a100: Numerical/transport validation (recorded scope).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:01:43.758424+00:00`.
@@ -528,6 +597,39 @@ int main() {
     return (p1 && p2 && p3) ? 0 : 1;
 }
 ```
+
+<!-- execution:start:h100-rerun:29_collectives_simulation.cpp -->
+> **Compiled and executed — 2026-11-18-h100: Host program/model (exit-only).** Hardware: 2 H100 GPUs. Executed UTC: `2026-11-18T11:21:15.871876+00:00`.
+
+<!-- execution:metadata Source SHA-256: a36e2130a654c06143f478e1fb9a5786106b962893e68851b494ebaba7502203; recorded UTC (program start): 2026-11-18T11:21:15.607188+00:00 -->
+
+[Exact tested source](../validation/2026-11-18-h100/29_collectives_simulation/29_collectives_simulation.cpp) · [Compiler log](../validation/2026-11-18-h100/29_collectives_simulation/compile.log) · [Execution log](../validation/2026-11-18-h100/29_collectives_simulation/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+g++ -std=c++17 -O2 29_collectives_simulation.cpp -o ./example
+./example
+```
+
+**Sample output**
+
+```text
+All-gather (N=4): independent reference chunks: 10 20 30 40
+  Every device's gathered array matches the reference: PASS
+
+Reduce-scatter (N=4): independent reference sums: 100 104 108 112
+  Device c's scattered chunk matches reference[c] for every c: PASS
+
+All-to-all (N=4): every device's 4 received chunks match the
+  chunk their sender addressed to them (a full transpose): PASS
+
+Direct all-gather/reduce-scatter: 3 message(s) per device, each to/from a DIFFERENT remote device.
+All-to-all: 3 message(s) per device too -- but unlike all-gather/reduce-scatter, none of them can be replaced by a cheaper ring relay, because every message is unique.
+```
+
+<!-- execution:end:h100-rerun:29_collectives_simulation.cpp -->
+
 
 <!-- execution:start:a100:29_collectives_simulation.cpp -->
 > **Compiled and executed — 2026-11-17-a100: Host program/model (exit-only).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:01:47.999704+00:00`.

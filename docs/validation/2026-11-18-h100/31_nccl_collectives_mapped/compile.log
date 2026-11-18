@@ -1,0 +1,1 @@
+$ nvcc -std=c++17 -O2 -arch=sm_90 /home/ubuntu/full-gpu-rerun-20261118/mgpu/docs/part2/code/31_nccl_collectives_mapped.cu -o /home/ubuntu/full-gpu-rerun-20261118/mgpu/results/31_nccl_collectives_mapped/example -lnccl

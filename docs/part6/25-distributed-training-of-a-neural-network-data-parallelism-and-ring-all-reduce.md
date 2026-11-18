@@ -115,6 +115,41 @@ int main(int argc, char **argv) {
 }
 ```
 
+<!-- execution:start:h100-rerun:72_bucketed_gradient_allreduce.cu -->
+> **Compiled and executed — 2026-11-18-h100: Numerical/transport validation (recorded scope).** Hardware: 2 H100 GPUs. Executed UTC: `2026-11-18T11:22:33.544085+00:00`.
+
+<!-- execution:metadata Source SHA-256: 301d198218d2bc117de00739639dd6c415ad77084fcf7c1491a96e65fa4e532b; recorded UTC (program start): 2026-11-18T11:22:32.277218+00:00 -->
+
+[Exact tested source](../validation/2026-11-18-h100/72_bucketed_gradient_allreduce/72_bucketed_gradient_allreduce.cu) · [Compiler log](../validation/2026-11-18-h100/72_bucketed_gradient_allreduce/compile.log) · [Execution log](../validation/2026-11-18-h100/72_bucketed_gradient_allreduce/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+nvcc -std=c++17 -O2 -arch=sm_90 -ccbin mpicxx 72_bucketed_gradient_allreduce.cu -o ./example -lnccl
+mpirun --oversubscribe -np 2 ./example
+```
+
+**Sample output**
+
+```text
+step=0 bucket=0 expected=3 checked=1024
+step=0 bucket=1 expected=5 checked=1024
+step=0 bucket=2 expected=7 checked=1024
+step=0 bucket=3 expected=9 checked=1024
+step=1 bucket=0 expected=23 checked=1024
+step=1 bucket=1 expected=25 checked=1024
+step=1 bucket=2 expected=27 checked=1024
+step=1 bucket=3 expected=29 checked=1024
+step=2 bucket=0 expected=43 checked=1024
+step=2 bucket=1 expected=45 checked=1024
+step=2 bucket=2 expected=47 checked=1024
+step=2 bucket=3 expected=49 checked=1024
+VALIDATION PASS: 2 ranks, 12 buckets, errors=0
+```
+
+<!-- execution:end:h100-rerun:72_bucketed_gradient_allreduce.cu -->
+
+
 <!-- execution:start:a100:72_bucketed_gradient_allreduce.cu -->
 > **Compiled and executed — 2026-11-17-a100: Numerical/transport validation (recorded scope).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:05:14.025014+00:00`.
 
@@ -126,7 +161,7 @@ Commands below use local source/binary names; raw logs retain host paths. Execut
 
 ```bash
 nvcc -std=c++17 -O2 -arch=sm_80 -ccbin mpicxx 72_bucketed_gradient_allreduce.cu -o ./example -lnccl
-/usr/mpi/gcc/openmpi-4.1.7rc1/bin/mpirun --oversubscribe -np 8 ./example
+mpirun --oversubscribe -np 8 ./example
 ```
 
 **Sample output**
@@ -178,7 +213,7 @@ Commands below use local source/binary names; raw logs retain host paths. Execut
 
 ```bash
 nvcc -std=c++17 -O2 -arch=sm_90 -ccbin mpicxx 72_bucketed_gradient_allreduce.cu -o ./example -lnccl
-/home/ubuntu/book2-bin/mpirun --oversubscribe -np 2 ./example
+mpirun --oversubscribe -np 2 ./example
 ```
 
 <details markdown="1"><summary>Captured current-source output</summary>
@@ -503,6 +538,45 @@ int main() {
 }
 ```
 
+<!-- execution:start:h100-rerun:73_distributed_sgd_convergence_simulation.cpp -->
+> **Compiled and executed — 2026-11-18-h100: Host program/model (exit-only).** Hardware: 2 H100 GPUs. Executed UTC: `2026-11-18T11:22:36.028380+00:00`.
+
+<!-- execution:metadata Source SHA-256: 27634f1e53c9acb0e2f04583b812dcb1bfba9756c0db6c204b2103db98228dbf; recorded UTC (program start): 2026-11-18T11:22:35.663638+00:00 -->
+
+[Exact tested source](../validation/2026-11-18-h100/73_distributed_sgd_convergence_simulation/73_distributed_sgd_convergence_simulation.cpp) · [Compiler log](../validation/2026-11-18-h100/73_distributed_sgd_convergence_simulation/compile.log) · [Execution log](../validation/2026-11-18-h100/73_distributed_sgd_convergence_simulation/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+g++ -std=c++17 -O2 73_distributed_sgd_convergence_simulation.cpp -o ./example
+./example
+```
+
+**Sample output**
+
+```text
+After 20 steps (M=8 samples, N=4 replicas, lr=0.010):
+  Reference (full-batch, single process): w=3.221214533 b=0.702814102
+  Replica 0 (sharded + ring all-reduce):  w=3.221214533 b=0.702814102
+  Replica 1 (sharded + ring all-reduce):  w=3.221214533 b=0.702814102
+  Replica 2 (sharded + ring all-reduce):  w=3.221214533 b=0.702814102
+  Replica 3 (sharded + ring all-reduce):  w=3.221214533 b=0.702814102
+
+Every replica identical to each other: YES
+Distributed result EXACTLY matches full-batch reference: YES
+Elements sent per replica per all-reduce: 6 (= 2(N-1)/N * L with L=4, Ch9's formula)
+
+Contrast -- every replica sums all 4 values itself, own order:
+  Replica 0:  w=3.221214533 b=0.702814102
+  Replica 1:  w=3.221214533 b=0.702814102
+  Replica 2:  w=3.221214533 b=0.702814102
+  Replica 3:  w=3.221214771 b=0.702814102
+Every replica identical to each other: NO
+```
+
+<!-- execution:end:h100-rerun:73_distributed_sgd_convergence_simulation.cpp -->
+
+
 <!-- execution:start:a100:73_distributed_sgd_convergence_simulation.cpp -->
 > **Compiled and executed — 2026-11-17-a100: Host program/model (exit-only).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:05:24.482107+00:00`.
 
@@ -695,6 +769,53 @@ int main() {
     return 0;
 }
 ```
+
+<!-- execution:start:h100-rerun:74_ring_allreduce_communication_cost_model.cpp -->
+> **Compiled and executed — 2026-11-18-h100: Host program/model (exit-only).** Hardware: 2 H100 GPUs. Executed UTC: `2026-11-18T11:22:36.096847+00:00`.
+
+<!-- execution:metadata Source SHA-256: 410e71b6b00891a96442bc2eea2c936568f02fc55b7cb028debb6415669b7c5e; recorded UTC (program start): 2026-11-18T11:22:36.032739+00:00 -->
+
+[Exact tested source](../validation/2026-11-18-h100/74_ring_allreduce_communication_cost_model/74_ring_allreduce_communication_cost_model.cpp) · [Compiler log](../validation/2026-11-18-h100/74_ring_allreduce_communication_cost_model/compile.log) · [Execution log](../validation/2026-11-18-h100/74_ring_allreduce_communication_cost_model/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+g++ -std=c++17 -O2 74_ring_allreduce_communication_cost_model.cpp -o ./example
+./example
+```
+
+**Sample output**
+
+```text
+ResNet-50 fp32 gradient buffer: K = 102228128 bytes (97.49 MiB)
+
+N      rounds     ring: 2(N-1)/N*K (MiB)   naive: 2(N-1)*K (GiB)    ratio
+-------------------------------------------------------------------------
+2      2          97.49                    0.190                    2.0      x
+4      6          146.24                   0.571                    4.0      x
+8      14         170.61                   1.333                    8.0      x
+16     30         182.80                   2.856                    16.0     x
+32     62         188.89                   5.903                    32.0     x
+64     126        191.94                   11.996                   64.0     x
+128    254        193.46                   24.183                   128.0    x
+256    510        194.22                   48.556                   256.0    x
+
+As N grows, 2(N-1)/N -> 2 (a CONSTANT): at N=256 each rank's ring traffic
+is only 1.9922x the N=2 case, while the naive busiest-rank traffic at N=256
+is 255x the N=2 case -- this is the real, quantified reason every framework
+cited in this chapter (NCCL, Horovod, PyTorch DDP) settled on ring-style collectives
+for multi-GPU gradient synchronization, not the naive gather/broadcast shape.
+
+--- What real measurements report for a ring-style collective at
+    this same scale (cited, not computed by this program) ---
+Horovod, TCP, 1->128 GPUs, Inception V3 and ResNet-101: measured 88% scaling efficiency.
+Horovod, RDMA, same setup: measured >90% scaling efficiency on both models.
+PyTorch DDP, NCCL, overlapping communication with backward computation: measured 38.0% (ResNet) / 35.2% (BERT) speedup over not overlapping.
+None of these three percentages are outputs of this program's own formula -- they are independently measured results this chapter cites to show the formula's real-world consequence.
+```
+
+<!-- execution:end:h100-rerun:74_ring_allreduce_communication_cost_model.cpp -->
+
 
 <!-- execution:start:a100:74_ring_allreduce_communication_cost_model.cpp -->
 > **Compiled and executed — 2026-11-17-a100: Host program/model (exit-only).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:05:24.606121+00:00`.

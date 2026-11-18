@@ -8,6 +8,8 @@ This appendix covers toolchain installation and build checks. The recorded H100 
 
 The [2026-11-17 H100 execution record](../validation-h100.md) covers two GPUs connected by local NV18. It distinguishes numerical checks, API probes and other executions; a successful exit alone does not establish GPU algorithm correctness.
 
+For a fresh machine, follow the ordered [Getting Started installation recipe](../getting-started.md#choose-the-installation-path): driver, CUDA 12.8, cuBLAS, NCCL, Open MPI and NVSHMEM. This appendix explains toolchain checks and the existing Makefile recipes; the old distribution-package observations below are not an instruction to replace a working provider stack.
+
 ## A.1 Confirming nvcc and g++, and Why apt Beats pip for a Working nvcc
 
 <!-- mgpu:figure-1:start -->
@@ -23,7 +25,7 @@ Two compilers have to agree before a single line of this book's own multi-GPU co
 ```
 +-----------------------------+     +-----------------------------+
 | apt-get install             |     | pip install                 |
-| nvidia-cuda-toolkit         |     | nvidia-cuda-nvcc-cu12       |
+| cuda-toolkit-12-8           |     | nvidia-cuda-nvcc-cu12       |
 +-----------------------------+     +-----------------------------+
               |                                    |
    installs /usr/bin/nvcc              installs .../cuda_nvcc/bin/
@@ -34,9 +36,9 @@ Two compilers have to agree before a single line of this book's own multi-GPU co
         --> SUCCEEDS                          --> command not found
 ```
 
-This book's own build environment settled that question empirically rather than from memory, the same discipline every chapter's own code has followed since Chapter 1: `pip install nvidia-cuda-nvcc-cu12` does install cleanly and does report a version (12.4.131, confirmed via `pip show`), but its own package directory's `bin/` folder contains exactly one executable -- `ptxas`, the PTX-to-SASS assembler -- and nothing named `nvcc`. `apt-get install nvidia-cuda-toolkit`, by contrast, installs a genuine `/usr/bin/nvcc` compiler driver, confirmed by `dpkg -l | grep nvidia-cuda-toolkit` reporting version `12.0.140~12.0.1-4build4`. Both routes install real, working NVIDIA software -- the pip route is not broken, it simply ships a different, narrower slice of the toolkit (the device-side assembler and the NVVM/libdevice bitcode compiler back end) than the full driver binary a reader typically means by "nvcc."
+The earlier authoring environment examined a CUDA 12.4 Python wheel containing `ptxas` without the full `nvcc` compiler driver, and a distribution `nvidia-cuda-toolkit` package providing CUDA 12.0. Those are observations about particular packages, not universal properties of every current wheel or a fresh-install recommendation. The current guide installs NVIDIA's versioned `cuda-toolkit-12-8` package and explicitly checks `nvcc --version`.
 
-There is a second, subtler real finding this book's own environment surfaced while confirming the first one. Running `g++ --version` directly at a shell reports `13.3.0` -- but File 120 below, compiled *by nvcc itself*, reads back `__GNUC__ = 12`. This is not a bug in either compiler: `nvcc`'s own installed `host_config.h` header contains a real, explicit `#error` for any `__GNUC__` greater than 12 (`"unsupported GNU version! gcc versions later than 12 are not supported!"`), because CUDA 12.0 was never validated against GCC 13. The apt-packaged `nvidia-cuda-toolkit` works around this by shipping its own `gcc` shim script at `/usr/lib/nvidia-cuda-toolkit/bin/gcc`, which `nvcc`'s own `nvcc.profile` configuration file silently prepends onto `PATH` ahead of the system `/usr/bin/gcc`. That shim script itself simply execs the real, separately-installed `gcc-12` binary. The result: a reader typing `g++ --version` and a `.cu` file compiled by `nvcc` on the very same machine can genuinely, correctly report two different GCC version numbers, and both are telling the truth about two different things.
+The host compiler selected by `nvcc` can also differ from the `g++` found first in a shell, for example through `-ccbin` or an installation-specific wrapper. The earlier CUDA 12.0 distribution package selected GCC 12; the recorded CUDA 12.8.93 GPU runs used GCC 13.3, as the current output below shows. Use the selected CUDA release's supported host compiler instead of bypassing its version checks.
 
 [COMMON TRAP] Seeing `g++ --version` report one GCC version and a program compiled by `nvcc` report a different `__GNUC__` value is not a sign of a broken install. It means the apt-packaged toolchain is correctly protecting itself from a host-compiler version `nvcc` was never validated against, by quietly substituting a compatible `gcc` for its own internal calls only -- the system's own default `g++` is untouched and still used for every ordinary (non-`nvcc`) build on the same machine.
 
@@ -60,6 +62,32 @@ int main(){
 #endif
 }
 ```
+
+<!-- execution:start:h100-rerun:120_toolchain_version_check.cu -->
+> **Compiled and executed — 2026-11-18-h100: API/host demonstration (exit-only).** Hardware: 2 H100 GPUs. Executed UTC: `2026-11-18T11:20:04.886599+00:00`.
+
+<!-- execution:metadata Source SHA-256: a369251bcc2880196148df003e3864ad44b7145f1cbdb8a71b730042330c8ff9; recorded UTC (program start): 2026-11-18T11:20:04.271271+00:00 -->
+
+[Exact tested source](../validation/2026-11-18-h100/120_toolchain_version_check/120_toolchain_version_check.cu) · [Compiler log](../validation/2026-11-18-h100/120_toolchain_version_check/compile.log) · [Execution log](../validation/2026-11-18-h100/120_toolchain_version_check/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+nvcc -std=c++17 -O2 -arch=sm_90 120_toolchain_version_check.cu -o ./example
+./example
+```
+
+**Sample output**
+
+```text
+C++ language level: 201703
+GNU-compatible host compiler macros: 13.3.0
+CUDA compiler: 12.8.93
+Compiler identity: PASS (installation source is not inferred)
+```
+
+<!-- execution:end:h100-rerun:120_toolchain_version_check.cu -->
+
 
 <!-- execution:start:a100:120_toolchain_version_check.cu -->
 > **Compiled and executed — 2026-11-17-a100: API/host demonstration (exit-only).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-17T23:58:25.777749+00:00`.
@@ -138,12 +166,12 @@ A working `nvcc` and `g++` are necessary but not sufficient for this book's own 
 +-----------------------------------------------------------------+
 |         Application code (this book's own Chapters 1-40)        |
 +---------------------+-----------------------+-------------------+
-| NCCL 2.18.3         | Open MPI 4.1.6        | NVSHMEM 3.8.0     |
+| NCCL 2.26.2         | Open MPI 4.1.x        | NVSHMEM 3.8.0     |
 | (collectives:       | (process launch:      | (one-sided:       |
 |  AllReduce,         |  Init, Send/Recv,     |  device put/get)  |
 |  Broadcast, etc)    |  Allreduce)           |                   |
 +---------------------+-----------------------+-------------------+
-|               CUDA Runtime 12.0 / Driver stub 13.0              |
+|               CUDA 12.8 / installed host driver                  |
 +-----------------------------------------------------------------+
 ```
 
@@ -231,6 +259,48 @@ int main(int argc, char** argv) {
 }
 ```
 
+<!-- execution:start:h100-rerun:121_multi_gpu_stack_version_check.cpp -->
+> **Compiled and executed — 2026-11-18-h100: API/host demonstration (exit-only).** Hardware: 2 H100 GPUs. Executed UTC: `2026-11-18T11:20:05.102818+00:00`.
+
+<!-- execution:metadata Source SHA-256: add11655555eb6445b9dfb060870ef5d06fa7cb4f8de8816c3e06b81499e4147; recorded UTC (program start): 2026-11-18T11:20:04.888461+00:00 -->
+
+[Exact tested source](../validation/2026-11-18-h100/121_multi_gpu_stack_version_check/121_multi_gpu_stack_version_check.cpp) · [Compiler log](../validation/2026-11-18-h100/121_multi_gpu_stack_version_check/compile.log) · [Execution log](../validation/2026-11-18-h100/121_multi_gpu_stack_version_check/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+mpicxx -std=c++17 -O2 121_multi_gpu_stack_version_check.cpp -o ./example -lnccl
+mpirun --oversubscribe -np 2 ./example
+```
+
+**Sample output**
+
+```text
+=== NCCL (collective communication) ===
+NCCL_MAJOR = 2, NCCL_MINOR = 26, NCCL_PATCH = 2 (NCCL_VERSION_CODE = 22602)
+
+=== Open MPI (host-side process launch and messaging) ===
+OMPI_MAJOR_VERSION = 4, OMPI_MINOR_VERSION = 1, OMPI_RELEASE_VERSION = 7
+
+=== NVSHMEM (GPU-initiated one-sided communication) ===
+NVSHMEM version macros not defined -- non_abi/nvshmem_version.h was not found. Add -I<NVSHMEM_DIR>/include, where NVSHMEM_DIR is printed by: python3 -c "import nvidia.nvshmem; print(list(nvidia.nvshmem.__path__)[0])"
+
+self-check: this program compiled and ran, which by itself confirms nccl.h and mpi.h were both found on this system's own include path -- a well-formed documented result either way, matching this book's own Appendix pattern.
+=== NCCL (collective communication) ===
+NCCL_MAJOR = 2, NCCL_MINOR = 26, NCCL_PATCH = 2 (NCCL_VERSION_CODE = 22602)
+
+=== Open MPI (host-side process launch and messaging) ===
+OMPI_MAJOR_VERSION = 4, OMPI_MINOR_VERSION = 1, OMPI_RELEASE_VERSION = 7
+
+=== NVSHMEM (GPU-initiated one-sided communication) ===
+NVSHMEM version macros not defined -- non_abi/nvshmem_version.h was not found. Add -I<NVSHMEM_DIR>/include, where NVSHMEM_DIR is printed by: python3 -c "import nvidia.nvshmem; print(list(nvidia.nvshmem.__path__)[0])"
+
+self-check: this program compiled and ran, which by itself confirms nccl.h and mpi.h were both found on this system's own include path -- a well-formed documented result either way, matching this book's own Appendix pattern.
+```
+
+<!-- execution:end:h100-rerun:121_multi_gpu_stack_version_check.cpp -->
+
+
 <!-- execution:start:a100:121_multi_gpu_stack_version_check.cpp -->
 > **Compiled and executed — 2026-11-17-a100: API/host demonstration (exit-only).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-17T23:58:26.095434+00:00`.
 
@@ -242,7 +312,7 @@ Commands below use local source/binary names; raw logs retain host paths. Execut
 
 ```bash
 mpicxx -std=c++17 -O2 121_multi_gpu_stack_version_check.cpp -o ./example -lnccl
-/usr/mpi/gcc/openmpi-4.1.7rc1/bin/mpirun --oversubscribe -np 8 ./example
+mpirun --oversubscribe -np 8 ./example
 ```
 
 **Sample output**
@@ -345,7 +415,7 @@ Commands below use local source/binary names; raw logs retain host paths. Execut
 
 ```bash
 mpicxx -std=c++17 -O2 121_multi_gpu_stack_version_check.cpp -o ./example -lnccl
-/home/ubuntu/book2-bin/mpirun --oversubscribe -np 2 ./example
+mpirun --oversubscribe -np 2 ./example
 ```
 
 <details markdown="1"><summary>Captured current-source output</summary>
@@ -522,6 +592,40 @@ int main() {
     return wellFormed ? 0 : 1;
 }
 ```
+
+<!-- execution:start:h100-rerun:122_multi_device_runtime_api_check.cu -->
+> **Compiled and executed — 2026-11-18-h100: API/host demonstration (exit-only).** Hardware: 2 H100 GPUs. Executed UTC: `2026-11-18T11:20:05.750067+00:00`.
+
+<!-- execution:metadata Source SHA-256: 03968f222a7dfa5f56c10b90704b6dfb6244bcc0f7d458483ed3d50a10b0cbd8; recorded UTC (program start): 2026-11-18T11:20:05.134860+00:00 -->
+
+[Exact tested source](../validation/2026-11-18-h100/122_multi_device_runtime_api_check/122_multi_device_runtime_api_check.cu) · [Compiler log](../validation/2026-11-18-h100/122_multi_device_runtime_api_check/compile.log) · [Execution log](../validation/2026-11-18-h100/122_multi_device_runtime_api_check/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+nvcc -std=c++17 -O2 -arch=sm_90 122_multi_device_runtime_api_check.cu -o ./example
+./example
+```
+
+**Actual sample output (excerpt)**
+
+```text
+FOUND: CUDA Runtime version 12.8
+
+=== Q2: Is a compatible driver installed? (cudaDriverGetVersion) ===
+FOUND: CUDA Driver version 13.0
+
+=== Q3: Is at least one GPU visible? (cudaGetDeviceCount) ===
+cudaGetDeviceCount reports 2 device(s) (cudaError=0, no error)
+
+=== Q4 (this book's own addition): Are there at least TWO GPUs? ===
+YES: 2 devices -- this machine can run this book's own cross-device chapters directly.
+
+self-check: diagnosis confirmed
+```
+
+<!-- execution:end:h100-rerun:122_multi_device_runtime_api_check.cu -->
+
 
 <!-- execution:start:a100:122_multi_device_runtime_api_check.cu -->
 > **Compiled and executed — 2026-11-17-a100: API/host demonstration (exit-only).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-17T23:58:27.327539+00:00`.
@@ -721,6 +825,29 @@ int main() {
 }
 ```
 
+<!-- execution:start:h100-rerun:hello_host.cpp -->
+> **Compiled and executed — 2026-11-18-h100: Host program/model (exit-only).** Hardware: 2 H100 GPUs. Executed UTC: `2026-11-18T11:20:39.531270+00:00`.
+
+<!-- execution:metadata Source SHA-256: b3a2a37506e18af2928c48d0001d67632564358bc61846cb24858d8442177987; recorded UTC (program start): 2026-11-18T11:20:39.467331+00:00 -->
+
+[Exact tested source](../validation/2026-11-18-h100/hello_host/hello_host.cpp) · [Compiler log](../validation/2026-11-18-h100/hello_host/compile.log) · [Execution log](../validation/2026-11-18-h100/hello_host/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+g++ -std=c++17 -O2 hello_host.cpp -o ./example
+./example
+```
+
+**Sample output**
+
+```text
+hello_host: compiled with plain g++, no CUDA involved.
+```
+
+<!-- execution:end:h100-rerun:hello_host.cpp -->
+
+
 <!-- execution:start:a100:hello_host.cpp -->
 > **Compiled and executed — 2026-11-17-a100: Host program/model (exit-only).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-17T23:59:52.236872+00:00`.
 
@@ -785,6 +912,29 @@ int main() {
 }
 ```
 
+<!-- execution:start:h100-rerun:hello_kernel.cu -->
+> **Compiled and executed — 2026-11-18-h100: API/host demonstration (exit-only).** Hardware: 2 H100 GPUs. Executed UTC: `2026-11-18T11:20:40.148503+00:00`.
+
+<!-- execution:metadata Source SHA-256: 8d99406ef2c8c5754ceb22e9d201042532875d78f0208d46b5a8ea725123fca8; recorded UTC (program start): 2026-11-18T11:20:39.533396+00:00 -->
+
+[Exact tested source](../validation/2026-11-18-h100/hello_kernel/hello_kernel.cu) · [Compiler log](../validation/2026-11-18-h100/hello_kernel/compile.log) · [Execution log](../validation/2026-11-18-h100/hello_kernel/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+nvcc -std=c++17 -O2 -arch=sm_90 hello_kernel.cu -o ./example
+./example
+```
+
+**Sample output**
+
+```text
+hello_kernel: compiled with plain nvcc, one real (unlaunched) __global__ kernel present.
+```
+
+<!-- execution:end:h100-rerun:hello_kernel.cu -->
+
+
 <!-- execution:start:a100:hello_kernel.cu -->
 > **Compiled and executed — 2026-11-17-a100: API/host demonstration (exit-only).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-17T23:59:53.306986+00:00`.
 
@@ -843,6 +993,29 @@ int main() {
     return 0;
 }
 ```
+
+<!-- execution:start:h100-rerun:hello_nccl.cu -->
+> **Compiled and executed — 2026-11-18-h100: API/host demonstration (exit-only).** Hardware: 2 H100 GPUs. Executed UTC: `2026-11-18T11:20:41.596113+00:00`.
+
+<!-- execution:metadata Source SHA-256: 896631aa38ae497c9d173eccae2b3ec4f054b5a09a916244859110544fdd7b9a; recorded UTC (program start): 2026-11-18T11:20:40.630111+00:00 -->
+
+[Exact tested source](../validation/2026-11-18-h100/hello_nccl/hello_nccl.cu) · [Compiler log](../validation/2026-11-18-h100/hello_nccl/compile.log) · [Execution log](../validation/2026-11-18-h100/hello_nccl/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+nvcc -std=c++17 -O2 -arch=sm_90 hello_nccl.cu -o ./example -lnccl
+./example
+```
+
+**Sample output**
+
+```text
+hello_nccl: compiled and linked against real libnccl (NCCL 2.26.2).
+```
+
+<!-- execution:end:h100-rerun:hello_nccl.cu -->
+
 
 <!-- execution:start:a100:hello_nccl.cu -->
 > **Compiled and executed — 2026-11-17-a100: API/host demonstration (exit-only).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-17T23:59:56.018189+00:00`.
@@ -910,6 +1083,30 @@ int main(int argc, char** argv) {
 }
 ```
 
+<!-- execution:start:h100-rerun:hello_mpi.cpp -->
+> **Compiled and executed — 2026-11-18-h100: API/host demonstration (exit-only).** Hardware: 2 H100 GPUs. Executed UTC: `2026-11-18T11:20:40.264936+00:00`.
+
+<!-- execution:metadata Source SHA-256: 7b7da37c388ddb4cc608825e0b136dfd437e296354b0f7504c6050b1ff3463ce; recorded UTC (program start): 2026-11-18T11:20:40.150686+00:00 -->
+
+[Exact tested source](../validation/2026-11-18-h100/hello_mpi/hello_mpi.cpp) · [Compiler log](../validation/2026-11-18-h100/hello_mpi/compile.log) · [Execution log](../validation/2026-11-18-h100/hello_mpi/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+mpicxx -std=c++17 -O2 -I/usr/include -L/usr/lib64 -Wl,-rpath,/usr/lib64 hello_mpi.cpp -o ./example -lcudart
+mpirun --oversubscribe -np 2 ./example
+```
+
+**Sample output**
+
+```text
+hello_mpi: rank 1, linked against real libcudart (CUDA runtime 12.8)
+hello_mpi: rank 0, linked against real libcudart (CUDA runtime 12.8)
+```
+
+<!-- execution:end:h100-rerun:hello_mpi.cpp -->
+
+
 <!-- execution:start:a100:hello_mpi.cpp -->
 > **Compiled and executed — 2026-11-17-a100: API/host demonstration (exit-only).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-17T23:59:53.475199+00:00`.
 
@@ -921,7 +1118,7 @@ Commands below use local source/binary names; raw logs retain host paths. Execut
 
 ```bash
 mpicxx -std=c++17 -O2 -I/usr/include -L/usr/local/cuda/lib64 -Wl,-rpath,/usr/local/cuda/lib64 hello_mpi.cpp -o ./example -lcudart
-/usr/mpi/gcc/openmpi-4.1.7rc1/bin/mpirun --oversubscribe -np 8 ./example
+mpirun --oversubscribe -np 8 ./example
 ```
 
 **Sample output**
@@ -968,7 +1165,7 @@ Commands below use local source/binary names; raw logs retain host paths. Execut
 
 ```bash
 mpicxx -std=c++17 -O2 -I/usr/include -L/usr/local/cuda/lib64 -Wl,-rpath,/usr/local/cuda/lib64 hello_mpi.cpp -o ./example -lcudart
-/home/ubuntu/book2-bin/mpirun --oversubscribe -np 2 ./example
+mpirun --oversubscribe -np 2 ./example
 ```
 
 <details markdown="1"><summary>Captured current-source output</summary>
@@ -1050,6 +1247,30 @@ int main(int argc, char** argv) {
 }
 ```
 
+<!-- execution:start:h100-rerun:hello_nvshmem.cu -->
+> **Compiled and executed — 2026-11-18-h100: API/host demonstration (exit-only).** Hardware: 2 H100 GPUs. Executed UTC: `2026-11-18T11:20:46.371853+00:00`.
+
+<!-- execution:metadata Source SHA-256: edf226f1cd9a3f82d21165d02e326ee770d511ce010045913431ef7073957d25; recorded UTC (program start): 2026-11-18T11:20:41.598263+00:00 -->
+
+[Exact tested source](../validation/2026-11-18-h100/hello_nvshmem/hello_nvshmem.cu) · [Compiler log](../validation/2026-11-18-h100/hello_nvshmem/compile.log) · [Execution log](../validation/2026-11-18-h100/hello_nvshmem/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+nvcc -std=c++17 -O2 -arch=sm_90 -ccbin mpicxx -rdc=true -I/home/ubuntu/book-validation-deps-20261118/lib/python3.12/site-packages/nvidia/nvshmem/include -L/home/ubuntu/book-validation-deps-20261118/lib/python3.12/site-packages/nvidia/nvshmem/lib -Xlinker=-rpath=/home/ubuntu/book-validation-deps-20261118/lib/python3.12/site-packages/nvidia/nvshmem/lib hello_nvshmem.cu -o ./example -lnvshmem_host -lnvshmem_device -lcuda
+mpirun --oversubscribe -np 2 ./example
+```
+
+**Sample output**
+
+```text
+hello_nvshmem: rank 1, compiled and linked against real libnvshmem_host/libnvshmem_device (NVSHMEM 3.8.0), real MPI bootstrap headers present.
+hello_nvshmem: rank 0, compiled and linked against real libnvshmem_host/libnvshmem_device (NVSHMEM 3.8.0), real MPI bootstrap headers present.
+```
+
+<!-- execution:end:h100-rerun:hello_nvshmem.cu -->
+
+
 <!-- execution:start:a100:hello_nvshmem.cu -->
 > **Compiled and executed — 2026-11-17-a100: API/host demonstration (exit-only).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:00:03.903236+00:00`.
 
@@ -1061,7 +1282,7 @@ Commands below use local source/binary names; raw logs retain host paths. Execut
 
 ```bash
 nvcc -std=c++17 -O2 -arch=sm_80 -ccbin mpicxx -rdc=true -I/home/ubuntu/book2-deps/lib/python3.12/site-packages/nvidia/nvshmem/include -L/home/ubuntu/book2-deps/lib/python3.12/site-packages/nvidia/nvshmem/lib -Xlinker=-rpath=/home/ubuntu/book2-deps/lib/python3.12/site-packages/nvidia/nvshmem/lib hello_nvshmem.cu -o ./example -lnvshmem_host -lnvshmem_device -lcuda
-/usr/mpi/gcc/openmpi-4.1.7rc1/bin/mpirun --oversubscribe -np 8 ./example
+mpirun --oversubscribe -np 8 ./example
 ```
 
 **Sample output**
@@ -1108,7 +1329,7 @@ Commands below use local source/binary names; raw logs retain host paths. Execut
 
 ```bash
 nvcc -std=c++17 -O2 -arch=sm_90 -ccbin mpicxx -rdc=true -I/home/ubuntu/book2-deps/lib/python3.12/site-packages/nvidia/nvshmem/include -L/home/ubuntu/book2-deps/lib/python3.12/site-packages/nvidia/nvshmem/lib -Xlinker=-rpath=/home/ubuntu/book2-deps/lib/python3.12/site-packages/nvidia/nvshmem/lib hello_nvshmem.cu -o ./example -lnvshmem_host -lnvshmem_device -lcuda
-/home/ubuntu/book2-bin/mpirun --oversubscribe -np 2 ./example
+mpirun --oversubscribe -np 2 ./example
 ```
 
 <details markdown="1"><summary>Captured current-source output</summary>
@@ -1160,7 +1381,7 @@ hello_nvshmem: rank 0, compiled and linked against real libnvshmem_host/libnvshm
 <!-- execution:end:h100:hello_nvshmem.cu -->
 
 
-**Compile and run:** `make all`, then run each binary directly (`./host_only`, `./cuda_only`, `./cuda_nccl`), and the two MPI-launched ones through `mpirun`: `mpirun --allow-run-as-root --oversubscribe -np 2 ./mpi_only`, and `mpirun --allow-run-as-root --oversubscribe -np 1 ./cuda_nvshmem_mpi` (with `LD_LIBRARY_PATH` set to NVSHMEM's own installed `lib/` directory, because the loader needs the versioned `libnvshmem_host.so.3` that lives there).
+**Compile and run:** `make all`, then run each binary directly (`./host_only`, `./cuda_only`, `./cuda_nccl`), and the two MPI-launched ones through `mpirun`: `mpirun --oversubscribe -np 2 ./mpi_only`, and `mpirun --oversubscribe -np 1 ./cuda_nvshmem_mpi` (with `LD_LIBRARY_PATH` set to NVSHMEM's own installed `lib/` directory, because the loader needs the versioned `libnvshmem_host.so.3` that lives there).
 
 **Sample input:** none
 

@@ -1,0 +1,4 @@
+$ /home/ubuntu/full-gpu-rerun-20261118/mgpu/results/05_peer_access_query/example
+cudaGetDeviceCount(): no error, count = 2
+GPU 0 -> GPU 1 peer access: yes
+GPU 1 -> GPU 0 peer access: yes

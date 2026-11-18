@@ -97,6 +97,29 @@ int main() {
 }
 ```
 
+<!-- execution:start:h100-rerun:23_naive_allreduce.cu -->
+> **Compiled and executed — 2026-11-18-h100: Numerical/transport validation (recorded scope).** Hardware: 2 H100 GPUs. Executed UTC: `2026-11-18T11:21:08.643514+00:00`.
+
+<!-- execution:metadata Source SHA-256: f5544339121bb2e49bb8fd519650811b79ab49543007222374435d50b1c7dbe5; recorded UTC (program start): 2026-11-18T11:21:07.727710+00:00 -->
+
+[Exact tested source](../validation/2026-11-18-h100/23_naive_allreduce/23_naive_allreduce.cu) · [Compiler log](../validation/2026-11-18-h100/23_naive_allreduce/compile.log) · [Execution log](../validation/2026-11-18-h100/23_naive_allreduce/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+nvcc -std=c++17 -O2 -arch=sm_90 23_naive_allreduce.cu -o ./example
+./example
+```
+
+**Sample output**
+
+```text
+PASS: naive host-reduce plus peer-broadcast all-reduce on 2 GPUs, all nonuniform output values checked.
+```
+
+<!-- execution:end:h100-rerun:23_naive_allreduce.cu -->
+
+
 <!-- execution:start:a100:23_naive_allreduce.cu -->
 > **Compiled and executed — 2026-11-17-a100: Numerical/transport validation (recorded scope).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:01:21.822959+00:00`.
 
@@ -211,6 +234,29 @@ int main() {
  return 0;
 }
 ```
+
+<!-- execution:start:h100-rerun:24_ring_step_by_hand.cu -->
+> **Compiled and executed — 2026-11-18-h100: Numerical/transport validation (recorded scope).** Hardware: 2 H100 GPUs. Executed UTC: `2026-11-18T11:21:10.326312+00:00`.
+
+<!-- execution:metadata Source SHA-256: 56eb9fa1d22abfcbb7b7022a76d3cc429e2665fdbc836427dbc6795a92f97137; recorded UTC (program start): 2026-11-18T11:21:09.410295+00:00 -->
+
+[Exact tested source](../validation/2026-11-18-h100/24_ring_step_by_hand/24_ring_step_by_hand.cu) · [Compiler log](../validation/2026-11-18-h100/24_ring_step_by_hand/compile.log) · [Execution log](../validation/2026-11-18-h100/24_ring_step_by_hand/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+nvcc -std=c++17 -O2 -arch=sm_90 24_ring_step_by_hand.cu -o ./example
+./example
+```
+
+**Sample output**
+
+```text
+PASS: one ring step (distinct send/receive storage) on 2 GPUs, all nonuniform output values checked.
+```
+
+<!-- execution:end:h100-rerun:24_ring_step_by_hand.cu -->
+
 
 <!-- execution:start:a100:24_ring_step_by_hand.cu -->
 > **Compiled and executed — 2026-11-17-a100: Numerical/transport validation (recorded scope).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:01:27.267481+00:00`.
@@ -407,6 +453,38 @@ int main() {
     return (allMatch && ringBalanced) ? 0 : 1;
 }
 ```
+
+<!-- execution:start:h100-rerun:25_ring_allreduce_simulation.cpp -->
+> **Compiled and executed — 2026-11-18-h100: Host program/model (exit-only).** Hardware: 2 H100 GPUs. Executed UTC: `2026-11-18T11:21:11.107210+00:00`.
+
+<!-- execution:metadata Source SHA-256: df47049aefe87153ff0b4d0aa159a8109ae12c4d23ef95face231ffc5b5d8de4; recorded UTC (program start): 2026-11-18T11:21:10.892615+00:00 -->
+
+[Exact tested source](../validation/2026-11-18-h100/25_ring_allreduce_simulation/25_ring_allreduce_simulation.cpp) · [Compiler log](../validation/2026-11-18-h100/25_ring_allreduce_simulation/compile.log) · [Execution log](../validation/2026-11-18-h100/25_ring_allreduce_simulation/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+g++ -std=c++17 -O2 25_ring_allreduce_simulation.cpp -o ./example
+./example
+```
+
+**Sample output**
+
+```text
+Independent reference (sum of all 4 devices' chunks): 100 104 108 112
+
+After 6 ring steps (scatter-reduce + all-gather), all 4 devices hold the reference sum: PASS
+
+Data-volume comparison for this exact problem (N=4 devices, 4 elements/device):
+  Naive hub's traffic (closed form): 24 elements (bottleneck)
+  Naive non-hub device's traffic:   8 elements
+  Ring: EVERY device's traffic:      12 elements (counted; all devices equal: PASS)
+  Ring: elements SENT per device:    6 = Gibiansky's 2(N-1)K/N = 6
+  Ratio (naive hub / ring device):   2.00x -- equals N/2 exactly.
+```
+
+<!-- execution:end:h100-rerun:25_ring_allreduce_simulation.cpp -->
+
 
 <!-- execution:start:a100:25_ring_allreduce_simulation.cpp -->
 > **Compiled and executed — 2026-11-17-a100: Host program/model (exit-only).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:01:31.459277+00:00`.

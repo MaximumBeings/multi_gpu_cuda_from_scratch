@@ -1,0 +1,4 @@
+$ /usr/mpi/gcc/openmpi-4.1.7rc1/bin/mpirun --oversubscribe -np 2 /home/ubuntu/full-gpu-rerun-20261118/mgpu/results/128_nvshmem_api_reference/example
+PE 0: neighbor=1 received=20 counter=2
+VALIDATION PASS: 2 PEs, errors=0
+PE 1: neighbor=0 received=10 counter=0

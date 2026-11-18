@@ -1,0 +1,34 @@
+$ /usr/mpi/gcc/openmpi-4.1.7rc1/bin/mpirun --oversubscribe -np 2 /home/ubuntu/full-gpu-rerun-20261118/mgpu/results/59_mpi_errhandler_return/example
+rank 1 of 2: reached MPI_Finalize
+rank 0: about to MPI_Send to invalid destination rank 999 (real world size 2), now under MPI_ERRORS_RETURN
+[192-222-55-107:7659 :0:7659] Caught signal 11 (Segmentation fault: address not mapped to object at address 0x58)
+==== backtrace (tid:   7659) ====
+ 0  /lib/libucs.so.0(ucs_handle_error+0x2ec) [0x7e80aec8429c]
+ 1  /lib/libucs.so.0(+0x26e6d) [0x7e80aec85e6d]
+ 2  /lib/libucs.so.0(+0x2703d) [0x7e80aec8603d]
+ 3  /usr/mpi/gcc/openmpi-4.1.7rc1/lib/openmpi/mca_pml_ucx.so(mca_pml_ucx_send+0x52) [0x7e80aecda452]
+ 4  /usr/mpi/gcc/openmpi-4.1.7rc1/lib/libmpi.so.40(PMPI_Send+0x33) [0x7e80b057a663]
+ 5  /home/ubuntu/full-gpu-rerun-20261118/mgpu/results/59_mpi_errhandler_return/example(+0x1251) [0x5deebdd59251]
+ 6  /lib/x86_64-linux-gnu/libc.so.6(+0x2a1ca) [0x7e80b022a1ca]
+ 7  /lib/x86_64-linux-gnu/libc.so.6(__libc_start_main+0x8b) [0x7e80b022a28b]
+ 8  /home/ubuntu/full-gpu-rerun-20261118/mgpu/results/59_mpi_errhandler_return/example(+0x12d5) [0x5deebdd592d5]
+=================================
+[192-222-55-107:07659] *** Process received signal ***
+[192-222-55-107:07659] Signal: Segmentation fault (11)
+[192-222-55-107:07659] Signal code:  (-6)
+[192-222-55-107:07659] Failing at address: 0x3e800001deb
+[192-222-55-107:07659] [ 0] /lib/x86_64-linux-gnu/libc.so.6(+0x45330)[0x7e80b0245330]
+[192-222-55-107:07659] [ 1] /usr/mpi/gcc/openmpi-4.1.7rc1/lib/openmpi/mca_pml_ucx.so(mca_pml_ucx_send+0x52)[0x7e80aecda452]
+[192-222-55-107:07659] [ 2] /usr/mpi/gcc/openmpi-4.1.7rc1/lib/libmpi.so.40(PMPI_Send+0x33)[0x7e80b057a663]
+[192-222-55-107:07659] [ 3] /home/ubuntu/full-gpu-rerun-20261118/mgpu/results/59_mpi_errhandler_return/example(+0x1251)[0x5deebdd59251]
+[192-222-55-107:07659] [ 4] /lib/x86_64-linux-gnu/libc.so.6(+0x2a1ca)[0x7e80b022a1ca]
+[192-222-55-107:07659] [ 5] /lib/x86_64-linux-gnu/libc.so.6(__libc_start_main+0x8b)[0x7e80b022a28b]
+[192-222-55-107:07659] [ 6] /home/ubuntu/full-gpu-rerun-20261118/mgpu/results/59_mpi_errhandler_return/example(+0x12d5)[0x5deebdd592d5]
+[192-222-55-107:07659] *** End of error message ***
+--------------------------------------------------------------------------
+Primary job  terminated normally, but 1 process returned
+a non-zero exit code. Per user-direction, the job has been aborted.
+--------------------------------------------------------------------------
+--------------------------------------------------------------------------
+mpirun noticed that process rank 0 with PID 0 on node 192-222-55-107 exited on signal 11 (Segmentation fault).
+--------------------------------------------------------------------------

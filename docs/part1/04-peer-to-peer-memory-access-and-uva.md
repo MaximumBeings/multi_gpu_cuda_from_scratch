@@ -73,6 +73,32 @@ int main() {
 }
 ```
 
+<!-- execution:start:h100-rerun:08_pointer_attributes.cu -->
+> **Compiled and executed — 2026-11-18-h100: API/host demonstration (exit-only).** Hardware: 2 H100 GPUs. Executed UTC: `2026-11-18T11:20:52.826661+00:00`.
+
+<!-- execution:metadata Source SHA-256: 41c5abf56f01114560b72e04c1db7a3056be50dfe7fc6d9905fbf9998a553e58; recorded UTC (program start): 2026-11-18T11:20:52.211361+00:00 -->
+
+[Exact tested source](../validation/2026-11-18-h100/08_pointer_attributes/08_pointer_attributes.cu) · [Compiler log](../validation/2026-11-18-h100/08_pointer_attributes/compile.log) · [Execution log](../validation/2026-11-18-h100/08_pointer_attributes/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+nvcc -std=c++17 -O2 -arch=sm_90 08_pointer_attributes.cu -o ./example
+./example
+```
+
+**Sample output**
+
+```text
+cudaPointerGetAttributes(ordinary stack array): no error (code 0)
+  type=0 device=-1
+cudaMalloc: no error (code 0)
+cudaPointerGetAttributes(device ptr): no error
+```
+
+<!-- execution:end:h100-rerun:08_pointer_attributes.cu -->
+
+
 <!-- execution:start:a100:08_pointer_attributes.cu -->
 > **Compiled and executed — 2026-11-17-a100: API/host demonstration (exit-only).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:00:27.268130+00:00`.
 
@@ -190,6 +216,32 @@ int main() {
     return 0;
 }
 ```
+
+<!-- execution:start:h100-rerun:09_peer_access_setup.cu -->
+> **Compiled and executed — 2026-11-18-h100: API/host demonstration (exit-only).** Hardware: 2 H100 GPUs. Executed UTC: `2026-11-18T11:20:53.857524+00:00`.
+
+<!-- execution:metadata Source SHA-256: 740c8c5876f47659619e118e3c553087839f81fc4ec57913b61dcb4654881bf5; recorded UTC (program start): 2026-11-18T11:20:53.242272+00:00 -->
+
+[Exact tested source](../validation/2026-11-18-h100/09_peer_access_setup/09_peer_access_setup.cu) · [Compiler log](../validation/2026-11-18-h100/09_peer_access_setup/compile.log) · [Execution log](../validation/2026-11-18-h100/09_peer_access_setup/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+nvcc -std=c++17 -O2 -arch=sm_90 09_peer_access_setup.cu -o ./example
+./example
+```
+
+**Sample output**
+
+```text
+cudaGetDeviceCount(): 2 device(s).
+Enabled i=0 -> j=1: no error
+Enabled i=1 -> j=0: no error
+Peer access enabled for 2 ordered pair(s) out of 2 device(s) checked. On real multi-GPU hardware this same loop enables every accessible ordered pair exactly once, each direction independently, per the API's own unidirectional-access note.
+```
+
+<!-- execution:end:h100-rerun:09_peer_access_setup.cu -->
+
 
 <!-- execution:start:a100:09_peer_access_setup.cu -->
 > **Compiled and executed — 2026-11-17-a100: API/host demonstration (exit-only).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:00:31.360263+00:00`.
@@ -417,6 +469,37 @@ int main() {
     return (pass1 && pass2) ? 0 : 1;
 }
 ```
+
+<!-- execution:start:h100-rerun:10_p2p_simulation.cpp -->
+> **Compiled and executed — 2026-11-18-h100: Host program/model (exit-only).** Hardware: 2 H100 GPUs. Executed UTC: `2026-11-18T11:20:54.738108+00:00`.
+
+<!-- execution:metadata Source SHA-256: 8ef2739bea00136f3e1810c7e4d9bb37b7eb346f1d0876f53c99c58ee044aac4; recorded UTC (program start): 2026-11-18T11:20:54.523374+00:00 -->
+
+[Exact tested source](../validation/2026-11-18-h100/10_p2p_simulation/10_p2p_simulation.cpp) · [Compiler log](../validation/2026-11-18-h100/10_p2p_simulation/compile.log) · [Execution log](../validation/2026-11-18-h100/10_p2p_simulation/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+g++ -std=c++17 -O2 10_p2p_simulation.cpp -o ./example
+./example
+```
+
+**Sample output**
+
+```text
+Device 0 initialized. Attempting device 0 -> device 1 (peer-accessible per the simulated topology) and device 0 -> device 2 (NOT peer-accessible).
+
+Transfer 0->1: direct P2P write (peer access exists)
+Transfer 0->2: direct P2P refused (no peer access, correctly) -- falling back to host-staged copy.
+
+Correctness check, device 1 contents vs. independent reference: PASS
+Correctness check, device 2 contents vs. independent reference: PASS
+
+Both destinations hold identical, correct data despite using two different transfer mechanisms -- exactly the property real P2P code depends on: the *method* changes with topology, the *result* must not.
+```
+
+<!-- execution:end:h100-rerun:10_p2p_simulation.cpp -->
+
 
 <!-- execution:start:a100:10_p2p_simulation.cpp -->
 > **Compiled and executed — 2026-11-17-a100: Host program/model (exit-only).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:00:36.653174+00:00`.

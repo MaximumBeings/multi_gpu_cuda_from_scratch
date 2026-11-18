@@ -120,6 +120,41 @@ int main() {
 }
 ```
 
+<!-- execution:start:h100-rerun:96_prefill_vs_decode_cost_model.cpp -->
+> **Compiled and executed — 2026-11-18-h100: Host program/model (exit-only).** Hardware: 2 H100 GPUs. Executed UTC: `2026-11-18T11:22:53.000471+00:00`.
+
+<!-- execution:metadata Source SHA-256: 2a19ddbfe875f70de98aca323fd86485c15d0714ddac0d0b07ce292c5b487b9c; recorded UTC (program start): 2026-11-18T11:22:52.936146+00:00 -->
+
+[Exact tested source](../validation/2026-11-18-h100/96_prefill_vs_decode_cost_model/96_prefill_vs_decode_cost_model.cpp) · [Compiler log](../validation/2026-11-18-h100/96_prefill_vs_decode_cost_model/compile.log) · [Execution log](../validation/2026-11-18-h100/96_prefill_vs_decode_cost_model/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+g++ -std=c++17 -O2 96_prefill_vs_decode_cost_model.cpp -o ./example
+./example
+```
+
+**Sample output**
+
+```text
+Illustrative model (Chapter 1's arithmetic-intensity framing applied to one transformer layer of hidden dimension d):
+Prompt N     Prefill FLOPs (~N*d^2) Decode FLOPs/step (~d^2) Decode bytes/step (~N*d)
+128          17179869184            134217728              2097152
+512          68719476736            134217728              8388608
+2048         274877906944           134217728              33554432
+8192         1099511627776          134217728              134217728
+
+Decode's own FLOPs per step never grows with the prompt -- exactly DistServe's own point that decode is 'despite processing only one new token per step.' But decode's own BYTES MOVED per step (reading the growing KV cache) grows exactly as fast as prefill's own compute does. Arithmetic intensity (FLOPs per byte) therefore FALLS as the prompt grows for decode, while prefill's stays roughly constant -- the real reason decode is memory-bandwidth-bound and prefill is compute-bound, the same distinction Chapter 1's own memory-wall discussion introduced.
+
+DistServe's own real cited numbers (not derived by this book):
+- Goodput, DistServe's own definition: "the maximum request rate that can be served adhering to the SLO attainment goal (say, 90%) for each GPU provisioned -- higher per-GPU goodput directly translates into lower cost per query."
+- Measured result: "DistServe can serve 4.48x more requests or 10.2x tighter SLO, compared to state-of-the-art systems, while staying within latency constraints for >90% of requests."
+- Real KV cache size example cited in the same paper: "the KV cache size of a single 512-token request on OPT-66B is approximately 1.13GB" -- Section 33.3 below uses this exact real number.
+```
+
+<!-- execution:end:h100-rerun:96_prefill_vs_decode_cost_model.cpp -->
+
+
 <!-- execution:start:a100:96_prefill_vs_decode_cost_model.cpp -->
 > **Compiled and executed — 2026-11-17-a100: Host program/model (exit-only).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:06:17.735554+00:00`.
 
@@ -344,6 +379,49 @@ int main() {
 }
 ```
 
+<!-- execution:start:h100-rerun:97_phase_specific_tensor_parallelism_correctness_simulation.cpp -->
+> **Compiled and executed — 2026-11-18-h100: Host program/model (exit-only).** Hardware: 2 H100 GPUs. Executed UTC: `2026-11-18T11:22:53.218935+00:00`.
+
+<!-- execution:metadata Source SHA-256: 50a70bd48edfd6b37395c8926480c3b10038afb94d582ea083f480ae17709871; recorded UTC (program start): 2026-11-18T11:22:53.004636+00:00 -->
+
+[Exact tested source](../validation/2026-11-18-h100/97_phase_specific_tensor_parallelism_correctness_simulation/97_phase_specific_tensor_parallelism_correctness_simulation.cpp) · [Compiler log](../validation/2026-11-18-h100/97_phase_specific_tensor_parallelism_correctness_simulation/compile.log) · [Execution log](../validation/2026-11-18-h100/97_phase_specific_tensor_parallelism_correctness_simulation/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+g++ -std=c++17 -O2 97_phase_specific_tensor_parallelism_correctness_simulation.cpp -o ./example
+./example
+```
+
+**Sample output**
+
+```text
+Reference (Tp=1, Td=1): kv[0..3]=304,722,532,532  decode tokens: 24624 215460 738720 2954880 27578880 126074880
+
+Tp     Td     match      note
+1      1      YES        Tp<=Td (Dynamo's own recommended shape)
+1      2      YES        Tp<=Td (Dynamo's own recommended shape)
+1      3      YES        Tp<=Td (Dynamo's own recommended shape)
+1      6      YES        Tp<=Td (Dynamo's own recommended shape)
+2      1      YES        Tp>Td (not the recommended shape, still correct)
+2      2      YES        Tp<=Td (Dynamo's own recommended shape)
+2      3      YES        Tp<=Td (Dynamo's own recommended shape)
+2      6      YES        Tp<=Td (Dynamo's own recommended shape)
+4      1      YES        Tp>Td (not the recommended shape, still correct)
+4      2      YES        Tp>Td (not the recommended shape, still correct)
+4      3      YES        Tp>Td (not the recommended shape, still correct)
+4      6      YES        Tp<=Td (Dynamo's own recommended shape)
+8      1      YES        Tp>Td (not the recommended shape, still correct)
+8      2      YES        Tp>Td (not the recommended shape, still correct)
+8      3      YES        Tp>Td (not the recommended shape, still correct)
+8      6      YES        Tp>Td (not the recommended shape, still correct)
+
+Every single (Tp, Td) combination matches the Tp=1/Td=1 reference exactly, whether or not Tp and Td are equal, and whether or not the pair follows NVIDIA Dynamo's own recommended shape (smaller TP for prefill, larger TP for decode). Correctness here does not come from the two phases sharing a device-group size -- it comes from each phase's own internal reduction being exact on its own, and the two phases being connected ONLY through the kv cache values themselves, never through shared parallelism structure. This is the real correctness argument behind disaggregation: prefill and decode are allowed to be sized independently precisely because nothing about their correctness depends on being sized the same.
+```
+
+<!-- execution:end:h100-rerun:97_phase_specific_tensor_parallelism_correctness_simulation.cpp -->
+
+
 <!-- execution:start:a100:97_phase_specific_tensor_parallelism_correctness_simulation.cpp -->
 > **Compiled and executed — 2026-11-17-a100: Host program/model (exit-only).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:06:18.058542+00:00`.
 
@@ -533,6 +611,37 @@ int main() {
     return 0;
 }
 ```
+
+<!-- execution:start:h100-rerun:98_kv_cache_handoff_transfer_cost_model.cpp -->
+> **Compiled and executed — 2026-11-18-h100: Host program/model (exit-only).** Hardware: 2 H100 GPUs. Executed UTC: `2026-11-18T11:22:53.287213+00:00`.
+
+<!-- execution:metadata Source SHA-256: 7a5dc5448a93ac88b1c7c2d0b60e5b4e2e2c9c327a02b44dcba7cc2e6f20288f; recorded UTC (program start): 2026-11-18T11:22:53.223148+00:00 -->
+
+[Exact tested source](../validation/2026-11-18-h100/98_kv_cache_handoff_transfer_cost_model/98_kv_cache_handoff_transfer_cost_model.cpp) · [Compiler log](../validation/2026-11-18-h100/98_kv_cache_handoff_transfer_cost_model/compile.log) · [Execution log](../validation/2026-11-18-h100/98_kv_cache_handoff_transfer_cost_model/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+g++ -std=c++17 -O2 98_kv_cache_handoff_transfer_cost_model.cpp -o ./example
+./example
+```
+
+**Sample output**
+
+```text
+DistServe's own real cited KV cache example: a single 512-token OPT-66B request's KV cache is approximately 1.13 GB.
+
+Link                         GB/s         Transfer time (ms)
+Intra-node NVLink (A100)     600.0        1.883
+Cross-node InfiniBand        100.0        11.300
+
+At real NVLink bandwidth, moving this real 1.13GB KV cache takes about 1.88 milliseconds; even over real cross-node InfiniBand, about 11.30 milliseconds. Both numbers are small enough next to a real LLM serving request's own end-to-end latency (typically hundreds of milliseconds to multiple seconds for a multi-hundred-token response) that DistServe's own paper calls the transmission overhead "negligible" -- this is the exact arithmetic behind that real conclusion, not a new estimate this book is introducing.
+
+NVIDIA's own real Dynamo documentation adds one further real design point this arithmetic alone does not show: the transfer does not even need to be on the critical path at all -- "the KV transfer is non-blocking, allowing GPU forward passes to continue serving other requests during the transfer." A cost small enough to call negligible AND overlapped with other useful work is the real, two-part reason production disaggregated serving systems treat this handoff as a solved problem rather than their main bottleneck.
+```
+
+<!-- execution:end:h100-rerun:98_kv_cache_handoff_transfer_cost_model.cpp -->
+
 
 <!-- execution:start:a100:98_kv_cache_handoff_transfer_cost_model.cpp -->
 > **Compiled and executed — 2026-11-17-a100: Host program/model (exit-only).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:06:18.182317+00:00`.

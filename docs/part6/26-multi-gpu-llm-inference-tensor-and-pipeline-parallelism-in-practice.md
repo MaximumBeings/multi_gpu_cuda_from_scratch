@@ -253,6 +253,38 @@ int main() {
 }
 ```
 
+<!-- execution:start:h100-rerun:75_tp_pp_combined_correctness_simulation.cpp -->
+> **Compiled and executed — 2026-11-18-h100: Host program/model (exit-only).** Hardware: 2 H100 GPUs. Executed UTC: `2026-11-18T11:22:36.364805+00:00`.
+
+<!-- execution:metadata Source SHA-256: e7ce19914b34c55778fce459991872fb157e8f6d4d6cdbb7857b2dd62ee94dfe; recorded UTC (program start): 2026-11-18T11:22:36.100355+00:00 -->
+
+[Exact tested source](../validation/2026-11-18-h100/75_tp_pp_combined_correctness_simulation/75_tp_pp_combined_correctness_simulation.cpp) · [Compiler log](../validation/2026-11-18-h100/75_tp_pp_combined_correctness_simulation/compile.log) · [Execution log](../validation/2026-11-18-h100/75_tp_pp_combined_correctness_simulation/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+g++ -std=c++17 -O2 75_tp_pp_combined_correctness_simulation.cpp -o ./example
+./example
+```
+
+**Sample output**
+
+```text
+Grid: PP_STAGES=2 x TP_DEGREE=2 = 4 total simulated devices, 4 layers (2 per stage), 4 microbatches (inference: forward only)
+
+Microbatch 0: naive=[-1152,128,-384,896]  combined-TP+PP=[-1152,128,-384,896]  EXACT MATCH
+Microbatch 1: naive=[0,0,0,0]  combined-TP+PP=[0,0,0,0]  EXACT MATCH
+Microbatch 2: naive=[-6624,736,-2208,5152]  combined-TP+PP=[-6624,736,-2208,5152]  EXACT MATCH
+Microbatch 3: naive=[-576,64,-192,448]  combined-TP+PP=[-576,64,-192,448]  EXACT MATCH
+
+All 4 microbatches EXACT MATCH between naive and combined TP+PP: YES
+
+Forward-only inference pipeline schedule: 4 microbatches, 2 stages -> 5 total time steps, 8/10 stage-slots busy, 2 idle (20.0% bubble)
+```
+
+<!-- execution:end:h100-rerun:75_tp_pp_combined_correctness_simulation.cpp -->
+
+
 <!-- execution:start:a100:75_tp_pp_combined_correctness_simulation.cpp -->
 > **Compiled and executed — 2026-11-17-a100: Host program/model (exit-only).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:05:25.027225+00:00`.
 
@@ -445,6 +477,40 @@ int main() {
 }
 ```
 
+<!-- execution:start:h100-rerun:76_tp_pp_scale_cost_model.cpp -->
+> **Compiled and executed — 2026-11-18-h100: Host program/model (exit-only).** Hardware: 2 H100 GPUs. Executed UTC: `2026-11-18T11:22:36.432584+00:00`.
+
+<!-- execution:metadata Source SHA-256: 7bd6884382e03f87763b8653318789753609ab156fd7f5858392476334c0a208; recorded UTC (program start): 2026-11-18T11:22:36.368527+00:00 -->
+
+[Exact tested source](../validation/2026-11-18-h100/76_tp_pp_scale_cost_model/76_tp_pp_scale_cost_model.cpp) · [Compiler log](../validation/2026-11-18-h100/76_tp_pp_scale_cost_model/compile.log) · [Execution log](../validation/2026-11-18-h100/76_tp_pp_scale_cost_model/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+g++ -std=c++17 -O2 76_tp_pp_scale_cost_model.cpp -o ./example
+./example
+```
+
+**Sample output**
+
+```text
+Megatron-Turing NLG 530B (Smith et al.): 530000000000 params, TP=8 (within a node), PP=35 (across nodes), TOTAL=280 GPUs per model replica
+
+Total fp16 parameter bytes: 987.20 GiB. Sharded evenly across all 280 GPUs (TP x PP combined): 3.526 GiB/GPU -- this chapter's own worked calculation, not a number from the paper.
+
+--- Ch9's own ring all-reduce formula, applied to TWO cases ---
+N=8    rounds=2(N-1)=14     per-rank volume factor 2(N-1)/N = 1.7500 (approaches the constant 2 either way)
+N=280  rounds=2(N-1)=558    per-rank volume factor 2(N-1)/N = 1.9929 (approaches the constant 2 either way)
+
+Communication VOLUME ratio, TP=280 vs TP=8: 1.1388x (nearly flat -- Chapter 9/25's own finding still holds: volume barely grows with N).
+Communication ROUND-COUNT ratio, TP=280 vs TP=8: 558x / 14x = 39.9x (this does NOT stay flat -- it scales directly with N-1).
+
+And critically: EVERY one of TP=8's 14 rounds stays inside one node (real NVLink, per the Megatron-LM paper's own quote), while ALL 558 of TP=280's rounds would have to cross the slower inter-server link the SAME paper names as the real reason to keep tensor parallelism inside a node.
+```
+
+<!-- execution:end:h100-rerun:76_tp_pp_scale_cost_model.cpp -->
+
+
 <!-- execution:start:a100:76_tp_pp_scale_cost_model.cpp -->
 > **Compiled and executed — 2026-11-17-a100: Host program/model (exit-only).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:05:25.149814+00:00`.
 
@@ -632,6 +698,46 @@ int main() {
     return 0;
 }
 ```
+
+<!-- execution:start:h100-rerun:77_kv_cache_tp_scaling_model.cpp -->
+> **Compiled and executed — 2026-11-18-h100: Host program/model (exit-only).** Hardware: 2 H100 GPUs. Executed UTC: `2026-11-18T11:22:36.500051+00:00`.
+
+<!-- execution:metadata Source SHA-256: f07f2e781746413cb3dc829b34bc6b409b2cc8f9a2a9c0e0d5c7ec8f30c92e6d; recorded UTC (program start): 2026-11-18T11:22:36.436091+00:00 -->
+
+[Exact tested source](../validation/2026-11-18-h100/77_kv_cache_tp_scaling_model/77_kv_cache_tp_scaling_model.cpp) · [Compiler log](../validation/2026-11-18-h100/77_kv_cache_tp_scaling_model/compile.log) · [Execution log](../validation/2026-11-18-h100/77_kv_cache_tp_scaling_model/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+g++ -std=c++17 -O2 77_kv_cache_tp_scaling_model.cpp -o ./example
+./example
+```
+
+**Sample output**
+
+```text
+--- Real, cited numbers (vLLM blog post) -- NOT computed by this program ---
+Between TP=1 and TP=2: KV cache blocks increase 13.9x; measured token throughput increases 3.9x (vs. a naive 2x expectation from doubling GPU count alone).
+
+--- This chapter's own worked model (illustrative, NOT a reconstruction of vLLM's real internal accounting) ---
+Model: KV-cache-available capacity at TP=1 is (C - W); at TP=2 it is (2C - W), where C = one GPU's capacity, W = full model weight bytes.
+Solving (2 - w)/(1 - w) = 13.9 for w = W/C: w = 0.9225
+-> Under this simplified model, vLLM's own cited 13.9x KV-cache gain is the shape you'd expect if the model's weights alone were already consuming about 92.2% of one GPU's memory at TP=1 -- leaving very little headroom for KV cache until a second GPU's capacity is added.
+
+W/C          (2-w)/(1-w) KV-capacity ratio
+0.5000       3.00
+0.7000       4.33
+0.8000       6.00
+0.9000       11.00
+0.9225       13.90
+0.9500       21.00
+
+--- The honest gap this section does NOT fill ---
+No published source found (vLLM docs, TensorRT-LLM docs, or an academic paper) gives a direct, apples-to-apples throughput or latency comparison of a COMBINED TP+PP configuration against TP-only or PP-only at the same total GPU count. TensorRT-LLM's own public docs describe the two qualitatively instead: TP is "Best for: Small batch sizes, memory-constrained scenarios"; PP is "Best for: Large models that don't fit in single GPU memory." This section cites that real qualitative guidance rather than fabricating a number to fill the gap -- the same discipline this book applied in Chapter 21's own GPUDirect RDMA section and Chapter 25's own communication-cost model.
+```
+
+<!-- execution:end:h100-rerun:77_kv_cache_tp_scaling_model.cpp -->
+
 
 <!-- execution:start:a100:77_kv_cache_tp_scaling_model.cpp -->
 > **Compiled and executed — 2026-11-17-a100: Host program/model (exit-only).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:05:25.271427+00:00`.

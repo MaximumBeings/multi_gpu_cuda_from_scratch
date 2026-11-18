@@ -1,0 +1,2 @@
+$ /home/ubuntu/full-gpu-rerun-20261118/mgpu/results/hello_nccl/example
+hello_nccl: compiled and linked against real libnccl (NCCL 2.26.2).

@@ -136,6 +136,38 @@ int main() {
 }
 ```
 
+<!-- execution:start:h100-rerun:99_embedding_capacity_and_parallelism_choice_model.cpp -->
+> **Compiled and executed — 2026-11-18-h100: Host program/model (exit-only).** Hardware: 2 H100 GPUs. Executed UTC: `2026-11-18T11:22:53.355481+00:00`.
+
+<!-- execution:metadata Source SHA-256: 594b8190528b8ca88fce0696fa7d7db64d94b47ee70b96680b46de9e97e18e0d; recorded UTC (program start): 2026-11-18T11:22:53.291318+00:00 -->
+
+[Exact tested source](../validation/2026-11-18-h100/99_embedding_capacity_and_parallelism_choice_model/99_embedding_capacity_and_parallelism_choice_model.cpp) · [Compiler log](../validation/2026-11-18-h100/99_embedding_capacity_and_parallelism_choice_model/compile.log) · [Execution log](../validation/2026-11-18-h100/99_embedding_capacity_and_parallelism_choice_model/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+g++ -std=c++17 -O2 99_embedding_capacity_and_parallelism_choice_model.cpp -o ./example
+./example
+```
+
+**Sample output**
+
+```text
+Per-GPU HBM: 80 GB (A100 80GB); one 8-GPU node in aggregate: 640 GB -- the 640 GB figure in HugeCTR's ETC documentation is this NODE aggregate, not a single-GPU capacity.
+Dense model size: 2.0 GB -- comfortably replicated on EVERY GPU regardless of GPU count (Chapter 12's data parallelism), since it is a small fraction of one GPU's 80 GB.
+
+Scenario                                           Total emb. (GB)  Fits 1 GPU?  GPUs (MP)      8-GPU nodes
+Small catalog                                      50.0             YES          1              1
+One 8x A100 node's aggregate (HugeCTR ETC doc)     640.0            NO           8              1
+Production-scale                                   2048.0           NO           26             4
+Terabyte-scale (10 TB)                             10240.0          NO           128            16
+
+These GPU counts are LOWER bounds: they assume the whole 80 GB of every GPU holds embedding rows and nothing else. Pure data parallelism (replicate the WHOLE model on every GPU, Chapter 12's technique alone) only works for the first scenario -- a 10 TB table is 128x one GPU's memory, and 16x even a whole 8-GPU node's aggregate. That is exactly why HugeCTR's own real design shards the embeddings (Chapter 13's technique) while keeping the dense layers replicated (Chapter 12's technique) -- a genuine HYBRID of two techniques this book built separately, applied to two different PARTS of the same model rather than to the whole model uniformly.
+```
+
+<!-- execution:end:h100-rerun:99_embedding_capacity_and_parallelism_choice_model.cpp -->
+
+
 <!-- execution:start:a100:99_embedding_capacity_and_parallelism_choice_model.cpp -->
 > **Compiled and executed — 2026-11-17-a100: Host program/model (exit-only).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:06:18.303890+00:00`.
 
@@ -408,6 +440,39 @@ int main() {
 }
 ```
 
+<!-- execution:start:h100-rerun:100_embedding_alltoall_resharding_correctness_simulation.cpp -->
+> **Compiled and executed — 2026-11-18-h100: Host program/model (exit-only).** Hardware: 2 H100 GPUs. Executed UTC: `2026-11-18T11:22:39.789541+00:00`.
+
+<!-- execution:metadata Source SHA-256: cc5ee47c40c185b33b28be66de6536cfb27f087be326e5f762484beba41696ce; recorded UTC (program start): 2026-11-18T11:22:39.474924+00:00 -->
+
+[Exact tested source](../validation/2026-11-18-h100/100_embedding_alltoall_resharding_correctness_simulation/100_embedding_alltoall_resharding_correctness_simulation.cpp) · [Compiler log](../validation/2026-11-18-h100/100_embedding_alltoall_resharding_correctness_simulation/compile.log) · [Execution log](../validation/2026-11-18-h100/100_embedding_alltoall_resharding_correctness_simulation/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+g++ -std=c++17 -O2 100_embedding_alltoall_resharding_correctness_simulation.cpp -o ./example
+./example
+```
+
+**Sample output**
+
+```text
+Reference (single-process): sample 0's full feature vector: 0 72 83 9 70 91 47 15 70 58 85 85
+
+P      values sent off-rank   cyclic unpack: all match   contiguous-bug unpack: wrong
+1      0                      YES                        0 of 288 slots
+2      144                    YES                        239 of 288 slots
+3      192                    YES                        238 of 288 slots
+4      216                    YES                        238 of 288 slots
+6      240                    YES                        239 of 288 slots
+12     264                    YES                        0 of 288 slots
+
+The correct unpacker reproduces every sample's feature vector at every P, and the number of values that cross the network is exactly B*F*(P-1)/P. The buggy unpacker -- which assumes each rank owned a CONTIGUOUS block of features when the schedule actually stripes them CYCLICALLY (feature index modulo P) -- scrambles feature slots at every P where the two layouts differ (they coincide only at P=1 and P=F, where each rank owns either every feature or exactly one). Nothing here is ever summed, so the operation is exact; what CAN go wrong is the bookkeeping, which is why the pack and unpack sides of an all-to-all must agree on one layout.
+```
+
+<!-- execution:end:h100-rerun:100_embedding_alltoall_resharding_correctness_simulation.cpp -->
+
+
 <!-- execution:start:a100:100_embedding_alltoall_resharding_correctness_simulation.cpp -->
 > **Compiled and executed — 2026-11-17-a100: Host program/model (exit-only).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:05:30.022415+00:00`.
 
@@ -578,6 +643,41 @@ int main() {
     return 0;
 }
 ```
+
+<!-- execution:start:h100-rerun:101_embedding_alltoall_comm_volume_cost_model.cpp -->
+> **Compiled and executed — 2026-11-18-h100: Host program/model (exit-only).** Hardware: 2 H100 GPUs. Executed UTC: `2026-11-18T11:22:39.857612+00:00`.
+
+<!-- execution:metadata Source SHA-256: 80de05b7f2bf36a6fa3f138425fbce8b1d3b6b373ce2e200f8946faa80aa2933; recorded UTC (program start): 2026-11-18T11:22:39.793528+00:00 -->
+
+[Exact tested source](../validation/2026-11-18-h100/101_embedding_alltoall_comm_volume_cost_model/101_embedding_alltoall_comm_volume_cost_model.cpp) · [Compiler log](../validation/2026-11-18-h100/101_embedding_alltoall_comm_volume_cost_model/compile.log) · [Execution log](../validation/2026-11-18-h100/101_embedding_alltoall_comm_volume_cost_model/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+g++ -std=c++17 -O2 101_embedding_alltoall_comm_volume_cost_model.cpp -o ./example
+./example
+```
+
+**Sample output**
+
+```text
+Per-step embedding payload: batch=65536 x slots=26 x dim=128 x 2 bytes = 436207616 bytes (0.436 GB) that must be FULLY reassembled into batch-parallel shards every single training step.
+
+P      Fraction off-rank  Total bytes on network Bytes sent PER GPU     Per-GPU emb. shard (GB, 10TB total)
+1      0.0000             0                      0                      10240.000
+2      0.5000             218103808              109051904              5120.000
+4      0.7500             327155712              81788928               2560.000
+8      0.8750             381681664              47710208               1280.000
+16     0.9375             408944640              25559040               640.000
+32     0.9688             422576128              13205504               320.000
+64     0.9844             429391872              6709248                160.000
+128    0.9922             432799744              3381248                80.000
+
+Two different quantities, two different trends. The FRACTION of the per-step payload that must cross the network rises from 0% (P=1) toward 100% and saturates -- already over 87% at P=8 -- so the TOTAL bytes on the network approach the whole payload and stop growing. But the bytes EACH GPU must send keep falling roughly as 1/P (exactly payload*(P-1)/P^2), because each GPU holds a smaller slice to begin with. So more GPUs DO keep shrinking each GPU's per-step all-to-all traffic; what they cannot do is shrink the aggregate traffic below (nearly) the whole payload, which matters when a shared resource -- a switch's bisection bandwidth, the inter-node fabric -- carries all of it. Real all-to-all time also has a per-message latency term that grows with P, which this volume-only model omits.
+```
+
+<!-- execution:end:h100-rerun:101_embedding_alltoall_comm_volume_cost_model.cpp -->
+
 
 <!-- execution:start:a100:101_embedding_alltoall_comm_volume_cost_model.cpp -->
 > **Compiled and executed — 2026-11-17-a100: Host program/model (exit-only).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:05:30.145560+00:00`.

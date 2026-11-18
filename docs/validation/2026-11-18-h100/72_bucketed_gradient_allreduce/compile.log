@@ -1,0 +1,1 @@
+$ nvcc -std=c++17 -O2 -arch=sm_90 -ccbin mpicxx /home/ubuntu/full-gpu-rerun-20261118/mgpu/docs/part6/code/72_bucketed_gradient_allreduce.cu -o /home/ubuntu/full-gpu-rerun-20261118/mgpu/results/72_bucketed_gradient_allreduce/example -lnccl

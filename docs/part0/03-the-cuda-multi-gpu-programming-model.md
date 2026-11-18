@@ -145,6 +145,35 @@ int main() {
 }
 ```
 
+<!-- execution:start:h100-rerun:06_single_device_setup.cu -->
+> **Compiled and executed — 2026-11-18-h100: API/host demonstration (exit-only).** Hardware: 2 H100 GPUs. Executed UTC: `2026-11-18T11:20:50.063692+00:00`.
+
+<!-- execution:metadata Source SHA-256: 0a16e1d4b5d38ac9091b11d28b12db3a0c353d8dce75f782553003a2e602fe23; recorded UTC (program start): 2026-11-18T11:20:49.448365+00:00 -->
+
+[Exact tested source](../validation/2026-11-18-h100/06_single_device_setup/06_single_device_setup.cu) · [Compiler log](../validation/2026-11-18-h100/06_single_device_setup/compile.log) · [Execution log](../validation/2026-11-18-h100/06_single_device_setup/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+nvcc -std=c++17 -O2 -arch=sm_90 06_single_device_setup.cu -o ./example
+./example
+```
+
+**Sample output**
+
+```text
+cudaSetDevice(0)             no error (code 0)
+cudaMalloc                   no error (code 0)
+cudaMemcpy H2D               no error (code 0)
+kernel launch                no error (code 0)
+cudaDeviceSynchronize        no error (code 0)
+cudaMemcpy D2H               no error (code 0)
+Result: 1 2 3 4 5 6 7 8
+```
+
+<!-- execution:end:h100-rerun:06_single_device_setup.cu -->
+
+
 <!-- execution:start:a100:06_single_device_setup.cu -->
 > **Compiled and executed — 2026-11-17-a100: API/host demonstration (exit-only).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:00:16.533681+00:00`.
 
@@ -288,6 +317,32 @@ int main() {
     return 0;
 }
 ```
+
+<!-- execution:start:h100-rerun:07_multi_device_loop_pattern.cu -->
+> **Compiled and executed — 2026-11-18-h100: API/host demonstration (exit-only).** Hardware: 2 H100 GPUs. Executed UTC: `2026-11-18T11:20:51.545268+00:00`.
+
+<!-- execution:metadata Source SHA-256: a876bc6228ec5b0d82ea556321644f8d55e5a3f3a3dc7022f4ae0088d8c77805; recorded UTC (program start): 2026-11-18T11:20:50.729469+00:00 -->
+
+[Exact tested source](../validation/2026-11-18-h100/07_multi_device_loop_pattern/07_multi_device_loop_pattern.cu) · [Compiler log](../validation/2026-11-18-h100/07_multi_device_loop_pattern/compile.log) · [Execution log](../validation/2026-11-18-h100/07_multi_device_loop_pattern/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+nvcc -std=c++17 -O2 -arch=sm_90 07_multi_device_loop_pattern.cu -o ./example
+./example
+```
+
+**Actual sample output (excerpt)**
+
+```text
+cudaGetDeviceCount() reports 2 device(s).
+
+Device 0: stream and buffer created while device 0 was current.
+Device 1: stream and buffer created while device 1 was current.
+```
+
+<!-- execution:end:h100-rerun:07_multi_device_loop_pattern.cu -->
+
 
 <!-- execution:start:a100:07_multi_device_loop_pattern.cu -->
 > **Compiled and executed — 2026-11-17-a100: API/host demonstration (exit-only).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:00:21.074058+00:00`.

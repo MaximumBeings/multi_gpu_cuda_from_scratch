@@ -1,0 +1,3 @@
+$ /usr/mpi/gcc/openmpi-4.1.7rc1/bin/mpirun --oversubscribe -np 2 /home/ubuntu/full-gpu-rerun-20261118/mgpu/results/58_mpi_cuda_aware_query_and_fallback/example
+CUDA-aware MPI: build=0 runtime=0; using host staging
+VALIDATION PASS: host-staged MPI, 2 ranks, 4096 values/rank, errors=0

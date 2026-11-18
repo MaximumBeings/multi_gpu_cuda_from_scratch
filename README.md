@@ -4,7 +4,7 @@ A 40-chapter book covering device ownership, peer transfers, collectives, parall
 
 Read the [public book](https://maximumbeings.github.io/multi_gpu_cuda_from_scratch/) or start with [Getting Started](docs/getting-started.md). GPU programs, CPU reference simulations, cost models and API probes have different validation scopes; the execution records state which was checked.
 
-The final review corrected the staged MPI example (58): device-buffer initialization, local-rank GPU binding, error checks and a full receive oracle. **144 current sources match their execution records; example 58 awaits GPU revalidation.** Its dated output below belongs to the archived revision.
+The corrected staged-MPI example (58) passed the November 18 two-H100 numerical rerun and memory check. **All 145 current sources have successful execution records.** See the [additional dated H100 results](docs/validation-h100-rerun.md) for commands, system information and sample outputs.
 
 ## Recorded validation
 

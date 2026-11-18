@@ -1,0 +1,3 @@
+$ nvidia-smi --query-gpu=name,uuid,driver_version,memory.total --format=csv,noheader
+NVIDIA H100 80GB HBM3, GPU-d1961bf9-e73f-c5b5-687e-2de651b1299c, 580.105.08, 81559 MiB
+NVIDIA H100 80GB HBM3, GPU-30beecbc-b851-3f3b-9d7d-53610f27bfa3, 580.105.08, 81559 MiB

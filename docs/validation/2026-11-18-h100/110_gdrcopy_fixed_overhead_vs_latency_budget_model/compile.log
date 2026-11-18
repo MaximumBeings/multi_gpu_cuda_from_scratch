@@ -1,0 +1,1 @@
+$ g++ -std=c++17 -O2 /home/ubuntu/full-gpu-rerun-20261118/mgpu/docs/part7/code/110_gdrcopy_fixed_overhead_vs_latency_budget_model.cpp -o /home/ubuntu/full-gpu-rerun-20261118/mgpu/results/110_gdrcopy_fixed_overhead_vs_latency_budget_model/example

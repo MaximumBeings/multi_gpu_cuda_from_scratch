@@ -1,0 +1,6 @@
+$ /usr/mpi/gcc/openmpi-4.1.7rc1/bin/mpirun --oversubscribe -np 2 /home/ubuntu/full-gpu-rerun-20261118/mgpu/results/95_gpu_initiated_alltoall_and_put_demo/example
+PE 1 all-to-all: checked 2 source elements, errors=0
+PE 0 all-to-all: checked 2 source elements, errors=0
+PE 1 ring put: received=777 expected=777
+PE 0 ring put: received=778 expected=778
+VALIDATION PASS: 2 PEs, errors=0

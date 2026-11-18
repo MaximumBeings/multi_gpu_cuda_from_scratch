@@ -1,0 +1,2 @@
+$ /home/ubuntu/full-gpu-rerun-20261118/mgpu/results/54_blocking_vs_nonblocking_comm/example
+API PROBE PASS: one-rank nonblocking init/poll/abort only; no fault recovery tested, errors=0

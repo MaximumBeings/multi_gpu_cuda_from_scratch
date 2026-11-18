@@ -1,0 +1,2 @@
+$ /home/ubuntu/full-gpu-rerun-20261118/mgpu/results/30_nccl_comm_init/example
+API PROBE PASS: 2 devices, valid initialization/destruction and invalid argument checks, errors=0

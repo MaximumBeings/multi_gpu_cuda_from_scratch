@@ -1,0 +1,2 @@
+$ /home/ubuntu/full-gpu-rerun-20261118/mgpu/results/hello_host/example
+hello_host: compiled with plain g++, no CUDA involved.

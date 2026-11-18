@@ -116,6 +116,47 @@ int main() {
 }
 ```
 
+<!-- execution:start:h100-rerun:48_per_device_sync_is_not_a_barrier.cu -->
+> **Compiled and executed — 2026-11-18-h100: API/host demonstration (exit-only).** Hardware: 2 H100 GPUs. Executed UTC: `2026-11-18T11:21:37.903067+00:00`.
+
+<!-- execution:metadata Source SHA-256: e8c4c448dfbe5d9af39364bbe4232aec22cdb020b218ac67464d8fa894f74aaf; recorded UTC (program start): 2026-11-18T11:21:37.287927+00:00 -->
+
+[Exact tested source](../validation/2026-11-18-h100/48_per_device_sync_is_not_a_barrier/48_per_device_sync_is_not_a_barrier.cu) · [Compiler log](../validation/2026-11-18-h100/48_per_device_sync_is_not_a_barrier/compile.log) · [Execution log](../validation/2026-11-18-h100/48_per_device_sync_is_not_a_barrier/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+nvcc -std=c++17 -O2 -arch=sm_90 48_per_device_sync_is_not_a_barrier.cu -o ./example
+./example
+```
+
+**Sample output**
+
+```text
+cudaGetDeviceCount(): 2 device(s).
+
+Synchronizing 4 devices the way every device loop since Chapter 3 has -- one at a time, on this one CPU thread:
+  rank 0: cudaSetDevice(): no error (code 0)   cudaDeviceSynchronize(): no error (code 0)
+  rank 1: cudaSetDevice(): no error (code 0)   cudaDeviceSynchronize(): no error (code 0)
+  rank 2: cudaSetDevice(): invalid device ordinal (code 101)   cudaDeviceSynchronize(): no error (code 0)
+  rank 3: cudaSetDevice(): invalid device ordinal (code 101)   cudaDeviceSynchronize(): no error (code 0)
+
+Notice what this loop actually guarantees, and what it does
+NOT: by the time it returns, this CPU thread knows every
+device's queue, AS OF THE MOMENT EACH ONE WAS CHECKED, was
+empty. It says nothing about whether rank 0 and rank 3 were
+AT THE SAME POINT in their own work relative to each other.
+Rank 0 could have already raced ten iterations ahead of rank
+3 by the time rank 3's own kernels are even launched -- this
+loop only checks each device's queue in turn, sequentially,
+on one CPU thread; it never makes any device wait for any
+OTHER device. A real global barrier needs every rank to wait
+for every OTHER rank, not just for its own queue to drain.
+```
+
+<!-- execution:end:h100-rerun:48_per_device_sync_is_not_a_barrier.cu -->
+
+
 <!-- execution:start:a100:48_per_device_sync_is_not_a_barrier.cu -->
 > **Compiled and executed — 2026-11-17-a100: API/host demonstration (exit-only).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:02:47.488438+00:00`.
 
@@ -265,6 +306,29 @@ int main(){
  printf("PASS: dummy-element AllReduce plus host completion wait on %d GPUs; all reference values checked.\n",world);return 0;
 }
 ```
+
+<!-- execution:start:h100-rerun:49_nccl_allreduce_as_barrier.cu -->
+> **Compiled and executed — 2026-11-18-h100: Numerical/transport validation (recorded scope).** Hardware: 2 H100 GPUs. Executed UTC: `2026-11-18T11:21:39.787358+00:00`.
+
+<!-- execution:metadata Source SHA-256: f17393f034b526cf66dfd5b538f6c7c32557526981fe0e0139028b40fd17cb70; recorded UTC (program start): 2026-11-18T11:21:38.470031+00:00 -->
+
+[Exact tested source](../validation/2026-11-18-h100/49_nccl_allreduce_as_barrier/49_nccl_allreduce_as_barrier.cu) · [Compiler log](../validation/2026-11-18-h100/49_nccl_allreduce_as_barrier/compile.log) · [Execution log](../validation/2026-11-18-h100/49_nccl_allreduce_as_barrier/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+nvcc -std=c++17 -O2 -arch=sm_90 49_nccl_allreduce_as_barrier.cu -o ./example -lnccl
+./example
+```
+
+**Sample output**
+
+```text
+PASS: dummy-element AllReduce plus host completion wait on 2 GPUs; all reference values checked.
+```
+
+<!-- execution:end:h100-rerun:49_nccl_allreduce_as_barrier.cu -->
+
 
 <!-- execution:start:a100:49_nccl_allreduce_as_barrier.cu -->
 > **Compiled and executed — 2026-11-17-a100: Numerical/transport validation (recorded scope).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:02:53.633692+00:00`.
@@ -499,6 +563,54 @@ int main() {
     return (correctWith == WORLD_SIZE) ? 0 : 1;
 }
 ```
+
+<!-- execution:start:h100-rerun:50_barrier_consistency_simulation.cpp -->
+> **Compiled and executed — 2026-11-18-h100: Host program/model (exit-only).** Hardware: 2 H100 GPUs. Executed UTC: `2026-11-18T11:21:41.721278+00:00`.
+
+<!-- execution:metadata Source SHA-256: 5443cc0bbf8d2cd18346f7aa258f35c85df35f61613b0af99fd6c225596d2295; recorded UTC (program start): 2026-11-18T11:21:41.506769+00:00 -->
+
+[Exact tested source](../validation/2026-11-18-h100/50_barrier_consistency_simulation/50_barrier_consistency_simulation.cpp) · [Compiler log](../validation/2026-11-18-h100/50_barrier_consistency_simulation/compile.log) · [Execution log](../validation/2026-11-18-h100/50_barrier_consistency_simulation/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+g++ -std=c++17 -O2 50_barrier_consistency_simulation.cpp -o ./example
+./example
+```
+
+**Sample output**
+
+```text
+Part A: 4 ranks, heterogeneous arrival times 3/7/2/5 (rank 2 arrives first, rank 1 arrives last), each contributing to a shared checkpoint total. Independently computed reference total: 100.
+
+WITHOUT a barrier -- each rank reads immediately after its own write:
+  rank 0 (arrived at t=3): observed total = 40    STALE -- missing later contributions
+  rank 1 (arrived at t=7): observed total = 100   matches reference
+  rank 2 (arrived at t=2): observed total = 30    STALE -- missing later contributions
+  rank 3 (arrived at t=5): observed total = 80    STALE -- missing later contributions
+  1 of 4 ranks saw the correct, complete total.
+
+WITH a barrier -- every write finishes before any read:
+  rank 0: observed total = 100   matches reference
+  rank 1: observed total = 100   matches reference
+  rank 2: observed total = 100   matches reference
+  rank 3: observed total = 100   matches reference
+  4 of 4 ranks saw the correct, complete total: PASS
+
+Only the LAST rank to arrive (rank 1, at t=7) happened to see the correct total without a barrier -- purely because every other rank had already written by the time it read. That's not a guarantee, it's an accident of this particular arrival order; change which rank arrives LAST and a DIFFERENT rank would be the lucky one, while every other rank would see a stale value, silently, with no error raised anywhere. This is exactly the failure mode Chapter 16's own halo exchange had to guard against every iteration, generalized to any shared checkpoint, not just a grid's neighboring rows.
+
+Part B: a barrier's real communication cost, in rounds -- reusing Chapter 9's ring formula 2*(N-1) and Chapter 11's tree formula 2*ceil(log2(N)).
+
+N          ring rounds        tree rounds
+4          6                  4
+8          14                 6
+35         68                 12
+
+A barrier's payload is the smallest possible -- one element, not a real gradient tensor or activation -- but the ROUND COUNT above doesn't depend on payload size at all; it depends only on N, the number of ranks. A barrier is exactly as latency-expensive, per call, as any other AllReduce with the same N -- it is cheap in bytes moved, never in synchronization rounds paid. Calling one every iteration, for every one of Part 3's parallelization strategies, is a real, recurring cost, not a free correctness guarantee.
+```
+
+<!-- execution:end:h100-rerun:50_barrier_consistency_simulation.cpp -->
+
 
 <!-- execution:start:a100:50_barrier_consistency_simulation.cpp -->
 > **Compiled and executed — 2026-11-17-a100: Host program/model (exit-only).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:02:59.228212+00:00`.

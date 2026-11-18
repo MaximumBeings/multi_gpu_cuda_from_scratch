@@ -150,6 +150,43 @@ int main() {
 }
 ```
 
+<!-- execution:start:h100-rerun:51_heterogeneous_capability_query.cu -->
+> **Compiled and executed — 2026-11-18-h100: API/host demonstration (exit-only).** Hardware: 2 H100 GPUs. Executed UTC: `2026-11-18T11:21:42.339838+00:00`.
+
+<!-- execution:metadata Source SHA-256: b8d2f2f7db77a2f07a6dce3bec85e1f063be574d7fb299a9173dea961b31492b; recorded UTC (program start): 2026-11-18T11:21:41.724546+00:00 -->
+
+[Exact tested source](../validation/2026-11-18-h100/51_heterogeneous_capability_query/51_heterogeneous_capability_query.cu) · [Compiler log](../validation/2026-11-18-h100/51_heterogeneous_capability_query/compile.log) · [Execution log](../validation/2026-11-18-h100/51_heterogeneous_capability_query/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+nvcc -std=c++17 -O2 -arch=sm_90 51_heterogeneous_capability_query.cu -o ./example
+./example
+```
+
+**Actual sample output (excerpt)**
+
+```text
+cudaGetDeviceCount(): 2 device(s).
+
+Querying real per-device capability for every device this book's own real deviceCount (2) reports:
+  rank 0: cudaGetDeviceProperties(): no error (code 0)
+  rank 1: cudaGetDeviceProperties(): no error (code 0)
+
+cudaGetDeviceProperties(&prop, 0): no error (code 0)
+
+A hypothetical 4-device cluster mixing GPU generations (real multiProcessorCount figures from NVIDIA's own architecture whitepapers):
+  A100 (rank 0)                          multiProcessorCount = 108
+  A100 (rank 1)                          multiProcessorCount = 108
+  H100 SXM (rank 2)                      multiProcessorCount = 132
+  A100, thermally throttled (rank 3)     multiProcessorCount = 108
+
+Every computeShard()-style function this book has written would still hand all four of these devices an IDENTICAL share of the work -- the SM count difference above, and rank 3's real thermal throttling (which multiProcessorCount can't even see, since the SMs are still physically there, just running slower), are both invisible to pure host arithmetic that only ever divides by worldSize.
+```
+
+<!-- execution:end:h100-rerun:51_heterogeneous_capability_query.cu -->
+
+
 <!-- execution:start:a100:51_heterogeneous_capability_query.cu -->
 > **Compiled and executed — 2026-11-17-a100: API/host demonstration (exit-only).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:03:00.302875+00:00`.
 
@@ -364,6 +401,38 @@ int main() {
     return 0;
 }
 ```
+
+<!-- execution:start:h100-rerun:52_weighted_shard_partition.cpp -->
+> **Compiled and executed — 2026-11-18-h100: Host program/model (exit-only).** Hardware: 2 H100 GPUs. Executed UTC: `2026-11-18T11:21:42.820343+00:00`.
+
+<!-- execution:metadata Source SHA-256: b5c9d0ffd17e2f185f5875faae84d570d290beb29343aa915fdf5a46f4565bf2; recorded UTC (program start): 2026-11-18T11:21:42.605940+00:00 -->
+
+[Exact tested source](../validation/2026-11-18-h100/52_weighted_shard_partition/52_weighted_shard_partition.cpp) · [Compiler log](../validation/2026-11-18-h100/52_weighted_shard_partition/compile.log) · [Execution log](../validation/2026-11-18-h100/52_weighted_shard_partition/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+g++ -std=c++17 -O2 52_weighted_shard_partition.cpp -o ./example
+./example
+```
+
+**Sample output**
+
+```text
+4-device cluster, relative measured speeds: rank0=1.0x, rank1=1.0x, rank2=1.5x (faster H100), rank3=0.5x (throttled A100). Total work to split: 900 units.
+
+rank   speed      equal      weighted       weighted/speed
+0      1.0        225        225            225.00
+1      1.0        225        225            225.00
+2      1.5        225        337            224.67
+3      0.5        225        113            226.00
+total: equal split sums to 900, weighted split sums to 900 (both must equal 900): PASS
+
+Every rank's equal share is identical (225 units each) regardless of speed -- exactly what every computeShard()-style function in this book has done since Chapter 12. The weighted share instead scales with each rank's own speed: rank 2 (the faster H100) gets the largest share, rank 3 (throttled) gets the smallest. Section 18.3 checks what this buys, concretely: whether it actually equalizes how long each rank takes to finish its own share.
+```
+
+<!-- execution:end:h100-rerun:52_weighted_shard_partition.cpp -->
+
 
 <!-- execution:start:a100:52_weighted_shard_partition.cpp -->
 > **Compiled and executed — 2026-11-17-a100: Host program/model (exit-only).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:03:03.643215+00:00`.
@@ -617,6 +686,50 @@ int main() {
     return spreadIsSmall ? 0 : 1;
 }
 ```
+
+<!-- execution:start:h100-rerun:53_makespan_simulation.cpp -->
+> **Compiled and executed — 2026-11-18-h100: Host program/model (exit-only).** Hardware: 2 H100 GPUs. Executed UTC: `2026-11-18T11:21:43.088047+00:00`.
+
+<!-- execution:metadata Source SHA-256: 951c524c044ef8ec8272333d8c1cdeca8f69ef9b48b8f4efb84d9214efeb0ed6; recorded UTC (program start): 2026-11-18T11:21:42.823548+00:00 -->
+
+[Exact tested source](../validation/2026-11-18-h100/53_makespan_simulation/53_makespan_simulation.cpp) · [Compiler log](../validation/2026-11-18-h100/53_makespan_simulation/compile.log) · [Execution log](../validation/2026-11-18-h100/53_makespan_simulation/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+g++ -std=c++17 -O2 53_makespan_simulation.cpp -o ./example
+./example
+```
+
+**Sample output**
+
+```text
+Part A: continuous (infinitely divisible) ideal, 4 ranks, speeds 1.0x/1.0x/1.5x/0.5x, 900 total work units.
+
+  equal split:    every rank gets 225.0000 units; slowest rank (speed 0.5x) finishes at t=450.0000 -- every OTHER rank sits idle at Chapter 17's barrier until then.
+  weighted split: EVERY rank finishes at t=225.0000 -- the algebra says this is exact, for any speeds, in the continuous case.
+  ideal speedup: 2.00x
+
+Part B: the same comparison using REAL integer-quantized shares from Section 18.2's own computeWeightedShard().
+
+rank   speed    equal share    equal finish   weighted share weighted finish
+0      1.0      225            225.000        225            225.000
+1      1.0      225            225.000        225            225.000
+2      1.5      225            150.000        337            224.667
+3      0.5      225            450.000        113            226.000
+
+  equal split makespan (real bottleneck rank's finish time): 450.000
+  weighted split makespan:                                    226.000
+  real speedup from weighted partitioning:                    1.99x
+  weighted split's own finish-time spread (max - min):        1.333 (the continuous ideal predicts exactly 0.0)
+
+  weighted split's spread (1.333) is below the worst-case rounding bound (N-1)/speed_last + 1/min(other speeds) = 7.000 time units: PASS
+
+The continuous ideal's EXACT equality doesn't survive rounding to whole work units -- the fastest- and slowest-finishing ranks under the weighted split finish 1.333 apart, not identically -- but the gap is small relative to every rank's own share, because computeWeightedShard() rounds every rank but the last DOWN (each loses less than one whole unit) and hands the last rank the leftover remainder (less than N-1 = 3 whole units). This is the same honest distinction this book drew in Chapter 13 vs. Chapter 14: an exact algebraic guarantee (Chapter 13's relocation, this section's continuous ideal) is a different, stronger claim than an empirically-checked, epsilon-bounded one (Chapter 14's reduce, this section's real integer-quantized shares) -- and this section's own result belongs to the second kind, checked, not assumed.
+```
+
+<!-- execution:end:h100-rerun:53_makespan_simulation.cpp -->
+
 
 <!-- execution:start:a100:53_makespan_simulation.cpp -->
 > **Compiled and executed — 2026-11-17-a100: Host program/model (exit-only).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:03:04.066706+00:00`.

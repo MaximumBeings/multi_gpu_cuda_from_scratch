@@ -155,6 +155,39 @@ int main() {
 }
 ```
 
+<!-- execution:start:h100-rerun:36_model_shard_memory_model.cpp -->
+> **Compiled and executed — 2026-11-18-h100: Host program/model (exit-only).** Hardware: 2 H100 GPUs. Executed UTC: `2026-11-18T11:21:26.901616+00:00`.
+
+<!-- execution:metadata Source SHA-256: 0355d1d3e848f8870551214f9ab56fec971df732792974ec8c45c4ffd5a363cc; recorded UTC (program start): 2026-11-18T11:21:26.737484+00:00 -->
+
+[Exact tested source](../validation/2026-11-18-h100/36_model_shard_memory_model/36_model_shard_memory_model.cpp) · [Compiler log](../validation/2026-11-18-h100/36_model_shard_memory_model/compile.log) · [Execution log](../validation/2026-11-18-h100/36_model_shard_memory_model/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+g++ -std=c++17 -O2 36_model_shard_memory_model.cpp -o ./example
+./example
+```
+
+**Sample output**
+
+```text
+Model                Params  Training(Adam,mp)      Min SXM x      Min NVL x
+GPT-2 (1.5B)          1.5B            24.0 GB             1             1
+7B-class model        7.0B           112.0 GB             2             2
+GPT-3 (175B)        175.0B          2800.0 GB            35            30
+
+Self-consistency check against Chapter 1's own locked GPT-3 figures (35 H100 SXM, 30 H100 NVL): PASS
+
+Running 8 data-parallel replicas of GPT-3 (Chapter 12's own technique) needs 22400.0 GB of TOTAL cluster memory (8 x 2800.0 GB) -- but EACH replica still individually needs the same 35 H100 SXM GPUs' worth of memory to exist at all.
+Data parallelism multiplies how many times the model exists;
+it does not reduce how big any one copy has to be. Only model
+parallelism -- splitting the model ITSELF, this chapter's subject -- changes that number.
+```
+
+<!-- execution:end:h100-rerun:36_model_shard_memory_model.cpp -->
+
+
 <!-- execution:start:a100:36_model_shard_memory_model.cpp -->
 > **Compiled and executed — 2026-11-17-a100: Host program/model (exit-only).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:02:14.786052+00:00`.
 
@@ -310,6 +343,32 @@ int main() {
     return 0;
 }
 ```
+
+<!-- execution:start:h100-rerun:37_layer_partition_activation_handoff.cu -->
+> **Compiled and executed — 2026-11-18-h100: Numerical/transport validation (recorded scope).** Hardware: 2 H100 GPUs. Executed UTC: `2026-11-18T11:21:27.770285+00:00`.
+
+<!-- execution:metadata Source SHA-256: 244ce50f61e442268c674907d06530161f9fb74719df61bfdba41040ea06e4af; recorded UTC (program start): 2026-11-18T11:21:26.904506+00:00 -->
+
+[Exact tested source](../validation/2026-11-18-h100/37_layer_partition_activation_handoff/37_layer_partition_activation_handoff.cu) · [Compiler log](../validation/2026-11-18-h100/37_layer_partition_activation_handoff/compile.log) · [Execution log](../validation/2026-11-18-h100/37_layer_partition_activation_handoff/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+nvcc -std=c++17 -O2 -arch=sm_90 37_layer_partition_activation_handoff.cu -o ./example
+./example
+```
+
+**Sample output**
+
+```text
+rank 0: layer indices [0, 48)
+rank 1: layer indices [48, 96)
+PASS: 25165824 nonuniform FP16-sized activation words (50331648 bytes) handed off exactly.
+Scope: layer-index partition and transfer payload, not a transformer forward pass.
+```
+
+<!-- execution:end:h100-rerun:37_layer_partition_activation_handoff.cu -->
+
 
 <!-- execution:start:a100:37_layer_partition_activation_handoff.cu -->
 > **Compiled and executed — 2026-11-17-a100: Numerical/transport validation (recorded scope).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:02:16.258847+00:00`.
@@ -520,6 +579,40 @@ int main() {
     return allMatch ? 0 : 1;
 }
 ```
+
+<!-- execution:start:h100-rerun:38_model_parallel_forward_simulation.cpp -->
+> **Compiled and executed — 2026-11-18-h100: Host program/model (exit-only).** Hardware: 2 H100 GPUs. Executed UTC: `2026-11-18T11:21:28.752144+00:00`.
+
+<!-- execution:metadata Source SHA-256: 1df99e752e772f09b834b3c4fd73d73068cdb800f2166a316c033460894d7711; recorded UTC (program start): 2026-11-18T11:21:28.587587+00:00 -->
+
+[Exact tested source](../validation/2026-11-18-h100/38_model_parallel_forward_simulation/38_model_parallel_forward_simulation.cpp) · [Compiler log](../validation/2026-11-18-h100/38_model_parallel_forward_simulation/compile.log) · [Execution log](../validation/2026-11-18-h100/38_model_parallel_forward_simulation/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+g++ -std=c++17 -O2 38_model_parallel_forward_simulation.cpp -o ./example
+./example
+```
+
+**Sample output**
+
+```text
+input (1.00, 1.00): unsplit reference = (0.3285223992, 0.2628870847), split across 4 devices = (0.3285223992, 0.2628870847) -- PASS (bit-identical)
+input (2.00, -1.00): unsplit reference = (0.3181013191, 0.2436102732), split across 4 devices = (0.3181013191, 0.2436102732) -- PASS (bit-identical)
+input (0.50, 3.00): unsplit reference = (0.3560831617, 0.3077149331), split across 4 devices = (0.3560831617, 0.3077149331) -- PASS (bit-identical)
+
+All 3 input(s) bit-identical between the unsplit reference and the 4-device split forward pass: PASS
+
+Unlike Chapter 8's floating-point reduce (order-sensitive --
+explicitly NOT verified bit-identical there), splitting a
+strictly SEQUENTIAL computation across devices never reorders
+any operation -- it only relocates WHERE each already-ordered
+step runs. That is why this section's match is bit-identical,
+not merely equal up to floating-point rounding.
+```
+
+<!-- execution:end:h100-rerun:38_model_parallel_forward_simulation.cpp -->
+
 
 <!-- execution:start:a100:38_model_parallel_forward_simulation.cpp -->
 > **Compiled and executed — 2026-11-17-a100: Host program/model (exit-only).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:02:20.149063+00:00`.

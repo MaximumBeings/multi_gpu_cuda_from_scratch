@@ -1,0 +1,3 @@
+$ /usr/mpi/gcc/openmpi-4.1.7rc1/bin/mpirun --oversubscribe -np 2 /home/ubuntu/full-gpu-rerun-20261118/mgpu/results/57_mpi_ring_send_recv/example 1000000 sendrecv
+rank 1 of 2: sent 100, received 0 (elems=1000000, mode=sendrecv)
+rank 0 of 2: sent 0, received 100 (elems=1000000, mode=sendrecv)

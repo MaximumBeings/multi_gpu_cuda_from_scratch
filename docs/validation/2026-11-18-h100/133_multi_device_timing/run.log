@@ -1,0 +1,7 @@
+$ /home/ubuntu/full-gpu-rerun-20261118/mgpu/results/133_multi_device_timing/example
+GPU 0 local stream duration: 0.070016 ms
+GPU 1 local stream duration: 0.025600 ms
+Maximum local duration: 0.070016 ms (GPU clocks are not a shared timeline)
+Host launch-to-all-complete: 0.111414 ms (includes submission and completion waits)
+Independent kernels only; this is not a collective bandwidth benchmark.
+VALIDATION PASS: errors=0

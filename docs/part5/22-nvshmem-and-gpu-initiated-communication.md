@@ -140,6 +140,30 @@ int main(int argc, char **argv) {
 }
 ```
 
+<!-- execution:start:h100-rerun:63_nvshmem_init_single_pe.cu -->
+> **Compiled and executed — 2026-11-18-h100: Numerical/transport validation (recorded scope).** Hardware: 2 H100 GPUs. Executed UTC: `2026-11-18T11:22:01.037501+00:00`.
+
+<!-- execution:metadata Source SHA-256: 6c7e2d2885a959761aa918b7e8e219304bc2037f006e964a181e6af2890e8aac; recorded UTC (program start): 2026-11-18T11:21:56.211540+00:00 -->
+
+[Exact tested source](../validation/2026-11-18-h100/63_nvshmem_init_single_pe/63_nvshmem_init_single_pe.cu) · [Compiler log](../validation/2026-11-18-h100/63_nvshmem_init_single_pe/compile.log) · [Execution log](../validation/2026-11-18-h100/63_nvshmem_init_single_pe/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+nvcc -std=c++17 -O2 -arch=sm_90 -ccbin mpicxx -rdc=true -I/home/ubuntu/book-validation-deps-20261118/lib/python3.12/site-packages/nvidia/nvshmem/include -L/home/ubuntu/book-validation-deps-20261118/lib/python3.12/site-packages/nvidia/nvshmem/lib -Xlinker=-rpath=/home/ubuntu/book-validation-deps-20261118/lib/python3.12/site-packages/nvidia/nvshmem/lib 63_nvshmem_init_single_pe.cu -o ./example -lnvshmem_host -lnvshmem_device -lcuda
+mpirun --oversubscribe -np 1 ./example
+```
+
+**Sample output**
+
+```text
+PE 0 of 1: MPI bootstrap, allocation and CUDA copy checked
+VALIDATION PASS: 1 PEs, errors=0
+```
+
+<!-- execution:end:h100-rerun:63_nvshmem_init_single_pe.cu -->
+
+
 <!-- execution:start:a100:63_nvshmem_init_single_pe.cu -->
 > **Compiled and executed — 2026-11-17-a100: Numerical/transport validation (recorded scope).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:03:45.813506+00:00`.
 
@@ -151,7 +175,7 @@ Commands below use local source/binary names; raw logs retain host paths. Execut
 
 ```bash
 nvcc -std=c++17 -O2 -arch=sm_80 -ccbin mpicxx -rdc=true -I/home/ubuntu/book2-deps/lib/python3.12/site-packages/nvidia/nvshmem/include -L/home/ubuntu/book2-deps/lib/python3.12/site-packages/nvidia/nvshmem/lib -Xlinker=-rpath=/home/ubuntu/book2-deps/lib/python3.12/site-packages/nvidia/nvshmem/lib 63_nvshmem_init_single_pe.cu -o ./example -lnvshmem_host -lnvshmem_device -lcuda
-/usr/mpi/gcc/openmpi-4.1.7rc1/bin/mpirun --oversubscribe -np 1 ./example
+mpirun --oversubscribe -np 1 ./example
 ```
 
 **Sample output**
@@ -176,7 +200,7 @@ Commands below use local source/binary names; raw logs retain host paths. Execut
 
 ```bash
 nvcc -std=c++17 -O2 -arch=sm_90 -ccbin mpicxx -rdc=true -I/home/ubuntu/book2-deps/lib/python3.12/site-packages/nvidia/nvshmem/include -L/home/ubuntu/book2-deps/lib/python3.12/site-packages/nvidia/nvshmem/lib -Xlinker=-rpath=/home/ubuntu/book2-deps/lib/python3.12/site-packages/nvidia/nvshmem/lib 63_nvshmem_init_single_pe.cu -o ./example -lnvshmem_host -lnvshmem_device -lcuda
-/home/ubuntu/book2-bin/mpirun --oversubscribe -np 1 ./example
+mpirun --oversubscribe -np 1 ./example
 ```
 
 <details markdown="1"><summary>Captured current-source output</summary>
@@ -339,6 +363,31 @@ int main(int argc, char **argv) {
 }
 ```
 
+<!-- execution:start:h100-rerun:64_nvshmem_mpi_bootstrap.cu -->
+> **Compiled and executed — 2026-11-18-h100: Numerical/transport validation (recorded scope).** Hardware: 2 H100 GPUs. Executed UTC: `2026-11-18T11:22:08.834111+00:00`.
+
+<!-- execution:metadata Source SHA-256: 357f3ed1edb1854d730c9d43c3411e9085ad2a46dcab20c482f7db88933dd1d8; recorded UTC (program start): 2026-11-18T11:22:04.009384+00:00 -->
+
+[Exact tested source](../validation/2026-11-18-h100/64_nvshmem_mpi_bootstrap/64_nvshmem_mpi_bootstrap.cu) · [Compiler log](../validation/2026-11-18-h100/64_nvshmem_mpi_bootstrap/compile.log) · [Execution log](../validation/2026-11-18-h100/64_nvshmem_mpi_bootstrap/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+nvcc -std=c++17 -O2 -arch=sm_90 -ccbin mpicxx -rdc=true -I/home/ubuntu/book-validation-deps-20261118/lib/python3.12/site-packages/nvidia/nvshmem/include -L/home/ubuntu/book-validation-deps-20261118/lib/python3.12/site-packages/nvidia/nvshmem/lib -Xlinker=-rpath=/home/ubuntu/book-validation-deps-20261118/lib/python3.12/site-packages/nvidia/nvshmem/lib 64_nvshmem_mpi_bootstrap.cu -o ./example -lnvshmem_host -lnvshmem_device -lcuda
+mpirun --oversubscribe -np 2 ./example
+```
+
+**Sample output**
+
+```text
+PE 1 of 2: MPI bootstrap, allocation and CUDA copy checked
+PE 0 of 2: MPI bootstrap, allocation and CUDA copy checked
+VALIDATION PASS: 2 PEs, errors=0
+```
+
+<!-- execution:end:h100-rerun:64_nvshmem_mpi_bootstrap.cu -->
+
+
 <!-- execution:start:a100:64_nvshmem_mpi_bootstrap.cu -->
 > **Compiled and executed — 2026-11-17-a100: Numerical/transport validation (recorded scope).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:04:01.128038+00:00`.
 
@@ -350,7 +399,7 @@ Commands below use local source/binary names; raw logs retain host paths. Execut
 
 ```bash
 nvcc -std=c++17 -O2 -arch=sm_80 -ccbin mpicxx -rdc=true -I/home/ubuntu/book2-deps/lib/python3.12/site-packages/nvidia/nvshmem/include -L/home/ubuntu/book2-deps/lib/python3.12/site-packages/nvidia/nvshmem/lib -Xlinker=-rpath=/home/ubuntu/book2-deps/lib/python3.12/site-packages/nvidia/nvshmem/lib 64_nvshmem_mpi_bootstrap.cu -o ./example -lnvshmem_host -lnvshmem_device -lcuda
-/usr/mpi/gcc/openmpi-4.1.7rc1/bin/mpirun --oversubscribe -np 8 ./example
+mpirun --oversubscribe -np 8 ./example
 ```
 
 **Sample output**
@@ -398,7 +447,7 @@ Commands below use local source/binary names; raw logs retain host paths. Execut
 
 ```bash
 nvcc -std=c++17 -O2 -arch=sm_90 -ccbin mpicxx -rdc=true -I/home/ubuntu/book2-deps/lib/python3.12/site-packages/nvidia/nvshmem/include -L/home/ubuntu/book2-deps/lib/python3.12/site-packages/nvidia/nvshmem/lib -Xlinker=-rpath=/home/ubuntu/book2-deps/lib/python3.12/site-packages/nvidia/nvshmem/lib 64_nvshmem_mpi_bootstrap.cu -o ./example -lnvshmem_host -lnvshmem_device -lcuda
-/home/ubuntu/book2-bin/mpirun --oversubscribe -np 2 ./example
+mpirun --oversubscribe -np 2 ./example
 ```
 
 <details markdown="1"><summary>Captured current-source output</summary>
@@ -558,6 +607,31 @@ int main(int argc, char **argv) {
 }
 ```
 
+<!-- execution:start:h100-rerun:65_gpu_initiated_put.cu -->
+> **Compiled and executed — 2026-11-18-h100: Numerical/transport validation (recorded scope).** Hardware: 2 H100 GPUs. Executed UTC: `2026-11-18T11:22:19.132298+00:00`.
+
+<!-- execution:metadata Source SHA-256: 3ad04e69ecd8a1bee67e880eda08ff7c5e75bebeb53b6eaf3fab336df0129607; recorded UTC (program start): 2026-11-18T11:22:14.258052+00:00 -->
+
+[Exact tested source](../validation/2026-11-18-h100/65_gpu_initiated_put/65_gpu_initiated_put.cu) · [Compiler log](../validation/2026-11-18-h100/65_gpu_initiated_put/compile.log) · [Execution log](../validation/2026-11-18-h100/65_gpu_initiated_put/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+nvcc -std=c++17 -O2 -arch=sm_90 -ccbin mpicxx -rdc=true -I/home/ubuntu/book-validation-deps-20261118/lib/python3.12/site-packages/nvidia/nvshmem/include -L/home/ubuntu/book-validation-deps-20261118/lib/python3.12/site-packages/nvidia/nvshmem/lib -Xlinker=-rpath=/home/ubuntu/book-validation-deps-20261118/lib/python3.12/site-packages/nvidia/nvshmem/lib 65_gpu_initiated_put.cu -o ./example -lnvshmem_host -lnvshmem_device -lcuda
+mpirun --oversubscribe -np 2 ./example
+```
+
+**Sample output**
+
+```text
+PE 0 ring put: received=778 expected=778
+PE 1 ring put: received=777 expected=777
+VALIDATION PASS: 2 PEs, errors=0
+```
+
+<!-- execution:end:h100-rerun:65_gpu_initiated_put.cu -->
+
+
 <!-- execution:start:a100:65_gpu_initiated_put.cu -->
 > **Compiled and executed — 2026-11-17-a100: Numerical/transport validation (recorded scope).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:04:26.964687+00:00`.
 
@@ -569,7 +643,7 @@ Commands below use local source/binary names; raw logs retain host paths. Execut
 
 ```bash
 nvcc -std=c++17 -O2 -arch=sm_80 -ccbin mpicxx -rdc=true -I/home/ubuntu/book2-deps/lib/python3.12/site-packages/nvidia/nvshmem/include -L/home/ubuntu/book2-deps/lib/python3.12/site-packages/nvidia/nvshmem/lib -Xlinker=-rpath=/home/ubuntu/book2-deps/lib/python3.12/site-packages/nvidia/nvshmem/lib 65_gpu_initiated_put.cu -o ./example -lnvshmem_host -lnvshmem_device -lcuda
-/usr/mpi/gcc/openmpi-4.1.7rc1/bin/mpirun --oversubscribe -np 8 ./example
+mpirun --oversubscribe -np 8 ./example
 ```
 
 **Sample output**
@@ -617,7 +691,7 @@ Commands below use local source/binary names; raw logs retain host paths. Execut
 
 ```bash
 nvcc -std=c++17 -O2 -arch=sm_90 -ccbin mpicxx -rdc=true -I/home/ubuntu/book2-deps/lib/python3.12/site-packages/nvidia/nvshmem/include -L/home/ubuntu/book2-deps/lib/python3.12/site-packages/nvidia/nvshmem/lib -Xlinker=-rpath=/home/ubuntu/book2-deps/lib/python3.12/site-packages/nvidia/nvshmem/lib 65_gpu_initiated_put.cu -o ./example -lnvshmem_host -lnvshmem_device -lcuda
-/home/ubuntu/book2-bin/mpirun --oversubscribe -np 2 ./example
+mpirun --oversubscribe -np 2 ./example
 ```
 
 <details markdown="1"><summary>Captured current-source output</summary>

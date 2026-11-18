@@ -85,6 +85,30 @@ int main() {
 }
 ```
 
+<!-- execution:start:h100-rerun:11_memcpy_peer.cu -->
+> **Compiled and executed — 2026-11-18-h100: Numerical/transport validation (recorded scope).** Hardware: 2 H100 GPUs. Executed UTC: `2026-11-18T11:20:55.605895+00:00`.
+
+<!-- execution:metadata Source SHA-256: f8151f3549665a26fc20ba93fea9ba286120e625b4991dc8342e8c3ee030a299; recorded UTC (program start): 2026-11-18T11:20:54.740446+00:00 -->
+
+[Exact tested source](../validation/2026-11-18-h100/11_memcpy_peer/11_memcpy_peer.cu) · [Compiler log](../validation/2026-11-18-h100/11_memcpy_peer/compile.log) · [Execution log](../validation/2026-11-18-h100/11_memcpy_peer/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+nvcc -std=c++17 -O2 -arch=sm_90 11_memcpy_peer.cu -o ./example
+./example
+```
+
+**Sample output**
+
+```text
+PASS: 4096 nonuniform values verified in both peer-copy directions.
+Copy success does not identify the physical transfer route or bandwidth.
+```
+
+<!-- execution:end:h100-rerun:11_memcpy_peer.cu -->
+
+
 <!-- execution:start:a100:11_memcpy_peer.cu -->
 > **Compiled and executed — 2026-11-17-a100: Numerical/transport validation (recorded scope).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:00:38.026827+00:00`.
 
@@ -181,6 +205,29 @@ int main(){
  printf("PASS: 4096 nonuniform values verified through explicit pinned-host staging.\n");return 0;
 }
 ```
+
+<!-- execution:start:h100-rerun:12_staged_host_transfer.cu -->
+> **Compiled and executed — 2026-11-18-h100: Numerical/transport validation (recorded scope).** Hardware: 2 H100 GPUs. Executed UTC: `2026-11-18T11:20:57.238320+00:00`.
+
+<!-- execution:metadata Source SHA-256: e3d7e938f375c28fbb2bffba8013cb7347447bbca26ea1bac4f61207be4683de; recorded UTC (program start): 2026-11-18T11:20:56.372417+00:00 -->
+
+[Exact tested source](../validation/2026-11-18-h100/12_staged_host_transfer/12_staged_host_transfer.cu) · [Compiler log](../validation/2026-11-18-h100/12_staged_host_transfer/compile.log) · [Execution log](../validation/2026-11-18-h100/12_staged_host_transfer/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+nvcc -std=c++17 -O2 -arch=sm_90 12_staged_host_transfer.cu -o ./example
+./example
+```
+
+**Sample output**
+
+```text
+PASS: 4096 nonuniform values verified through explicit pinned-host staging.
+```
+
+<!-- execution:end:h100-rerun:12_staged_host_transfer.cu -->
+
 
 <!-- execution:start:a100:12_staged_host_transfer.cu -->
 > **Compiled and executed — 2026-11-17-a100: Numerical/transport validation (recorded scope).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:00:42.867890+00:00`.
@@ -306,6 +353,42 @@ int main() {
     return 0;
 }
 ```
+
+<!-- execution:start:h100-rerun:13_when_each_wins_model.cpp -->
+> **Compiled and executed — 2026-11-18-h100: Host program/model (exit-only).** Hardware: 2 H100 GPUs. Executed UTC: `2026-11-18T11:20:57.868769+00:00`.
+
+<!-- execution:metadata Source SHA-256: 7cc3ed42964e58119cd17db7fe9a35602c88ab0b87905dba6216d6bdb86f6c46; recorded UTC (program start): 2026-11-18T11:20:57.804518+00:00 -->
+
+[Exact tested source](../validation/2026-11-18-h100/13_when_each_wins_model/13_when_each_wins_model.cpp) · [Compiler log](../validation/2026-11-18-h100/13_when_each_wins_model/compile.log) · [Execution log](../validation/2026-11-18-h100/13_when_each_wins_model/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+g++ -std=c++17 -O2 13_when_each_wins_model.cpp -o ./example
+./example
+```
+
+**Sample output**
+
+```text
+Transfer size: 1.0 GB
+
+Peer-direct route, NVLink-wired pair:   0.020000 s (50.0 GB/s, one hop)
+Peer-direct route, PCIe-only direct pair: 0.031746 s (31.5 GB/s, one hop)
+Staged host route (any pair):            0.063492 s (31.5 GB/s, two hops)
+
+Peer-direct over NVLink is 3.1746x faster than staging, for a wired pair.
+Peer-direct over a direct PCIe link is 2.0000x faster than staging,
+for a pair with a direct PCIe route but no NVLink wire.
+
+When the pair has NO direct link at all (per Chapter 2's partial-mesh
+topology), peer access cannot be enabled between them in the first
+place (Chapter 4, Section 4.2) -- staging is then not merely faster
+or slower, it is the ONLY route that exists.
+```
+
+<!-- execution:end:h100-rerun:13_when_each_wins_model.cpp -->
+
 
 <!-- execution:start:a100:13_when_each_wins_model.cpp -->
 > **Compiled and executed — 2026-11-17-a100: Host program/model (exit-only).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:00:46.325713+00:00`.

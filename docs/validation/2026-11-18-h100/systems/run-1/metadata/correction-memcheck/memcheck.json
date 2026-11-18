@@ -1,0 +1,19 @@
+{
+  "command": [
+    "mpirun",
+    "--oversubscribe",
+    "-np",
+    "2",
+    "compute-sanitizer",
+    "--tool",
+    "memcheck",
+    "--error-exitcode",
+    "97",
+    "/home/ubuntu/pending-gpu-rerun-20261118/mgpu/results/58_mpi_cuda_aware_query_and_fallback/example"
+  ],
+  "started_utc": "2026-11-18T11:17:43.722618+00:00",
+  "exit_code": 0,
+  "finished_utc": "2026-11-18T11:17:46.067320+00:00",
+  "log_sha256": "8a1354f6c97b5a8d493960396c172c81470b776d1ee571f2a409df919b1e73e8",
+  "zero_error_summaries": 2
+}

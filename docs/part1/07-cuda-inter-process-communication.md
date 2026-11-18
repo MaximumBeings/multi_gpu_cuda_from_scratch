@@ -206,6 +206,30 @@ int main() {
 }
 ```
 
+<!-- execution:start:h100-rerun:17_ipc_mem_handle.cu -->
+> **Compiled and executed — 2026-11-18-h100: Numerical/transport validation (recorded scope).** Hardware: 2 H100 GPUs. Executed UTC: `2026-11-18T11:21:01.930044+00:00`.
+
+<!-- execution:metadata Source SHA-256: fc4bd504bca901310ce7d63d5c62facc6b5093bb53c7ca06864026ce83df4ee5; recorded UTC (program start): 2026-11-18T11:21:01.064167+00:00 -->
+
+[Exact tested source](../validation/2026-11-18-h100/17_ipc_mem_handle/17_ipc_mem_handle.cu) · [Compiler log](../validation/2026-11-18-h100/17_ipc_mem_handle/compile.log) · [Execution log](../validation/2026-11-18-h100/17_ipc_mem_handle/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+nvcc -std=c++17 -O2 -arch=sm_90 17_ipc_mem_handle.cu -o ./example
+./example
+```
+
+**Sample output**
+
+```text
+Consumer: 4096 / 4096 exact payload values correct.
+PASS: two-process IPC memory, 4096 nonuniform values checked.
+```
+
+<!-- execution:end:h100-rerun:17_ipc_mem_handle.cu -->
+
+
 <!-- execution:start:a100:17_ipc_mem_handle.cu -->
 > **Compiled and executed — 2026-11-17-a100: Numerical/transport validation (recorded scope).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:01:00.171741+00:00`.
 
@@ -427,6 +451,30 @@ int main() {
 }
 ```
 
+<!-- execution:start:h100-rerun:18_ipc_event_handle.cu -->
+> **Compiled and executed — 2026-11-18-h100: Numerical/transport validation (recorded scope).** Hardware: 2 H100 GPUs. Executed UTC: `2026-11-18T11:21:03.612556+00:00`.
+
+<!-- execution:metadata Source SHA-256: 5ca751f5113e67325f9bae932f5e16777800d3202b844a28b4c80bf3afffbebf; recorded UTC (program start): 2026-11-18T11:21:02.746693+00:00 -->
+
+[Exact tested source](../validation/2026-11-18-h100/18_ipc_event_handle/18_ipc_event_handle.cu) · [Compiler log](../validation/2026-11-18-h100/18_ipc_event_handle/compile.log) · [Execution log](../validation/2026-11-18-h100/18_ipc_event_handle/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+nvcc -std=c++17 -O2 -arch=sm_90 18_ipc_event_handle.cu -o ./example
+./example
+```
+
+**Sample output**
+
+```text
+Consumer: 4096 / 4096 exact payload values correct.
+PASS: two-process IPC memory + event readiness, 4096 nonuniform values checked.
+```
+
+<!-- execution:end:h100-rerun:18_ipc_event_handle.cu -->
+
+
 The IPC-event example checks exported event handles, allocation lifetime, and the transferred payload. The producer synchronizes before publishing its handles, so this run does not test a consumer waiting on still-pending producer work.
 
 <!-- execution:start:a100:18_ipc_event_handle.cu -->
@@ -585,6 +633,33 @@ int main() {
     return (initialMatch && liveMatch) ? 0 : 1;
 }
 ```
+
+<!-- execution:start:h100-rerun:19_ipc_handoff_simulation.cpp -->
+> **Compiled and executed — 2026-11-18-h100: Host program/model (exit-only).** Hardware: 2 H100 GPUs. Executed UTC: `2026-11-18T11:21:04.493245+00:00`.
+
+<!-- execution:metadata Source SHA-256: 3aa9454c4e495de3b81eaa7c6e447215e78102ea3733ee046b70673513faa6f6; recorded UTC (program start): 2026-11-18T11:21:04.278703+00:00 -->
+
+[Exact tested source](../validation/2026-11-18-h100/19_ipc_handoff_simulation/19_ipc_handoff_simulation.cpp) · [Compiler log](../validation/2026-11-18-h100/19_ipc_handoff_simulation/compile.log) · [Execution log](../validation/2026-11-18-h100/19_ipc_handoff_simulation/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+g++ -std=c++17 -O2 19_ipc_handoff_simulation.cpp -o ./example
+./example
+```
+
+**Actual sample output (excerpt)**
+
+```text
+Exporter allocated data and exported handle 0.
+Importer opened handle 0.
+Immediately after opening, importer's view matches exporter's data: PASS
+After exporter mutates index 2 with NO further transfer call,
+importer's view reflects it immediately: PASS
+```
+
+<!-- execution:end:h100-rerun:19_ipc_handoff_simulation.cpp -->
+
 
 <!-- execution:start:a100:19_ipc_handoff_simulation.cpp -->
 > **Compiled and executed — 2026-11-17-a100: Host program/model (exit-only).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:01:09.168650+00:00`.

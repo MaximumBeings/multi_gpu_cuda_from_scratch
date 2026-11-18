@@ -73,6 +73,33 @@ int main() {
 }
 ```
 
+<!-- execution:start:h100-rerun:14_event_basics.cu -->
+> **Compiled and executed — 2026-11-18-h100: API validation (recorded scope).** Hardware: 2 H100 GPUs. Executed UTC: `2026-11-18T11:20:58.486276+00:00`.
+
+<!-- execution:metadata Source SHA-256: 1141f20f7b822e6460546989f190bb3faf91d2fedb7ec31e06836cd71c6d1f11; recorded UTC (program start): 2026-11-18T11:20:57.871201+00:00 -->
+
+[Exact tested source](../validation/2026-11-18-h100/14_event_basics/14_event_basics.cu) · [Compiler log](../validation/2026-11-18-h100/14_event_basics/compile.log) · [Execution log](../validation/2026-11-18-h100/14_event_basics/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+nvcc -std=c++17 -O2 -arch=sm_90 14_event_basics.cu -o ./example
+./example
+```
+
+**Sample output**
+
+```text
+cudaStreamCreate: no error (code 0)
+cudaEventCreate: no error (code 0)
+cudaEventRecord(event, stream): no error (code 0)
+cudaEventQuery(event) [non-blocking check]: device not ready (code 600)
+cudaEventSynchronize(event) [blocking wait]: no error (code 0)
+```
+
+<!-- execution:end:h100-rerun:14_event_basics.cu -->
+
+
 <!-- execution:start:a100:14_event_basics.cu -->
 > **Compiled and executed — 2026-11-17-a100: API validation (recorded scope).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:00:47.396648+00:00`.
 
@@ -188,6 +215,43 @@ int main() {
 }
 ```
 
+<!-- execution:start:h100-rerun:15_cross_device_wait.cu -->
+> **Compiled and executed — 2026-11-18-h100: API validation (recorded scope).** Hardware: 2 H100 GPUs. Executed UTC: `2026-11-18T11:20:59.517181+00:00`.
+
+<!-- execution:metadata Source SHA-256: 055596de72b6edec945286a8d7d196c405f70535b56636da683788297e7e2e21; recorded UTC (program start): 2026-11-18T11:20:58.901875+00:00 -->
+
+[Exact tested source](../validation/2026-11-18-h100/15_cross_device_wait/15_cross_device_wait.cu) · [Compiler log](../validation/2026-11-18-h100/15_cross_device_wait/compile.log) · [Execution log](../validation/2026-11-18-h100/15_cross_device_wait/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+nvcc -std=c++17 -O2 -arch=sm_90 15_cross_device_wait.cu -o ./example
+./example
+```
+
+**Sample output**
+
+```text
+cudaGetDeviceCount(&count): no error (code 0)
+cudaSetDevice(0): no error (code 0)
+cudaStreamCreate(&stream0): no error (code 0)
+cudaEventCreateWithFlags(&event0, cudaEventDisableTiming): no error (code 0)
+cudaEventRecord(event0, stream0): no error (code 0)
+cudaSetDevice(1): no error (code 0)
+cudaStreamCreate(&stream1): no error (code 0)
+cudaStreamWaitEvent(stream1, event0, 0): no error (code 0)
+Cross-device wait enqueued; host did not wait for event completion.
+cudaStreamSynchronize(stream1): no error (code 0)
+cudaStreamDestroy(stream1): no error (code 0)
+cudaSetDevice(0): no error (code 0)
+cudaEventDestroy(event0): no error (code 0)
+cudaStreamDestroy(stream0): no error (code 0)
+PASS: checked two-device event dependency lifecycle.
+```
+
+<!-- execution:end:h100-rerun:15_cross_device_wait.cu -->
+
+
 <!-- execution:start:a100:15_cross_device_wait.cu -->
 > **Compiled and executed — 2026-11-17-a100: API validation (recorded scope).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:00:51.487103+00:00`.
 
@@ -302,6 +366,30 @@ int main() {
  return errors?1:0;
 }
 ```
+
+<!-- execution:start:h100-rerun:16_overlap_query.cu -->
+> **Compiled and executed — 2026-11-18-h100: API validation (recorded scope).** Hardware: 2 H100 GPUs. Executed UTC: `2026-11-18T11:21:00.798896+00:00`.
+
+<!-- execution:metadata Source SHA-256: b233728343488246a8239d354c36f4555fbb6d63fc76286db26aec6de54da837; recorded UTC (program start): 2026-11-18T11:21:00.183600+00:00 -->
+
+[Exact tested source](../validation/2026-11-18-h100/16_overlap_query/16_overlap_query.cu) · [Compiler log](../validation/2026-11-18-h100/16_overlap_query/compile.log) · [Execution log](../validation/2026-11-18-h100/16_overlap_query/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+nvcc -std=c++17 -O2 -arch=sm_90 16_overlap_query.cu -o ./example
+./example
+```
+
+**Sample output**
+
+```text
+device 0: asyncEngineCount=3 concurrentKernels=1
+API PROBE PASS: capability queries only, no overlap benchmark, errors=0
+```
+
+<!-- execution:end:h100-rerun:16_overlap_query.cu -->
+
 
 <!-- execution:start:a100:16_overlap_query.cu -->
 > **Compiled and executed — 2026-11-17-a100: API validation (recorded scope).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:00:55.930844+00:00`.

@@ -1,0 +1,1 @@
+$ nvcc -std=c++17 -O2 -arch=sm_90 /home/ubuntu/full-gpu-rerun-20261118/mgpu/docs/part1/code/18_ipc_event_handle.cu -o /home/ubuntu/full-gpu-rerun-20261118/mgpu/results/18_ipc_event_handle/example

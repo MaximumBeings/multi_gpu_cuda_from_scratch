@@ -141,6 +141,49 @@ int main() {
 }
 ```
 
+<!-- execution:start:h100-rerun:69_gemm_memory_wall_model.cpp -->
+> **Compiled and executed — 2026-11-18-h100: Host program/model (exit-only).** Hardware: 2 H100 GPUs. Executed UTC: `2026-11-18T11:22:29.821148+00:00`.
+
+<!-- execution:metadata Source SHA-256: f83e8b1c38469c7c995004fe181ba1c51aa8cbedb7b2ad3031e82bae664e67ae; recorded UTC (program start): 2026-11-18T11:22:29.656652+00:00 -->
+
+[Exact tested source](../validation/2026-11-18-h100/69_gemm_memory_wall_model/69_gemm_memory_wall_model.cpp) · [Compiler log](../validation/2026-11-18-h100/69_gemm_memory_wall_model/compile.log) · [Execution log](../validation/2026-11-18-h100/69_gemm_memory_wall_model/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+g++ -std=c++17 -O2 69_gemm_memory_wall_model.cpp -o ./example
+./example
+```
+
+**Sample output**
+
+```text
+Single-device budget (Ch1's own real H100 SXM figure): 80 GB = 74.51 GiB
+
+GPT-3 FFN GEMM, small batch (M=12288 tokens)
+  M=12288 K=12288 N=49152 (fp32)
+  B (weight) alone = 2.25 GiB
+  A+B+C = 5.06 GiB -> FITS on one H100 SXM
+
+GPT-3 FFN forward, batch=512, seq=2048 (M=batch*seq)
+  M=1048576 K=12288 N=49152 (fp32)
+  B (weight) alone = 2.25 GiB
+  A+B+C = 242.25 GiB -> DOES NOT FIT on one H100 SXM
+
+A hypothetical 10x-larger FFN forward at the same batch/seq
+  M=1048576 K=122880 N=491520 (fp32)
+  B (weight) alone = 225.00 GiB
+  A+B+C = 2625.00 GiB -> DOES NOT FIT on one H100 SXM
+
+--- Minimum device count under even block distribution (capacity only) ---
+GPT-3 FFN GEMM, small batch (M=12288 tokens) -> minimum 1 device(s)
+GPT-3 FFN forward, batch=512, seq=2048 (M=batch*seq) -> minimum 4 device(s)
+A hypothetical 10x-larger FFN forward at the same batch/seq -> minimum 36 device(s)
+```
+
+<!-- execution:end:h100-rerun:69_gemm_memory_wall_model.cpp -->
+
+
 <!-- execution:start:a100:69_gemm_memory_wall_model.cpp -->
 > **Compiled and executed — 2026-11-17-a100: Host program/model (exit-only).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:05:05.528469+00:00`.
 
@@ -458,6 +501,51 @@ int main() {
 }
 ```
 
+<!-- execution:start:h100-rerun:70_summa_correctness_simulation.cpp -->
+> **Compiled and executed — 2026-11-18-h100: Host program/model (exit-only).** Hardware: 2 H100 GPUs. Executed UTC: `2026-11-18T11:22:30.239459+00:00`.
+
+<!-- execution:metadata Source SHA-256: 76c2840993d73fc22643a982b4aa1524a67b8fd1c2c125e1b3d1cc18fc6b4ac6; recorded UTC (program start): 2026-11-18T11:22:29.824706+00:00 -->
+
+[Exact tested source](../validation/2026-11-18-h100/70_summa_correctness_simulation/70_summa_correctness_simulation.cpp) · [Compiler log](../validation/2026-11-18-h100/70_summa_correctness_simulation/compile.log) · [Execution log](../validation/2026-11-18-h100/70_summa_correctness_simulation/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+g++ -std=c++17 -O2 70_summa_correctness_simulation.cpp -o ./example
+./example
+```
+
+**Sample output**
+
+```text
+Grid: 3x3 processes, M=6 K=6 N=6 (blockM=2, blockN=2, A block K-width=2, B block K-height=2, panel kb=2, 3 steps)
+Step 1/3: K-panel 0 -- A's panel from grid column 0 broadcast across each grid row, B's panel from grid row 0 broadcast down each grid column, accumulate locally
+Step 2/3: K-panel 1 -- A's panel from grid column 1 broadcast across each grid row, B's panel from grid row 1 broadcast down each grid column, accumulate locally
+Step 3/3: K-panel 2 -- A's panel from grid column 2 broadcast across each grid row, B's panel from grid row 2 broadcast down each grid column, accumulate locally
+SUMMA result vs. naive triple-loop reference (36 entries): EXACT MATCH
+
+Grid: 2x3 processes, M=8 K=12 N=6 (blockM=4, blockN=2, A block K-width=4, B block K-height=6, panel kb=2, 6 steps)
+Step 1/6: K-panel 0 -- A's panel from grid column 0 broadcast across each grid row, B's panel from grid row 0 broadcast down each grid column, accumulate locally
+Step 2/6: K-panel 1 -- A's panel from grid column 0 broadcast across each grid row, B's panel from grid row 0 broadcast down each grid column, accumulate locally
+Step 3/6: K-panel 2 -- A's panel from grid column 1 broadcast across each grid row, B's panel from grid row 0 broadcast down each grid column, accumulate locally
+Step 4/6: K-panel 3 -- A's panel from grid column 1 broadcast across each grid row, B's panel from grid row 1 broadcast down each grid column, accumulate locally
+Step 5/6: K-panel 4 -- A's panel from grid column 2 broadcast across each grid row, B's panel from grid row 1 broadcast down each grid column, accumulate locally
+Step 6/6: K-panel 5 -- A's panel from grid column 2 broadcast across each grid row, B's panel from grid row 1 broadcast down each grid column, accumulate locally
+SUMMA result vs. naive triple-loop reference (48 entries): EXACT MATCH
+
+Grid: 3x2 processes, M=6 K=12 N=8 (blockM=2, blockN=4, A block K-width=6, B block K-height=4, panel kb=2, 6 steps)
+Step 1/6: K-panel 0 -- A's panel from grid column 0 broadcast across each grid row, B's panel from grid row 0 broadcast down each grid column, accumulate locally
+Step 2/6: K-panel 1 -- A's panel from grid column 0 broadcast across each grid row, B's panel from grid row 0 broadcast down each grid column, accumulate locally
+Step 3/6: K-panel 2 -- A's panel from grid column 0 broadcast across each grid row, B's panel from grid row 1 broadcast down each grid column, accumulate locally
+Step 4/6: K-panel 3 -- A's panel from grid column 1 broadcast across each grid row, B's panel from grid row 1 broadcast down each grid column, accumulate locally
+Step 5/6: K-panel 4 -- A's panel from grid column 1 broadcast across each grid row, B's panel from grid row 2 broadcast down each grid column, accumulate locally
+Step 6/6: K-panel 5 -- A's panel from grid column 1 broadcast across each grid row, B's panel from grid row 2 broadcast down each grid column, accumulate locally
+SUMMA result vs. naive triple-loop reference (48 entries): EXACT MATCH
+```
+
+<!-- execution:end:h100-rerun:70_summa_correctness_simulation.cpp -->
+
+
 <!-- execution:start:a100:70_summa_correctness_simulation.cpp -->
 > **Compiled and executed — 2026-11-17-a100: Host program/model (exit-only).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:05:06.150990+00:00`.
 
@@ -695,6 +783,40 @@ int main() {
     return errors ? 1 : 0;
 }
 ```
+
+<!-- execution:start:h100-rerun:71_cublasxt_multi_gpu_gemm.cu -->
+> **Compiled and executed — 2026-11-18-h100: Numerical/transport validation (recorded scope).** Hardware: 2 H100 GPUs. Executed UTC: `2026-11-18T11:22:31.409324+00:00`.
+
+<!-- execution:metadata Source SHA-256: d366a2370b202877a4c1996a52d65c7349b43cd1f0c86d403332deacb3c503dd; recorded UTC (program start): 2026-11-18T11:22:30.242999+00:00 -->
+
+[Exact tested source](../validation/2026-11-18-h100/71_cublasxt_multi_gpu_gemm/71_cublasxt_multi_gpu_gemm.cu) · [Compiler log](../validation/2026-11-18-h100/71_cublasxt_multi_gpu_gemm/compile.log) · [Execution log](../validation/2026-11-18-h100/71_cublasxt_multi_gpu_gemm/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+nvcc -std=c++17 -O2 -arch=sm_90 71_cublasxt_multi_gpu_gemm.cu -o ./example -lcublas
+./example
+```
+
+**Sample output**
+
+```text
+--- Creating a cuBLAS-Xt handle (real, host-side library object) ---
+cublasXtCreate(&handle) -> CUBLAS_STATUS_SUCCESS (success)
+
+--- Checking real device count BEFORE selecting any device ordinals ---
+cudaGetDeviceCount() -> no error, count=2
+cublasXtDeviceSelect(handle, 2, {0,1}) -> CUBLAS_STATUS_SUCCESS
+cublasXtSetBlockDim(handle, 256) -> CUBLAS_STATUS_SUCCESS
+cublasXtSgemm(M=1024,K=1024,N=1024, A/B/C on HOST) -> CUBLAS_STATUS_SUCCESS
+VALIDATION PASS: checked 1048576 GEMM outputs, expected=2048 errors=0
+
+--- What this means for genuinely MULTI-NODE dense GEMM ---
+Everything above is real cuBLAS-Xt, but cuBLAS-Xt is explicitly single-node -- one process, one or more GPUs in that SAME machine. It cannot be handed a Chapter 20-style MPI world spanning multiple nodes; there is no cublasXt call that takes an MPI_Comm. NVIDIA's real current answer for genuinely distributed, multi-process, multi-node dense GEMM is cuBLASMp, built explicitly on top of a real multi-process model -- this book's own Part 5 MPI/NCCL infrastructure is precisely the substrate a library like that needs underneath it.
+```
+
+<!-- execution:end:h100-rerun:71_cublasxt_multi_gpu_gemm.cu -->
+
 
 This captured GEMM checks every output for uniform `A=1` and `B=2`. That detects missing or incorrect results for this input, but uniform values cannot expose transpose or index-permutation errors; a broader GEMM test needs nonuniform matrices and an independent reference.
 

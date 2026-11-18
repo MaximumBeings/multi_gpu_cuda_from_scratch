@@ -107,6 +107,33 @@ int main() {
 }
 ```
 
+<!-- execution:start:h100-rerun:02_memory_wall.cpp -->
+> **Compiled and executed — 2026-11-18-h100: Host program/model (exit-only).** Hardware: 2 H100 GPUs. Executed UTC: `2026-11-18T11:20:48.233007+00:00`.
+
+<!-- execution:metadata Source SHA-256: a2ff2cb43ab47129401d4d1b916c527da97d8271196a249813fb57e3a3853b1b; recorded UTC (program start): 2026-11-18T11:20:48.118691+00:00 -->
+
+[Exact tested source](../validation/2026-11-18-h100/02_memory_wall/02_memory_wall.cpp) · [Compiler log](../validation/2026-11-18-h100/02_memory_wall/compile.log) · [Execution log](../validation/2026-11-18-h100/02_memory_wall/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+g++ -std=c++17 -O2 02_memory_wall.cpp -o ./example
+./example
+```
+
+**Sample output**
+
+```text
+Model                Params  Inference(fp16) Training(Adam,mp) H100 SXM x H100 NVL x
+7B-class model        7.0B          14.0 GB         112.0 GB          2          2
+GPT-3 (175B)        175.0B         350.0 GB        2800.0 GB         35         30
+
+Minimum H100 SXM (80 GB) GPUs to hold GPT-3's training state (params+grads+Adam state only, no activations): 35
+```
+
+<!-- execution:end:h100-rerun:02_memory_wall.cpp -->
+
+
 <!-- execution:start:a100:02_memory_wall.cpp -->
 > **Compiled and executed — 2026-11-17-a100: Host program/model (exit-only).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:00:11.085308+00:00`.
 
@@ -248,6 +275,36 @@ int main() {
 }
 ```
 
+<!-- execution:start:h100-rerun:03_compute_wall.cpp -->
+> **Compiled and executed — 2026-11-18-h100: Host program/model (exit-only).** Hardware: 2 H100 GPUs. Executed UTC: `2026-11-18T11:20:48.299208+00:00`.
+
+<!-- execution:metadata Source SHA-256: afb0e2461806947cd7f0bc421aac900cd61a586feb494c575609a410e5b492f3; recorded UTC (program start): 2026-11-18T11:20:48.235220+00:00 -->
+
+[Exact tested source](../validation/2026-11-18-h100/03_compute_wall/03_compute_wall.cpp) · [Compiler log](../validation/2026-11-18-h100/03_compute_wall/compile.log) · [Execution log](../validation/2026-11-18-h100/03_compute_wall/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+g++ -std=c++17 -O2 03_compute_wall.cpp -o ./example
+./example
+```
+
+**Sample output**
+
+```text
+Total training compute (C = 6*N*D): 3.150e+23 FLOPs
+N (parameters, approx.):            1.750e+11
+D (tokens):                         3.000e+11
+H100 SXM peak dense BF16/FP16:       9.890e+14 FLOP/s
+
+GPU-days on a single H100 at 100% of peak (ideal, unreachable in practice): 3686.4
+GPU-days on a single H100 at an assumed 50% of peak (illustrative MFU, not measured):   7372.8
+Same total compute spread across 1024 such GPUs at the assumed 50% MFU: 7.20 days
+```
+
+<!-- execution:end:h100-rerun:03_compute_wall.cpp -->
+
+
 <!-- execution:start:a100:03_compute_wall.cpp -->
 > **Compiled and executed — 2026-11-17-a100: Host program/model (exit-only).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:00:11.153780+00:00`.
 
@@ -371,6 +428,32 @@ int main() {
     return 0;
 }
 ```
+
+<!-- execution:start:h100-rerun:01_device_query.cu -->
+> **Compiled and executed — 2026-11-18-h100: API/host demonstration (exit-only).** Hardware: 2 H100 GPUs. Executed UTC: `2026-11-18T11:20:47.352430+00:00`.
+
+<!-- execution:metadata Source SHA-256: 4a14f312d6406e432c3bd12214a99f9e37288c7dea955f587460413a11d333cc; recorded UTC (program start): 2026-11-18T11:20:46.736995+00:00 -->
+
+[Exact tested source](../validation/2026-11-18-h100/01_device_query/01_device_query.cu) · [Compiler log](../validation/2026-11-18-h100/01_device_query/compile.log) · [Execution log](../validation/2026-11-18-h100/01_device_query/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+nvcc -std=c++17 -O2 -arch=sm_90 01_device_query.cu -o ./example
+./example
+```
+
+**Sample output**
+
+```text
+cudaGetDeviceCount() returned: no error (code 0)
+Reported device count: 2
+Device 0: NVIDIA H100 80GB HBM3 -- 85.02 GB total, 84.47 GB free, compute capability 9.0
+Device 1: NVIDIA H100 80GB HBM3 -- 85.02 GB total, 84.47 GB free, compute capability 9.0
+```
+
+<!-- execution:end:h100-rerun:01_device_query.cu -->
+
 
 <!-- execution:start:a100:01_device_query.cu -->
 > **Compiled and executed — 2026-11-17-a100: API/host demonstration (exit-only).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:00:05.793304+00:00`.

@@ -201,6 +201,32 @@ int main(int argc, char** argv) {
 }
 ```
 
+<!-- execution:start:h100-rerun:60_hybrid_mpi_nccl_bootstrap.cpp -->
+> **Compiled and executed — 2026-11-18-h100: API/host demonstration (exit-only).** Hardware: 2 H100 GPUs. Executed UTC: `2026-11-18T11:21:53.643479+00:00`.
+
+<!-- execution:metadata Source SHA-256: 508c556599232034c5f7d85d83b597a52f61cd687133b506708bbc7cc6adb853; recorded UTC (program start): 2026-11-18T11:21:53.378850+00:00 -->
+
+[Exact tested source](../validation/2026-11-18-h100/60_hybrid_mpi_nccl_bootstrap/60_hybrid_mpi_nccl_bootstrap.cpp) · [Compiler log](../validation/2026-11-18-h100/60_hybrid_mpi_nccl_bootstrap/compile.log) · [Execution log](../validation/2026-11-18-h100/60_hybrid_mpi_nccl_bootstrap/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+mpicxx -std=c++17 -O2 -I/usr/include -L/usr/lib64 -Wl,-rpath,/usr/lib64 60_hybrid_mpi_nccl_bootstrap.cpp -o ./example -lnccl -lcudart
+mpirun --oversubscribe -np 2 ./example
+```
+
+**Actual sample output (excerpt)**
+
+```text
+rank 0: generated the ONE ncclUniqueId every rank will share, and is about to MPI_Bcast it to all 2 ranks.
+rank 0 of 2: cudaSetDevice(localRank=0)=no error ncclCommInitRank=no error (code 0)
+
+rank 1 of 2: cudaSetDevice(localRank=1)=no error ncclCommInitRank=no error (code 0)
+```
+
+<!-- execution:end:h100-rerun:60_hybrid_mpi_nccl_bootstrap.cpp -->
+
+
 <!-- execution:start:a100:60_hybrid_mpi_nccl_bootstrap.cpp -->
 > **Compiled and executed — 2026-11-17-a100: API/host demonstration (exit-only).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:03:25.785144+00:00`.
 
@@ -212,7 +238,7 @@ Commands below use local source/binary names; raw logs retain host paths. Execut
 
 ```bash
 mpicxx -std=c++17 -O2 -I/usr/include -L/usr/local/cuda/lib64 -Wl,-rpath,/usr/local/cuda/lib64 60_hybrid_mpi_nccl_bootstrap.cpp -o ./example -lnccl -lcudart
-/usr/mpi/gcc/openmpi-4.1.7rc1/bin/mpirun --oversubscribe -np 8 ./example
+mpirun --oversubscribe -np 8 ./example
 ```
 
 **Actual sample output (excerpt)**
@@ -261,7 +287,7 @@ Commands below use local source/binary names; raw logs retain host paths. Execut
 
 ```bash
 mpicxx -std=c++17 -O2 -I/usr/include -L/usr/local/cuda/lib64 -Wl,-rpath,/usr/local/cuda/lib64 60_hybrid_mpi_nccl_bootstrap.cpp -o ./example -lnccl -lcudart
-/home/ubuntu/book2-bin/mpirun --oversubscribe -np 2 ./example
+mpirun --oversubscribe -np 2 ./example
 ```
 
 <details markdown="1"><summary>Actual sample output (excerpt)</summary>
@@ -379,6 +405,31 @@ int main() {
  return errors?1:0;
 }
 ```
+
+<!-- execution:start:h100-rerun:61_gpudirect_rdma_query.cu -->
+> **Compiled and executed — 2026-11-18-h100: API validation (recorded scope).** Hardware: 2 H100 GPUs. Executed UTC: `2026-11-18T11:21:55.727392+00:00`.
+
+<!-- execution:metadata Source SHA-256: dff691eb23e9e5a742cb49fb94d32bd74a7bc45ecf467c4fba4e8a35aa84982e; recorded UTC (program start): 2026-11-18T11:21:55.111950+00:00 -->
+
+[Exact tested source](../validation/2026-11-18-h100/61_gpudirect_rdma_query/61_gpudirect_rdma_query.cu) · [Compiler log](../validation/2026-11-18-h100/61_gpudirect_rdma_query/compile.log) · [Execution log](../validation/2026-11-18-h100/61_gpudirect_rdma_query/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+nvcc -std=c++17 -O2 -arch=sm_90 61_gpudirect_rdma_query.cu -o ./example
+./example
+```
+
+**Sample output**
+
+```text
+device 0 GPUDirectRDMA: supported=1 flushOptions=1 writesOrdering=100
+owner-scope flush API: no error (no external DMA was submitted)
+API PROBE PASS: queries and supported flush API only; no RDMA/NIC transfer validated, errors=0
+```
+
+<!-- execution:end:h100-rerun:61_gpudirect_rdma_query.cu -->
+
 
 <!-- execution:start:a100:61_gpudirect_rdma_query.cu -->
 > **Compiled and executed — 2026-11-17-a100: API validation (recorded scope).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:03:34.585817+00:00`.
@@ -554,6 +605,40 @@ int main() {
     return 0;
 }
 ```
+
+<!-- execution:start:h100-rerun:62_staged_vs_rdma_cost_model.cpp -->
+> **Compiled and executed — 2026-11-18-h100: Host program/model (exit-only).** Hardware: 2 H100 GPUs. Executed UTC: `2026-11-18T11:21:56.208243+00:00`.
+
+<!-- execution:metadata Source SHA-256: 56b4b1a88020ba0b9246fe85a7c39e42370f6225fe23606527f59bf835cddbe1; recorded UTC (program start): 2026-11-18T11:21:56.144065+00:00 -->
+
+[Exact tested source](../validation/2026-11-18-h100/62_staged_vs_rdma_cost_model/62_staged_vs_rdma_cost_model.cpp) · [Compiler log](../validation/2026-11-18-h100/62_staged_vs_rdma_cost_model/compile.log) · [Execution log](../validation/2026-11-18-h100/62_staged_vs_rdma_cost_model/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+g++ -std=c++17 -O2 62_staged_vs_rdma_cost_model.cpp -o ./example
+./example
+```
+
+**Sample output**
+
+```text
+Part A -- small-message fixed latency (cited, not measured here):
+  GPUDirect RDMA, GPU-to-GPU:  1.9us  (Host-to-GPU: 1.7us, a different path, not averaged in)
+  Staged GPU-to-GPU (D2H + IB host-to-host + H2D): ~17.0us
+  Ratio: 8.9x -- this book's own arithmetic on the post's two GPU-to-GPU numbers; the post itself states no single speedup factor.
+
+Part B -- large-message bandwidth, same real post, single-rail vs single-rail:
+  Single rail, GPU and NIC on a good PCIe path: ~6.1 GB/s
+  Single rail, crossing inter-socket QPI on Ivy Bridge (SYS-class): 0.25 GB/s
+  Degradation: ~24x (the post's 11.6 GB/s headline is dual-rail, so 11.6 / 0.25 would double-count the second NIC). Even this ~24x is not one controlled experiment -- the two figures need not come from the same server platform -- but the order of magnitude is the point: "GPUDirect RDMA capable" (Section 21.2's own boolean attribute) is NECESSARY but not SUFFICIENT; a bad PCIe path between a capable GPU and a capable NIC can cost more than an order of magnitude of bandwidth with no code change at all.
+
+Part C -- the source's own real crossover finding:
+  The same post states: "GPUDirect RDMA is faster than the staging approach for message sizes up to 400-500KB (on Ivy Bridge Xeon)" -- a real, cited finding this book reports rather than re-derives. A simple two-term (fixed latency + bandwidth) model built from Part A's latency and Part B's good-topology bandwidth would put GPUDirect RDMA ahead at every size, so it cannot reproduce the crossover; the post ties the crossover to the platform it measured (Ivy Bridge Xeon, whose cross-socket QPI path is also Part B's 250 MB/s case), and this book does not rebuild that platform-specific bandwidth model here.
+```
+
+<!-- execution:end:h100-rerun:62_staged_vs_rdma_cost_model.cpp -->
+
 
 <!-- execution:start:a100:62_staged_vs_rdma_cost_model.cpp -->
 > **Compiled and executed — 2026-11-17-a100: Host program/model (exit-only).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:03:37.827340+00:00`.

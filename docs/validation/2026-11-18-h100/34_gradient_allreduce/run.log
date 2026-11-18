@@ -1,0 +1,2 @@
+$ /home/ubuntu/full-gpu-rerun-20261118/mgpu/results/34_gradient_allreduce/example
+PASS: average and sum gradient AllReduce on 2 GPUs; all reference values checked.

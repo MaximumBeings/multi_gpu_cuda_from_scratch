@@ -261,6 +261,65 @@ int main() {
 }
 ```
 
+<!-- execution:start:h100-rerun:04_topology_bandwidth_model.cpp -->
+> **Compiled and executed — 2026-11-18-h100: Host program/model (exit-only).** Hardware: 2 H100 GPUs. Executed UTC: `2026-11-18T11:20:48.565775+00:00`.
+
+<!-- execution:metadata Source SHA-256: 12a05e6d00e1722f315ba32775d5c50fd909fb9b0b91c3b03cf8064095532672; recorded UTC (program start): 2026-11-18T11:20:48.301420+00:00 -->
+
+[Exact tested source](../validation/2026-11-18-h100/04_topology_bandwidth_model/04_topology_bandwidth_model.cpp) · [Compiler log](../validation/2026-11-18-h100/04_topology_bandwidth_model/compile.log) · [Execution log](../validation/2026-11-18-h100/04_topology_bandwidth_model/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+g++ -std=c++17 -O2 04_topology_bandwidth_model.cpp -o ./example
+./example
+```
+
+**Sample output**
+
+```text
+PCIe tree (dual-socket) (GB/s):
+     0.0  31.5  31.5  31.5  15.8  15.8  15.8  15.8
+    31.5   0.0  31.5  31.5  15.8  15.8  15.8  15.8
+    31.5  31.5   0.0  31.5  15.8  15.8  15.8  15.8
+    31.5  31.5  31.5   0.0  15.8  15.8  15.8  15.8
+    15.8  15.8  15.8  15.8   0.0  31.5  31.5  31.5
+    15.8  15.8  15.8  15.8  31.5   0.0  31.5  31.5
+    15.8  15.8  15.8  15.8  31.5  31.5   0.0  31.5
+    15.8  15.8  15.8  15.8  31.5  31.5  31.5   0.0
+Partial NVLink mesh (GB/s):
+     0.0  50.0  50.0  31.5  31.5  31.5  50.0  50.0
+    50.0   0.0  50.0  50.0  31.5  31.5  31.5  50.0
+    50.0  50.0   0.0  50.0  50.0  31.5  31.5  31.5
+    31.5  50.0  50.0   0.0  50.0  50.0  31.5  31.5
+    31.5  31.5  50.0  50.0   0.0  50.0  50.0  31.5
+    31.5  31.5  31.5  50.0  50.0   0.0  50.0  50.0
+    50.0  31.5  31.5  31.5  50.0  50.0   0.0  50.0
+    50.0  50.0  31.5  31.5  31.5  50.0  50.0   0.0
+NVSwitch (full crossbar) (GB/s):
+     0.0 450.0 450.0 450.0 450.0 450.0 450.0 450.0
+   450.0   0.0 450.0 450.0 450.0 450.0 450.0 450.0
+   450.0 450.0   0.0 450.0 450.0 450.0 450.0 450.0
+   450.0 450.0 450.0   0.0 450.0 450.0 450.0 450.0
+   450.0 450.0 450.0 450.0   0.0 450.0 450.0 450.0
+   450.0 450.0 450.0 450.0 450.0   0.0 450.0 450.0
+   450.0 450.0 450.0 450.0 450.0 450.0   0.0 450.0
+   450.0 450.0 450.0 450.0 450.0 450.0 450.0   0.0
+
+Ring bottleneck bandwidth, GPUs visited in natural index order 0->1->2->...->7->0:
+  PCIe tree:       15.75 GB/s
+  Partial mesh:    50.00 GB/s
+  NVSwitch:       450.00 GB/s
+
+For the partial mesh specifically, the natural order above happens to only use directly-wired (50 GB/s) links -- every step is a step-1 hop, and step-1 is one of this graph's wired offsets. Reordering to include one step-3 pair (not wired, so it falls back to plain PCIe) shows what happens when the visiting order doesn't match the physical wiring:
+  Order that includes one unwired (step-3) pair:  31.50 GB/s
+
+NVSwitch's whole point: bottleneck bandwidth is 450.0 GB/s regardless of visiting order, because there is no such thing as an indirect hop -- every pair is one switch away.
+```
+
+<!-- execution:end:h100-rerun:04_topology_bandwidth_model.cpp -->
+
+
 <!-- execution:start:a100:04_topology_bandwidth_model.cpp -->
 > **Compiled and executed — 2026-11-17-a100: Host program/model (exit-only).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:00:11.521865+00:00`.
 
@@ -446,6 +505,31 @@ int main() {
     return 0;
 }
 ```
+
+<!-- execution:start:h100-rerun:05_peer_access_query.cu -->
+> **Compiled and executed — 2026-11-18-h100: API/host demonstration (exit-only).** Hardware: 2 H100 GPUs. Executed UTC: `2026-11-18T11:20:49.183215+00:00`.
+
+<!-- execution:metadata Source SHA-256: ecb945fdb849a142966a3c372c4ee83c5d73aa1f5f51bf8b7aba93d6215c1c9f; recorded UTC (program start): 2026-11-18T11:20:48.568081+00:00 -->
+
+[Exact tested source](../validation/2026-11-18-h100/05_peer_access_query/05_peer_access_query.cu) · [Compiler log](../validation/2026-11-18-h100/05_peer_access_query/compile.log) · [Execution log](../validation/2026-11-18-h100/05_peer_access_query/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+nvcc -std=c++17 -O2 -arch=sm_90 05_peer_access_query.cu -o ./example
+./example
+```
+
+**Sample output**
+
+```text
+cudaGetDeviceCount(): no error, count = 2
+GPU 0 -> GPU 1 peer access: yes
+GPU 1 -> GPU 0 peer access: yes
+```
+
+<!-- execution:end:h100-rerun:05_peer_access_query.cu -->
+
 
 <!-- execution:start:a100:05_peer_access_query.cu -->
 > **Compiled and executed — 2026-11-17-a100: API/host demonstration (exit-only).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:00:12.593983+00:00`.

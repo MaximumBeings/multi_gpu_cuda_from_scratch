@@ -95,6 +95,29 @@ int main() {
 }
 ```
 
+<!-- execution:start:h100-rerun:30_nccl_comm_init.cu -->
+> **Compiled and executed — 2026-11-18-h100: API validation (recorded scope).** Hardware: 2 H100 GPUs. Executed UTC: `2026-11-18T11:21:17.040890+00:00`.
+
+<!-- execution:metadata Source SHA-256: 8727f9eeaaba6ddea198f70216798f22ba552ebeaf625453234128773ef4074b; recorded UTC (program start): 2026-11-18T11:21:15.874665+00:00 -->
+
+[Exact tested source](../validation/2026-11-18-h100/30_nccl_comm_init/30_nccl_comm_init.cu) · [Compiler log](../validation/2026-11-18-h100/30_nccl_comm_init/compile.log) · [Execution log](../validation/2026-11-18-h100/30_nccl_comm_init/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+nvcc -std=c++17 -O2 -arch=sm_90 30_nccl_comm_init.cu -o ./example -lnccl
+./example
+```
+
+**Sample output**
+
+```text
+API PROBE PASS: 2 devices, valid initialization/destruction and invalid argument checks, errors=0
+```
+
+<!-- execution:end:h100-rerun:30_nccl_comm_init.cu -->
+
+
 <!-- execution:start:a100:30_nccl_comm_init.cu -->
 > **Compiled and executed — 2026-11-17-a100: API validation (recorded scope).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:01:50.025564+00:00`.
 
@@ -204,6 +227,36 @@ int main() {
  return errors?1:0;
 }
 ```
+
+<!-- execution:start:h100-rerun:31_nccl_collectives_mapped.cu -->
+> **Compiled and executed — 2026-11-18-h100: API validation (recorded scope).** Hardware: 2 H100 GPUs. Executed UTC: `2026-11-18T11:21:20.326830+00:00`.
+
+<!-- execution:metadata Source SHA-256: 1d7c8fdc5703d2568fad0a308233cb39f8245aa0f25d25c709d493e216f63a2c; recorded UTC (program start): 2026-11-18T11:21:19.310597+00:00 -->
+
+[Exact tested source](../validation/2026-11-18-h100/31_nccl_collectives_mapped/31_nccl_collectives_mapped.cu) · [Compiler log](../validation/2026-11-18-h100/31_nccl_collectives_mapped/compile.log) · [Execution log](../validation/2026-11-18-h100/31_nccl_collectives_mapped/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+nvcc -std=c++17 -O2 -arch=sm_90 31_nccl_collectives_mapped.cu -o ./example -lnccl
+./example
+```
+
+**Sample output**
+
+```text
+Broadcast: invalid argument (run with NCCL_DEBUG=WARN for details) (expected invalid argument)
+Reduce: invalid argument (run with NCCL_DEBUG=WARN for details) (expected invalid argument)
+AllReduce: invalid argument (run with NCCL_DEBUG=WARN for details) (expected invalid argument)
+AllGather: invalid argument (run with NCCL_DEBUG=WARN for details) (expected invalid argument)
+ReduceScatter: invalid argument (run with NCCL_DEBUG=WARN for details) (expected invalid argument)
+Send: invalid argument (run with NCCL_DEBUG=WARN for details) (expected invalid argument)
+Recv: invalid argument (run with NCCL_DEBUG=WARN for details) (expected invalid argument)
+API PROBE PASS: NULL-communicator rejection only, errors=0
+```
+
+<!-- execution:end:h100-rerun:31_nccl_collectives_mapped.cu -->
+
 
 <!-- execution:start:a100:31_nccl_collectives_mapped.cu -->
 > **Compiled and executed — 2026-11-17-a100: API validation (recorded scope).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:01:59.278843+00:00`.
@@ -353,6 +406,46 @@ int main() {
     return 0;
 }
 ```
+
+<!-- execution:start:h100-rerun:32_ring_vs_tree_model.cpp -->
+> **Compiled and executed — 2026-11-18-h100: Host program/model (exit-only).** Hardware: 2 H100 GPUs. Executed UTC: `2026-11-18T11:21:20.496018+00:00`.
+
+<!-- execution:metadata Source SHA-256: 26cb373d652c1985ee1c42d2aa5edb5bee5a47ca5900dc938ca2e110e76967e5; recorded UTC (program start): 2026-11-18T11:21:20.331710+00:00 -->
+
+[Exact tested source](../validation/2026-11-18-h100/32_ring_vs_tree_model/32_ring_vs_tree_model.cpp) · [Compiler log](../validation/2026-11-18-h100/32_ring_vs_tree_model/compile.log) · [Execution log](../validation/2026-11-18-h100/32_ring_vs_tree_model/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+g++ -std=c++17 -O2 32_ring_vs_tree_model.cpp -o ./example
+./example
+```
+
+**Sample output**
+
+```text
+N          Ring rounds (Ch9)      Tree rounds (up+down)  Ratio
+-          2*(N-1)                2*ceil(log2(N))        ring/tree
+4          6                      4                      1.50      x
+8          14                     6                      2.33      x
+16         30                     8                      3.75      x
+64         126                    12                     10.50     x
+256        510                    16                     31.88     x
+1024       2046                   20                     102.30    x
+8192       16382                  26                     630.08    x
+24576      49150                  30                     1638.33   x
+
+Ring's round count grows linearly with N (doubling N roughly
+doubles the rounds needed); the tree's grows logarithmically
+(doubling N adds only one more level in each direction). This
+is a structural count of communication ROUNDS, not a measured
+time -- it makes concrete exactly the shape of the claim this
+chapter cites from NVIDIA's own NCCL 2.4 announcement, without
+fabricating a single timing number of its own.
+```
+
+<!-- execution:end:h100-rerun:32_ring_vs_tree_model.cpp -->
+
 
 <!-- execution:start:a100:32_ring_vs_tree_model.cpp -->
 > **Compiled and executed — 2026-11-17-a100: Host program/model (exit-only).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:01:59.500551+00:00`.

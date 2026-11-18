@@ -1,0 +1,3 @@
+$ /home/ubuntu/full-gpu-rerun-20261118/mgpu/results/129_graph_exec_update/example
+Compatible update: new pointer and scalar argument; original buffer unchanged.
+VALIDATION PASS: errors=0

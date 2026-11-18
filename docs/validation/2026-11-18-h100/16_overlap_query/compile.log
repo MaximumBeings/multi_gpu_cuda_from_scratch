@@ -1,0 +1,1 @@
+$ nvcc -std=c++17 -O2 -arch=sm_90 /home/ubuntu/full-gpu-rerun-20261118/mgpu/docs/part1/code/16_overlap_query.cu -o /home/ubuntu/full-gpu-rerun-20261118/mgpu/results/16_overlap_query/example

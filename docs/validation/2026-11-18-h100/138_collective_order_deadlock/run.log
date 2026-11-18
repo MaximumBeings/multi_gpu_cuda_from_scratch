@@ -1,0 +1,9 @@
+$ /usr/mpi/gcc/openmpi-4.1.7rc1/bin/mpirun --oversubscribe -np 2 /home/ubuntu/full-gpu-rerun-20261118/mgpu/results/138_collective_order_deadlock/example fixed
+rank 1: about to MPI_Recv from 0 (recv-first order)
+rank 1: MPI_Recv returned; about to MPI_Send to 0
+rank 1: MPI_Send returned
+rank 0 (even, fixed order): about to MPI_Send to 1
+rank 0: MPI_Send returned; about to MPI_Recv from 1
+rank 0: MPI_Recv returned
+rank 1 done, recvVal=0 (expected 0)
+rank 0 done, recvVal=1 (expected 1)

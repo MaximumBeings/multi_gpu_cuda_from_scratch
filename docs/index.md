@@ -3,7 +3,7 @@
 <!-- execution:overview -->
 !!! success "Recorded hardware validation"
 
-    All 145 recorded source revisions compiled and executed on [two H100 GPUs](validation-h100.md) and again on [eight A100 GPUs](validation-a100.md). Each pass records 33 numerical/transport validations, 13 API validations and 99 other executions with limited correctness scope. The A100 pass uses eight MPI processes for multi-rank examples; individual programs retain their documented participant counts. A separate eight-device harness checks all 56 ordered peer-copy pairs, four collective patterns and three halo generations.
+    The [November 18 two-H100 rerun](validation-h100-rerun.md) compiled and executed all 145 current sources: 34 numerical/transport checks, 13 API checks and 98 other executions. The earlier [two-H100](validation-h100.md) and [eight-A100](validation-a100.md) records remain available with their original scopes. The A100 pass uses eight MPI processes for multi-rank examples; individual programs retain their documented participant counts. A separate eight-device harness checks all 56 ordered peer-copy pairs, four collective patterns and three halo generations.
 
 
 <!-- mgpu:opener:start -->
@@ -16,7 +16,7 @@ A single-GPU CUDA book can treat "the GPU" as one honest unit of compute with on
 
 This book develops multi-GPU CUDA from device selection and transfers through collectives and parallelization strategies. Every program has dated H100 and A100 execution records. Host models explain the algorithms; numerical checks validate device results for the recorded workloads. Start with [Getting Started](getting-started.md).
 
-The final review corrected the staged MPI example (58): device-buffer initialization, local-rank GPU binding, error checks and a full receive oracle. **144 current sources match their execution records; example 58 awaits GPU revalidation.** Its dated output below belongs to the archived revision.
+The corrected staged-MPI example (58) passed the November 18 two-H100 numerical rerun and memory check. **All 145 current sources have successful execution records.** See the [additional dated H100 results](validation-h100-rerun.md) for commands, system information and sample outputs.
 
 ## What this book covers
 

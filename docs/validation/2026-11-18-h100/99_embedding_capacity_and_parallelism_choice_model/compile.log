@@ -1,0 +1,1 @@
+$ g++ -std=c++17 -O2 /home/ubuntu/full-gpu-rerun-20261118/mgpu/docs/part7/code/99_embedding_capacity_and_parallelism_choice_model.cpp -o /home/ubuntu/full-gpu-rerun-20261118/mgpu/results/99_embedding_capacity_and_parallelism_choice_model/example

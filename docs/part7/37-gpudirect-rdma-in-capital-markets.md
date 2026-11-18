@@ -133,6 +133,41 @@ int main() {
 }
 ```
 
+<!-- execution:start:h100-rerun:108_kernel_bypass_market_data_baseline_model.cpp -->
+> **Compiled and executed — 2026-11-18-h100: Host program/model (exit-only).** Hardware: 2 H100 GPUs. Executed UTC: `2026-11-18T11:22:41.035058+00:00`.
+
+<!-- execution:metadata Source SHA-256: 8db4dbf3dbea612687eff5c282fbddc73005886bdd0de0f8562976468d83053e; recorded UTC (program start): 2026-11-18T11:22:40.971038+00:00 -->
+
+[Exact tested source](../validation/2026-11-18-h100/108_kernel_bypass_market_data_baseline_model/108_kernel_bypass_market_data_baseline_model.cpp) · [Compiler log](../validation/2026-11-18-h100/108_kernel_bypass_market_data_baseline_model/compile.log) · [Execution log](../validation/2026-11-18-h100/108_kernel_bypass_market_data_baseline_model/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+g++ -std=c++17 -O2 108_kernel_bypass_market_data_baseline_model.cpp -o ./example
+./example
+```
+
+**Sample output**
+
+```text
+Real cited Databento production figures (NVIDIA case study):
+- Sustained throughput: over 80 Gbps ("exceeds 80 Gbps")
+- Daily volume: over 2e+11 market updates/day ("over 200 billion market updates each day")
+- Real cited median network latency (kernel-bypass + DPDK on NVIDIA NICs): below 60 microseconds
+
+Derived (plain arithmetic on the real cited figures above):
+Average updates/second across a full day: 2.31e+06
+Bytes/second sustained at the real cited 80 Gbps figure: 1.00e+10
+Implied average bytes/update if 80 Gbps were sustained at this DAILY-AVERAGE update rate: 4320.0 bytes
+
+A honest flag on that last number: real market-data messages are typically tens to a few hundred bytes, not 4320 bytes -- so this arithmetic result is a mismatch, not a real average message size. It shows that the real cited "80 Gbps" figure describes sustained PEAK capacity, while the real cited "200 billion updates/day" figure is a DAILY AVERAGE across quiet and busy periods alike; dividing one by the other conflates two different real numbers that were never meant to describe the same moment. Reporting this mismatch honestly, rather than quietly presenting 4320 bytes as a real message size, matters more here than the arithmetic itself.
+
+This is the real, CURRENTLY-DEPLOYED starting point for everything this chapter builds on: kernel-bypass NIC processing (DPDK, hardware timestamping) gets market data from the wire into HOST memory at real sub-60-microsecond median latency, at real production scale -- but it stops at host memory. Nothing in this real, cited pipeline yet involves a GPU at all. Section 37.2 asks the honest question this chapter exists to answer: does Chapter 21's own GPUDirect RDMA extend this real pipeline the rest of the way, directly into GPU memory, for this specific workload today?
+```
+
+<!-- execution:end:h100-rerun:108_kernel_bypass_market_data_baseline_model.cpp -->
+
+
 <!-- execution:start:a100:108_kernel_bypass_market_data_baseline_model.cpp -->
 > **Compiled and executed — 2026-11-17-a100: Host program/model (exit-only).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:05:32.049333+00:00`.
 
@@ -329,6 +364,39 @@ int main() {
 }
 ```
 
+<!-- execution:start:h100-rerun:109_gpudirect_rdma_market_data_projection_model.cpp -->
+> **Compiled and executed — 2026-11-18-h100: Host program/model (exit-only).** Hardware: 2 H100 GPUs. Executed UTC: `2026-11-18T11:22:41.103120+00:00`.
+
+<!-- execution:metadata Source SHA-256: 4f9b52d2d3ad6c06e3f2856b2399fba8e5a10be06e28e8caf577e450fae6f3b0; recorded UTC (program start): 2026-11-18T11:22:41.039096+00:00 -->
+
+[Exact tested source](../validation/2026-11-18-h100/109_gpudirect_rdma_market_data_projection_model/109_gpudirect_rdma_market_data_projection_model.cpp) · [Compiler log](../validation/2026-11-18-h100/109_gpudirect_rdma_market_data_projection_model/compile.log) · [Execution log](../validation/2026-11-18-h100/109_gpudirect_rdma_market_data_projection_model/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+g++ -std=c++17 -O2 109_gpudirect_rdma_market_data_projection_model.cpp -o ./example
+./example
+```
+
+**Sample output**
+
+```text
+Real quotes from NVIDIA's own Rivermax/NEIO FastSocket blog post, under its own "What's next" heading (not a deployed-today claim):
+- "GPUDirect technology is poised to improve the performance of trading systems by enabling direct memory access between NICs and GPUs, bypassing the CPU to reduce latency."
+- "With Rivermax and GPUDirect powering zero-copy access, market data is streamed directly from high-speed NICs into GPU memory, eliminating PCIe bottlenecks."
+
+Real, separately-cited numbers this file combines illustratively (never as a single NVIDIA-published result):
+- Section 37.1's own real cited kernel-bypass-to-host median latency: below 60 microseconds (Databento/NVIDIA case study).
+- Chapter 21's own real cited GPUDirect RDMA vs. staged-transfer speedup: 9.44x (computed in Chapter 21 from NVIDIA's own "Benchmarking GPUDirect RDMA on Modern Server Platforms" post, matching that post's own cited "approximately 9x faster" claim).
+
+THIS BOOK'S OWN ILLUSTRATIVE PROJECTION (not an NVIDIA-published number): if Chapter 21's own real 9.44x GPUDirect RDMA speedup applied directly to Section 37.1's own real 60us kernel-bypass baseline, removing its remaining host-memory hop, the projected latency would be approximately 6.36us.
+
+Why this is labeled a projection and not a finding: Chapter 21's own 9.44x figure was measured on a synthetic small-message ping-pong benchmark on specific Ivy Bridge-era hardware, not on Databento's own real market-data pipeline or its own real NIC/GPU topology. Combining the two real numbers this way assumes the same relative speedup would carry over to a different, real, specific workload -- an assumption this book has no cited measurement to confirm. What IS real and directly cited is the DIRECTION: NVIDIA's own documentation places NIC-to-GPU GPUDirect RDMA for market data under "What's next," not among its own already-deployed results, unlike Chapter 21's own GPU-to-GPU and storage-to-GPU GPUDirect RDMA use cases, which that chapter cited as already real and measured.
+```
+
+<!-- execution:end:h100-rerun:109_gpudirect_rdma_market_data_projection_model.cpp -->
+
+
 <!-- execution:start:a100:109_gpudirect_rdma_market_data_projection_model.cpp -->
 > **Compiled and executed — 2026-11-17-a100: Host program/model (exit-only).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:05:32.120867+00:00`.
 
@@ -517,6 +585,41 @@ int main() {
     return 0;
 }
 ```
+
+<!-- execution:start:h100-rerun:110_gdrcopy_fixed_overhead_vs_latency_budget_model.cpp -->
+> **Compiled and executed — 2026-11-18-h100: Host program/model (exit-only).** Hardware: 2 H100 GPUs. Executed UTC: `2026-11-18T11:22:41.171050+00:00`.
+
+<!-- execution:metadata Source SHA-256: 718cacfa0ed9687820d55adf81c27bb3cc4348d3fbbd8e525724de47f93d8e4b; recorded UTC (program start): 2026-11-18T11:22:41.107068+00:00 -->
+
+[Exact tested source](../validation/2026-11-18-h100/110_gdrcopy_fixed_overhead_vs_latency_budget_model/110_gdrcopy_fixed_overhead_vs_latency_budget_model.cpp) · [Compiler log](../validation/2026-11-18-h100/110_gdrcopy_fixed_overhead_vs_latency_budget_model/compile.log) · [Execution log](../validation/2026-11-18-h100/110_gdrcopy_fixed_overhead_vs_latency_budget_model/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+g++ -std=c++17 -O2 110_gdrcopy_fixed_overhead_vs_latency_budget_model.cpp -o ./example
+./example
+```
+
+**Sample output**
+
+```text
+Real cited fixed per-call overhead (NVIDIA/gdrcopy README):
+- Ordinary cudaMemcpy round trip: 6.0-7.0 microseconds
+- GDRCopy (CPU-mapped direct read via GPUDirect RDMA): 1.08762 microseconds (real cited A40 ping-pong result)
+
+Real cited TOTAL P99 inference latency budgets (NVIDIA capital-markets blog):
+- GH200, four LSTM_A instances: 4.61 microseconds p99
+- RTX PRO 6000 Blackwell, small model: 4.30 microseconds p99
+
+Comparison                                     vs GH200 budget    vs RTX PRO 6000 budget
+cudaMemcpy overhead alone (low end, 6us)       130.2            % 139.5            %
+GDRCopy round trip alone                       23.6             % 25.3             %
+
+A plain cudaMemcpy round trip's own real cited FIXED overhead (6.0-7.0us) is, by itself, 130%-140% of these real total P99 latency budgets -- at the low end of NVIDIA's own cited range, it alone would consume MORE than the entire real RTX PRO 6000 budget, before a single byte of the actual input vector or model computation is counted. GDRCopy's own real cited round trip (1.08762us) is small enough, by contrast, to leave the vast majority of either real budget for the model's own computation. This is the opposite lesson from every earlier chapter's own cost model: there, a fixed per-call cost eventually became negligible as payload grew; here, the payload (one small input vector) was always tiny, so it is the FIXED overhead itself, not any volume, that threatens to consume the entire real latency budget -- exactly the real problem GDRCopy's own GPUDirect-RDMA-based CPU mapping exists to solve.
+```
+
+<!-- execution:end:h100-rerun:110_gdrcopy_fixed_overhead_vs_latency_budget_model.cpp -->
+
 
 <!-- execution:start:a100:110_gdrcopy_fixed_overhead_vs_latency_budget_model.cpp -->
 > **Compiled and executed — 2026-11-17-a100: Host program/model (exit-only).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:05:32.191932+00:00`.

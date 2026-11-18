@@ -17,7 +17,7 @@ from approved_display import approved_display_source, approved_display_output
 ROOT = Path(__file__).resolve().parents[1]
 SUFFIXES = {'.cu', '.cpp', '.c'}
 SUCCESS = {'validation_pass', 'api_probe_pass', 'executed_unverified'}
-ARCHITECTURES = {'h100': 'sm_90', 'a100': 'sm_80', 'b200': 'sm_100'}
+ARCHITECTURES = {'h100': 'sm_90', 'a100': 'sm_80', 'b200': 'sm_100', 'h100-rerun': 'sm_90'}
 FENCES = re.compile(r'^(`{3,})([^\n]*)\n(.*?)^\1[ \t]*$', re.M | re.S)
 
 
@@ -37,8 +37,8 @@ def strip_command(log):
 
 def normalize(command, source):
     filename = Path(source).name
-    return [filename if arg.endswith('/' + source) or arg.endswith('/' + filename)
-            else './example' if arg.endswith('/example') else arg for arg in command]
+    return [Path(arg).name.removesuffix('.openmpi') if index == 0 and Path(arg).name in {'mpirun', 'mpirun.openmpi', 'mpicc', 'mpicxx'} else filename if arg.endswith('/' + source) or arg.endswith('/' + filename)
+            else './example' if arg.endswith('/example') else arg for index, arg in enumerate(command)]
 
 
 def category(row):
@@ -167,7 +167,7 @@ def capture_block(row, dataset, label, relative):
     scope = category(row)
     return '\n\n' + '\n'.join([
         f'<!-- execution:start:{label}:{name} -->',
-        f'> **Compiled and executed — {dataset}: {scope}.** Hardware: {row["evidence_system"].get("visible_gpu_count", "recorded")} {label.upper()} GPUs. {execution_time(row)}.', '',
+        f'> **Compiled and executed — {dataset}: {scope}.** Hardware: {row["evidence_system"].get("visible_gpu_count", "recorded")} {label.split('-')[0].upper()} GPUs. {execution_time(row)}.', '',
         f'<!-- execution:metadata Source SHA-256: {row["sha256"]}; recorded UTC ({row["timestamp_scope"]}): {row["captured_utc"]} -->', '',
         f'[Exact tested source]({relative}/{name}) · [Compiler log]({relative}/compile.log) · [Execution log]({relative}/run.log). Compile exit: `{row["compile"]["exit_code"]}`; run exit: `{row["run"]["exit_code"]}`.', '',
         'Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.', '',
@@ -294,7 +294,7 @@ def prepare(inputs, dataset, label, root, temporary):
         del row['_output']
     (public / 'results.json').write_text(json.dumps(records, indent=2) + '\n')
     counts = collections.Counter(category(row) for row in records)
-    summary = ['# ' + label.upper() + ' execution validation', '',
+    summary = ['# ' + ('November 18 H100 rerun' if label == 'h100-rerun' else label.upper() + ' execution validation'), '',
                f'Dataset: **{dataset}**. All **145 current sources compiled and executed with exit status zero**. The categories below describe evidence scope; an API probe or a host model is not a successful numerical GPU workload.', '',
                '| Evidence category | Programs |', '| --- | ---: |']
     summary += [f'| {key} | {value} |' for key, value in sorted(counts.items())]

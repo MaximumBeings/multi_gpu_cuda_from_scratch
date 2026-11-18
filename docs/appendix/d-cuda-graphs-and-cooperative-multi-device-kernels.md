@@ -82,6 +82,30 @@ int main(){
 }
 ```
 
+<!-- execution:start:h100-rerun:129_graph_exec_update.cu -->
+> **Compiled and executed — 2026-11-18-h100: Numerical/transport validation (recorded scope).** Hardware: 2 H100 GPUs. Executed UTC: `2026-11-18T11:20:23.393560+00:00`.
+
+<!-- execution:metadata Source SHA-256: 3b5541db649c285e9059c68df38dc2c21aa9d0b16a7d47249a3ac4b22bb6c795; recorded UTC (program start): 2026-11-18T11:20:22.728144+00:00 -->
+
+[Exact tested source](../validation/2026-11-18-h100/129_graph_exec_update/129_graph_exec_update.cu) · [Compiler log](../validation/2026-11-18-h100/129_graph_exec_update/compile.log) · [Execution log](../validation/2026-11-18-h100/129_graph_exec_update/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+nvcc -std=c++17 -O2 -arch=sm_90 129_graph_exec_update.cu -o ./example
+./example
+```
+
+**Sample output**
+
+```text
+Compatible update: new pointer and scalar argument; original buffer unchanged.
+VALIDATION PASS: errors=0
+```
+
+<!-- execution:end:h100-rerun:129_graph_exec_update.cu -->
+
+
 <!-- execution:start:a100:129_graph_exec_update.cu -->
 > **Compiled and executed — 2026-11-17-a100: Numerical/transport validation (recorded scope).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-17T23:59:14.766231+00:00`.
 
@@ -195,6 +219,31 @@ int main() {
  return errors?1:0;
 }
 ```
+
+<!-- execution:start:h100-rerun:130_cooperative_multi_device.cu -->
+> **Compiled and executed — 2026-11-18-h100: API validation (recorded scope).** Hardware: 2 H100 GPUs. Executed UTC: `2026-11-18T11:20:24.423985+00:00`.
+
+<!-- execution:metadata Source SHA-256: 0c66c335c5c5fdc8fb8a22a5693cebbe474765d3ef8290c91c9257aa35306a79; recorded UTC (program start): 2026-11-18T11:20:23.808757+00:00 -->
+
+[Exact tested source](../validation/2026-11-18-h100/130_cooperative_multi_device/130_cooperative_multi_device.cu) · [Compiler log](../validation/2026-11-18-h100/130_cooperative_multi_device/compile.log) · [Execution log](../validation/2026-11-18-h100/130_cooperative_multi_device/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+nvcc -std=c++17 -O2 -arch=sm_90 -rdc=true 130_cooperative_multi_device.cu -o ./example -lcudadevrt
+./example
+```
+
+**Sample output**
+
+```text
+device 0: cooperative=1 deprecated multi-device capability=1
+device 1: cooperative=1 deprecated multi-device capability=1
+API PROBE PASS: capability queries only, errors=0
+```
+
+<!-- execution:end:h100-rerun:130_cooperative_multi_device.cu -->
+
 
 <!-- execution:start:a100:130_cooperative_multi_device.cu -->
 > **Compiled and executed — 2026-11-17-a100: API validation (recorded scope).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-17T23:59:19.106447+00:00`.
@@ -343,6 +392,30 @@ int main(){
     return errors?1:0;
 }
 ```
+
+<!-- execution:start:h100-rerun:131_modern_composed_equivalent.cu -->
+> **Compiled and executed — 2026-11-18-h100: Numerical/transport validation (recorded scope).** Hardware: 2 H100 GPUs. Executed UTC: `2026-11-18T11:20:26.807567+00:00`.
+
+<!-- execution:metadata Source SHA-256: aec29136fb84fb03282c5159d44579632814ad5f51efc010a829c4483c2792da; recorded UTC (program start): 2026-11-18T11:20:24.739318+00:00 -->
+
+[Exact tested source](../validation/2026-11-18-h100/131_modern_composed_equivalent/131_modern_composed_equivalent.cu) · [Compiler log](../validation/2026-11-18-h100/131_modern_composed_equivalent/compile.log) · [Execution log](../validation/2026-11-18-h100/131_modern_composed_equivalent/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+nvcc -std=c++17 -O2 -arch=sm_90 131_modern_composed_equivalent.cu -o ./example
+./example
+```
+
+**Sample output**
+
+```text
+Two cooperative blocks on GPU0; whole-kernel event dependency to GPU1. Separate buffers, no data transfer.
+VALIDATION PASS: errors=0
+```
+
+<!-- execution:end:h100-rerun:131_modern_composed_equivalent.cu -->
+
 
 <!-- execution:start:a100:131_modern_composed_equivalent.cu -->
 > **Compiled and executed — 2026-11-17-a100: Numerical/transport validation (recorded scope).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-17T23:59:25.503780+00:00`.

@@ -1,0 +1,2 @@
+$ /home/ubuntu/full-gpu-rerun-20261118/mgpu/results/40_row_parallel_allreduce/example
+PASS: row-parallel partial GEMM plus NCCL AllReduce on 2 GPUs; all reference values checked.

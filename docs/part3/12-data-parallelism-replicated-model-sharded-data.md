@@ -93,6 +93,29 @@ int main(){
 }
 ```
 
+<!-- execution:start:h100-rerun:33_replica_setup.cu -->
+> **Compiled and executed — 2026-11-18-h100: Numerical/transport validation (recorded scope).** Hardware: 2 H100 GPUs. Executed UTC: `2026-11-18T11:21:21.815451+00:00`.
+
+<!-- execution:metadata Source SHA-256: 18fdb24c4f1080443b43b0b5dbc4dc54eef777f331150e6b576e957137bf18a5; recorded UTC (program start): 2026-11-18T11:21:20.498995+00:00 -->
+
+[Exact tested source](../validation/2026-11-18-h100/33_replica_setup/33_replica_setup.cu) · [Compiler log](../validation/2026-11-18-h100/33_replica_setup/compile.log) · [Execution log](../validation/2026-11-18-h100/33_replica_setup/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+nvcc -std=c++17 -O2 -arch=sm_90 33_replica_setup.cu -o ./example -lnccl
+./example
+```
+
+**Sample output**
+
+```text
+PASS: replica initial-weight broadcast on 2 GPUs; all reference values checked.
+```
+
+<!-- execution:end:h100-rerun:33_replica_setup.cu -->
+
+
 <!-- execution:start:a100:33_replica_setup.cu -->
 > **Compiled and executed — 2026-11-17-a100: Numerical/transport validation (recorded scope).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:02:01.774826+00:00`.
 
@@ -203,6 +226,29 @@ int main(){
  printf("PASS: average and sum gradient AllReduce on %d GPUs; all reference values checked.\n",world);return 0;
 }
 ```
+
+<!-- execution:start:h100-rerun:34_gradient_allreduce.cu -->
+> **Compiled and executed — 2026-11-18-h100: Numerical/transport validation (recorded scope).** Hardware: 2 H100 GPUs. Executed UTC: `2026-11-18T11:21:24.951356+00:00`.
+
+<!-- execution:metadata Source SHA-256: df562388a04106ea487942c8dd1569ba0d32279098ea79149c6e2c6406a0b8d8; recorded UTC (program start): 2026-11-18T11:21:23.584321+00:00 -->
+
+[Exact tested source](../validation/2026-11-18-h100/34_gradient_allreduce/34_gradient_allreduce.cu) · [Compiler log](../validation/2026-11-18-h100/34_gradient_allreduce/compile.log) · [Execution log](../validation/2026-11-18-h100/34_gradient_allreduce/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+nvcc -std=c++17 -O2 -arch=sm_90 34_gradient_allreduce.cu -o ./example -lnccl
+./example
+```
+
+**Sample output**
+
+```text
+PASS: average and sum gradient AllReduce on 2 GPUs; all reference values checked.
+```
+
+<!-- execution:end:h100-rerun:34_gradient_allreduce.cu -->
+
 
 <!-- execution:start:a100:34_gradient_allreduce.cu -->
 > **Compiled and executed — 2026-11-17-a100: Numerical/transport validation (recorded scope).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:02:09.272706+00:00`.
@@ -407,6 +453,45 @@ int main() {
     return (allSyncedEqual && allMatchReference && anyDivergence) ? 0 : 1;
 }
 ```
+
+<!-- execution:start:h100-rerun:35_data_parallel_consistency_simulation.cpp -->
+> **Compiled and executed — 2026-11-18-h100: Host program/model (exit-only).** Hardware: 2 H100 GPUs. Executed UTC: `2026-11-18T11:21:26.734763+00:00`.
+
+<!-- execution:metadata Source SHA-256: fcc474089776db5c52e03eaa13c0358e9ea44e9fcea300ca8a6aecd3b552f2a7; recorded UTC (program start): 2026-11-18T11:21:26.670423+00:00 -->
+
+[Exact tested source](../validation/2026-11-18-h100/35_data_parallel_consistency_simulation/35_data_parallel_consistency_simulation.cpp) · [Compiler log](../validation/2026-11-18-h100/35_data_parallel_consistency_simulation/compile.log) · [Execution log](../validation/2026-11-18-h100/35_data_parallel_consistency_simulation/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+g++ -std=c++17 -O2 35_data_parallel_consistency_simulation.cpp -o ./example
+./example
+```
+
+**Sample output**
+
+```text
+WITH synchronization (average gradients via ncclAvg every step):
+step 0: replica0=0.0000 replica1=0.0000 replica2=0.0000 replica3=0.0000  | reference=0.0000
+step 1: replica0=1.4000 replica1=1.4000 replica2=1.4000 replica3=1.4000  | reference=1.4000
+step 2: replica0=2.6600 replica1=2.6600 replica2=2.6600 replica3=2.6600  | reference=2.6600
+step 3: replica0=3.7940 replica1=3.7940 replica2=3.7940 replica3=3.7940  | reference=3.7940
+step 4: replica0=4.8146 replica1=4.8146 replica2=4.8146 replica3=4.8146  | reference=4.8146
+step 5: replica0=5.7331 replica1=5.7331 replica2=5.7331 replica3=5.7331  | reference=5.7331
+After 5 step(s): every replica identical to every other: PASS; every replica matches the independent single-model reference: PASS
+
+WITHOUT synchronization (each replica updates from its own local gradient only):
+step 0: replica0=0.0000 replica1=0.0000 replica2=0.0000 replica3=0.0000
+step 1: replica0=1.2000 replica1=0.8000 replica2=2.0000 replica3=1.6000
+step 2: replica0=2.2800 replica1=1.5200 replica2=3.8000 replica3=3.0400
+step 3: replica0=3.2520 replica1=2.1680 replica2=5.4200 replica3=4.3360
+step 4: replica0=4.1268 replica1=2.7512 replica2=6.8780 replica3=5.5024
+step 5: replica0=4.9141 replica1=3.2761 replica2=8.1902 replica3=6.5522
+After 5 step(s) with no synchronization: replicas have diverged from each other: PASS (divergence correctly demonstrated)
+```
+
+<!-- execution:end:h100-rerun:35_data_parallel_consistency_simulation.cpp -->
+
 
 <!-- execution:start:a100:35_data_parallel_consistency_simulation.cpp -->
 > **Compiled and executed — 2026-11-17-a100: Host program/model (exit-only).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:02:14.566072+00:00`.
