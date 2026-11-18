@@ -8,6 +8,9 @@ copyright: Copyright &copy; 2026 Oluwaseyi Awoga
 
 theme:
   name: material
+  font:
+    text: Roboto
+    code: JetBrains Mono
   palette:
     - media: "(prefers-color-scheme: light)"
       scheme: default
@@ -44,6 +47,7 @@ markdown_extensions:
   - pymdownx.superfences
   - pymdownx.highlight:
       anchor_linenums: true
+      pygments_lang_class: true
   - pymdownx.inlinehilite
   - pymdownx.snippets
   - pymdownx.tabbed:
@@ -125,3 +129,7 @@ extra:
 
 extra_css:
   - stylesheets/illustrations.css
+  - stylesheets/code.css
+
+hooks:
+  - hooks/code_formatting.py

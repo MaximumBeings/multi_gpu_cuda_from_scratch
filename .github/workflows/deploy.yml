@@ -28,5 +28,8 @@ jobs:
         run: mkdocs build --strict
       - name: Check internal links and anchors
         run: python3 tools/verify_site_links.py
+      - name: Verify displayed source formatting
+        run: python3 tools/verify_code_formatting.py --site-dir site
+
       - name: Publish verified site
         run: mkdocs gh-deploy --force

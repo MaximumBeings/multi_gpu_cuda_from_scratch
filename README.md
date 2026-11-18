@@ -55,3 +55,7 @@ The generator preserves source-code fences and uses checked insertion markers. S
 ## Documentation display checks
 
 The web listings use `tools/approved_display.py` for an explicit filename-and-literal allowlist of stale comment and diagnostic-wording cleanups. Algorithm statements, queries and calculations stay unchanged. Downloadable tested sources, full logs, timestamps and SHA-256 records remain immutable. Output marked “excerpt” selects actual recorded lines; it never substitutes newly written diagnostic text. `python3 tools/test_approved_display.py` checks this boundary and rejects unapproved algorithm changes.
+
+## Code listing presentation
+
+Website builds format C, C++ and CUDA listings with pinned clang-format 19.1.7: four-space indentation, 72-column layout and expanded control-flow blocks. The build rejects changes to lexical tokens, literals or comment contents. Only displayed listings are formatted; stored sources, execution hashes, commands and captured outputs remain unchanged. Long literals wrap visually without inserting copied newlines. Style settings are in `.clang-format`; the build hook is `hooks/code_formatting.py`.
