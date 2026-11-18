@@ -427,6 +427,8 @@ int main() {
 }
 ```
 
+The IPC-event example checks exported event handles, allocation lifetime, and the transferred payload. The producer synchronizes before publishing its handles, so this run does not test a consumer waiting on still-pending producer work.
+
 <!-- execution:start:a100:18_ipc_event_handle.cu -->
 > **Compiled and executed — 2026-11-17-a100: Numerical/transport validation (recorded scope).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:01:05.264113+00:00`.
 

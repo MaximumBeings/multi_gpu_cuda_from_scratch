@@ -142,7 +142,7 @@ The current File 11 initializes data, checks actual peer copies and validates th
 The [2026-11-17 H100 execution record](../validation-h100.md) covers two GPUs connected by local NV18. It distinguishes numerical checks, API probes and other executions; a successful exit alone does not establish GPU algorithm correctness.
 
 !!! warning "[COMMON TRAP] Assuming cudaMemcpyPeer() itself tells you whether the fast path was used"
-    `cudaMemcpyPeer()` returns `cudaSuccess` whether it took the direct peer route or silently fell back to staging through the host -- the function's return value reports *correctness*, not *which mechanism ran*. There is no flag in its signature that reports back which path was taken. The only way to know is to have already checked `cudaDeviceCanAccessPeer()` (Chapter 4, Section 4.2) for that exact ordered pair *before* calling it -- the copy's success tells you the data arrived; it says nothing about how.
+    `cudaMemcpyPeer()` does not report its transport route. A successful return is also not a completed numerical check: the call is asynchronous with respect to the host, so synchronize and compare the destination before asserting that the intended values arrived. `cudaDeviceCanAccessPeer()` reports whether an ordered pair supports peer access; it does not measure which route a particular transfer used. Use topology inspection and profiling when the route matters. See the [CUDA Runtime memory API](https://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__MEMORY.html).
 
 ## 5.2 Staged Host Transfers: The Fallback, Made Explicit
 

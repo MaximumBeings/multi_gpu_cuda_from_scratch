@@ -4,9 +4,11 @@ A 40-chapter book covering device ownership, peer transfers, collectives, parall
 
 Read the [public book](https://maximumbeings.github.io/multi_gpu_cuda_from_scratch/) or start with [Getting Started](docs/getting-started.md). GPU programs, CPU reference simulations, cost models and API probes have different validation scopes; the execution records state which was checked.
 
+The final review corrected the staged MPI example (58): device-buffer initialization, local-rank GPU binding, error checks and a full receive oracle. **144 current sources match their execution records; example 58 awaits GPU revalidation.** Its dated output below belongs to the archived revision.
+
 ## Recorded validation
 
-[H100 records](docs/validation-h100.md) cover two H100 GPUs; [A100 records](docs/validation-a100.md) cover an eight-A100 host with eight-process MPI runs. All 145 current sources compiled and executed in each pass. Each dataset distinguishes 33 numerical/transport checks, 13 API validations and 99 other executions. The A100 supplement also checks all 56 ordered peer-copy pairs, four eight-rank collective patterns and three halo generations. B200 results are pending actual hardware.
+[H100 records](docs/validation-h100.md) cover two H100 GPUs; [A100 records](docs/validation-a100.md) cover an eight-A100 host with eight-process MPI runs. All 145 recorded source revisions compiled and executed in each pass. Each dataset distinguishes 33 numerical/transport checks, 13 API validations and 99 other executions. The A100 supplement also checks all 56 ordered peer-copy pairs, four eight-rank collective patterns and three halo generations. B200 results are pending actual hardware.
 
 ## Build the website
 

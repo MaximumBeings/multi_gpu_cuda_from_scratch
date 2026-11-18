@@ -696,6 +696,8 @@ int main() {
 }
 ```
 
+This captured GEMM checks every output for uniform `A=1` and `B=2`. That detects missing or incorrect results for this input, but uniform values cannot expose transpose or index-permutation errors; a broader GEMM test needs nonuniform matrices and an independent reference.
+
 <!-- execution:start:a100:71_cublasxt_multi_gpu_gemm.cu -->
 > **Compiled and executed — 2026-11-17-a100: Numerical/transport validation (recorded scope).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:05:08.228365+00:00`.
 

@@ -31,9 +31,14 @@ def verify(root, public, docs=None, summary_text=None):
     current = sources(root)
     rows = json.loads((public / 'results.json').read_text())
     recorded = {row['source']: row['sha256'] for row in rows}
+    from pending_revalidation import pending
+    revisions = pending(root, current, recorded)
+    expected_current = dict(recorded)
+    for rel, revision in revisions.items():
+        expected_current[rel] = revision['current_sha256']
     if len(rows) != 145 or len(recorded) != 145 or len(current) != 145:
         errors.append('Expected exactly 145 unique standalone source records.')
-    if {rel: sha(path) for rel, path in current.items()} != recorded:
+    if {rel: sha(path) for rel, path in current.items()} != expected_current:
         errors.append('Execution manifest differs from current standalone source hashes.')
     summary_text = summary_text if summary_text is not None else (root / 'docs' / f'validation-{label}.md').read_text()
     if hashlib.sha256(summary_text.encode()).hexdigest() != integrity['summary_sha256']:
@@ -62,7 +67,7 @@ def verify(root, public, docs=None, summary_text=None):
                 errors.append(f'Captured {stage} command/log mismatch: {rel}')
         raw_output = strip_command(run_log).rstrip('\n')
         output = approved_display_output(name, raw_output)
-        if re.search(r'^(?:VALIDATION FAIL|API PROBE FAIL|FAIL:)', output, re.M):
+        if re.search(r'^(?:VALIDATION FAIL|API PROBE FAIL|FAIL:)', raw_output, re.M):
             errors.append(f'Captured output reports failure: {rel}')
         if row['status'] == 'validation_pass' and not re.search(r'(?:VALIDATION PASS|PASS:)', output):
             errors.append(f'Numerical status lacks a passing oracle marker: {rel}')
@@ -79,6 +84,9 @@ def verify(root, public, docs=None, summary_text=None):
             errors.append(f'Expected one displayed execution block: {rel}')
             continue
         section = sections[0]
+        if rel in revisions and ('GPU revalidation pending' not in section
+                or revisions[rel]['current_sha256'] not in section):
+            errors.append(f'Corrected source needs a visible pending notice and exact new hash: {rel}')
         if label == 'a100' and ('<details' in section or not any(title in section for title in ('**Sample output**', '**Actual sample output (excerpt)**'))):
             errors.append(f'Latest A100 sample output must be inline and visible: {rel}')
         run_started = row.get('run_started_utc') or row.get('run', {}).get('started_utc')
@@ -125,7 +133,7 @@ def main():
     for error in errors:
         print('FAIL:', error)
     if not errors:
-        print(f'PASS: {len(directories)} dataset(s); all 145 source hashes, commands, UTC scopes, output blocks and evidence inventories agree.')
+        print(f'PASS: {len(directories)} dataset(s); 145 archived source records, commands, UTC scopes, outputs and explicitly pinned pending corrections agree.')
         print('Scope: evidence consistency only; no CUDA execution occurs in this verifier.')
     return bool(errors)
 

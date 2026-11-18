@@ -18,6 +18,8 @@ jobs:
       - run: pip install -r requirements.txt -r tools/illustrations/requirements.txt
       - name: Verify approved documentation views
         run: python3 tools/test_approved_display.py
+      - name: Reject unregistered pending source changes
+        run: python3 tools/test_pending_revalidation.py
       - name: Verify execution evidence
         run: python3 tools/verify_execution.py
       - name: Verify illustrations

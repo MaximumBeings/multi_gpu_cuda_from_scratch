@@ -15,7 +15,7 @@ ROOT=pathlib.Path(__file__).resolve().parents[1]
 REVIEW={}
 API_PROBES={14,15,16,30,31,43,54,55,61,68,130,134,135}
 LAYOUT_VALIDATED={11,12,20,21,23,24,26,27,28,33,34,37,40,46,49}
-VALIDATED={17,18,63,64,65,66,67,71,72,95,126,127,128,129,131,133,136,139}
+VALIDATED={17,18,58,63,64,65,66,67,71,72,95,126,127,128,129,131,133,136,139}
 
 def utc(): return datetime.datetime.now(datetime.timezone.utc).isoformat()
 def run(args, logfile, timeout, env):

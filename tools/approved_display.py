@@ -283,33 +283,6 @@ DISPLAY_EDITS = {'07_multi_device_loop_pattern.cu': [('    printf("The loop belo
                               'a rank.\n'
                               '// This host-buffer ring checks real inter-process '
                               'communication.\n')],
- '58_mpi_cuda_aware_query_and_fallback.cpp': [('// the real installed CUDA runtime, and queries '
-                                               "this EXACT environment's\n"
-                                               '// real answer -- then, because that answer is '
-                                               '"no," performs the real,\n'
-                                               "// correct fallback: Chapter 5's own staged "
-                                               'host-transfer pattern\n'
-                                               '// (cudaMemcpy device-to-host, a real '
-                                               'MPI_Send/MPI_Recv over plain host\n'
-                                               '// memory, cudaMemcpy host-to-device), reused here '
-                                               'between MPI ranks\n'
-                                               '// instead of between GPU peers.\n',
-                                               '// the installed CUDA runtime. It queries the '
-                                               'configured MPI build and\n'
-                                               '// demonstrates an explicit host-staged transfer '
-                                               'between ranks.\n'),
-                                              ("        // Real staged step 1 (Chapter 5's own "
-                                               'device-to-host half),\n'
-                                               '        // honestly cudaErrorNoDevice since devPtr '
-                                               'was never a real\n'
-                                               '        // allocation in this environment -- but '
-                                               'this is the exact call\n'
-                                               '        // a real CUDA-aware-unaware MPI program '
-                                               'issues on real hardware,\n'
-                                               '        // right before handing the '
-                                               'now-host-resident data to MPI.\n',
-                                               '        // Stage the device buffer to host memory '
-                                               'before sending it through MPI.\n')],
  '59_mpi_errhandler_return.c': [("// Chapter 19 quoted MPI's own real ULFM extension "
                                  '(MPIX_Comm_revoke(),\n'
                                  '// MPIX_Comm_shrink()) as a genuinely richer alternative to '
