@@ -2417,13 +2417,15 @@
 <!-- execution:overview -->
 <div class="admonition success">
 <p class="admonition-title">Recorded hardware validation</p>
-<p>All 145 current source programs compiled and executed on <a href="../validation-h100/">two H100 GPUs</a> and again on <a href="../validation-a100/">eight A100 GPUs</a>. Each pass records 33 numerical/transport validations, 13 API validations and 99 other executions with limited correctness scope. The A100 pass uses eight MPI processes for multi-rank examples; individual programs retain their documented participant counts. A separate eight-device harness checks all 56 ordered peer-copy pairs, four collective patterns and three halo generations.</p>
+<p>All 145 recorded source revisions compiled and executed on <a href="../validation-h100/">two H100 GPUs</a> and again on <a href="../validation-a100/">eight A100 GPUs</a>. Each pass records 33 numerical/transport validations, 13 API validations and 99 other executions with limited correctness scope. The A100 pass uses eight MPI processes for multi-rank examples; individual programs retain their documented participant counts. A separate eight-device harness checks all 56 ordered peer-copy pairs, four collective patterns and three halo generations.</p>
 </div>
 <!-- mgpu:opener:start -->
 <p><a href="../images/chapter-openers/getting-started.svg"><img alt="Getting Started" src="../images/chapter-openers/getting-started.svg" /></a></p>
 <!-- mgpu:opener:end -->
 
 <p>This book targets CUDA C++ compiled with <code>nvcc</code> for real NVIDIA GPU architectures -- the appropriate target must be selected per example -- plus MPI (OpenMPI or MPICH) for Part 5's multi-node material. A real multi-GPU machine with a matching driver is what you need to <em>run</em> the code in this book end to end; <code>nvcc</code> itself only needs a CUDA toolkit and will happily compile for architectures your current machine doesn't have, and host-only MPI programs can run as multiple local ranks without GPUs; CUDA-aware MPI examples still need CUDA devices.</p>
+<p>The final review corrected example 58’s device-buffer initialization, GPU binding and receive checks. <strong>144 current sources match their execution records; example 58 awaits GPU revalidation.</strong></p>
+<p>Select a diagram to open its full-size SVG.</p>
 <h2 id="installing-a-toolchain">Installing a toolchain<a class="headerlink" href="#installing-a-toolchain" title="Permanent link">&para;</a></h2>
 <!-- mgpu:figure-overview:start -->
 <p><a href="../images/technical/getting-started.svg"><img alt="Separate build checks from hardware execution" src="../images/technical/getting-started.svg" /></a></p>

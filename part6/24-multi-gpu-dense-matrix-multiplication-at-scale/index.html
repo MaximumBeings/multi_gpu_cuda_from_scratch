@@ -3286,6 +3286,7 @@
 <a id="__codelineno-14-110" name="__codelineno-14-110" href="#__codelineno-14-110"></a><span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="n">errors</span><span class="w"> </span><span class="o">?</span><span class="w"> </span><span class="mi">1</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
 <a id="__codelineno-14-111" name="__codelineno-14-111" href="#__codelineno-14-111"></a><span class="p">}</span>
 </code></pre></div>
+<p>This captured GEMM checks every output for uniform <code>A=1</code> and <code>B=2</code>. That detects missing or incorrect results for this input, but uniform values cannot expose transpose or index-permutation errors; a broader GEMM test needs nonuniform matrices and an independent reference.</p>
 <!-- execution:start:a100:71_cublasxt_multi_gpu_gemm.cu -->
 <blockquote>
 <p><strong>Compiled and executed — 2026-11-17-a100: Numerical/transport validation (recorded scope).</strong> Hardware: 8 A100 GPUs. Executed UTC: <code>2026-11-18T00:05:08.228365+00:00</code>.</p>

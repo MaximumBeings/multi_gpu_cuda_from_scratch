@@ -3034,6 +3034,7 @@
 <a id="__codelineno-8-121" name="__codelineno-8-121" href="#__codelineno-8-121"></a><span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="n">result</span><span class="p">;</span>
 <a id="__codelineno-8-122" name="__codelineno-8-122" href="#__codelineno-8-122"></a><span class="p">}</span>
 </code></pre></div>
+<p>The IPC-event example checks exported event handles, allocation lifetime, and the transferred payload. The producer synchronizes before publishing its handles, so this run does not test a consumer waiting on still-pending producer work.</p>
 <!-- execution:start:a100:18_ipc_event_handle.cu -->
 <blockquote>
 <p><strong>Compiled and executed — 2026-11-17-a100: Numerical/transport validation (recorded scope).</strong> Hardware: 8 A100 GPUs. Executed UTC: <code>2026-11-18T00:01:05.264113+00:00</code>.</p>
