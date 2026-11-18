@@ -2371,7 +2371,7 @@
 <!-- execution:overview -->
 <div class="admonition success">
 <p class="admonition-title">Recorded hardware validation</p>
-<p>All 145 current source programs compiled and executed on <a href="validation-h100/">two H100 GPUs</a> and again on <a href="validation-a100/">eight A100 GPUs</a>. Each pass records 33 numerical/transport validations, 13 API validations and 99 other executions with limited correctness scope. The A100 pass uses eight MPI processes for multi-rank examples; individual programs retain their documented participant counts. A separate eight-device harness checks all 56 ordered peer-copy pairs, four collective patterns and three halo generations. B200 execution remains untested.</p>
+<p>All 145 current source programs compiled and executed on <a href="validation-h100/">two H100 GPUs</a> and again on <a href="validation-a100/">eight A100 GPUs</a>. Each pass records 33 numerical/transport validations, 13 API validations and 99 other executions with limited correctness scope. The A100 pass uses eight MPI processes for multi-rank examples; individual programs retain their documented participant counts. A separate eight-device harness checks all 56 ordered peer-copy pairs, four collective patterns and three halo generations.</p>
 </div>
 <!-- mgpu:opener:start -->
 <p><a href="images/chapter-openers/index.svg"><img alt="Multi-GPU Programming in CUDA C++" src="images/chapter-openers/index.svg" /></a></p>
@@ -2379,7 +2379,7 @@
 
 <p><em>From Peer-to-Peer Memory to Distributed Training Across the Cluster</em></p>
 <p>A single-GPU CUDA book can treat "the GPU" as one honest unit of compute with one memory space and one clock. That assumption is the first thing this book removes. The moment a workload needs a second device -- because a model no longer fits in one GPU's memory, or because a dataset takes too long to process on one, or because a real cluster is what production actually runs on -- every earlier assumption about synchronization, memory visibility, and "the" answer being in one place stops holding, and a new set of real questions takes over: how do two devices even see each other, what does it cost to move a byte from one to the other, and what happens when one of them is slower, or fails, mid-collective.</p>
-<p>This book is independent: it does not assume or reference any other book in any series, and it builds its own single-GPU CUDA foundations from Chapter 1 rather than pointing elsewhere for them. What it keeps is the same discipline its sibling books follow: the book distinguishes historical compilation and host simulations from current-source GPU validation. Host simulations check the modeled arithmetic and message pattern, but cannot establish device-side synchronization, transfer correctness or performance. GPU claims need a dated manifest with matching source hashes, hardware, commands and logs; no-device API diagnostics are not successful workloads. See <a href="getting-started/">Getting Started</a> for prerequisites and execution scope.</p>
+<p>This book develops multi-GPU CUDA from device selection and transfers through collectives and parallelization strategies. Every program has dated H100 and A100 execution records. Host models explain the algorithms; numerical checks validate device results for the recorded workloads. Start with <a href="getting-started/">Getting Started</a>.</p>
 <h2 id="what-this-book-covers">What this book covers<a class="headerlink" href="#what-this-book-covers" title="Permanent link">&para;</a></h2>
 <!-- mgpu:figure-overview:start -->
 <p><a href="images/technical/index.svg"><img alt="From one device to a coordinated system" src="images/technical/index.svg" /></a></p>
@@ -2395,7 +2395,7 @@
 <li><strong>Part 6 -- Case Studies.</strong> Dense matrix multiplication at scale, distributed neural-network training with data parallelism and ring all-reduce, multi-GPU LLM inference with tensor and pipeline parallelism, N-body simulation, distributed breadth-first search, a distributed Jacobi solver with halo exchange, multi-GPU ray tracing, and Monte Carlo risk simulation -- putting the whole book's toolbox to work on problems that genuinely need more than one device at once.</li>
 </ul>
 <h2 id="how-to-read-this-book">How to read this book<a class="headerlink" href="#how-to-read-this-book" title="Permanent link">&para;</a></h2>
-<p>Every chapter develops intuition, complete implementations, worked examples, pitfalls and self-checks. The current <a href="validation-h100/">H100 validation record</a> documents compilation and execution of all 145 programs on 2026-11-17 using two H100 GPUs connected by local NV18: 33 numerical checks, 13 API probes and 99 other executions. CPU models, hardware queries and successful launches have narrower scopes than numerical GPU checks. Earlier authoring-sandbox transcripts are historical evidence for their captured sources, not the current hardware result. Getting Started explains these distinctions.</p>
+<p>Every chapter develops intuition, complete implementations, worked examples, pitfalls and self-checks. All 145 programs have <a href="validation-h100/">H100</a> and <a href="validation-a100/">A100</a> execution records, with sample output beside the code. The eight-A100 supplement also checks all 56 ordered peer pairs, four collectives and three halo generations.</p>
 
 
 

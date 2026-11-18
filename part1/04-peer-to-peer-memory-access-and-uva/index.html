@@ -2648,11 +2648,6 @@
 
 
 <h1 id="chapter-4-peer-to-peer-memory-access-and-unified-virtual-addressing">Chapter 4: Peer-to-Peer Memory Access and Unified Virtual Addressing<a class="headerlink" href="#chapter-4-peer-to-peer-memory-access-and-unified-virtual-addressing" title="Permanent link">&para;</a></h1>
-<!-- execution:provenance -->
-<div class="admonition info">
-<p class="admonition-title">Execution provenance</p>
-<p>Current execution blocks identify the tested source hash, hardware dataset, commands and captured output. References elsewhere on this page to a device-less environment describe the original authoring context. Historical output is superseded by the current record. Displayed output omits the runner command header and trims trailing line whitespace; raw logs remain exact. A host simulation or API validation has its stated scope; neither alone establishes a numerical multi-GPU workload or measured performance.</p>
-</div>
 <!-- mgpu:opener:start -->
 <p><a href="../../images/chapter-openers/04.svg"><img alt="Chapter 4: Peer-to-Peer Memory Access and Unified Virtual Addressing" src="../../images/chapter-openers/04.svg" /></a></p>
 <!-- mgpu:opener:end -->
@@ -2670,7 +2665,7 @@
 <li>Ordinary C++ containers (<code>std::vector</code>) and pointers. No prior CUDA experience beyond Chapters 1-3.</li>
 </ul>
 <hr />
-<p>Part 0 established <em>where</em> the devices are and <em>whose problem</em> it is to pick one (a host thread's current-device state) and <em>when</em> work runs concurrently (streams bound to whichever device was current at creation time). None of that, so far, has let one GPU touch another GPU's memory. This chapter is where that changes. Unified Virtual Addressing is the feature that makes "one GPU's pointer" and "another GPU's pointer" comparable at all — they live in the same address space — and peer-to-peer access is the specific, opt-in permission that lets a kernel or a copy actually dereference across that boundary. Both are real, queryable pieces of CUDA Runtime API state, and both are things this environment's <code>cudaErrorNoDevice</code> machine can genuinely ask about and honestly report on, even with zero real devices attached.</p>
+<p>Part 0 established device selection, contexts and stream ownership. This chapter adds Unified Virtual Addressing and ordered-pair peer permissions, then checks how pointers and transfers cross device boundaries.</p>
 <h2 id="41-unified-virtual-addressing-one-address-space-many-memories">4.1 Unified Virtual Addressing: One Address Space, Many Memories<a class="headerlink" href="#41-unified-virtual-addressing-one-address-space-many-memories" title="Permanent link">&para;</a></h2>
 <!-- mgpu:figure-1:start -->
 <p><a href="../../images/technical/ch04/1-ownership.svg"><img alt="One address space, separate allocations" src="../../images/technical/ch04/1-ownership.svg" /></a></p>
@@ -2718,27 +2713,29 @@
 </code></pre></div>
 <!-- execution:start:a100:08_pointer_attributes.cu -->
 <blockquote>
-<p><strong>Current execution — 2026-11-17-a100: API/host demonstration (exit-only).</strong> UTC (program start): <code>2026-11-18T00:00:26.201079+00:00</code>. Source SHA-256: <code>41c5abf56f01114560b72e04c1db7a3056be50dfe7fc6d9905fbf9998a553e58</code>.</p>
+<p><strong>Compiled and executed — 2026-11-17-a100: API/host demonstration (exit-only).</strong> Hardware: 8 A100 GPUs. Executed UTC: <code>2026-11-18T00:00:27.268130+00:00</code>.</p>
 </blockquote>
+<!-- execution:metadata Source SHA-256: 41c5abf56f01114560b72e04c1db7a3056be50dfe7fc6d9905fbf9998a553e58; recorded UTC (program start): 2026-11-18T00:00:26.201079+00:00 -->
+
 <p><a href="../../validation/2026-11-17-a100/08_pointer_attributes/08_pointer_attributes.cu">Exact tested source</a> · <a href="../../validation/2026-11-17-a100/08_pointer_attributes/compile.log">Compiler log</a> · <a href="../../validation/2026-11-17-a100/08_pointer_attributes/run.log">Execution log</a>. Compile exit: <code>0</code>; run exit: <code>0</code>.</p>
 <p>Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>nvcc<span class="w"> </span>-std<span class="o">=</span>c++17<span class="w"> </span>-O2<span class="w"> </span>-arch<span class="o">=</span>sm_80<span class="w"> </span>08_pointer_attributes.cu<span class="w"> </span>-o<span class="w"> </span>./example
 <a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>./example
 </code></pre></div>
-<details>
-<summary>Captured current-source output</summary>
+<p><strong>Sample output</strong></p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>cudaPointerGetAttributes(ordinary stack array): no error (code 0)
 <a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>  type=0 device=-1
 <a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>cudaMalloc: no error (code 0)
 <a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>cudaPointerGetAttributes(device ptr): no error
 </code></pre></div>
-</details>
 <!-- execution:end:a100:08_pointer_attributes.cu -->
 
 <!-- execution:start:h100:08_pointer_attributes.cu -->
 <blockquote>
-<p><strong>Current execution — 2026-11-17-h100: API/host demonstration (exit-only).</strong> UTC (run-batch start; per-program time unrecorded): <code>2026-11-17T23:48:18.967387+00:00</code>. Source SHA-256: <code>41c5abf56f01114560b72e04c1db7a3056be50dfe7fc6d9905fbf9998a553e58</code>.</p>
+<p><strong>Compiled and executed — 2026-11-17-h100: API/host demonstration (exit-only).</strong> Hardware: 2 H100 GPUs. Execution record UTC (run-batch start; per-program time unrecorded): <code>2026-11-17T23:48:18.967387+00:00</code>.</p>
 </blockquote>
+<!-- execution:metadata Source SHA-256: 41c5abf56f01114560b72e04c1db7a3056be50dfe7fc6d9905fbf9998a553e58; recorded UTC (run-batch start; per-program time unrecorded): 2026-11-17T23:48:18.967387+00:00 -->
+
 <p><a href="../../validation/2026-11-17-h100/08_pointer_attributes/08_pointer_attributes.cu">Exact tested source</a> · <a href="../../validation/2026-11-17-h100/08_pointer_attributes/compile.log">Compiler log</a> · <a href="../../validation/2026-11-17-h100/08_pointer_attributes/run.log">Execution log</a>. Compile exit: <code>0</code>; run exit: <code>0</code>.</p>
 <p>Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>nvcc<span class="w"> </span>-std<span class="o">=</span>c++17<span class="w"> </span>-O2<span class="w"> </span>-arch<span class="o">=</span>sm_90<span class="w"> </span>08_pointer_attributes.cu<span class="w"> </span>-o<span class="w"> </span>./example
@@ -2754,13 +2751,6 @@
 </details>
 <!-- execution:end:h100:08_pointer_attributes.cu -->
 
-<p>Genuinely compiled with a real <code>nvcc</code> and genuinely run. Locked output, deterministic across repeated runs on this machine:</p>
-<details>
-<summary>Historical authoring output — superseded by the current execution above</summary>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>cudaPointerGetAttributes(ordinary stack array): no CUDA-capable device is detected (code 100)
-<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>cudaMalloc: no CUDA-capable device is detected (code 100)
-</code></pre></div>
-</details>
 <p>A query about an ordinary host pointer must be interpreted using its returned allocation type. Do not infer that such a query always fails or requires ownership by a GPU. The old no-driver error was an environment-specific diagnostic; use the current H100 query log for the executed probe.</p>
 <p>The <a href="../../validation-h100/">2026-11-17 H100 execution record</a> covers two GPUs connected by local NV18. It distinguishes numerical checks, API probes and other executions; a successful exit alone does not establish GPU algorithm correctness.</p>
 <div class="admonition warning">
@@ -2776,146 +2766,141 @@
 <p>UVA means every device's pointers are meaningful, comparable values in one address space. It does not mean every device is <em>allowed</em> to dereference every other device's pointers directly. That permission is a separate, explicit, per-ordered-pair setting, because allowing it has real hardware and driver consequences (a PCIe or NVLink route has to actually exist and be usable for the access to work at all — recall Chapter 2's topology models, where not every pair of devices has a direct link). The CUDA Runtime API therefore splits this into two calls: one that only <em>asks</em> whether a given ordered pair could work, and a second, separate call that actually <em>grants</em> it — and the grant is deliberately one-directional, so a fully bidirectional relationship between two devices takes two calls, one from each side.</p>
 <h3 id="background_1">Background<a class="headerlink" href="#background_1" title="Permanent link">&para;</a></h3>
 <p><code>cudaDeviceCanAccessPeer(&amp;canAccess, device, peerDevice)</code> answers, for one ordered pair, whether <code>device</code> could access <code>peerDevice</code>'s memory directly if asked to. It changes nothing by itself. <code>cudaDeviceEnablePeerAccess(peerDevice, flags)</code> is what actually grants that access — and it does so from the perspective of <em>whichever device is currently the caller's current device</em> (Chapter 3's per-thread state again), granting that current device the ability to access <code>peerDevice</code>. The CUDA Runtime API documentation is explicit that the access this grants is unidirectional: enabling device 0 to access device 1 says nothing about whether device 1 can access device 0 — that direction, if wanted, needs its own separate call with the current device set to 1. The idiomatic setup sequence, then, is a loop over every <em>ordered</em> pair — not every unordered pair — checking and enabling each direction independently. The CUDA Programming Guide's multi-GPU chapter also notes a real, finite ceiling on this: on non-NVSwitch-enabled systems, each device supports a system-wide maximum of eight peer connections at once, which is exactly the kind of topology-shaped constraint Chapter 2's partial-mesh models already anticipated.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="c1">// Chapter 4: Peer-to-Peer Memory Access and Unified Virtual Addressing</span>
-<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="c1">// 09_peer_access_setup.cu</span>
-<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="c1">//</span>
-<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="c1">// The real, idiomatic peer-access setup sequence: check every ordered</span>
-<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a><span class="c1">// pair with cudaDeviceCanAccessPeer(), then enable access with</span>
-<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a><span class="c1">// cudaDeviceEnablePeerAccess() -- called from the "current" side of the</span>
-<a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a><span class="c1">// pair, since (per the CUDA Runtime API docs) access granted this way</span>
-<a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a><span class="c1">// is unidirectional. Genuinely compiled with a real nvcc and genuinely</span>
-<a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a><span class="c1">// run; on this driver-less machine the loop body runs zero times, for</span>
-<a id="__codelineno-6-10" name="__codelineno-6-10" href="#__codelineno-6-10"></a><span class="c1">// exactly the reason Chapter 3 already explained.</span>
-<a id="__codelineno-6-11" name="__codelineno-6-11" href="#__codelineno-6-11"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;cstdio&gt;</span>
-<a id="__codelineno-6-12" name="__codelineno-6-12" href="#__codelineno-6-12"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;cuda_runtime.h&gt;</span>
-<a id="__codelineno-6-13" name="__codelineno-6-13" href="#__codelineno-6-13"></a>
-<a id="__codelineno-6-14" name="__codelineno-6-14" href="#__codelineno-6-14"></a><span class="kt">int</span><span class="w"> </span><span class="nf">main</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
-<a id="__codelineno-6-15" name="__codelineno-6-15" href="#__codelineno-6-15"></a><span class="w">    </span><span class="kt">int</span><span class="w"> </span><span class="n">deviceCount</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
-<a id="__codelineno-6-16" name="__codelineno-6-16" href="#__codelineno-6-16"></a><span class="w">    </span><span class="n">cudaGetDeviceCount</span><span class="p">(</span><span class="o">&amp;</span><span class="n">deviceCount</span><span class="p">);</span>
-<a id="__codelineno-6-17" name="__codelineno-6-17" href="#__codelineno-6-17"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">"cudaGetDeviceCount(): %d device(s).</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span><span class="w"> </span><span class="n">deviceCount</span><span class="p">);</span>
-<a id="__codelineno-6-18" name="__codelineno-6-18" href="#__codelineno-6-18"></a>
-<a id="__codelineno-6-19" name="__codelineno-6-19" href="#__codelineno-6-19"></a><span class="w">    </span><span class="kt">int</span><span class="w"> </span><span class="n">enabledPairs</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
-<a id="__codelineno-6-20" name="__codelineno-6-20" href="#__codelineno-6-20"></a><span class="w">    </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="n">deviceCount</span><span class="p">;</span><span class="w"> </span><span class="o">++</span><span class="n">i</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
-<a id="__codelineno-6-21" name="__codelineno-6-21" href="#__codelineno-6-21"></a><span class="w">        </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">j</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span><span class="w"> </span><span class="n">j</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="n">deviceCount</span><span class="p">;</span><span class="w"> </span><span class="o">++</span><span class="n">j</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
-<a id="__codelineno-6-22" name="__codelineno-6-22" href="#__codelineno-6-22"></a><span class="w">            </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">i</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="n">j</span><span class="p">)</span><span class="w"> </span><span class="k">continue</span><span class="p">;</span>
-<a id="__codelineno-6-23" name="__codelineno-6-23" href="#__codelineno-6-23"></a><span class="w">            </span><span class="kt">int</span><span class="w"> </span><span class="n">canAccess</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
-<a id="__codelineno-6-24" name="__codelineno-6-24" href="#__codelineno-6-24"></a><span class="w">            </span><span class="n">cudaDeviceCanAccessPeer</span><span class="p">(</span><span class="o">&amp;</span><span class="n">canAccess</span><span class="p">,</span><span class="w"> </span><span class="n">i</span><span class="p">,</span><span class="w"> </span><span class="n">j</span><span class="p">);</span>
-<a id="__codelineno-6-25" name="__codelineno-6-25" href="#__codelineno-6-25"></a><span class="w">            </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">canAccess</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
-<a id="__codelineno-6-26" name="__codelineno-6-26" href="#__codelineno-6-26"></a><span class="w">                </span><span class="n">cudaSetDevice</span><span class="p">(</span><span class="n">i</span><span class="p">);</span>
-<a id="__codelineno-6-27" name="__codelineno-6-27" href="#__codelineno-6-27"></a><span class="w">                </span><span class="n">cudaError_t</span><span class="w"> </span><span class="n">e</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">cudaDeviceEnablePeerAccess</span><span class="p">(</span><span class="n">j</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">);</span>
-<a id="__codelineno-6-28" name="__codelineno-6-28" href="#__codelineno-6-28"></a><span class="w">                </span><span class="n">printf</span><span class="p">(</span><span class="s">"Enabled i=%d -&gt; j=%d: %s</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span><span class="w"> </span><span class="n">i</span><span class="p">,</span><span class="w"> </span><span class="n">j</span><span class="p">,</span>
-<a id="__codelineno-6-29" name="__codelineno-6-29" href="#__codelineno-6-29"></a><span class="w">                       </span><span class="n">cudaGetErrorString</span><span class="p">(</span><span class="n">e</span><span class="p">));</span>
-<a id="__codelineno-6-30" name="__codelineno-6-30" href="#__codelineno-6-30"></a><span class="w">                </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">e</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="n">cudaSuccess</span><span class="p">)</span><span class="w"> </span><span class="o">++</span><span class="n">enabledPairs</span><span class="p">;</span>
-<a id="__codelineno-6-31" name="__codelineno-6-31" href="#__codelineno-6-31"></a><span class="w">            </span><span class="p">}</span>
-<a id="__codelineno-6-32" name="__codelineno-6-32" href="#__codelineno-6-32"></a><span class="w">        </span><span class="p">}</span>
-<a id="__codelineno-6-33" name="__codelineno-6-33" href="#__codelineno-6-33"></a><span class="w">    </span><span class="p">}</span>
-<a id="__codelineno-6-34" name="__codelineno-6-34" href="#__codelineno-6-34"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">"Peer access enabled for %d ordered pair(s) out of %d "</span>
-<a id="__codelineno-6-35" name="__codelineno-6-35" href="#__codelineno-6-35"></a><span class="w">           </span><span class="s">"device(s) checked. On real multi-GPU hardware this same "</span>
-<a id="__codelineno-6-36" name="__codelineno-6-36" href="#__codelineno-6-36"></a><span class="w">           </span><span class="s">"loop enables every accessible ordered pair exactly once, "</span>
-<a id="__codelineno-6-37" name="__codelineno-6-37" href="#__codelineno-6-37"></a><span class="w">           </span><span class="s">"each direction independently, per the API's own "</span>
-<a id="__codelineno-6-38" name="__codelineno-6-38" href="#__codelineno-6-38"></a><span class="w">           </span><span class="s">"unidirectional-access note.</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span><span class="w"> </span><span class="n">enabledPairs</span><span class="p">,</span><span class="w"> </span><span class="n">deviceCount</span><span class="p">);</span>
-<a id="__codelineno-6-39" name="__codelineno-6-39" href="#__codelineno-6-39"></a><span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
-<a id="__codelineno-6-40" name="__codelineno-6-40" href="#__codelineno-6-40"></a><span class="p">}</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="c1">// Chapter 4: Peer-to-Peer Memory Access and Unified Virtual Addressing</span>
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="c1">// 09_peer_access_setup.cu</span>
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="c1">//</span>
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="c1">// The real, idiomatic peer-access setup sequence: check every ordered</span>
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a><span class="c1">// pair with cudaDeviceCanAccessPeer(), then enable access with</span>
+<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a><span class="c1">// cudaDeviceEnablePeerAccess() -- called from the "current" side of the</span>
+<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a><span class="c1">// pair, since (per the CUDA Runtime API docs) access granted this way</span>
+<a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a><span class="c1">// is unidirectional. Genuinely compiled with a real nvcc and genuinely</span>
+<a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a><span class="c1">// run; on this driver-less machine the loop body runs zero times, for</span>
+<a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a><span class="c1">// exactly the reason Chapter 3 already explained.</span>
+<a id="__codelineno-5-11" name="__codelineno-5-11" href="#__codelineno-5-11"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;cstdio&gt;</span>
+<a id="__codelineno-5-12" name="__codelineno-5-12" href="#__codelineno-5-12"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;cuda_runtime.h&gt;</span>
+<a id="__codelineno-5-13" name="__codelineno-5-13" href="#__codelineno-5-13"></a>
+<a id="__codelineno-5-14" name="__codelineno-5-14" href="#__codelineno-5-14"></a><span class="kt">int</span><span class="w"> </span><span class="nf">main</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-5-15" name="__codelineno-5-15" href="#__codelineno-5-15"></a><span class="w">    </span><span class="kt">int</span><span class="w"> </span><span class="n">deviceCount</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
+<a id="__codelineno-5-16" name="__codelineno-5-16" href="#__codelineno-5-16"></a><span class="w">    </span><span class="n">cudaGetDeviceCount</span><span class="p">(</span><span class="o">&amp;</span><span class="n">deviceCount</span><span class="p">);</span>
+<a id="__codelineno-5-17" name="__codelineno-5-17" href="#__codelineno-5-17"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">"cudaGetDeviceCount(): %d device(s).</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span><span class="w"> </span><span class="n">deviceCount</span><span class="p">);</span>
+<a id="__codelineno-5-18" name="__codelineno-5-18" href="#__codelineno-5-18"></a>
+<a id="__codelineno-5-19" name="__codelineno-5-19" href="#__codelineno-5-19"></a><span class="w">    </span><span class="kt">int</span><span class="w"> </span><span class="n">enabledPairs</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
+<a id="__codelineno-5-20" name="__codelineno-5-20" href="#__codelineno-5-20"></a><span class="w">    </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="n">deviceCount</span><span class="p">;</span><span class="w"> </span><span class="o">++</span><span class="n">i</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-5-21" name="__codelineno-5-21" href="#__codelineno-5-21"></a><span class="w">        </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">j</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span><span class="w"> </span><span class="n">j</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="n">deviceCount</span><span class="p">;</span><span class="w"> </span><span class="o">++</span><span class="n">j</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-5-22" name="__codelineno-5-22" href="#__codelineno-5-22"></a><span class="w">            </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">i</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="n">j</span><span class="p">)</span><span class="w"> </span><span class="k">continue</span><span class="p">;</span>
+<a id="__codelineno-5-23" name="__codelineno-5-23" href="#__codelineno-5-23"></a><span class="w">            </span><span class="kt">int</span><span class="w"> </span><span class="n">canAccess</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
+<a id="__codelineno-5-24" name="__codelineno-5-24" href="#__codelineno-5-24"></a><span class="w">            </span><span class="n">cudaDeviceCanAccessPeer</span><span class="p">(</span><span class="o">&amp;</span><span class="n">canAccess</span><span class="p">,</span><span class="w"> </span><span class="n">i</span><span class="p">,</span><span class="w"> </span><span class="n">j</span><span class="p">);</span>
+<a id="__codelineno-5-25" name="__codelineno-5-25" href="#__codelineno-5-25"></a><span class="w">            </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">canAccess</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-5-26" name="__codelineno-5-26" href="#__codelineno-5-26"></a><span class="w">                </span><span class="n">cudaSetDevice</span><span class="p">(</span><span class="n">i</span><span class="p">);</span>
+<a id="__codelineno-5-27" name="__codelineno-5-27" href="#__codelineno-5-27"></a><span class="w">                </span><span class="n">cudaError_t</span><span class="w"> </span><span class="n">e</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">cudaDeviceEnablePeerAccess</span><span class="p">(</span><span class="n">j</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">);</span>
+<a id="__codelineno-5-28" name="__codelineno-5-28" href="#__codelineno-5-28"></a><span class="w">                </span><span class="n">printf</span><span class="p">(</span><span class="s">"Enabled i=%d -&gt; j=%d: %s</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span><span class="w"> </span><span class="n">i</span><span class="p">,</span><span class="w"> </span><span class="n">j</span><span class="p">,</span>
+<a id="__codelineno-5-29" name="__codelineno-5-29" href="#__codelineno-5-29"></a><span class="w">                       </span><span class="n">cudaGetErrorString</span><span class="p">(</span><span class="n">e</span><span class="p">));</span>
+<a id="__codelineno-5-30" name="__codelineno-5-30" href="#__codelineno-5-30"></a><span class="w">                </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">e</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="n">cudaSuccess</span><span class="p">)</span><span class="w"> </span><span class="o">++</span><span class="n">enabledPairs</span><span class="p">;</span>
+<a id="__codelineno-5-31" name="__codelineno-5-31" href="#__codelineno-5-31"></a><span class="w">            </span><span class="p">}</span>
+<a id="__codelineno-5-32" name="__codelineno-5-32" href="#__codelineno-5-32"></a><span class="w">        </span><span class="p">}</span>
+<a id="__codelineno-5-33" name="__codelineno-5-33" href="#__codelineno-5-33"></a><span class="w">    </span><span class="p">}</span>
+<a id="__codelineno-5-34" name="__codelineno-5-34" href="#__codelineno-5-34"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">"Peer access enabled for %d ordered pair(s) out of %d "</span>
+<a id="__codelineno-5-35" name="__codelineno-5-35" href="#__codelineno-5-35"></a><span class="w">           </span><span class="s">"device(s) checked. On real multi-GPU hardware this same "</span>
+<a id="__codelineno-5-36" name="__codelineno-5-36" href="#__codelineno-5-36"></a><span class="w">           </span><span class="s">"loop enables every accessible ordered pair exactly once, "</span>
+<a id="__codelineno-5-37" name="__codelineno-5-37" href="#__codelineno-5-37"></a><span class="w">           </span><span class="s">"each direction independently, per the API's own "</span>
+<a id="__codelineno-5-38" name="__codelineno-5-38" href="#__codelineno-5-38"></a><span class="w">           </span><span class="s">"unidirectional-access note.</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span><span class="w"> </span><span class="n">enabledPairs</span><span class="p">,</span><span class="w"> </span><span class="n">deviceCount</span><span class="p">);</span>
+<a id="__codelineno-5-39" name="__codelineno-5-39" href="#__codelineno-5-39"></a><span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
+<a id="__codelineno-5-40" name="__codelineno-5-40" href="#__codelineno-5-40"></a><span class="p">}</span>
 </code></pre></div>
 <!-- execution:start:a100:09_peer_access_setup.cu -->
 <blockquote>
-<p><strong>Current execution — 2026-11-17-a100: API/host demonstration (exit-only).</strong> UTC (program start): <code>2026-11-18T00:00:30.292363+00:00</code>. Source SHA-256: <code>740c8c5876f47659619e118e3c553087839f81fc4ec57913b61dcb4654881bf5</code>.</p>
+<p><strong>Compiled and executed — 2026-11-17-a100: API/host demonstration (exit-only).</strong> Hardware: 8 A100 GPUs. Executed UTC: <code>2026-11-18T00:00:31.360263+00:00</code>.</p>
 </blockquote>
+<!-- execution:metadata Source SHA-256: 740c8c5876f47659619e118e3c553087839f81fc4ec57913b61dcb4654881bf5; recorded UTC (program start): 2026-11-18T00:00:30.292363+00:00 -->
+
 <p><a href="../../validation/2026-11-17-a100/09_peer_access_setup/09_peer_access_setup.cu">Exact tested source</a> · <a href="../../validation/2026-11-17-a100/09_peer_access_setup/compile.log">Compiler log</a> · <a href="../../validation/2026-11-17-a100/09_peer_access_setup/run.log">Execution log</a>. Compile exit: <code>0</code>; run exit: <code>0</code>.</p>
 <p>Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>nvcc<span class="w"> </span>-std<span class="o">=</span>c++17<span class="w"> </span>-O2<span class="w"> </span>-arch<span class="o">=</span>sm_80<span class="w"> </span>09_peer_access_setup.cu<span class="w"> </span>-o<span class="w"> </span>./example
-<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>./example
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>nvcc<span class="w"> </span>-std<span class="o">=</span>c++17<span class="w"> </span>-O2<span class="w"> </span>-arch<span class="o">=</span>sm_80<span class="w"> </span>09_peer_access_setup.cu<span class="w"> </span>-o<span class="w"> </span>./example
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>./example
 </code></pre></div>
-<details>
-<summary>Captured current-source output</summary>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>cudaGetDeviceCount(): 8 device(s).
-<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>Enabled i=0 -&gt; j=1: no error
-<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>Enabled i=0 -&gt; j=2: no error
-<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a>Enabled i=0 -&gt; j=3: no error
-<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a>Enabled i=0 -&gt; j=4: no error
-<a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a>Enabled i=0 -&gt; j=5: no error
-<a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a>Enabled i=0 -&gt; j=6: no error
-<a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a>Enabled i=0 -&gt; j=7: no error
-<a id="__codelineno-8-9" name="__codelineno-8-9" href="#__codelineno-8-9"></a>Enabled i=1 -&gt; j=0: no error
-<a id="__codelineno-8-10" name="__codelineno-8-10" href="#__codelineno-8-10"></a>Enabled i=1 -&gt; j=2: no error
-<a id="__codelineno-8-11" name="__codelineno-8-11" href="#__codelineno-8-11"></a>Enabled i=1 -&gt; j=3: no error
-<a id="__codelineno-8-12" name="__codelineno-8-12" href="#__codelineno-8-12"></a>Enabled i=1 -&gt; j=4: no error
-<a id="__codelineno-8-13" name="__codelineno-8-13" href="#__codelineno-8-13"></a>Enabled i=1 -&gt; j=5: no error
-<a id="__codelineno-8-14" name="__codelineno-8-14" href="#__codelineno-8-14"></a>Enabled i=1 -&gt; j=6: no error
-<a id="__codelineno-8-15" name="__codelineno-8-15" href="#__codelineno-8-15"></a>Enabled i=1 -&gt; j=7: no error
-<a id="__codelineno-8-16" name="__codelineno-8-16" href="#__codelineno-8-16"></a>Enabled i=2 -&gt; j=0: no error
-<a id="__codelineno-8-17" name="__codelineno-8-17" href="#__codelineno-8-17"></a>Enabled i=2 -&gt; j=1: no error
-<a id="__codelineno-8-18" name="__codelineno-8-18" href="#__codelineno-8-18"></a>Enabled i=2 -&gt; j=3: no error
-<a id="__codelineno-8-19" name="__codelineno-8-19" href="#__codelineno-8-19"></a>Enabled i=2 -&gt; j=4: no error
-<a id="__codelineno-8-20" name="__codelineno-8-20" href="#__codelineno-8-20"></a>Enabled i=2 -&gt; j=5: no error
-<a id="__codelineno-8-21" name="__codelineno-8-21" href="#__codelineno-8-21"></a>Enabled i=2 -&gt; j=6: no error
-<a id="__codelineno-8-22" name="__codelineno-8-22" href="#__codelineno-8-22"></a>Enabled i=2 -&gt; j=7: no error
-<a id="__codelineno-8-23" name="__codelineno-8-23" href="#__codelineno-8-23"></a>Enabled i=3 -&gt; j=0: no error
-<a id="__codelineno-8-24" name="__codelineno-8-24" href="#__codelineno-8-24"></a>Enabled i=3 -&gt; j=1: no error
-<a id="__codelineno-8-25" name="__codelineno-8-25" href="#__codelineno-8-25"></a>Enabled i=3 -&gt; j=2: no error
-<a id="__codelineno-8-26" name="__codelineno-8-26" href="#__codelineno-8-26"></a>Enabled i=3 -&gt; j=4: no error
-<a id="__codelineno-8-27" name="__codelineno-8-27" href="#__codelineno-8-27"></a>Enabled i=3 -&gt; j=5: no error
-<a id="__codelineno-8-28" name="__codelineno-8-28" href="#__codelineno-8-28"></a>Enabled i=3 -&gt; j=6: no error
-<a id="__codelineno-8-29" name="__codelineno-8-29" href="#__codelineno-8-29"></a>Enabled i=3 -&gt; j=7: no error
-<a id="__codelineno-8-30" name="__codelineno-8-30" href="#__codelineno-8-30"></a>Enabled i=4 -&gt; j=0: no error
-<a id="__codelineno-8-31" name="__codelineno-8-31" href="#__codelineno-8-31"></a>Enabled i=4 -&gt; j=1: no error
-<a id="__codelineno-8-32" name="__codelineno-8-32" href="#__codelineno-8-32"></a>Enabled i=4 -&gt; j=2: no error
-<a id="__codelineno-8-33" name="__codelineno-8-33" href="#__codelineno-8-33"></a>Enabled i=4 -&gt; j=3: no error
-<a id="__codelineno-8-34" name="__codelineno-8-34" href="#__codelineno-8-34"></a>Enabled i=4 -&gt; j=5: no error
-<a id="__codelineno-8-35" name="__codelineno-8-35" href="#__codelineno-8-35"></a>Enabled i=4 -&gt; j=6: no error
-<a id="__codelineno-8-36" name="__codelineno-8-36" href="#__codelineno-8-36"></a>Enabled i=4 -&gt; j=7: no error
-<a id="__codelineno-8-37" name="__codelineno-8-37" href="#__codelineno-8-37"></a>Enabled i=5 -&gt; j=0: no error
-<a id="__codelineno-8-38" name="__codelineno-8-38" href="#__codelineno-8-38"></a>Enabled i=5 -&gt; j=1: no error
-<a id="__codelineno-8-39" name="__codelineno-8-39" href="#__codelineno-8-39"></a>Enabled i=5 -&gt; j=2: no error
-<a id="__codelineno-8-40" name="__codelineno-8-40" href="#__codelineno-8-40"></a>Enabled i=5 -&gt; j=3: no error
-<a id="__codelineno-8-41" name="__codelineno-8-41" href="#__codelineno-8-41"></a>Enabled i=5 -&gt; j=4: no error
-<a id="__codelineno-8-42" name="__codelineno-8-42" href="#__codelineno-8-42"></a>Enabled i=5 -&gt; j=6: no error
-<a id="__codelineno-8-43" name="__codelineno-8-43" href="#__codelineno-8-43"></a>Enabled i=5 -&gt; j=7: no error
-<a id="__codelineno-8-44" name="__codelineno-8-44" href="#__codelineno-8-44"></a>Enabled i=6 -&gt; j=0: no error
-<a id="__codelineno-8-45" name="__codelineno-8-45" href="#__codelineno-8-45"></a>Enabled i=6 -&gt; j=1: no error
-<a id="__codelineno-8-46" name="__codelineno-8-46" href="#__codelineno-8-46"></a>Enabled i=6 -&gt; j=2: no error
-<a id="__codelineno-8-47" name="__codelineno-8-47" href="#__codelineno-8-47"></a>Enabled i=6 -&gt; j=3: no error
-<a id="__codelineno-8-48" name="__codelineno-8-48" href="#__codelineno-8-48"></a>Enabled i=6 -&gt; j=4: no error
-<a id="__codelineno-8-49" name="__codelineno-8-49" href="#__codelineno-8-49"></a>Enabled i=6 -&gt; j=5: no error
-<a id="__codelineno-8-50" name="__codelineno-8-50" href="#__codelineno-8-50"></a>Enabled i=6 -&gt; j=7: no error
-<a id="__codelineno-8-51" name="__codelineno-8-51" href="#__codelineno-8-51"></a>Enabled i=7 -&gt; j=0: no error
-<a id="__codelineno-8-52" name="__codelineno-8-52" href="#__codelineno-8-52"></a>Enabled i=7 -&gt; j=1: no error
-<a id="__codelineno-8-53" name="__codelineno-8-53" href="#__codelineno-8-53"></a>Enabled i=7 -&gt; j=2: no error
-<a id="__codelineno-8-54" name="__codelineno-8-54" href="#__codelineno-8-54"></a>Enabled i=7 -&gt; j=3: no error
-<a id="__codelineno-8-55" name="__codelineno-8-55" href="#__codelineno-8-55"></a>Enabled i=7 -&gt; j=4: no error
-<a id="__codelineno-8-56" name="__codelineno-8-56" href="#__codelineno-8-56"></a>Enabled i=7 -&gt; j=5: no error
-<a id="__codelineno-8-57" name="__codelineno-8-57" href="#__codelineno-8-57"></a>Enabled i=7 -&gt; j=6: no error
-<a id="__codelineno-8-58" name="__codelineno-8-58" href="#__codelineno-8-58"></a>Peer access enabled for 56 ordered pair(s) out of 8 device(s) checked. On real multi-GPU hardware this same loop enables every accessible ordered pair exactly once, each direction independently, per the API's own unidirectional-access note.
+<p><strong>Sample output</strong></p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>cudaGetDeviceCount(): 8 device(s).
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>Enabled i=0 -&gt; j=1: no error
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>Enabled i=0 -&gt; j=2: no error
+<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a>Enabled i=0 -&gt; j=3: no error
+<a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a>Enabled i=0 -&gt; j=4: no error
+<a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a>Enabled i=0 -&gt; j=5: no error
+<a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a>Enabled i=0 -&gt; j=6: no error
+<a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a>Enabled i=0 -&gt; j=7: no error
+<a id="__codelineno-7-9" name="__codelineno-7-9" href="#__codelineno-7-9"></a>Enabled i=1 -&gt; j=0: no error
+<a id="__codelineno-7-10" name="__codelineno-7-10" href="#__codelineno-7-10"></a>Enabled i=1 -&gt; j=2: no error
+<a id="__codelineno-7-11" name="__codelineno-7-11" href="#__codelineno-7-11"></a>Enabled i=1 -&gt; j=3: no error
+<a id="__codelineno-7-12" name="__codelineno-7-12" href="#__codelineno-7-12"></a>Enabled i=1 -&gt; j=4: no error
+<a id="__codelineno-7-13" name="__codelineno-7-13" href="#__codelineno-7-13"></a>Enabled i=1 -&gt; j=5: no error
+<a id="__codelineno-7-14" name="__codelineno-7-14" href="#__codelineno-7-14"></a>Enabled i=1 -&gt; j=6: no error
+<a id="__codelineno-7-15" name="__codelineno-7-15" href="#__codelineno-7-15"></a>Enabled i=1 -&gt; j=7: no error
+<a id="__codelineno-7-16" name="__codelineno-7-16" href="#__codelineno-7-16"></a>Enabled i=2 -&gt; j=0: no error
+<a id="__codelineno-7-17" name="__codelineno-7-17" href="#__codelineno-7-17"></a>Enabled i=2 -&gt; j=1: no error
+<a id="__codelineno-7-18" name="__codelineno-7-18" href="#__codelineno-7-18"></a>Enabled i=2 -&gt; j=3: no error
+<a id="__codelineno-7-19" name="__codelineno-7-19" href="#__codelineno-7-19"></a>Enabled i=2 -&gt; j=4: no error
+<a id="__codelineno-7-20" name="__codelineno-7-20" href="#__codelineno-7-20"></a>Enabled i=2 -&gt; j=5: no error
+<a id="__codelineno-7-21" name="__codelineno-7-21" href="#__codelineno-7-21"></a>Enabled i=2 -&gt; j=6: no error
+<a id="__codelineno-7-22" name="__codelineno-7-22" href="#__codelineno-7-22"></a>Enabled i=2 -&gt; j=7: no error
+<a id="__codelineno-7-23" name="__codelineno-7-23" href="#__codelineno-7-23"></a>Enabled i=3 -&gt; j=0: no error
+<a id="__codelineno-7-24" name="__codelineno-7-24" href="#__codelineno-7-24"></a>Enabled i=3 -&gt; j=1: no error
+<a id="__codelineno-7-25" name="__codelineno-7-25" href="#__codelineno-7-25"></a>Enabled i=3 -&gt; j=2: no error
+<a id="__codelineno-7-26" name="__codelineno-7-26" href="#__codelineno-7-26"></a>Enabled i=3 -&gt; j=4: no error
+<a id="__codelineno-7-27" name="__codelineno-7-27" href="#__codelineno-7-27"></a>Enabled i=3 -&gt; j=5: no error
+<a id="__codelineno-7-28" name="__codelineno-7-28" href="#__codelineno-7-28"></a>Enabled i=3 -&gt; j=6: no error
+<a id="__codelineno-7-29" name="__codelineno-7-29" href="#__codelineno-7-29"></a>Enabled i=3 -&gt; j=7: no error
+<a id="__codelineno-7-30" name="__codelineno-7-30" href="#__codelineno-7-30"></a>Enabled i=4 -&gt; j=0: no error
+<a id="__codelineno-7-31" name="__codelineno-7-31" href="#__codelineno-7-31"></a>Enabled i=4 -&gt; j=1: no error
+<a id="__codelineno-7-32" name="__codelineno-7-32" href="#__codelineno-7-32"></a>Enabled i=4 -&gt; j=2: no error
+<a id="__codelineno-7-33" name="__codelineno-7-33" href="#__codelineno-7-33"></a>Enabled i=4 -&gt; j=3: no error
+<a id="__codelineno-7-34" name="__codelineno-7-34" href="#__codelineno-7-34"></a>Enabled i=4 -&gt; j=5: no error
+<a id="__codelineno-7-35" name="__codelineno-7-35" href="#__codelineno-7-35"></a>Enabled i=4 -&gt; j=6: no error
+<a id="__codelineno-7-36" name="__codelineno-7-36" href="#__codelineno-7-36"></a>Enabled i=4 -&gt; j=7: no error
+<a id="__codelineno-7-37" name="__codelineno-7-37" href="#__codelineno-7-37"></a>Enabled i=5 -&gt; j=0: no error
+<a id="__codelineno-7-38" name="__codelineno-7-38" href="#__codelineno-7-38"></a>Enabled i=5 -&gt; j=1: no error
+<a id="__codelineno-7-39" name="__codelineno-7-39" href="#__codelineno-7-39"></a>Enabled i=5 -&gt; j=2: no error
+<a id="__codelineno-7-40" name="__codelineno-7-40" href="#__codelineno-7-40"></a>Enabled i=5 -&gt; j=3: no error
+<a id="__codelineno-7-41" name="__codelineno-7-41" href="#__codelineno-7-41"></a>Enabled i=5 -&gt; j=4: no error
+<a id="__codelineno-7-42" name="__codelineno-7-42" href="#__codelineno-7-42"></a>Enabled i=5 -&gt; j=6: no error
+<a id="__codelineno-7-43" name="__codelineno-7-43" href="#__codelineno-7-43"></a>Enabled i=5 -&gt; j=7: no error
+<a id="__codelineno-7-44" name="__codelineno-7-44" href="#__codelineno-7-44"></a>Enabled i=6 -&gt; j=0: no error
+<a id="__codelineno-7-45" name="__codelineno-7-45" href="#__codelineno-7-45"></a>Enabled i=6 -&gt; j=1: no error
+<a id="__codelineno-7-46" name="__codelineno-7-46" href="#__codelineno-7-46"></a>Enabled i=6 -&gt; j=2: no error
+<a id="__codelineno-7-47" name="__codelineno-7-47" href="#__codelineno-7-47"></a>Enabled i=6 -&gt; j=3: no error
+<a id="__codelineno-7-48" name="__codelineno-7-48" href="#__codelineno-7-48"></a>Enabled i=6 -&gt; j=4: no error
+<a id="__codelineno-7-49" name="__codelineno-7-49" href="#__codelineno-7-49"></a>Enabled i=6 -&gt; j=5: no error
+<a id="__codelineno-7-50" name="__codelineno-7-50" href="#__codelineno-7-50"></a>Enabled i=6 -&gt; j=7: no error
+<a id="__codelineno-7-51" name="__codelineno-7-51" href="#__codelineno-7-51"></a>Enabled i=7 -&gt; j=0: no error
+<a id="__codelineno-7-52" name="__codelineno-7-52" href="#__codelineno-7-52"></a>Enabled i=7 -&gt; j=1: no error
+<a id="__codelineno-7-53" name="__codelineno-7-53" href="#__codelineno-7-53"></a>Enabled i=7 -&gt; j=2: no error
+<a id="__codelineno-7-54" name="__codelineno-7-54" href="#__codelineno-7-54"></a>Enabled i=7 -&gt; j=3: no error
+<a id="__codelineno-7-55" name="__codelineno-7-55" href="#__codelineno-7-55"></a>Enabled i=7 -&gt; j=4: no error
+<a id="__codelineno-7-56" name="__codelineno-7-56" href="#__codelineno-7-56"></a>Enabled i=7 -&gt; j=5: no error
+<a id="__codelineno-7-57" name="__codelineno-7-57" href="#__codelineno-7-57"></a>Enabled i=7 -&gt; j=6: no error
+<a id="__codelineno-7-58" name="__codelineno-7-58" href="#__codelineno-7-58"></a>Peer access enabled for 56 ordered pair(s) out of 8 device(s) checked. On real multi-GPU hardware this same loop enables every accessible ordered pair exactly once, each direction independently, per the API's own unidirectional-access note.
 </code></pre></div>
-</details>
 <!-- execution:end:a100:09_peer_access_setup.cu -->
 
 <!-- execution:start:h100:09_peer_access_setup.cu -->
 <blockquote>
-<p><strong>Current execution — 2026-11-17-h100: API/host demonstration (exit-only).</strong> UTC (run-batch start; per-program time unrecorded): <code>2026-11-17T23:48:18.967387+00:00</code>. Source SHA-256: <code>740c8c5876f47659619e118e3c553087839f81fc4ec57913b61dcb4654881bf5</code>.</p>
+<p><strong>Compiled and executed — 2026-11-17-h100: API/host demonstration (exit-only).</strong> Hardware: 2 H100 GPUs. Execution record UTC (run-batch start; per-program time unrecorded): <code>2026-11-17T23:48:18.967387+00:00</code>.</p>
 </blockquote>
+<!-- execution:metadata Source SHA-256: 740c8c5876f47659619e118e3c553087839f81fc4ec57913b61dcb4654881bf5; recorded UTC (run-batch start; per-program time unrecorded): 2026-11-17T23:48:18.967387+00:00 -->
+
 <p><a href="../../validation/2026-11-17-h100/09_peer_access_setup/09_peer_access_setup.cu">Exact tested source</a> · <a href="../../validation/2026-11-17-h100/09_peer_access_setup/compile.log">Compiler log</a> · <a href="../../validation/2026-11-17-h100/09_peer_access_setup/run.log">Execution log</a>. Compile exit: <code>0</code>; run exit: <code>0</code>.</p>
 <p>Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>nvcc<span class="w"> </span>-std<span class="o">=</span>c++17<span class="w"> </span>-O2<span class="w"> </span>-arch<span class="o">=</span>sm_90<span class="w"> </span>09_peer_access_setup.cu<span class="w"> </span>-o<span class="w"> </span>./example
-<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>./example
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>nvcc<span class="w"> </span>-std<span class="o">=</span>c++17<span class="w"> </span>-O2<span class="w"> </span>-arch<span class="o">=</span>sm_90<span class="w"> </span>09_peer_access_setup.cu<span class="w"> </span>-o<span class="w"> </span>./example
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>./example
 </code></pre></div>
 <details>
 <summary>Captured current-source output</summary>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>cudaGetDeviceCount(): 2 device(s).
-<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>Enabled i=0 -&gt; j=1: no error
-<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>Enabled i=1 -&gt; j=0: no error
-<a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a>Peer access enabled for 2 ordered pair(s) out of 2 device(s) checked. On real multi-GPU hardware this same loop enables every accessible ordered pair exactly once, each direction independently, per the API's own unidirectional-access note.
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>cudaGetDeviceCount(): 2 device(s).
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>Enabled i=0 -&gt; j=1: no error
+<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>Enabled i=1 -&gt; j=0: no error
+<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a>Peer access enabled for 2 ordered pair(s) out of 2 device(s) checked. On real multi-GPU hardware this same loop enables every accessible ordered pair exactly once, each direction independently, per the API's own unidirectional-access note.
 </code></pre></div>
 </details>
 <!-- execution:end:h100:09_peer_access_setup.cu -->
 
-<p>Genuinely compiled with a real <code>nvcc</code> and genuinely run. Locked output, deterministic across repeated runs:</p>
-<details>
-<summary>Historical authoring output — superseded by the current execution above</summary>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>cudaGetDeviceCount(): 0 device(s).
-<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>Peer access enabled for 0 ordered pair(s) out of 0 device(s) checked. On real multi-GPU hardware this same loop enables every accessible ordered pair exactly once, each direction independently, per the API's own unidirectional-access note.
-</code></pre></div>
-</details>
 <p>The current ordered-pair loop queries the actual H100 pair and enables supported peer routes with checked API results. Access is directional; enabling one direction does not grant the reverse direction. Capability queries establish permission, not achieved bandwidth.</p>
 <p>The <a href="../../validation-h100/">2026-11-17 H100 execution record</a> covers two GPUs connected by local NV18. It distinguishes numerical checks, API probes and other executions; a successful exit alone does not establish GPU algorithm correctness.</p>
 <div class="admonition warning">
@@ -2928,109 +2913,135 @@
 <p>The <a href="../../validation-h100/">2026-11-17 H100 execution record</a> covers two GPUs connected by local NV18. It distinguishes numerical checks, API probes and other executions; a successful exit alone does not establish GPU algorithm correctness.</p>
 <h3 id="background_2">Background<a class="headerlink" href="#background_2" title="Permanent link">&para;</a></h3>
 <p>The simulation below models a 4-device system wired as a ring, where each device has a direct link only to its two neighbors (device <code>i</code> to <code>i+1</code> and <code>i-1</code>, wrapping around). That is the same idea as Chapter 2's partial mesh, some pairs wired and some not, but a smaller and simpler shape: Chapter 2's model had 8 GPUs, each wired to its +/-1 and +/-2 neighbors. Here, device 0 has a direct link to device 1 (so peer access is possible and the direct-write path is used), but no direct link to device 2 (so the code must fall back to staging the copy through a separate host buffer). Both transfer functions are written to mirror what real code actually does at each step, not to simplify the problem: <code>transferDirectP2P()</code> performs a plain assignment only when a hardcoded peer-access table says the ordered pair is accessible — the simulated equivalent of a kernel dereferencing a UVA pointer that resolves directly into another device's memory, no host involved at all. <code>transferStagedViaHost()</code> always works, by construction, because it never depends on peer access at all — it is the same universal fallback real <code>cudaMemcpy</code> calls use when peer access isn't available for a given pair. The correctness check compares both destinations against a <code>reference</code> buffer that is never touched by either transfer function, so the check cannot pass merely because both sides share a common bug.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a><span class="c1">// Chapter 4: Peer-to-Peer Memory Access and Unified Virtual Addressing</span>
-<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a><span class="c1">// 10_p2p_simulation.cpp</span>
-<a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a><span class="c1">//</span>
-<a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a><span class="c1">// Plain host C++ -- this book's own honesty-discipline technique for</span>
-<a id="__codelineno-12-5" name="__codelineno-12-5" href="#__codelineno-12-5"></a><span class="c1">// multi-device logic (see getting-started.md): N real in-memory buffers</span>
-<a id="__codelineno-12-6" name="__codelineno-12-6" href="#__codelineno-12-6"></a><span class="c1">// stand in for N real device memories, and we exchange data between</span>
-<a id="__codelineno-12-7" name="__codelineno-12-7" href="#__codelineno-12-7"></a><span class="c1">// them using the exact same message pattern real code would use --</span>
-<a id="__codelineno-12-8" name="__codelineno-12-8" href="#__codelineno-12-8"></a><span class="c1">// either a direct write (only valid where peer access exists, mirroring</span>
-<a id="__codelineno-12-9" name="__codelineno-12-9" href="#__codelineno-12-9"></a><span class="c1">// a UVA pointer dereference) or a copy staged through a separate host</span>
-<a id="__codelineno-12-10" name="__codelineno-12-10" href="#__codelineno-12-10"></a><span class="c1">// buffer (always valid, mirroring the universal fallback) -- then check</span>
-<a id="__codelineno-12-11" name="__codelineno-12-11" href="#__codelineno-12-11"></a><span class="c1">// the result against an independently-kept reference.</span>
-<a id="__codelineno-12-12" name="__codelineno-12-12" href="#__codelineno-12-12"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;cstdio&gt;</span>
-<a id="__codelineno-12-13" name="__codelineno-12-13" href="#__codelineno-12-13"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;vector&gt;</span>
-<a id="__codelineno-12-14" name="__codelineno-12-14" href="#__codelineno-12-14"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;cstring&gt;</span>
-<a id="__codelineno-12-15" name="__codelineno-12-15" href="#__codelineno-12-15"></a>
-<a id="__codelineno-12-16" name="__codelineno-12-16" href="#__codelineno-12-16"></a><span class="k">using</span><span class="w"> </span><span class="n">Buffer</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span><span class="p">;</span>
-<a id="__codelineno-12-17" name="__codelineno-12-17" href="#__codelineno-12-17"></a>
-<a id="__codelineno-12-18" name="__codelineno-12-18" href="#__codelineno-12-18"></a><span class="c1">// Which ordered pairs have peer access, in this simulated 4-device</span>
-<a id="__codelineno-12-19" name="__codelineno-12-19" href="#__codelineno-12-19"></a><span class="c1">// system: a 4-device ring where each device has a direct link only to</span>
-<a id="__codelineno-12-20" name="__codelineno-12-20" href="#__codelineno-12-20"></a><span class="c1">// its two ring neighbors (+/-1). This is a smaller, simpler shape than</span>
-<a id="__codelineno-12-21" name="__codelineno-12-21" href="#__codelineno-12-21"></a><span class="c1">// Chapter 2's 8-GPU partial mesh (which also wired +/-2). Device 0 has a</span>
-<a id="__codelineno-12-22" name="__codelineno-12-22" href="#__codelineno-12-22"></a><span class="c1">// direct link to device 1 (peer access possible), but NOT to device 2</span>
-<a id="__codelineno-12-23" name="__codelineno-12-23" href="#__codelineno-12-23"></a><span class="c1">// (no direct link -- must fall back to a host-staged copy).</span>
-<a id="__codelineno-12-24" name="__codelineno-12-24" href="#__codelineno-12-24"></a><span class="kt">bool</span><span class="w"> </span><span class="nf">peerAccessible</span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">src</span><span class="p">,</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">dst</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
-<a id="__codelineno-12-25" name="__codelineno-12-25" href="#__codelineno-12-25"></a><span class="w">    </span><span class="k">static</span><span class="w"> </span><span class="k">const</span><span class="w"> </span><span class="kt">bool</span><span class="w"> </span><span class="n">table</span><span class="p">[</span><span class="mi">4</span><span class="p">][</span><span class="mi">4</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span>
-<a id="__codelineno-12-26" name="__codelineno-12-26" href="#__codelineno-12-26"></a><span class="w">        </span><span class="cm">/*        d0     d1     d2     d3 */</span>
-<a id="__codelineno-12-27" name="__codelineno-12-27" href="#__codelineno-12-27"></a><span class="w">        </span><span class="cm">/*d0*/</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nb">false</span><span class="p">,</span><span class="w">  </span><span class="nb">true</span><span class="p">,</span><span class="w"> </span><span class="nb">false</span><span class="p">,</span><span class="w">  </span><span class="nb">true</span><span class="w"> </span><span class="p">},</span>
-<a id="__codelineno-12-28" name="__codelineno-12-28" href="#__codelineno-12-28"></a><span class="w">        </span><span class="cm">/*d1*/</span><span class="w"> </span><span class="p">{</span><span class="w">  </span><span class="nb">true</span><span class="p">,</span><span class="w"> </span><span class="nb">false</span><span class="p">,</span><span class="w">  </span><span class="nb">true</span><span class="p">,</span><span class="w"> </span><span class="nb">false</span><span class="w"> </span><span class="p">},</span>
-<a id="__codelineno-12-29" name="__codelineno-12-29" href="#__codelineno-12-29"></a><span class="w">        </span><span class="cm">/*d2*/</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nb">false</span><span class="p">,</span><span class="w">  </span><span class="nb">true</span><span class="p">,</span><span class="w"> </span><span class="nb">false</span><span class="p">,</span><span class="w">  </span><span class="nb">true</span><span class="w"> </span><span class="p">},</span>
-<a id="__codelineno-12-30" name="__codelineno-12-30" href="#__codelineno-12-30"></a><span class="w">        </span><span class="cm">/*d3*/</span><span class="w"> </span><span class="p">{</span><span class="w">  </span><span class="nb">true</span><span class="p">,</span><span class="w"> </span><span class="nb">false</span><span class="p">,</span><span class="w">  </span><span class="nb">true</span><span class="p">,</span><span class="w"> </span><span class="nb">false</span><span class="w"> </span><span class="p">},</span>
-<a id="__codelineno-12-31" name="__codelineno-12-31" href="#__codelineno-12-31"></a><span class="w">    </span><span class="p">};</span>
-<a id="__codelineno-12-32" name="__codelineno-12-32" href="#__codelineno-12-32"></a><span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="n">table</span><span class="p">[</span><span class="n">src</span><span class="p">][</span><span class="n">dst</span><span class="p">];</span>
-<a id="__codelineno-12-33" name="__codelineno-12-33" href="#__codelineno-12-33"></a><span class="p">}</span>
-<a id="__codelineno-12-34" name="__codelineno-12-34" href="#__codelineno-12-34"></a>
-<a id="__codelineno-12-35" name="__codelineno-12-35" href="#__codelineno-12-35"></a><span class="c1">// Direct P2P write: only valid if peer access exists between src and</span>
-<a id="__codelineno-12-36" name="__codelineno-12-36" href="#__codelineno-12-36"></a><span class="c1">// dst. This is the simulated equivalent of a kernel on the source</span>
-<a id="__codelineno-12-37" name="__codelineno-12-37" href="#__codelineno-12-37"></a><span class="c1">// device dereferencing a UVA pointer that resolves directly into the</span>
-<a id="__codelineno-12-38" name="__codelineno-12-38" href="#__codelineno-12-38"></a><span class="c1">// destination device's memory -- no host involved at all.</span>
-<a id="__codelineno-12-39" name="__codelineno-12-39" href="#__codelineno-12-39"></a><span class="kt">bool</span><span class="w"> </span><span class="nf">transferDirectP2P</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">Buffer</span><span class="o">&gt;&amp;</span><span class="w"> </span><span class="n">devices</span><span class="p">,</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">src</span><span class="p">,</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">dst</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
-<a id="__codelineno-12-40" name="__codelineno-12-40" href="#__codelineno-12-40"></a><span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="n">peerAccessible</span><span class="p">(</span><span class="n">src</span><span class="p">,</span><span class="w"> </span><span class="n">dst</span><span class="p">))</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="nb">false</span><span class="p">;</span>
-<a id="__codelineno-12-41" name="__codelineno-12-41" href="#__codelineno-12-41"></a><span class="w">    </span><span class="n">devices</span><span class="p">[</span><span class="n">dst</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">devices</span><span class="p">[</span><span class="n">src</span><span class="p">];</span><span class="w"> </span><span class="c1">// the "direct write", simulated</span>
-<a id="__codelineno-12-42" name="__codelineno-12-42" href="#__codelineno-12-42"></a><span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="nb">true</span><span class="p">;</span>
-<a id="__codelineno-12-43" name="__codelineno-12-43" href="#__codelineno-12-43"></a><span class="p">}</span>
-<a id="__codelineno-12-44" name="__codelineno-12-44" href="#__codelineno-12-44"></a>
-<a id="__codelineno-12-45" name="__codelineno-12-45" href="#__codelineno-12-45"></a><span class="c1">// Host-staged transfer: always valid, exactly the universal fallback</span>
-<a id="__codelineno-12-46" name="__codelineno-12-46" href="#__codelineno-12-46"></a><span class="c1">// real cudaMemcpy-through-host-buffer code uses when peer access isn't</span>
-<a id="__codelineno-12-47" name="__codelineno-12-47" href="#__codelineno-12-47"></a><span class="c1">// available for a given pair.</span>
-<a id="__codelineno-12-48" name="__codelineno-12-48" href="#__codelineno-12-48"></a><span class="kt">void</span><span class="w"> </span><span class="nf">transferStagedViaHost</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">Buffer</span><span class="o">&gt;&amp;</span><span class="w"> </span><span class="n">devices</span><span class="p">,</span><span class="w"> </span><span class="n">Buffer</span><span class="o">&amp;</span><span class="w"> </span><span class="n">hostStaging</span><span class="p">,</span>
-<a id="__codelineno-12-49" name="__codelineno-12-49" href="#__codelineno-12-49"></a><span class="w">                            </span><span class="kt">int</span><span class="w"> </span><span class="n">src</span><span class="p">,</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">dst</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
-<a id="__codelineno-12-50" name="__codelineno-12-50" href="#__codelineno-12-50"></a><span class="w">    </span><span class="n">hostStaging</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">devices</span><span class="p">[</span><span class="n">src</span><span class="p">];</span><span class="w">  </span><span class="c1">// device -&gt; host</span>
-<a id="__codelineno-12-51" name="__codelineno-12-51" href="#__codelineno-12-51"></a><span class="w">    </span><span class="n">devices</span><span class="p">[</span><span class="n">dst</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">hostStaging</span><span class="p">;</span><span class="w">  </span><span class="c1">// host -&gt; device</span>
-<a id="__codelineno-12-52" name="__codelineno-12-52" href="#__codelineno-12-52"></a><span class="p">}</span>
-<a id="__codelineno-12-53" name="__codelineno-12-53" href="#__codelineno-12-53"></a>
-<a id="__codelineno-12-54" name="__codelineno-12-54" href="#__codelineno-12-54"></a><span class="kt">int</span><span class="w"> </span><span class="nf">main</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
-<a id="__codelineno-12-55" name="__codelineno-12-55" href="#__codelineno-12-55"></a><span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">NUM_DEVICES</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">4</span><span class="p">;</span>
-<a id="__codelineno-12-56" name="__codelineno-12-56" href="#__codelineno-12-56"></a><span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">N</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">6</span><span class="p">;</span>
-<a id="__codelineno-12-57" name="__codelineno-12-57" href="#__codelineno-12-57"></a>
-<a id="__codelineno-12-58" name="__codelineno-12-58" href="#__codelineno-12-58"></a><span class="w">    </span><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">Buffer</span><span class="o">&gt;</span><span class="w"> </span><span class="n">devices</span><span class="p">(</span><span class="n">NUM_DEVICES</span><span class="p">,</span><span class="w"> </span><span class="n">Buffer</span><span class="p">(</span><span class="n">N</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">));</span>
-<a id="__codelineno-12-59" name="__codelineno-12-59" href="#__codelineno-12-59"></a><span class="w">    </span><span class="n">Buffer</span><span class="w"> </span><span class="n">hostStaging</span><span class="p">(</span><span class="n">N</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">);</span>
-<a id="__codelineno-12-60" name="__codelineno-12-60" href="#__codelineno-12-60"></a>
-<a id="__codelineno-12-61" name="__codelineno-12-61" href="#__codelineno-12-61"></a><span class="w">    </span><span class="c1">// Independent reference, kept completely separate from the</span>
-<a id="__codelineno-12-62" name="__codelineno-12-62" href="#__codelineno-12-62"></a><span class="w">    </span><span class="c1">// simulated device buffers, so the check below cannot pass just</span>
-<a id="__codelineno-12-63" name="__codelineno-12-63" href="#__codelineno-12-63"></a><span class="w">    </span><span class="c1">// because both sides share the same underlying bug.</span>
-<a id="__codelineno-12-64" name="__codelineno-12-64" href="#__codelineno-12-64"></a><span class="w">    </span><span class="n">Buffer</span><span class="w"> </span><span class="n">reference</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span><span class="mi">10</span><span class="p">,</span><span class="w"> </span><span class="mi">20</span><span class="p">,</span><span class="w"> </span><span class="mi">30</span><span class="p">,</span><span class="w"> </span><span class="mi">40</span><span class="p">,</span><span class="w"> </span><span class="mi">50</span><span class="p">,</span><span class="w"> </span><span class="mi">60</span><span class="p">};</span>
-<a id="__codelineno-12-65" name="__codelineno-12-65" href="#__codelineno-12-65"></a><span class="w">    </span><span class="n">devices</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">reference</span><span class="p">;</span>
-<a id="__codelineno-12-66" name="__codelineno-12-66" href="#__codelineno-12-66"></a>
-<a id="__codelineno-12-67" name="__codelineno-12-67" href="#__codelineno-12-67"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">"Device 0 initialized. Attempting device 0 -&gt; device 1 "</span>
-<a id="__codelineno-12-68" name="__codelineno-12-68" href="#__codelineno-12-68"></a><span class="w">           </span><span class="s">"(peer-accessible per the simulated topology) and "</span>
-<a id="__codelineno-12-69" name="__codelineno-12-69" href="#__codelineno-12-69"></a><span class="w">           </span><span class="s">"device 0 -&gt; device 2 (NOT peer-accessible).</span><span class="se">\n\n</span><span class="s">"</span><span class="p">);</span>
-<a id="__codelineno-12-70" name="__codelineno-12-70" href="#__codelineno-12-70"></a>
-<a id="__codelineno-12-71" name="__codelineno-12-71" href="#__codelineno-12-71"></a><span class="w">    </span><span class="kt">bool</span><span class="w"> </span><span class="n">usedDirectFor1</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">transferDirectP2P</span><span class="p">(</span><span class="n">devices</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="mi">1</span><span class="p">);</span>
-<a id="__codelineno-12-72" name="__codelineno-12-72" href="#__codelineno-12-72"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">"Transfer 0-&gt;1: %s</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span>
-<a id="__codelineno-12-73" name="__codelineno-12-73" href="#__codelineno-12-73"></a><span class="w">           </span><span class="n">usedDirectFor1</span><span class="w"> </span><span class="o">?</span><span class="w"> </span><span class="s">"direct P2P write (peer access exists)"</span>
-<a id="__codelineno-12-74" name="__codelineno-12-74" href="#__codelineno-12-74"></a><span class="w">                          </span><span class="o">:</span><span class="w"> </span><span class="s">"fell back (should not happen for this pair)"</span><span class="p">);</span>
-<a id="__codelineno-12-75" name="__codelineno-12-75" href="#__codelineno-12-75"></a>
-<a id="__codelineno-12-76" name="__codelineno-12-76" href="#__codelineno-12-76"></a><span class="w">    </span><span class="kt">bool</span><span class="w"> </span><span class="n">usedDirectFor2</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">transferDirectP2P</span><span class="p">(</span><span class="n">devices</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="mi">2</span><span class="p">);</span>
-<a id="__codelineno-12-77" name="__codelineno-12-77" href="#__codelineno-12-77"></a><span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="n">usedDirectFor2</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
-<a id="__codelineno-12-78" name="__codelineno-12-78" href="#__codelineno-12-78"></a><span class="w">        </span><span class="n">printf</span><span class="p">(</span><span class="s">"Transfer 0-&gt;2: direct P2P refused (no peer access, "</span>
-<a id="__codelineno-12-79" name="__codelineno-12-79" href="#__codelineno-12-79"></a><span class="w">               </span><span class="s">"correctly) -- falling back to host-staged copy.</span><span class="se">\n</span><span class="s">"</span><span class="p">);</span>
-<a id="__codelineno-12-80" name="__codelineno-12-80" href="#__codelineno-12-80"></a><span class="w">        </span><span class="n">transferStagedViaHost</span><span class="p">(</span><span class="n">devices</span><span class="p">,</span><span class="w"> </span><span class="n">hostStaging</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="mi">2</span><span class="p">);</span>
-<a id="__codelineno-12-81" name="__codelineno-12-81" href="#__codelineno-12-81"></a><span class="w">    </span><span class="p">}</span>
-<a id="__codelineno-12-82" name="__codelineno-12-82" href="#__codelineno-12-82"></a>
-<a id="__codelineno-12-83" name="__codelineno-12-83" href="#__codelineno-12-83"></a><span class="w">    </span><span class="kt">bool</span><span class="w"> </span><span class="n">pass1</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="n">devices</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="n">reference</span><span class="p">);</span>
-<a id="__codelineno-12-84" name="__codelineno-12-84" href="#__codelineno-12-84"></a><span class="w">    </span><span class="kt">bool</span><span class="w"> </span><span class="n">pass2</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="n">devices</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="n">reference</span><span class="p">);</span>
-<a id="__codelineno-12-85" name="__codelineno-12-85" href="#__codelineno-12-85"></a>
-<a id="__codelineno-12-86" name="__codelineno-12-86" href="#__codelineno-12-86"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">"</span><span class="se">\n</span><span class="s">Correctness check, device 1 contents vs. independent "</span>
-<a id="__codelineno-12-87" name="__codelineno-12-87" href="#__codelineno-12-87"></a><span class="w">           </span><span class="s">"reference: %s</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span><span class="w"> </span><span class="n">pass1</span><span class="w"> </span><span class="o">?</span><span class="w"> </span><span class="s">"PASS"</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="s">"FAIL"</span><span class="p">);</span>
-<a id="__codelineno-12-88" name="__codelineno-12-88" href="#__codelineno-12-88"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">"Correctness check, device 2 contents vs. independent "</span>
-<a id="__codelineno-12-89" name="__codelineno-12-89" href="#__codelineno-12-89"></a><span class="w">           </span><span class="s">"reference: %s</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span><span class="w"> </span><span class="n">pass2</span><span class="w"> </span><span class="o">?</span><span class="w"> </span><span class="s">"PASS"</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="s">"FAIL"</span><span class="p">);</span>
-<a id="__codelineno-12-90" name="__codelineno-12-90" href="#__codelineno-12-90"></a>
-<a id="__codelineno-12-91" name="__codelineno-12-91" href="#__codelineno-12-91"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">"</span><span class="se">\n</span><span class="s">Both destinations hold identical, correct data despite "</span>
-<a id="__codelineno-12-92" name="__codelineno-12-92" href="#__codelineno-12-92"></a><span class="w">           </span><span class="s">"using two different transfer mechanisms -- exactly the "</span>
-<a id="__codelineno-12-93" name="__codelineno-12-93" href="#__codelineno-12-93"></a><span class="w">           </span><span class="s">"property real P2P code depends on: the *method* changes "</span>
-<a id="__codelineno-12-94" name="__codelineno-12-94" href="#__codelineno-12-94"></a><span class="w">           </span><span class="s">"with topology, the *result* must not.</span><span class="se">\n</span><span class="s">"</span><span class="p">);</span>
-<a id="__codelineno-12-95" name="__codelineno-12-95" href="#__codelineno-12-95"></a>
-<a id="__codelineno-12-96" name="__codelineno-12-96" href="#__codelineno-12-96"></a><span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="p">(</span><span class="n">pass1</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="n">pass2</span><span class="p">)</span><span class="w"> </span><span class="o">?</span><span class="w"> </span><span class="mi">0</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="mi">1</span><span class="p">;</span>
-<a id="__codelineno-12-97" name="__codelineno-12-97" href="#__codelineno-12-97"></a><span class="p">}</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="c1">// Chapter 4: Peer-to-Peer Memory Access and Unified Virtual Addressing</span>
+<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a><span class="c1">// 10_p2p_simulation.cpp</span>
+<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a><span class="c1">//</span>
+<a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a><span class="c1">// Plain host C++ -- this book's own honesty-discipline technique for</span>
+<a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a><span class="c1">// multi-device logic (see getting-started.md): N real in-memory buffers</span>
+<a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a><span class="c1">// stand in for N real device memories, and we exchange data between</span>
+<a id="__codelineno-10-7" name="__codelineno-10-7" href="#__codelineno-10-7"></a><span class="c1">// them using the exact same message pattern real code would use --</span>
+<a id="__codelineno-10-8" name="__codelineno-10-8" href="#__codelineno-10-8"></a><span class="c1">// either a direct write (only valid where peer access exists, mirroring</span>
+<a id="__codelineno-10-9" name="__codelineno-10-9" href="#__codelineno-10-9"></a><span class="c1">// a UVA pointer dereference) or a copy staged through a separate host</span>
+<a id="__codelineno-10-10" name="__codelineno-10-10" href="#__codelineno-10-10"></a><span class="c1">// buffer (always valid, mirroring the universal fallback) -- then check</span>
+<a id="__codelineno-10-11" name="__codelineno-10-11" href="#__codelineno-10-11"></a><span class="c1">// the result against an independently-kept reference.</span>
+<a id="__codelineno-10-12" name="__codelineno-10-12" href="#__codelineno-10-12"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;cstdio&gt;</span>
+<a id="__codelineno-10-13" name="__codelineno-10-13" href="#__codelineno-10-13"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;vector&gt;</span>
+<a id="__codelineno-10-14" name="__codelineno-10-14" href="#__codelineno-10-14"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;cstring&gt;</span>
+<a id="__codelineno-10-15" name="__codelineno-10-15" href="#__codelineno-10-15"></a>
+<a id="__codelineno-10-16" name="__codelineno-10-16" href="#__codelineno-10-16"></a><span class="k">using</span><span class="w"> </span><span class="n">Buffer</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span><span class="p">;</span>
+<a id="__codelineno-10-17" name="__codelineno-10-17" href="#__codelineno-10-17"></a>
+<a id="__codelineno-10-18" name="__codelineno-10-18" href="#__codelineno-10-18"></a><span class="c1">// Which ordered pairs have peer access, in this simulated 4-device</span>
+<a id="__codelineno-10-19" name="__codelineno-10-19" href="#__codelineno-10-19"></a><span class="c1">// system: a 4-device ring where each device has a direct link only to</span>
+<a id="__codelineno-10-20" name="__codelineno-10-20" href="#__codelineno-10-20"></a><span class="c1">// its two ring neighbors (+/-1). This is a smaller, simpler shape than</span>
+<a id="__codelineno-10-21" name="__codelineno-10-21" href="#__codelineno-10-21"></a><span class="c1">// Chapter 2's 8-GPU partial mesh (which also wired +/-2). Device 0 has a</span>
+<a id="__codelineno-10-22" name="__codelineno-10-22" href="#__codelineno-10-22"></a><span class="c1">// direct link to device 1 (peer access possible), but NOT to device 2</span>
+<a id="__codelineno-10-23" name="__codelineno-10-23" href="#__codelineno-10-23"></a><span class="c1">// (no direct link -- must fall back to a host-staged copy).</span>
+<a id="__codelineno-10-24" name="__codelineno-10-24" href="#__codelineno-10-24"></a><span class="kt">bool</span><span class="w"> </span><span class="nf">peerAccessible</span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">src</span><span class="p">,</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">dst</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-10-25" name="__codelineno-10-25" href="#__codelineno-10-25"></a><span class="w">    </span><span class="k">static</span><span class="w"> </span><span class="k">const</span><span class="w"> </span><span class="kt">bool</span><span class="w"> </span><span class="n">table</span><span class="p">[</span><span class="mi">4</span><span class="p">][</span><span class="mi">4</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-10-26" name="__codelineno-10-26" href="#__codelineno-10-26"></a><span class="w">        </span><span class="cm">/*        d0     d1     d2     d3 */</span>
+<a id="__codelineno-10-27" name="__codelineno-10-27" href="#__codelineno-10-27"></a><span class="w">        </span><span class="cm">/*d0*/</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nb">false</span><span class="p">,</span><span class="w">  </span><span class="nb">true</span><span class="p">,</span><span class="w"> </span><span class="nb">false</span><span class="p">,</span><span class="w">  </span><span class="nb">true</span><span class="w"> </span><span class="p">},</span>
+<a id="__codelineno-10-28" name="__codelineno-10-28" href="#__codelineno-10-28"></a><span class="w">        </span><span class="cm">/*d1*/</span><span class="w"> </span><span class="p">{</span><span class="w">  </span><span class="nb">true</span><span class="p">,</span><span class="w"> </span><span class="nb">false</span><span class="p">,</span><span class="w">  </span><span class="nb">true</span><span class="p">,</span><span class="w"> </span><span class="nb">false</span><span class="w"> </span><span class="p">},</span>
+<a id="__codelineno-10-29" name="__codelineno-10-29" href="#__codelineno-10-29"></a><span class="w">        </span><span class="cm">/*d2*/</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nb">false</span><span class="p">,</span><span class="w">  </span><span class="nb">true</span><span class="p">,</span><span class="w"> </span><span class="nb">false</span><span class="p">,</span><span class="w">  </span><span class="nb">true</span><span class="w"> </span><span class="p">},</span>
+<a id="__codelineno-10-30" name="__codelineno-10-30" href="#__codelineno-10-30"></a><span class="w">        </span><span class="cm">/*d3*/</span><span class="w"> </span><span class="p">{</span><span class="w">  </span><span class="nb">true</span><span class="p">,</span><span class="w"> </span><span class="nb">false</span><span class="p">,</span><span class="w">  </span><span class="nb">true</span><span class="p">,</span><span class="w"> </span><span class="nb">false</span><span class="w"> </span><span class="p">},</span>
+<a id="__codelineno-10-31" name="__codelineno-10-31" href="#__codelineno-10-31"></a><span class="w">    </span><span class="p">};</span>
+<a id="__codelineno-10-32" name="__codelineno-10-32" href="#__codelineno-10-32"></a><span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="n">table</span><span class="p">[</span><span class="n">src</span><span class="p">][</span><span class="n">dst</span><span class="p">];</span>
+<a id="__codelineno-10-33" name="__codelineno-10-33" href="#__codelineno-10-33"></a><span class="p">}</span>
+<a id="__codelineno-10-34" name="__codelineno-10-34" href="#__codelineno-10-34"></a>
+<a id="__codelineno-10-35" name="__codelineno-10-35" href="#__codelineno-10-35"></a><span class="c1">// Direct P2P write: only valid if peer access exists between src and</span>
+<a id="__codelineno-10-36" name="__codelineno-10-36" href="#__codelineno-10-36"></a><span class="c1">// dst. This is the simulated equivalent of a kernel on the source</span>
+<a id="__codelineno-10-37" name="__codelineno-10-37" href="#__codelineno-10-37"></a><span class="c1">// device dereferencing a UVA pointer that resolves directly into the</span>
+<a id="__codelineno-10-38" name="__codelineno-10-38" href="#__codelineno-10-38"></a><span class="c1">// destination device's memory -- no host involved at all.</span>
+<a id="__codelineno-10-39" name="__codelineno-10-39" href="#__codelineno-10-39"></a><span class="kt">bool</span><span class="w"> </span><span class="nf">transferDirectP2P</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">Buffer</span><span class="o">&gt;&amp;</span><span class="w"> </span><span class="n">devices</span><span class="p">,</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">src</span><span class="p">,</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">dst</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-10-40" name="__codelineno-10-40" href="#__codelineno-10-40"></a><span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="n">peerAccessible</span><span class="p">(</span><span class="n">src</span><span class="p">,</span><span class="w"> </span><span class="n">dst</span><span class="p">))</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="nb">false</span><span class="p">;</span>
+<a id="__codelineno-10-41" name="__codelineno-10-41" href="#__codelineno-10-41"></a><span class="w">    </span><span class="n">devices</span><span class="p">[</span><span class="n">dst</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">devices</span><span class="p">[</span><span class="n">src</span><span class="p">];</span><span class="w"> </span><span class="c1">// the "direct write", simulated</span>
+<a id="__codelineno-10-42" name="__codelineno-10-42" href="#__codelineno-10-42"></a><span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="nb">true</span><span class="p">;</span>
+<a id="__codelineno-10-43" name="__codelineno-10-43" href="#__codelineno-10-43"></a><span class="p">}</span>
+<a id="__codelineno-10-44" name="__codelineno-10-44" href="#__codelineno-10-44"></a>
+<a id="__codelineno-10-45" name="__codelineno-10-45" href="#__codelineno-10-45"></a><span class="c1">// Host-staged transfer: always valid, exactly the universal fallback</span>
+<a id="__codelineno-10-46" name="__codelineno-10-46" href="#__codelineno-10-46"></a><span class="c1">// real cudaMemcpy-through-host-buffer code uses when peer access isn't</span>
+<a id="__codelineno-10-47" name="__codelineno-10-47" href="#__codelineno-10-47"></a><span class="c1">// available for a given pair.</span>
+<a id="__codelineno-10-48" name="__codelineno-10-48" href="#__codelineno-10-48"></a><span class="kt">void</span><span class="w"> </span><span class="nf">transferStagedViaHost</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">Buffer</span><span class="o">&gt;&amp;</span><span class="w"> </span><span class="n">devices</span><span class="p">,</span><span class="w"> </span><span class="n">Buffer</span><span class="o">&amp;</span><span class="w"> </span><span class="n">hostStaging</span><span class="p">,</span>
+<a id="__codelineno-10-49" name="__codelineno-10-49" href="#__codelineno-10-49"></a><span class="w">                            </span><span class="kt">int</span><span class="w"> </span><span class="n">src</span><span class="p">,</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">dst</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-10-50" name="__codelineno-10-50" href="#__codelineno-10-50"></a><span class="w">    </span><span class="n">hostStaging</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">devices</span><span class="p">[</span><span class="n">src</span><span class="p">];</span><span class="w">  </span><span class="c1">// device -&gt; host</span>
+<a id="__codelineno-10-51" name="__codelineno-10-51" href="#__codelineno-10-51"></a><span class="w">    </span><span class="n">devices</span><span class="p">[</span><span class="n">dst</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">hostStaging</span><span class="p">;</span><span class="w">  </span><span class="c1">// host -&gt; device</span>
+<a id="__codelineno-10-52" name="__codelineno-10-52" href="#__codelineno-10-52"></a><span class="p">}</span>
+<a id="__codelineno-10-53" name="__codelineno-10-53" href="#__codelineno-10-53"></a>
+<a id="__codelineno-10-54" name="__codelineno-10-54" href="#__codelineno-10-54"></a><span class="kt">int</span><span class="w"> </span><span class="nf">main</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-10-55" name="__codelineno-10-55" href="#__codelineno-10-55"></a><span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">NUM_DEVICES</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">4</span><span class="p">;</span>
+<a id="__codelineno-10-56" name="__codelineno-10-56" href="#__codelineno-10-56"></a><span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">N</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">6</span><span class="p">;</span>
+<a id="__codelineno-10-57" name="__codelineno-10-57" href="#__codelineno-10-57"></a>
+<a id="__codelineno-10-58" name="__codelineno-10-58" href="#__codelineno-10-58"></a><span class="w">    </span><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">Buffer</span><span class="o">&gt;</span><span class="w"> </span><span class="n">devices</span><span class="p">(</span><span class="n">NUM_DEVICES</span><span class="p">,</span><span class="w"> </span><span class="n">Buffer</span><span class="p">(</span><span class="n">N</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">));</span>
+<a id="__codelineno-10-59" name="__codelineno-10-59" href="#__codelineno-10-59"></a><span class="w">    </span><span class="n">Buffer</span><span class="w"> </span><span class="n">hostStaging</span><span class="p">(</span><span class="n">N</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">);</span>
+<a id="__codelineno-10-60" name="__codelineno-10-60" href="#__codelineno-10-60"></a>
+<a id="__codelineno-10-61" name="__codelineno-10-61" href="#__codelineno-10-61"></a><span class="w">    </span><span class="c1">// Independent reference, kept completely separate from the</span>
+<a id="__codelineno-10-62" name="__codelineno-10-62" href="#__codelineno-10-62"></a><span class="w">    </span><span class="c1">// simulated device buffers, so the check below cannot pass just</span>
+<a id="__codelineno-10-63" name="__codelineno-10-63" href="#__codelineno-10-63"></a><span class="w">    </span><span class="c1">// because both sides share the same underlying bug.</span>
+<a id="__codelineno-10-64" name="__codelineno-10-64" href="#__codelineno-10-64"></a><span class="w">    </span><span class="n">Buffer</span><span class="w"> </span><span class="n">reference</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span><span class="mi">10</span><span class="p">,</span><span class="w"> </span><span class="mi">20</span><span class="p">,</span><span class="w"> </span><span class="mi">30</span><span class="p">,</span><span class="w"> </span><span class="mi">40</span><span class="p">,</span><span class="w"> </span><span class="mi">50</span><span class="p">,</span><span class="w"> </span><span class="mi">60</span><span class="p">};</span>
+<a id="__codelineno-10-65" name="__codelineno-10-65" href="#__codelineno-10-65"></a><span class="w">    </span><span class="n">devices</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">reference</span><span class="p">;</span>
+<a id="__codelineno-10-66" name="__codelineno-10-66" href="#__codelineno-10-66"></a>
+<a id="__codelineno-10-67" name="__codelineno-10-67" href="#__codelineno-10-67"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">"Device 0 initialized. Attempting device 0 -&gt; device 1 "</span>
+<a id="__codelineno-10-68" name="__codelineno-10-68" href="#__codelineno-10-68"></a><span class="w">           </span><span class="s">"(peer-accessible per the simulated topology) and "</span>
+<a id="__codelineno-10-69" name="__codelineno-10-69" href="#__codelineno-10-69"></a><span class="w">           </span><span class="s">"device 0 -&gt; device 2 (NOT peer-accessible).</span><span class="se">\n\n</span><span class="s">"</span><span class="p">);</span>
+<a id="__codelineno-10-70" name="__codelineno-10-70" href="#__codelineno-10-70"></a>
+<a id="__codelineno-10-71" name="__codelineno-10-71" href="#__codelineno-10-71"></a><span class="w">    </span><span class="kt">bool</span><span class="w"> </span><span class="n">usedDirectFor1</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">transferDirectP2P</span><span class="p">(</span><span class="n">devices</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="mi">1</span><span class="p">);</span>
+<a id="__codelineno-10-72" name="__codelineno-10-72" href="#__codelineno-10-72"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">"Transfer 0-&gt;1: %s</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span>
+<a id="__codelineno-10-73" name="__codelineno-10-73" href="#__codelineno-10-73"></a><span class="w">           </span><span class="n">usedDirectFor1</span><span class="w"> </span><span class="o">?</span><span class="w"> </span><span class="s">"direct P2P write (peer access exists)"</span>
+<a id="__codelineno-10-74" name="__codelineno-10-74" href="#__codelineno-10-74"></a><span class="w">                          </span><span class="o">:</span><span class="w"> </span><span class="s">"fell back (should not happen for this pair)"</span><span class="p">);</span>
+<a id="__codelineno-10-75" name="__codelineno-10-75" href="#__codelineno-10-75"></a>
+<a id="__codelineno-10-76" name="__codelineno-10-76" href="#__codelineno-10-76"></a><span class="w">    </span><span class="kt">bool</span><span class="w"> </span><span class="n">usedDirectFor2</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">transferDirectP2P</span><span class="p">(</span><span class="n">devices</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="mi">2</span><span class="p">);</span>
+<a id="__codelineno-10-77" name="__codelineno-10-77" href="#__codelineno-10-77"></a><span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="n">usedDirectFor2</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-10-78" name="__codelineno-10-78" href="#__codelineno-10-78"></a><span class="w">        </span><span class="n">printf</span><span class="p">(</span><span class="s">"Transfer 0-&gt;2: direct P2P refused (no peer access, "</span>
+<a id="__codelineno-10-79" name="__codelineno-10-79" href="#__codelineno-10-79"></a><span class="w">               </span><span class="s">"correctly) -- falling back to host-staged copy.</span><span class="se">\n</span><span class="s">"</span><span class="p">);</span>
+<a id="__codelineno-10-80" name="__codelineno-10-80" href="#__codelineno-10-80"></a><span class="w">        </span><span class="n">transferStagedViaHost</span><span class="p">(</span><span class="n">devices</span><span class="p">,</span><span class="w"> </span><span class="n">hostStaging</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="mi">2</span><span class="p">);</span>
+<a id="__codelineno-10-81" name="__codelineno-10-81" href="#__codelineno-10-81"></a><span class="w">    </span><span class="p">}</span>
+<a id="__codelineno-10-82" name="__codelineno-10-82" href="#__codelineno-10-82"></a>
+<a id="__codelineno-10-83" name="__codelineno-10-83" href="#__codelineno-10-83"></a><span class="w">    </span><span class="kt">bool</span><span class="w"> </span><span class="n">pass1</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="n">devices</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="n">reference</span><span class="p">);</span>
+<a id="__codelineno-10-84" name="__codelineno-10-84" href="#__codelineno-10-84"></a><span class="w">    </span><span class="kt">bool</span><span class="w"> </span><span class="n">pass2</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="n">devices</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="n">reference</span><span class="p">);</span>
+<a id="__codelineno-10-85" name="__codelineno-10-85" href="#__codelineno-10-85"></a>
+<a id="__codelineno-10-86" name="__codelineno-10-86" href="#__codelineno-10-86"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">"</span><span class="se">\n</span><span class="s">Correctness check, device 1 contents vs. independent "</span>
+<a id="__codelineno-10-87" name="__codelineno-10-87" href="#__codelineno-10-87"></a><span class="w">           </span><span class="s">"reference: %s</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span><span class="w"> </span><span class="n">pass1</span><span class="w"> </span><span class="o">?</span><span class="w"> </span><span class="s">"PASS"</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="s">"FAIL"</span><span class="p">);</span>
+<a id="__codelineno-10-88" name="__codelineno-10-88" href="#__codelineno-10-88"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">"Correctness check, device 2 contents vs. independent "</span>
+<a id="__codelineno-10-89" name="__codelineno-10-89" href="#__codelineno-10-89"></a><span class="w">           </span><span class="s">"reference: %s</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span><span class="w"> </span><span class="n">pass2</span><span class="w"> </span><span class="o">?</span><span class="w"> </span><span class="s">"PASS"</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="s">"FAIL"</span><span class="p">);</span>
+<a id="__codelineno-10-90" name="__codelineno-10-90" href="#__codelineno-10-90"></a>
+<a id="__codelineno-10-91" name="__codelineno-10-91" href="#__codelineno-10-91"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">"</span><span class="se">\n</span><span class="s">Both destinations hold identical, correct data despite "</span>
+<a id="__codelineno-10-92" name="__codelineno-10-92" href="#__codelineno-10-92"></a><span class="w">           </span><span class="s">"using two different transfer mechanisms -- exactly the "</span>
+<a id="__codelineno-10-93" name="__codelineno-10-93" href="#__codelineno-10-93"></a><span class="w">           </span><span class="s">"property real P2P code depends on: the *method* changes "</span>
+<a id="__codelineno-10-94" name="__codelineno-10-94" href="#__codelineno-10-94"></a><span class="w">           </span><span class="s">"with topology, the *result* must not.</span><span class="se">\n</span><span class="s">"</span><span class="p">);</span>
+<a id="__codelineno-10-95" name="__codelineno-10-95" href="#__codelineno-10-95"></a>
+<a id="__codelineno-10-96" name="__codelineno-10-96" href="#__codelineno-10-96"></a><span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="p">(</span><span class="n">pass1</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="n">pass2</span><span class="p">)</span><span class="w"> </span><span class="o">?</span><span class="w"> </span><span class="mi">0</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="mi">1</span><span class="p">;</span>
+<a id="__codelineno-10-97" name="__codelineno-10-97" href="#__codelineno-10-97"></a><span class="p">}</span>
 </code></pre></div>
 <!-- execution:start:a100:10_p2p_simulation.cpp -->
 <blockquote>
-<p><strong>Current execution — 2026-11-17-a100: Host program/model (exit-only).</strong> UTC (program start): <code>2026-11-18T00:00:36.337372+00:00</code>. Source SHA-256: <code>8ef2739bea00136f3e1810c7e4d9bb37b7eb346f1d0876f53c99c58ee044aac4</code>.</p>
+<p><strong>Compiled and executed — 2026-11-17-a100: Host program/model (exit-only).</strong> Hardware: 8 A100 GPUs. Executed UTC: <code>2026-11-18T00:00:36.653174+00:00</code>.</p>
 </blockquote>
+<!-- execution:metadata Source SHA-256: 8ef2739bea00136f3e1810c7e4d9bb37b7eb346f1d0876f53c99c58ee044aac4; recorded UTC (program start): 2026-11-18T00:00:36.337372+00:00 -->
+
 <p><a href="../../validation/2026-11-17-a100/10_p2p_simulation/10_p2p_simulation.cpp">Exact tested source</a> · <a href="../../validation/2026-11-17-a100/10_p2p_simulation/compile.log">Compiler log</a> · <a href="../../validation/2026-11-17-a100/10_p2p_simulation/run.log">Execution log</a>. Compile exit: <code>0</code>; run exit: <code>0</code>.</p>
+<p>Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>g++<span class="w"> </span>-std<span class="o">=</span>c++17<span class="w"> </span>-O2<span class="w"> </span>10_p2p_simulation.cpp<span class="w"> </span>-o<span class="w"> </span>./example
+<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>./example
+</code></pre></div>
+<p><strong>Sample output</strong></p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>Device 0 initialized. Attempting device 0 -&gt; device 1 (peer-accessible per the simulated topology) and device 0 -&gt; device 2 (NOT peer-accessible).
+<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a>
+<a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a>Transfer 0-&gt;1: direct P2P write (peer access exists)
+<a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a>Transfer 0-&gt;2: direct P2P refused (no peer access, correctly) -- falling back to host-staged copy.
+<a id="__codelineno-12-5" name="__codelineno-12-5" href="#__codelineno-12-5"></a>
+<a id="__codelineno-12-6" name="__codelineno-12-6" href="#__codelineno-12-6"></a>Correctness check, device 1 contents vs. independent reference: PASS
+<a id="__codelineno-12-7" name="__codelineno-12-7" href="#__codelineno-12-7"></a>Correctness check, device 2 contents vs. independent reference: PASS
+<a id="__codelineno-12-8" name="__codelineno-12-8" href="#__codelineno-12-8"></a>
+<a id="__codelineno-12-9" name="__codelineno-12-9" href="#__codelineno-12-9"></a>Both destinations hold identical, correct data despite using two different transfer mechanisms -- exactly the property real P2P code depends on: the *method* changes with topology, the *result* must not.
+</code></pre></div>
+<!-- execution:end:a100:10_p2p_simulation.cpp -->
+
+<!-- execution:start:h100:10_p2p_simulation.cpp -->
+<blockquote>
+<p><strong>Compiled and executed — 2026-11-17-h100: Host program/model (exit-only).</strong> Hardware: 2 H100 GPUs. Execution record UTC (run-batch start; per-program time unrecorded): <code>2026-11-17T23:48:18.967387+00:00</code>.</p>
+</blockquote>
+<!-- execution:metadata Source SHA-256: 8ef2739bea00136f3e1810c7e4d9bb37b7eb346f1d0876f53c99c58ee044aac4; recorded UTC (run-batch start; per-program time unrecorded): 2026-11-17T23:48:18.967387+00:00 -->
+
+<p><a href="../../validation/2026-11-17-h100/10_p2p_simulation/10_p2p_simulation.cpp">Exact tested source</a> · <a href="../../validation/2026-11-17-h100/10_p2p_simulation/compile.log">Compiler log</a> · <a href="../../validation/2026-11-17-h100/10_p2p_simulation/run.log">Execution log</a>. Compile exit: <code>0</code>; run exit: <code>0</code>.</p>
 <p>Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a>g++<span class="w"> </span>-std<span class="o">=</span>c++17<span class="w"> </span>-O2<span class="w"> </span>10_p2p_simulation.cpp<span class="w"> </span>-o<span class="w"> </span>./example
 <a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a>./example
@@ -3048,46 +3059,8 @@
 <a id="__codelineno-14-9" name="__codelineno-14-9" href="#__codelineno-14-9"></a>Both destinations hold identical, correct data despite using two different transfer mechanisms -- exactly the property real P2P code depends on: the *method* changes with topology, the *result* must not.
 </code></pre></div>
 </details>
-<!-- execution:end:a100:10_p2p_simulation.cpp -->
-
-<!-- execution:start:h100:10_p2p_simulation.cpp -->
-<blockquote>
-<p><strong>Current execution — 2026-11-17-h100: Host program/model (exit-only).</strong> UTC (run-batch start; per-program time unrecorded): <code>2026-11-17T23:48:18.967387+00:00</code>. Source SHA-256: <code>8ef2739bea00136f3e1810c7e4d9bb37b7eb346f1d0876f53c99c58ee044aac4</code>.</p>
-</blockquote>
-<p><a href="../../validation/2026-11-17-h100/10_p2p_simulation/10_p2p_simulation.cpp">Exact tested source</a> · <a href="../../validation/2026-11-17-h100/10_p2p_simulation/compile.log">Compiler log</a> · <a href="../../validation/2026-11-17-h100/10_p2p_simulation/run.log">Execution log</a>. Compile exit: <code>0</code>; run exit: <code>0</code>.</p>
-<p>Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a>g++<span class="w"> </span>-std<span class="o">=</span>c++17<span class="w"> </span>-O2<span class="w"> </span>10_p2p_simulation.cpp<span class="w"> </span>-o<span class="w"> </span>./example
-<a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a>./example
-</code></pre></div>
-<details>
-<summary>Captured current-source output</summary>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a>Device 0 initialized. Attempting device 0 -&gt; device 1 (peer-accessible per the simulated topology) and device 0 -&gt; device 2 (NOT peer-accessible).
-<a id="__codelineno-16-2" name="__codelineno-16-2" href="#__codelineno-16-2"></a>
-<a id="__codelineno-16-3" name="__codelineno-16-3" href="#__codelineno-16-3"></a>Transfer 0-&gt;1: direct P2P write (peer access exists)
-<a id="__codelineno-16-4" name="__codelineno-16-4" href="#__codelineno-16-4"></a>Transfer 0-&gt;2: direct P2P refused (no peer access, correctly) -- falling back to host-staged copy.
-<a id="__codelineno-16-5" name="__codelineno-16-5" href="#__codelineno-16-5"></a>
-<a id="__codelineno-16-6" name="__codelineno-16-6" href="#__codelineno-16-6"></a>Correctness check, device 1 contents vs. independent reference: PASS
-<a id="__codelineno-16-7" name="__codelineno-16-7" href="#__codelineno-16-7"></a>Correctness check, device 2 contents vs. independent reference: PASS
-<a id="__codelineno-16-8" name="__codelineno-16-8" href="#__codelineno-16-8"></a>
-<a id="__codelineno-16-9" name="__codelineno-16-9" href="#__codelineno-16-9"></a>Both destinations hold identical, correct data despite using two different transfer mechanisms -- exactly the property real P2P code depends on: the *method* changes with topology, the *result* must not.
-</code></pre></div>
-</details>
 <!-- execution:end:h100:10_p2p_simulation.cpp -->
 
-<p>Genuinely compiled with <code>g++</code> and genuinely run. Locked output, deterministic across repeated runs:</p>
-<details>
-<summary>Historical authoring output — superseded by the current execution above</summary>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a>Device 0 initialized. Attempting device 0 -&gt; device 1 (peer-accessible per the simulated topology) and device 0 -&gt; device 2 (NOT peer-accessible).
-<a id="__codelineno-17-2" name="__codelineno-17-2" href="#__codelineno-17-2"></a>
-<a id="__codelineno-17-3" name="__codelineno-17-3" href="#__codelineno-17-3"></a>Transfer 0-&gt;1: direct P2P write (peer access exists)
-<a id="__codelineno-17-4" name="__codelineno-17-4" href="#__codelineno-17-4"></a>Transfer 0-&gt;2: direct P2P refused (no peer access, correctly) -- falling back to host-staged copy.
-<a id="__codelineno-17-5" name="__codelineno-17-5" href="#__codelineno-17-5"></a>
-<a id="__codelineno-17-6" name="__codelineno-17-6" href="#__codelineno-17-6"></a>Correctness check, device 1 contents vs. independent reference: PASS
-<a id="__codelineno-17-7" name="__codelineno-17-7" href="#__codelineno-17-7"></a>Correctness check, device 2 contents vs. independent reference: PASS
-<a id="__codelineno-17-8" name="__codelineno-17-8" href="#__codelineno-17-8"></a>
-<a id="__codelineno-17-9" name="__codelineno-17-9" href="#__codelineno-17-9"></a>Both destinations hold identical, correct data despite using two different transfer mechanisms -- exactly the property real P2P code depends on: the *method* changes with topology, the *result* must not.
-</code></pre></div>
-</details>
 <p>Both destinations end up holding the identical, correct reference data — device 1 via the direct-write path, device 2 via the host-staged fallback — which is exactly the property real multi-device code depends on: which mechanism a transfer uses is a topology decision, but the <em>result</em> it produces must never depend on which mechanism was chosen. This is what this simulation verifies honestly, without needing a second real GPU: not the real transfer's bandwidth or latency (Chapter 2 already handled those questions, honestly, as separate cost models), but the correctness of the routing logic itself.</p>
 <div class="admonition warning">
 <p class="admonition-title">[COMMON TRAP] Treating this simulation as a stand-in for measuring real P2P performance</p>
@@ -3111,7 +3084,7 @@
 <h2 id="where-we-go-next">Where We Go Next<a class="headerlink" href="#where-we-go-next" title="Permanent link">&para;</a></h2>
 <p>Chapter 5 picks up exactly where Section 4.3's simulation left off — the actual <code>cudaMemcpy</code> variants (including the peer-aware ones) and asynchronous, stream-ordered copies that a real multi-device program uses to perform the transfers this chapter's simulation only modeled the logic of, and Chapter 6, Section 6.3, then covers what the CUDA Runtime API can honestly report about overlapping a copy with concurrent kernel execution.</p>
 <h2 id="worked-solutions">Worked Solutions<a class="headerlink" href="#worked-solutions" title="Permanent link">&para;</a></h2>
-<p><strong>1.</strong> Inspect the query result and allocation type before reading ownership fields. An unregistered host pointer has no meaningful GPU owner. A no-driver/no-device error in an earlier transcript is an environment-specific result, not a general rule that every host-pointer attribute query fails.</p>
+<p><strong>1.</strong> Inspect the query result and allocation type before reading ownership fields. An unregistered host pointer has no meaningful GPU owner.</p>
 <p>The <a href="../../validation-h100/">2026-11-17 H100 execution record</a> covers two GPUs connected by local NV18. It distinguishes numerical checks, API probes and other executions; a successful exit alone does not establish GPU algorithm correctness.</p>
 <p><strong>2.</strong> The <code>device</code> field of the <code>cudaPointerAttributes</code> struct — an integer device ordinal. This distinction is only meaningful because of UVA: without a single shared address space, there would be no way to even ask "which device does this pointer belong to" using the pointer's value alone, since the same address could independently exist in multiple devices' separate address spaces with different meanings in each.</p>
 <p><strong>3.</strong> Two calls are required: <code>cudaSetDevice(0); cudaDeviceEnablePeerAccess(1, 0);</code> grants device 0 access to device 1, and separately <code>cudaSetDevice(1); cudaDeviceEnablePeerAccess(0, 0);</code> grants device 1 access to device 0. Between them, the current device must actually change — from 0 to 1 — because each call's effect applies to whichever device is current <em>at the time of the call</em>, not to some fixed pair.</p>

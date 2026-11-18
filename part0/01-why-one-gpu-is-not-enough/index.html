@@ -2648,11 +2648,6 @@
 
 
 <h1 id="chapter-1-why-one-gpu-is-not-enough">Chapter 1: Why One GPU Is Not Enough<a class="headerlink" href="#chapter-1-why-one-gpu-is-not-enough" title="Permanent link">&para;</a></h1>
-<!-- execution:provenance -->
-<div class="admonition info">
-<p class="admonition-title">Execution provenance</p>
-<p>Current execution blocks identify the tested source hash, hardware dataset, commands and captured output. References elsewhere on this page to a device-less environment describe the original authoring context. Historical output is superseded by the current record. Displayed output omits the runner command header and trims trailing line whitespace; raw logs remain exact. A host simulation or API validation has its stated scope; neither alone establishes a numerical multi-GPU workload or measured performance.</p>
-</div>
 <!-- mgpu:opener:start -->
 <p><a href="../../images/chapter-openers/01.svg"><img alt="Chapter 1: Why One GPU Is Not Enough" src="../../images/chapter-openers/01.svg" /></a></p>
 <!-- mgpu:opener:end -->
@@ -2749,28 +2744,30 @@
 </code></pre></div>
 <!-- execution:start:a100:02_memory_wall.cpp -->
 <blockquote>
-<p><strong>Current execution — 2026-11-17-a100: Host program/model (exit-only).</strong> UTC (program start): <code>2026-11-18T00:00:10.869538+00:00</code>. Source SHA-256: <code>a2ff2cb43ab47129401d4d1b916c527da97d8271196a249813fb57e3a3853b1b</code>.</p>
+<p><strong>Compiled and executed — 2026-11-17-a100: Host program/model (exit-only).</strong> Hardware: 8 A100 GPUs. Executed UTC: <code>2026-11-18T00:00:11.085308+00:00</code>.</p>
 </blockquote>
+<!-- execution:metadata Source SHA-256: a2ff2cb43ab47129401d4d1b916c527da97d8271196a249813fb57e3a3853b1b; recorded UTC (program start): 2026-11-18T00:00:10.869538+00:00 -->
+
 <p><a href="../../validation/2026-11-17-a100/02_memory_wall/02_memory_wall.cpp">Exact tested source</a> · <a href="../../validation/2026-11-17-a100/02_memory_wall/compile.log">Compiler log</a> · <a href="../../validation/2026-11-17-a100/02_memory_wall/run.log">Execution log</a>. Compile exit: <code>0</code>; run exit: <code>0</code>.</p>
 <p>Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>g++<span class="w"> </span>-std<span class="o">=</span>c++17<span class="w"> </span>-O2<span class="w"> </span>02_memory_wall.cpp<span class="w"> </span>-o<span class="w"> </span>./example
 <a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>./example
 </code></pre></div>
-<details>
-<summary>Captured current-source output</summary>
+<p><strong>Sample output</strong></p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>Model                Params  Inference(fp16) Training(Adam,mp) H100 SXM x H100 NVL x
 <a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>7B-class model        7.0B          14.0 GB         112.0 GB          2          2
 <a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>GPT-3 (175B)        175.0B         350.0 GB        2800.0 GB         35         30
 <a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>
 <a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>Minimum H100 SXM (80 GB) GPUs to hold GPT-3's training state (params+grads+Adam state only, no activations): 35
 </code></pre></div>
-</details>
 <!-- execution:end:a100:02_memory_wall.cpp -->
 
 <!-- execution:start:h100:02_memory_wall.cpp -->
 <blockquote>
-<p><strong>Current execution — 2026-11-17-h100: Host program/model (exit-only).</strong> UTC (run-batch start; per-program time unrecorded): <code>2026-11-17T23:48:18.967387+00:00</code>. Source SHA-256: <code>a2ff2cb43ab47129401d4d1b916c527da97d8271196a249813fb57e3a3853b1b</code>.</p>
+<p><strong>Compiled and executed — 2026-11-17-h100: Host program/model (exit-only).</strong> Hardware: 2 H100 GPUs. Execution record UTC (run-batch start; per-program time unrecorded): <code>2026-11-17T23:48:18.967387+00:00</code>.</p>
 </blockquote>
+<!-- execution:metadata Source SHA-256: a2ff2cb43ab47129401d4d1b916c527da97d8271196a249813fb57e3a3853b1b; recorded UTC (run-batch start; per-program time unrecorded): 2026-11-17T23:48:18.967387+00:00 -->
+
 <p><a href="../../validation/2026-11-17-h100/02_memory_wall/02_memory_wall.cpp">Exact tested source</a> · <a href="../../validation/2026-11-17-h100/02_memory_wall/compile.log">Compiler log</a> · <a href="../../validation/2026-11-17-h100/02_memory_wall/run.log">Execution log</a>. Compile exit: <code>0</code>; run exit: <code>0</code>.</p>
 <p>Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>g++<span class="w"> </span>-std<span class="o">=</span>c++17<span class="w"> </span>-O2<span class="w"> </span>02_memory_wall.cpp<span class="w"> </span>-o<span class="w"> </span>./example
@@ -2790,16 +2787,6 @@
 <div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>g++<span class="w"> </span>-std<span class="o">=</span>c++17<span class="w"> </span>-Wall<span class="w"> </span>-Wextra<span class="w"> </span>-O2<span class="w"> </span>02_memory_wall.cpp<span class="w"> </span>-o<span class="w"> </span>memory_wall
 <a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>./memory_wall
 </code></pre></div>
-<p>Output (genuinely compiled and run; re-verified by a fresh recompile and rerun before publication, identical both times):</p>
-<details>
-<summary>Historical authoring output — superseded by the current execution above</summary>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>Model                Params  Inference(fp16) Training(Adam,mp) H100 SXM x H100 NVL x
-<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>7B-class model        7.0B          14.0 GB         112.0 GB          2          2
-<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>GPT-3 (175B)        175.0B         350.0 GB        2800.0 GB         35         30
-<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a>
-<a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a>Minimum H100 SXM (80 GB) GPUs to hold GPT-3's training state (params+grads+Adam state only, no activations): 35
-</code></pre></div>
-</details>
 <p>A 175-billion-parameter model's weights alone (350 GB at fp16) already exceed a single H100's 80 GB several times over — before a single gradient or optimizer value is added. Once they are, the training state needs <strong>35 H100 SXM GPUs' worth of memory just to exist</strong>, with zero of it left over for the activations that actually let training happen. Even the comparatively modest 7B-class model's <em>training</em> footprint (112 GB) doesn't fit in one H100 (80 GB), though its <em>inference</em> footprint (14 GB) fits easily.</p>
 <div class="admonition warning">
 <p class="admonition-title">[COMMON TRAP] Asking "does this model fit on a GPU" as if it's one question</p>
@@ -2814,124 +2801,113 @@
 <p>Now suppose, hypothetically, the truck from Section 1.1 were infinitely large — no capacity problem at all. The job can still fail the <em>second</em> way: there's a fixed number of hours in the day and a fixed rate at which any one truck can be loaded and driven, and if the total amount of stuff to move is large enough, one truck running continuously simply cannot finish in a human timescale, no matter how big it is. That is the throughput wall, and unlike the capacity wall it isn't binary — it's a rate, multiplied by however much total work there is.</p>
 <h3 id="background_1">Background<a class="headerlink" href="#background_1" title="Permanent link">&para;</a></h3>
 <p>Kaplan et al.'s "Scaling Laws for Neural Language Models" (2020) give a compact estimate for that total amount of work — training compute:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>C ≈ 6 · N · D
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>C ≈ 6 · N · D
 </code></pre></div>
 <p>where <code>N</code> is the model's (non-embedding) parameter count, <code>D</code> is the number of training tokens, and the factor of 6 accounts for one forward pass and the (roughly twice as expensive) backward pass. This is the paper's own stated formula (<code>C ≈ 6NBS</code>, with batch size <code>B</code> times step count <code>S</code> equal to total tokens <code>D</code>), and it is a real, exactly-computable quantity once <code>N</code> and <code>D</code> are fixed — not a rough guess.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="c1">// Chapter 1: Why One GPU Is Not Enough</span>
-<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a><span class="c1">// 03_compute_wall.cpp</span>
-<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a><span class="c1">//</span>
-<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a><span class="c1">// Plain host C++. Computes a deterministic FLOP count and divides by a</span>
-<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a><span class="c1">// cited real peak-FLOPS figure -- never a fabricated wall-clock number,</span>
-<a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a><span class="c1">// per this book's own stated discipline (see getting-started.md).</span>
-<a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;cstdio&gt;</span>
-<a id="__codelineno-9-8" name="__codelineno-9-8" href="#__codelineno-9-8"></a>
-<a id="__codelineno-9-9" name="__codelineno-9-9" href="#__codelineno-9-9"></a><span class="kt">int</span><span class="w"> </span><span class="nf">main</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
-<a id="__codelineno-9-10" name="__codelineno-9-10" href="#__codelineno-9-10"></a><span class="w">    </span><span class="c1">// Kaplan et al., "Scaling Laws for Neural Language Models" (2020):</span>
-<a id="__codelineno-9-11" name="__codelineno-9-11" href="#__codelineno-9-11"></a><span class="w">    </span><span class="c1">// C ~= 6*N*D, where N is (non-embedding) parameter count and D is</span>
-<a id="__codelineno-9-12" name="__codelineno-9-12" href="#__codelineno-9-12"></a><span class="w">    </span><span class="c1">// dataset size in tokens. We use GPT-3's reported total parameter</span>
-<a id="__codelineno-9-13" name="__codelineno-9-13" href="#__codelineno-9-13"></a><span class="w">    </span><span class="c1">// count (175B, Brown et al. 2020, Table 2.1) as an approximation of</span>
-<a id="__codelineno-9-14" name="__codelineno-9-14" href="#__codelineno-9-14"></a><span class="w">    </span><span class="c1">// N, and the paper's own stated token budget, D = 300e9 tokens</span>
-<a id="__codelineno-9-15" name="__codelineno-9-15" href="#__codelineno-9-15"></a><span class="w">    </span><span class="c1">// ("All models were trained for a total of 300 billion tokens").</span>
-<a id="__codelineno-9-16" name="__codelineno-9-16" href="#__codelineno-9-16"></a><span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="kt">double</span><span class="w"> </span><span class="n">N</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">175.0e9</span><span class="p">;</span>
-<a id="__codelineno-9-17" name="__codelineno-9-17" href="#__codelineno-9-17"></a><span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="kt">double</span><span class="w"> </span><span class="n">D</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">300.0e9</span><span class="p">;</span>
-<a id="__codelineno-9-18" name="__codelineno-9-18" href="#__codelineno-9-18"></a><span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="kt">double</span><span class="w"> </span><span class="n">totalFLOPs</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">6.0</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="n">N</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="n">D</span><span class="p">;</span>
-<a id="__codelineno-9-19" name="__codelineno-9-19" href="#__codelineno-9-19"></a>
-<a id="__codelineno-9-20" name="__codelineno-9-20" href="#__codelineno-9-20"></a><span class="w">    </span><span class="c1">// NVIDIA H100 SXM5: 989 TFLOP/s peak dense BF16/FP16 Tensor Core</span>
-<a id="__codelineno-9-21" name="__codelineno-9-21" href="#__codelineno-9-21"></a><span class="w">    </span><span class="c1">// throughput (no sparsity). Real vendor-cited figure.</span>
-<a id="__codelineno-9-22" name="__codelineno-9-22" href="#__codelineno-9-22"></a><span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="kt">double</span><span class="w"> </span><span class="n">H100_PEAK_FLOPS</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">989.0e12</span><span class="p">;</span>
-<a id="__codelineno-9-23" name="__codelineno-9-23" href="#__codelineno-9-23"></a><span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="kt">double</span><span class="w"> </span><span class="n">SECONDS_PER_DAY</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">86400.0</span><span class="p">;</span>
-<a id="__codelineno-9-24" name="__codelineno-9-24" href="#__codelineno-9-24"></a>
-<a id="__codelineno-9-25" name="__codelineno-9-25" href="#__codelineno-9-25"></a><span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="kt">double</span><span class="w"> </span><span class="n">idealFlopsPerDay</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">H100_PEAK_FLOPS</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="n">SECONDS_PER_DAY</span><span class="p">;</span>
-<a id="__codelineno-9-26" name="__codelineno-9-26" href="#__codelineno-9-26"></a><span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="kt">double</span><span class="w"> </span><span class="n">idealGpuDays</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">totalFLOPs</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="n">idealFlopsPerDay</span><span class="p">;</span>
-<a id="__codelineno-9-27" name="__codelineno-9-27" href="#__codelineno-9-27"></a>
-<a id="__codelineno-9-28" name="__codelineno-9-28" href="#__codelineno-9-28"></a><span class="w">    </span><span class="c1">// Real training never sustains 100% of peak. We label this an</span>
-<a id="__codelineno-9-29" name="__codelineno-9-29" href="#__codelineno-9-29"></a><span class="w">    </span><span class="c1">// illustrative assumption, not a measurement: many public reports of</span>
-<a id="__codelineno-9-30" name="__codelineno-9-30" href="#__codelineno-9-30"></a><span class="w">    </span><span class="c1">// well-optimized large-model training put achieved throughput in the</span>
-<a id="__codelineno-9-31" name="__codelineno-9-31" href="#__codelineno-9-31"></a><span class="w">    </span><span class="c1">// 30-50% range of peak (Model FLOPs Utilization, or MFU); we use 50%</span>
-<a id="__codelineno-9-32" name="__codelineno-9-32" href="#__codelineno-9-32"></a><span class="w">    </span><span class="c1">// here as a round, explicitly-labeled upper-end illustrative figure.</span>
-<a id="__codelineno-9-33" name="__codelineno-9-33" href="#__codelineno-9-33"></a><span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="kt">double</span><span class="w"> </span><span class="n">assumedMFU</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">0.50</span><span class="p">;</span>
-<a id="__codelineno-9-34" name="__codelineno-9-34" href="#__codelineno-9-34"></a><span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="kt">double</span><span class="w"> </span><span class="n">realisticGpuDays</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">idealGpuDays</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="n">assumedMFU</span><span class="p">;</span>
-<a id="__codelineno-9-35" name="__codelineno-9-35" href="#__codelineno-9-35"></a>
-<a id="__codelineno-9-36" name="__codelineno-9-36" href="#__codelineno-9-36"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">"Total training compute (C = 6*N*D): %.3e FLOPs</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span><span class="w"> </span><span class="n">totalFLOPs</span><span class="p">);</span>
-<a id="__codelineno-9-37" name="__codelineno-9-37" href="#__codelineno-9-37"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">"N (parameters, approx.):            %.3e</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span><span class="w"> </span><span class="n">N</span><span class="p">);</span>
-<a id="__codelineno-9-38" name="__codelineno-9-38" href="#__codelineno-9-38"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">"D (tokens):                         %.3e</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span><span class="w"> </span><span class="n">D</span><span class="p">);</span>
-<a id="__codelineno-9-39" name="__codelineno-9-39" href="#__codelineno-9-39"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">"H100 SXM peak dense BF16/FP16:       %.3e FLOP/s</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span>
-<a id="__codelineno-9-40" name="__codelineno-9-40" href="#__codelineno-9-40"></a><span class="w">           </span><span class="n">H100_PEAK_FLOPS</span><span class="p">);</span>
-<a id="__codelineno-9-41" name="__codelineno-9-41" href="#__codelineno-9-41"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">"</span><span class="se">\n</span><span class="s">"</span><span class="p">);</span>
-<a id="__codelineno-9-42" name="__codelineno-9-42" href="#__codelineno-9-42"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">"GPU-days on a single H100 at 100%% of peak (ideal, "</span>
-<a id="__codelineno-9-43" name="__codelineno-9-43" href="#__codelineno-9-43"></a><span class="w">           </span><span class="s">"unreachable in practice): %.1f</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span><span class="w"> </span><span class="n">idealGpuDays</span><span class="p">);</span>
-<a id="__codelineno-9-44" name="__codelineno-9-44" href="#__codelineno-9-44"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">"GPU-days on a single H100 at an assumed %.0f%% of peak "</span>
-<a id="__codelineno-9-45" name="__codelineno-9-45" href="#__codelineno-9-45"></a><span class="w">           </span><span class="s">"(illustrative MFU, not measured):   %.1f</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span>
-<a id="__codelineno-9-46" name="__codelineno-9-46" href="#__codelineno-9-46"></a><span class="w">           </span><span class="n">assumedMFU</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="mf">100.0</span><span class="p">,</span><span class="w"> </span><span class="n">realisticGpuDays</span><span class="p">);</span>
-<a id="__codelineno-9-47" name="__codelineno-9-47" href="#__codelineno-9-47"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">"Same total compute spread across 1024 such GPUs at the "</span>
-<a id="__codelineno-9-48" name="__codelineno-9-48" href="#__codelineno-9-48"></a><span class="w">           </span><span class="s">"assumed %.0f%% MFU: %.2f days</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span>
-<a id="__codelineno-9-49" name="__codelineno-9-49" href="#__codelineno-9-49"></a><span class="w">           </span><span class="n">assumedMFU</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="mf">100.0</span><span class="p">,</span><span class="w"> </span><span class="n">realisticGpuDays</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="mf">1024.0</span><span class="p">);</span>
-<a id="__codelineno-9-50" name="__codelineno-9-50" href="#__codelineno-9-50"></a>
-<a id="__codelineno-9-51" name="__codelineno-9-51" href="#__codelineno-9-51"></a><span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
-<a id="__codelineno-9-52" name="__codelineno-9-52" href="#__codelineno-9-52"></a><span class="p">}</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="c1">// Chapter 1: Why One GPU Is Not Enough</span>
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a><span class="c1">// 03_compute_wall.cpp</span>
+<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a><span class="c1">//</span>
+<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a><span class="c1">// Plain host C++. Computes a deterministic FLOP count and divides by a</span>
+<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a><span class="c1">// cited real peak-FLOPS figure -- never a fabricated wall-clock number,</span>
+<a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a><span class="c1">// per this book's own stated discipline (see getting-started.md).</span>
+<a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;cstdio&gt;</span>
+<a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a>
+<a id="__codelineno-8-9" name="__codelineno-8-9" href="#__codelineno-8-9"></a><span class="kt">int</span><span class="w"> </span><span class="nf">main</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-8-10" name="__codelineno-8-10" href="#__codelineno-8-10"></a><span class="w">    </span><span class="c1">// Kaplan et al., "Scaling Laws for Neural Language Models" (2020):</span>
+<a id="__codelineno-8-11" name="__codelineno-8-11" href="#__codelineno-8-11"></a><span class="w">    </span><span class="c1">// C ~= 6*N*D, where N is (non-embedding) parameter count and D is</span>
+<a id="__codelineno-8-12" name="__codelineno-8-12" href="#__codelineno-8-12"></a><span class="w">    </span><span class="c1">// dataset size in tokens. We use GPT-3's reported total parameter</span>
+<a id="__codelineno-8-13" name="__codelineno-8-13" href="#__codelineno-8-13"></a><span class="w">    </span><span class="c1">// count (175B, Brown et al. 2020, Table 2.1) as an approximation of</span>
+<a id="__codelineno-8-14" name="__codelineno-8-14" href="#__codelineno-8-14"></a><span class="w">    </span><span class="c1">// N, and the paper's own stated token budget, D = 300e9 tokens</span>
+<a id="__codelineno-8-15" name="__codelineno-8-15" href="#__codelineno-8-15"></a><span class="w">    </span><span class="c1">// ("All models were trained for a total of 300 billion tokens").</span>
+<a id="__codelineno-8-16" name="__codelineno-8-16" href="#__codelineno-8-16"></a><span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="kt">double</span><span class="w"> </span><span class="n">N</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">175.0e9</span><span class="p">;</span>
+<a id="__codelineno-8-17" name="__codelineno-8-17" href="#__codelineno-8-17"></a><span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="kt">double</span><span class="w"> </span><span class="n">D</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">300.0e9</span><span class="p">;</span>
+<a id="__codelineno-8-18" name="__codelineno-8-18" href="#__codelineno-8-18"></a><span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="kt">double</span><span class="w"> </span><span class="n">totalFLOPs</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">6.0</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="n">N</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="n">D</span><span class="p">;</span>
+<a id="__codelineno-8-19" name="__codelineno-8-19" href="#__codelineno-8-19"></a>
+<a id="__codelineno-8-20" name="__codelineno-8-20" href="#__codelineno-8-20"></a><span class="w">    </span><span class="c1">// NVIDIA H100 SXM5: 989 TFLOP/s peak dense BF16/FP16 Tensor Core</span>
+<a id="__codelineno-8-21" name="__codelineno-8-21" href="#__codelineno-8-21"></a><span class="w">    </span><span class="c1">// throughput (no sparsity). Real vendor-cited figure.</span>
+<a id="__codelineno-8-22" name="__codelineno-8-22" href="#__codelineno-8-22"></a><span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="kt">double</span><span class="w"> </span><span class="n">H100_PEAK_FLOPS</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">989.0e12</span><span class="p">;</span>
+<a id="__codelineno-8-23" name="__codelineno-8-23" href="#__codelineno-8-23"></a><span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="kt">double</span><span class="w"> </span><span class="n">SECONDS_PER_DAY</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">86400.0</span><span class="p">;</span>
+<a id="__codelineno-8-24" name="__codelineno-8-24" href="#__codelineno-8-24"></a>
+<a id="__codelineno-8-25" name="__codelineno-8-25" href="#__codelineno-8-25"></a><span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="kt">double</span><span class="w"> </span><span class="n">idealFlopsPerDay</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">H100_PEAK_FLOPS</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="n">SECONDS_PER_DAY</span><span class="p">;</span>
+<a id="__codelineno-8-26" name="__codelineno-8-26" href="#__codelineno-8-26"></a><span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="kt">double</span><span class="w"> </span><span class="n">idealGpuDays</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">totalFLOPs</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="n">idealFlopsPerDay</span><span class="p">;</span>
+<a id="__codelineno-8-27" name="__codelineno-8-27" href="#__codelineno-8-27"></a>
+<a id="__codelineno-8-28" name="__codelineno-8-28" href="#__codelineno-8-28"></a><span class="w">    </span><span class="c1">// Real training never sustains 100% of peak. We label this an</span>
+<a id="__codelineno-8-29" name="__codelineno-8-29" href="#__codelineno-8-29"></a><span class="w">    </span><span class="c1">// illustrative assumption, not a measurement: many public reports of</span>
+<a id="__codelineno-8-30" name="__codelineno-8-30" href="#__codelineno-8-30"></a><span class="w">    </span><span class="c1">// well-optimized large-model training put achieved throughput in the</span>
+<a id="__codelineno-8-31" name="__codelineno-8-31" href="#__codelineno-8-31"></a><span class="w">    </span><span class="c1">// 30-50% range of peak (Model FLOPs Utilization, or MFU); we use 50%</span>
+<a id="__codelineno-8-32" name="__codelineno-8-32" href="#__codelineno-8-32"></a><span class="w">    </span><span class="c1">// here as a round, explicitly-labeled upper-end illustrative figure.</span>
+<a id="__codelineno-8-33" name="__codelineno-8-33" href="#__codelineno-8-33"></a><span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="kt">double</span><span class="w"> </span><span class="n">assumedMFU</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">0.50</span><span class="p">;</span>
+<a id="__codelineno-8-34" name="__codelineno-8-34" href="#__codelineno-8-34"></a><span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="kt">double</span><span class="w"> </span><span class="n">realisticGpuDays</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">idealGpuDays</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="n">assumedMFU</span><span class="p">;</span>
+<a id="__codelineno-8-35" name="__codelineno-8-35" href="#__codelineno-8-35"></a>
+<a id="__codelineno-8-36" name="__codelineno-8-36" href="#__codelineno-8-36"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">"Total training compute (C = 6*N*D): %.3e FLOPs</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span><span class="w"> </span><span class="n">totalFLOPs</span><span class="p">);</span>
+<a id="__codelineno-8-37" name="__codelineno-8-37" href="#__codelineno-8-37"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">"N (parameters, approx.):            %.3e</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span><span class="w"> </span><span class="n">N</span><span class="p">);</span>
+<a id="__codelineno-8-38" name="__codelineno-8-38" href="#__codelineno-8-38"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">"D (tokens):                         %.3e</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span><span class="w"> </span><span class="n">D</span><span class="p">);</span>
+<a id="__codelineno-8-39" name="__codelineno-8-39" href="#__codelineno-8-39"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">"H100 SXM peak dense BF16/FP16:       %.3e FLOP/s</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span>
+<a id="__codelineno-8-40" name="__codelineno-8-40" href="#__codelineno-8-40"></a><span class="w">           </span><span class="n">H100_PEAK_FLOPS</span><span class="p">);</span>
+<a id="__codelineno-8-41" name="__codelineno-8-41" href="#__codelineno-8-41"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">"</span><span class="se">\n</span><span class="s">"</span><span class="p">);</span>
+<a id="__codelineno-8-42" name="__codelineno-8-42" href="#__codelineno-8-42"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">"GPU-days on a single H100 at 100%% of peak (ideal, "</span>
+<a id="__codelineno-8-43" name="__codelineno-8-43" href="#__codelineno-8-43"></a><span class="w">           </span><span class="s">"unreachable in practice): %.1f</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span><span class="w"> </span><span class="n">idealGpuDays</span><span class="p">);</span>
+<a id="__codelineno-8-44" name="__codelineno-8-44" href="#__codelineno-8-44"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">"GPU-days on a single H100 at an assumed %.0f%% of peak "</span>
+<a id="__codelineno-8-45" name="__codelineno-8-45" href="#__codelineno-8-45"></a><span class="w">           </span><span class="s">"(illustrative MFU, not measured):   %.1f</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span>
+<a id="__codelineno-8-46" name="__codelineno-8-46" href="#__codelineno-8-46"></a><span class="w">           </span><span class="n">assumedMFU</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="mf">100.0</span><span class="p">,</span><span class="w"> </span><span class="n">realisticGpuDays</span><span class="p">);</span>
+<a id="__codelineno-8-47" name="__codelineno-8-47" href="#__codelineno-8-47"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">"Same total compute spread across 1024 such GPUs at the "</span>
+<a id="__codelineno-8-48" name="__codelineno-8-48" href="#__codelineno-8-48"></a><span class="w">           </span><span class="s">"assumed %.0f%% MFU: %.2f days</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span>
+<a id="__codelineno-8-49" name="__codelineno-8-49" href="#__codelineno-8-49"></a><span class="w">           </span><span class="n">assumedMFU</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="mf">100.0</span><span class="p">,</span><span class="w"> </span><span class="n">realisticGpuDays</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="mf">1024.0</span><span class="p">);</span>
+<a id="__codelineno-8-50" name="__codelineno-8-50" href="#__codelineno-8-50"></a>
+<a id="__codelineno-8-51" name="__codelineno-8-51" href="#__codelineno-8-51"></a><span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
+<a id="__codelineno-8-52" name="__codelineno-8-52" href="#__codelineno-8-52"></a><span class="p">}</span>
 </code></pre></div>
 <!-- execution:start:a100:03_compute_wall.cpp -->
 <blockquote>
-<p><strong>Current execution — 2026-11-17-a100: Host program/model (exit-only).</strong> UTC (program start): <code>2026-11-18T00:00:11.088863+00:00</code>. Source SHA-256: <code>afb0e2461806947cd7f0bc421aac900cd61a586feb494c575609a410e5b492f3</code>.</p>
+<p><strong>Compiled and executed — 2026-11-17-a100: Host program/model (exit-only).</strong> Hardware: 8 A100 GPUs. Executed UTC: <code>2026-11-18T00:00:11.153780+00:00</code>.</p>
 </blockquote>
+<!-- execution:metadata Source SHA-256: afb0e2461806947cd7f0bc421aac900cd61a586feb494c575609a410e5b492f3; recorded UTC (program start): 2026-11-18T00:00:11.088863+00:00 -->
+
 <p><a href="../../validation/2026-11-17-a100/03_compute_wall/03_compute_wall.cpp">Exact tested source</a> · <a href="../../validation/2026-11-17-a100/03_compute_wall/compile.log">Compiler log</a> · <a href="../../validation/2026-11-17-a100/03_compute_wall/run.log">Execution log</a>. Compile exit: <code>0</code>; run exit: <code>0</code>.</p>
 <p>Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>g++<span class="w"> </span>-std<span class="o">=</span>c++17<span class="w"> </span>-O2<span class="w"> </span>03_compute_wall.cpp<span class="w"> </span>-o<span class="w"> </span>./example
-<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>./example
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>g++<span class="w"> </span>-std<span class="o">=</span>c++17<span class="w"> </span>-O2<span class="w"> </span>03_compute_wall.cpp<span class="w"> </span>-o<span class="w"> </span>./example
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>./example
 </code></pre></div>
-<details>
-<summary>Captured current-source output</summary>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>Total training compute (C = 6*N*D): 3.150e+23 FLOPs
-<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>N (parameters, approx.):            1.750e+11
-<a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a>D (tokens):                         3.000e+11
-<a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a>H100 SXM peak dense BF16/FP16:       9.890e+14 FLOP/s
-<a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a>
-<a id="__codelineno-11-6" name="__codelineno-11-6" href="#__codelineno-11-6"></a>GPU-days on a single H100 at 100% of peak (ideal, unreachable in practice): 3686.4
-<a id="__codelineno-11-7" name="__codelineno-11-7" href="#__codelineno-11-7"></a>GPU-days on a single H100 at an assumed 50% of peak (illustrative MFU, not measured):   7372.8
-<a id="__codelineno-11-8" name="__codelineno-11-8" href="#__codelineno-11-8"></a>Same total compute spread across 1024 such GPUs at the assumed 50% MFU: 7.20 days
+<p><strong>Sample output</strong></p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>Total training compute (C = 6*N*D): 3.150e+23 FLOPs
+<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>N (parameters, approx.):            1.750e+11
+<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>D (tokens):                         3.000e+11
+<a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a>H100 SXM peak dense BF16/FP16:       9.890e+14 FLOP/s
+<a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a>
+<a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a>GPU-days on a single H100 at 100% of peak (ideal, unreachable in practice): 3686.4
+<a id="__codelineno-10-7" name="__codelineno-10-7" href="#__codelineno-10-7"></a>GPU-days on a single H100 at an assumed 50% of peak (illustrative MFU, not measured):   7372.8
+<a id="__codelineno-10-8" name="__codelineno-10-8" href="#__codelineno-10-8"></a>Same total compute spread across 1024 such GPUs at the assumed 50% MFU: 7.20 days
 </code></pre></div>
-</details>
 <!-- execution:end:a100:03_compute_wall.cpp -->
 
 <!-- execution:start:h100:03_compute_wall.cpp -->
 <blockquote>
-<p><strong>Current execution — 2026-11-17-h100: Host program/model (exit-only).</strong> UTC (run-batch start; per-program time unrecorded): <code>2026-11-17T23:48:18.967387+00:00</code>. Source SHA-256: <code>afb0e2461806947cd7f0bc421aac900cd61a586feb494c575609a410e5b492f3</code>.</p>
+<p><strong>Compiled and executed — 2026-11-17-h100: Host program/model (exit-only).</strong> Hardware: 2 H100 GPUs. Execution record UTC (run-batch start; per-program time unrecorded): <code>2026-11-17T23:48:18.967387+00:00</code>.</p>
 </blockquote>
+<!-- execution:metadata Source SHA-256: afb0e2461806947cd7f0bc421aac900cd61a586feb494c575609a410e5b492f3; recorded UTC (run-batch start; per-program time unrecorded): 2026-11-17T23:48:18.967387+00:00 -->
+
 <p><a href="../../validation/2026-11-17-h100/03_compute_wall/03_compute_wall.cpp">Exact tested source</a> · <a href="../../validation/2026-11-17-h100/03_compute_wall/compile.log">Compiler log</a> · <a href="../../validation/2026-11-17-h100/03_compute_wall/run.log">Execution log</a>. Compile exit: <code>0</code>; run exit: <code>0</code>.</p>
 <p>Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>g++<span class="w"> </span>-std<span class="o">=</span>c++17<span class="w"> </span>-O2<span class="w"> </span>03_compute_wall.cpp<span class="w"> </span>-o<span class="w"> </span>./example
-<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a>./example
+<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>g++<span class="w"> </span>-std<span class="o">=</span>c++17<span class="w"> </span>-O2<span class="w"> </span>03_compute_wall.cpp<span class="w"> </span>-o<span class="w"> </span>./example
+<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>./example
 </code></pre></div>
 <details>
 <summary>Captured current-source output</summary>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a>Total training compute (C = 6*N*D): 3.150e+23 FLOPs
-<a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a>N (parameters, approx.):            1.750e+11
-<a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a>D (tokens):                         3.000e+11
-<a id="__codelineno-13-4" name="__codelineno-13-4" href="#__codelineno-13-4"></a>H100 SXM peak dense BF16/FP16:       9.890e+14 FLOP/s
-<a id="__codelineno-13-5" name="__codelineno-13-5" href="#__codelineno-13-5"></a>
-<a id="__codelineno-13-6" name="__codelineno-13-6" href="#__codelineno-13-6"></a>GPU-days on a single H100 at 100% of peak (ideal, unreachable in practice): 3686.4
-<a id="__codelineno-13-7" name="__codelineno-13-7" href="#__codelineno-13-7"></a>GPU-days on a single H100 at an assumed 50% of peak (illustrative MFU, not measured):   7372.8
-<a id="__codelineno-13-8" name="__codelineno-13-8" href="#__codelineno-13-8"></a>Same total compute spread across 1024 such GPUs at the assumed 50% MFU: 7.20 days
+<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>Total training compute (C = 6*N*D): 3.150e+23 FLOPs
+<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a>N (parameters, approx.):            1.750e+11
+<a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a>D (tokens):                         3.000e+11
+<a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a>H100 SXM peak dense BF16/FP16:       9.890e+14 FLOP/s
+<a id="__codelineno-12-5" name="__codelineno-12-5" href="#__codelineno-12-5"></a>
+<a id="__codelineno-12-6" name="__codelineno-12-6" href="#__codelineno-12-6"></a>GPU-days on a single H100 at 100% of peak (ideal, unreachable in practice): 3686.4
+<a id="__codelineno-12-7" name="__codelineno-12-7" href="#__codelineno-12-7"></a>GPU-days on a single H100 at an assumed 50% of peak (illustrative MFU, not measured):   7372.8
+<a id="__codelineno-12-8" name="__codelineno-12-8" href="#__codelineno-12-8"></a>Same total compute spread across 1024 such GPUs at the assumed 50% MFU: 7.20 days
 </code></pre></div>
 </details>
 <!-- execution:end:h100:03_compute_wall.cpp -->
 
-<div class="highlight"><pre><span></span><code><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a>g++<span class="w"> </span>-std<span class="o">=</span>c++17<span class="w"> </span>-Wall<span class="w"> </span>-Wextra<span class="w"> </span>-O2<span class="w"> </span>03_compute_wall.cpp<span class="w"> </span>-o<span class="w"> </span>compute_wall
-<a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a>./compute_wall
+<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a>g++<span class="w"> </span>-std<span class="o">=</span>c++17<span class="w"> </span>-Wall<span class="w"> </span>-Wextra<span class="w"> </span>-O2<span class="w"> </span>03_compute_wall.cpp<span class="w"> </span>-o<span class="w"> </span>compute_wall
+<a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a>./compute_wall
 </code></pre></div>
-<p>Output (genuinely compiled and run twice; identical both times, as expected of pure arithmetic with no timing or randomness involved):</p>
-<details>
-<summary>Historical authoring output — superseded by the current execution above</summary>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a>Total training compute (C = 6*N*D): 3.150e+23 FLOPs
-<a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a>N (parameters, approx.):            1.750e+11
-<a id="__codelineno-15-3" name="__codelineno-15-3" href="#__codelineno-15-3"></a>D (tokens):                         3.000e+11
-<a id="__codelineno-15-4" name="__codelineno-15-4" href="#__codelineno-15-4"></a>H100 SXM peak dense BF16/FP16:       9.890e+14 FLOP/s
-<a id="__codelineno-15-5" name="__codelineno-15-5" href="#__codelineno-15-5"></a>
-<a id="__codelineno-15-6" name="__codelineno-15-6" href="#__codelineno-15-6"></a>GPU-days on a single H100 at 100% of peak (ideal, unreachable in practice): 3686.4
-<a id="__codelineno-15-7" name="__codelineno-15-7" href="#__codelineno-15-7"></a>GPU-days on a single H100 at an assumed 50% of peak (illustrative MFU, not measured):   7372.8
-<a id="__codelineno-15-8" name="__codelineno-15-8" href="#__codelineno-15-8"></a>Same total compute spread across 1024 such GPUs at the assumed 50% MFU: 7.20 days
-</code></pre></div>
-</details>
 <p><strong>Model boundary, stated plainly:</strong> the <code>3686.4</code> and <code>7372.8</code> GPU-day figures are <em>not</em> timing measurements — nothing was clocked. They're a deterministic FLOP count (<code>3.150e+23</code>, computed exactly from Kaplan's formula) divided by a real, vendor-published peak-FLOPS figure (H100 SXM's 989 TFLOP/s dense Tensor Core throughput, no sparsity). The 50%-of-peak scenario is explicitly labeled as an illustrative assumption about achieved utilization (Model FLOPs Utilization, or MFU), not a measurement of anything — real training runs report MFU figures all over the 30-50% range depending on model, hardware, and how well the implementation overlaps communication with compute, itself a running theme starting in Part 2. Either way the conclusion is the same: <strong>over 10 years on one GPU even at ideal throughput (3686.4 days), over 20 years at the assumed 50% MFU (7372.8 days), or roughly a week on 1,024 of them at that same 50% MFU (7.20 days).</strong></p>
 <div class="admonition warning">
 <p class="admonition-title">[COMMON TRAP] Treating a model that "fits in memory" as a model that's actually trainable</p>
@@ -2941,108 +2917,101 @@
 <h3 id="intuition_2">Intuition<a class="headerlink" href="#intuition_2" title="Permanent link">&para;</a></h3>
 <p>Before ordering a fleet of trucks, the first thing any reasonable person checks is how many trucks are actually sitting in the lot right now — not how many the catalog describes, not how many a bigger budget could buy, but the literal count available this moment. <code>cudaGetDeviceCount()</code> is that check, and every multi-GPU program in this book, without exception, starts by asking the runtime this exact question before assuming an answer.</p>
 <h3 id="background_2">Background<a class="headerlink" href="#background_2" title="Permanent link">&para;</a></h3>
-<p><code>cudaGetDeviceCount()</code> is worth calling for real right here in Chapter 1, on this book's own authoring machine, because how it behaves <em>matters for the rest of the book</em>: every later chapter's multi-device logic is built on trusting this call's answer rather than assuming one.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a><span class="c1">// Chapter 1: Why One GPU Is Not Enough</span>
-<a id="__codelineno-16-2" name="__codelineno-16-2" href="#__codelineno-16-2"></a><span class="c1">// 01_device_query.cu</span>
-<a id="__codelineno-16-3" name="__codelineno-16-3" href="#__codelineno-16-3"></a><span class="c1">//</span>
-<a id="__codelineno-16-4" name="__codelineno-16-4" href="#__codelineno-16-4"></a><span class="c1">// A genuine CUDA Runtime API call, compiled with a real nvcc and genuinely</span>
-<a id="__codelineno-16-5" name="__codelineno-16-5" href="#__codelineno-16-5"></a><span class="c1">// executed. It does not simulate anything: cudaGetDeviceCount() either finds</span>
-<a id="__codelineno-16-6" name="__codelineno-16-6" href="#__codelineno-16-6"></a><span class="c1">// real devices or it doesn't, and this program prints exactly what the</span>
-<a id="__codelineno-16-7" name="__codelineno-16-7" href="#__codelineno-16-7"></a><span class="c1">// runtime reports back, whatever that is.</span>
-<a id="__codelineno-16-8" name="__codelineno-16-8" href="#__codelineno-16-8"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;cstdio&gt;</span>
-<a id="__codelineno-16-9" name="__codelineno-16-9" href="#__codelineno-16-9"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;cuda_runtime.h&gt;</span>
-<a id="__codelineno-16-10" name="__codelineno-16-10" href="#__codelineno-16-10"></a>
-<a id="__codelineno-16-11" name="__codelineno-16-11" href="#__codelineno-16-11"></a><span class="kt">int</span><span class="w"> </span><span class="nf">main</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
-<a id="__codelineno-16-12" name="__codelineno-16-12" href="#__codelineno-16-12"></a><span class="w">    </span><span class="kt">int</span><span class="w"> </span><span class="n">deviceCount</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
-<a id="__codelineno-16-13" name="__codelineno-16-13" href="#__codelineno-16-13"></a><span class="w">    </span><span class="n">cudaError_t</span><span class="w"> </span><span class="n">err</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">cudaGetDeviceCount</span><span class="p">(</span><span class="o">&amp;</span><span class="n">deviceCount</span><span class="p">);</span>
-<a id="__codelineno-16-14" name="__codelineno-16-14" href="#__codelineno-16-14"></a>
-<a id="__codelineno-16-15" name="__codelineno-16-15" href="#__codelineno-16-15"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">"cudaGetDeviceCount() returned: %s (code %d)</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span>
-<a id="__codelineno-16-16" name="__codelineno-16-16" href="#__codelineno-16-16"></a><span class="w">           </span><span class="n">cudaGetErrorString</span><span class="p">(</span><span class="n">err</span><span class="p">),</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="p">)</span><span class="n">err</span><span class="p">);</span>
-<a id="__codelineno-16-17" name="__codelineno-16-17" href="#__codelineno-16-17"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">"Reported device count: %d</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span><span class="w"> </span><span class="n">deviceCount</span><span class="p">);</span>
-<a id="__codelineno-16-18" name="__codelineno-16-18" href="#__codelineno-16-18"></a>
-<a id="__codelineno-16-19" name="__codelineno-16-19" href="#__codelineno-16-19"></a><span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">err</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="n">cudaSuccess</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="n">deviceCount</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="mi">0</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
-<a id="__codelineno-16-20" name="__codelineno-16-20" href="#__codelineno-16-20"></a><span class="w">        </span><span class="n">printf</span><span class="p">(</span><span class="s">"No usable CUDA device on this machine.</span><span class="se">\n</span><span class="s">"</span><span class="p">);</span>
-<a id="__codelineno-16-21" name="__codelineno-16-21" href="#__codelineno-16-21"></a><span class="w">        </span><span class="n">printf</span><span class="p">(</span><span class="s">"This is an honest, unmodified report from the CUDA "</span>
-<a id="__codelineno-16-22" name="__codelineno-16-22" href="#__codelineno-16-22"></a><span class="w">               </span><span class="s">"Runtime API -- not a placeholder.</span><span class="se">\n</span><span class="s">"</span><span class="p">);</span>
-<a id="__codelineno-16-23" name="__codelineno-16-23" href="#__codelineno-16-23"></a><span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
-<a id="__codelineno-16-24" name="__codelineno-16-24" href="#__codelineno-16-24"></a><span class="w">    </span><span class="p">}</span>
-<a id="__codelineno-16-25" name="__codelineno-16-25" href="#__codelineno-16-25"></a>
-<a id="__codelineno-16-26" name="__codelineno-16-26" href="#__codelineno-16-26"></a><span class="w">    </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="n">deviceCount</span><span class="p">;</span><span class="w"> </span><span class="o">++</span><span class="n">i</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
-<a id="__codelineno-16-27" name="__codelineno-16-27" href="#__codelineno-16-27"></a><span class="w">        </span><span class="n">cudaDeviceProp</span><span class="w"> </span><span class="n">prop</span><span class="p">;</span>
-<a id="__codelineno-16-28" name="__codelineno-16-28" href="#__codelineno-16-28"></a><span class="w">        </span><span class="n">cudaGetDeviceProperties</span><span class="p">(</span><span class="o">&amp;</span><span class="n">prop</span><span class="p">,</span><span class="w"> </span><span class="n">i</span><span class="p">);</span>
-<a id="__codelineno-16-29" name="__codelineno-16-29" href="#__codelineno-16-29"></a><span class="w">        </span><span class="kt">size_t</span><span class="w"> </span><span class="n">freeBytes</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="n">totalBytes</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
-<a id="__codelineno-16-30" name="__codelineno-16-30" href="#__codelineno-16-30"></a><span class="w">        </span><span class="n">cudaSetDevice</span><span class="p">(</span><span class="n">i</span><span class="p">);</span>
-<a id="__codelineno-16-31" name="__codelineno-16-31" href="#__codelineno-16-31"></a><span class="w">        </span><span class="n">cudaMemGetInfo</span><span class="p">(</span><span class="o">&amp;</span><span class="n">freeBytes</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">totalBytes</span><span class="p">);</span>
-<a id="__codelineno-16-32" name="__codelineno-16-32" href="#__codelineno-16-32"></a><span class="w">        </span><span class="n">printf</span><span class="p">(</span><span class="s">"Device %d: %s -- %.2f GB total, %.2f GB free, "</span>
-<a id="__codelineno-16-33" name="__codelineno-16-33" href="#__codelineno-16-33"></a><span class="w">               </span><span class="s">"compute capability %d.%d</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span>
-<a id="__codelineno-16-34" name="__codelineno-16-34" href="#__codelineno-16-34"></a><span class="w">               </span><span class="n">i</span><span class="p">,</span><span class="w"> </span><span class="n">prop</span><span class="p">.</span><span class="n">name</span><span class="p">,</span>
-<a id="__codelineno-16-35" name="__codelineno-16-35" href="#__codelineno-16-35"></a><span class="w">               </span><span class="n">totalBytes</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="mf">1e9</span><span class="p">,</span><span class="w"> </span><span class="n">freeBytes</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="mf">1e9</span><span class="p">,</span>
-<a id="__codelineno-16-36" name="__codelineno-16-36" href="#__codelineno-16-36"></a><span class="w">               </span><span class="n">prop</span><span class="p">.</span><span class="n">major</span><span class="p">,</span><span class="w"> </span><span class="n">prop</span><span class="p">.</span><span class="n">minor</span><span class="p">);</span>
-<a id="__codelineno-16-37" name="__codelineno-16-37" href="#__codelineno-16-37"></a><span class="w">    </span><span class="p">}</span>
-<a id="__codelineno-16-38" name="__codelineno-16-38" href="#__codelineno-16-38"></a><span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
-<a id="__codelineno-16-39" name="__codelineno-16-39" href="#__codelineno-16-39"></a><span class="p">}</span>
+<p>Call <code>cudaGetDeviceCount()</code> before constructing a multi-device workload. Its result determines which ordinals are available to the process.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a><span class="c1">// Chapter 1: Why One GPU Is Not Enough</span>
+<a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a><span class="c1">// 01_device_query.cu</span>
+<a id="__codelineno-14-3" name="__codelineno-14-3" href="#__codelineno-14-3"></a><span class="c1">//</span>
+<a id="__codelineno-14-4" name="__codelineno-14-4" href="#__codelineno-14-4"></a><span class="c1">// A genuine CUDA Runtime API call, compiled with a real nvcc and genuinely</span>
+<a id="__codelineno-14-5" name="__codelineno-14-5" href="#__codelineno-14-5"></a><span class="c1">// executed. It does not simulate anything: cudaGetDeviceCount() either finds</span>
+<a id="__codelineno-14-6" name="__codelineno-14-6" href="#__codelineno-14-6"></a><span class="c1">// real devices or it doesn't, and this program prints exactly what the</span>
+<a id="__codelineno-14-7" name="__codelineno-14-7" href="#__codelineno-14-7"></a><span class="c1">// runtime reports back, whatever that is.</span>
+<a id="__codelineno-14-8" name="__codelineno-14-8" href="#__codelineno-14-8"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;cstdio&gt;</span>
+<a id="__codelineno-14-9" name="__codelineno-14-9" href="#__codelineno-14-9"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;cuda_runtime.h&gt;</span>
+<a id="__codelineno-14-10" name="__codelineno-14-10" href="#__codelineno-14-10"></a>
+<a id="__codelineno-14-11" name="__codelineno-14-11" href="#__codelineno-14-11"></a><span class="kt">int</span><span class="w"> </span><span class="nf">main</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-14-12" name="__codelineno-14-12" href="#__codelineno-14-12"></a><span class="w">    </span><span class="kt">int</span><span class="w"> </span><span class="n">deviceCount</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
+<a id="__codelineno-14-13" name="__codelineno-14-13" href="#__codelineno-14-13"></a><span class="w">    </span><span class="n">cudaError_t</span><span class="w"> </span><span class="n">err</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">cudaGetDeviceCount</span><span class="p">(</span><span class="o">&amp;</span><span class="n">deviceCount</span><span class="p">);</span>
+<a id="__codelineno-14-14" name="__codelineno-14-14" href="#__codelineno-14-14"></a>
+<a id="__codelineno-14-15" name="__codelineno-14-15" href="#__codelineno-14-15"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">"cudaGetDeviceCount() returned: %s (code %d)</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span>
+<a id="__codelineno-14-16" name="__codelineno-14-16" href="#__codelineno-14-16"></a><span class="w">           </span><span class="n">cudaGetErrorString</span><span class="p">(</span><span class="n">err</span><span class="p">),</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="p">)</span><span class="n">err</span><span class="p">);</span>
+<a id="__codelineno-14-17" name="__codelineno-14-17" href="#__codelineno-14-17"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">"Reported device count: %d</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span><span class="w"> </span><span class="n">deviceCount</span><span class="p">);</span>
+<a id="__codelineno-14-18" name="__codelineno-14-18" href="#__codelineno-14-18"></a>
+<a id="__codelineno-14-19" name="__codelineno-14-19" href="#__codelineno-14-19"></a><span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">err</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="n">cudaSuccess</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="n">deviceCount</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="mi">0</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-14-20" name="__codelineno-14-20" href="#__codelineno-14-20"></a><span class="w">        </span><span class="n">printf</span><span class="p">(</span><span class="s">"No usable CUDA device on this machine.</span><span class="se">\n</span><span class="s">"</span><span class="p">);</span>
+<a id="__codelineno-14-21" name="__codelineno-14-21" href="#__codelineno-14-21"></a><span class="w">        </span><span class="n">printf</span><span class="p">(</span><span class="s">"This is an honest, unmodified report from the CUDA "</span>
+<a id="__codelineno-14-22" name="__codelineno-14-22" href="#__codelineno-14-22"></a><span class="w">               </span><span class="s">"Runtime API -- not a placeholder.</span><span class="se">\n</span><span class="s">"</span><span class="p">);</span>
+<a id="__codelineno-14-23" name="__codelineno-14-23" href="#__codelineno-14-23"></a><span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
+<a id="__codelineno-14-24" name="__codelineno-14-24" href="#__codelineno-14-24"></a><span class="w">    </span><span class="p">}</span>
+<a id="__codelineno-14-25" name="__codelineno-14-25" href="#__codelineno-14-25"></a>
+<a id="__codelineno-14-26" name="__codelineno-14-26" href="#__codelineno-14-26"></a><span class="w">    </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="n">deviceCount</span><span class="p">;</span><span class="w"> </span><span class="o">++</span><span class="n">i</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-14-27" name="__codelineno-14-27" href="#__codelineno-14-27"></a><span class="w">        </span><span class="n">cudaDeviceProp</span><span class="w"> </span><span class="n">prop</span><span class="p">;</span>
+<a id="__codelineno-14-28" name="__codelineno-14-28" href="#__codelineno-14-28"></a><span class="w">        </span><span class="n">cudaGetDeviceProperties</span><span class="p">(</span><span class="o">&amp;</span><span class="n">prop</span><span class="p">,</span><span class="w"> </span><span class="n">i</span><span class="p">);</span>
+<a id="__codelineno-14-29" name="__codelineno-14-29" href="#__codelineno-14-29"></a><span class="w">        </span><span class="kt">size_t</span><span class="w"> </span><span class="n">freeBytes</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="n">totalBytes</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
+<a id="__codelineno-14-30" name="__codelineno-14-30" href="#__codelineno-14-30"></a><span class="w">        </span><span class="n">cudaSetDevice</span><span class="p">(</span><span class="n">i</span><span class="p">);</span>
+<a id="__codelineno-14-31" name="__codelineno-14-31" href="#__codelineno-14-31"></a><span class="w">        </span><span class="n">cudaMemGetInfo</span><span class="p">(</span><span class="o">&amp;</span><span class="n">freeBytes</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">totalBytes</span><span class="p">);</span>
+<a id="__codelineno-14-32" name="__codelineno-14-32" href="#__codelineno-14-32"></a><span class="w">        </span><span class="n">printf</span><span class="p">(</span><span class="s">"Device %d: %s -- %.2f GB total, %.2f GB free, "</span>
+<a id="__codelineno-14-33" name="__codelineno-14-33" href="#__codelineno-14-33"></a><span class="w">               </span><span class="s">"compute capability %d.%d</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span>
+<a id="__codelineno-14-34" name="__codelineno-14-34" href="#__codelineno-14-34"></a><span class="w">               </span><span class="n">i</span><span class="p">,</span><span class="w"> </span><span class="n">prop</span><span class="p">.</span><span class="n">name</span><span class="p">,</span>
+<a id="__codelineno-14-35" name="__codelineno-14-35" href="#__codelineno-14-35"></a><span class="w">               </span><span class="n">totalBytes</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="mf">1e9</span><span class="p">,</span><span class="w"> </span><span class="n">freeBytes</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="mf">1e9</span><span class="p">,</span>
+<a id="__codelineno-14-36" name="__codelineno-14-36" href="#__codelineno-14-36"></a><span class="w">               </span><span class="n">prop</span><span class="p">.</span><span class="n">major</span><span class="p">,</span><span class="w"> </span><span class="n">prop</span><span class="p">.</span><span class="n">minor</span><span class="p">);</span>
+<a id="__codelineno-14-37" name="__codelineno-14-37" href="#__codelineno-14-37"></a><span class="w">    </span><span class="p">}</span>
+<a id="__codelineno-14-38" name="__codelineno-14-38" href="#__codelineno-14-38"></a><span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
+<a id="__codelineno-14-39" name="__codelineno-14-39" href="#__codelineno-14-39"></a><span class="p">}</span>
 </code></pre></div>
 <!-- execution:start:a100:01_device_query.cu -->
 <blockquote>
-<p><strong>Current execution — 2026-11-17-a100: API/host demonstration (exit-only).</strong> UTC (program start): <code>2026-11-18T00:00:04.726059+00:00</code>. Source SHA-256: <code>4a14f312d6406e432c3bd12214a99f9e37288c7dea955f587460413a11d333cc</code>.</p>
+<p><strong>Compiled and executed — 2026-11-17-a100: API/host demonstration (exit-only).</strong> Hardware: 8 A100 GPUs. Executed UTC: <code>2026-11-18T00:00:05.793304+00:00</code>.</p>
 </blockquote>
+<!-- execution:metadata Source SHA-256: 4a14f312d6406e432c3bd12214a99f9e37288c7dea955f587460413a11d333cc; recorded UTC (program start): 2026-11-18T00:00:04.726059+00:00 -->
+
 <p><a href="../../validation/2026-11-17-a100/01_device_query/01_device_query.cu">Exact tested source</a> · <a href="../../validation/2026-11-17-a100/01_device_query/compile.log">Compiler log</a> · <a href="../../validation/2026-11-17-a100/01_device_query/run.log">Execution log</a>. Compile exit: <code>0</code>; run exit: <code>0</code>.</p>
 <p>Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a>nvcc<span class="w"> </span>-std<span class="o">=</span>c++17<span class="w"> </span>-O2<span class="w"> </span>-arch<span class="o">=</span>sm_80<span class="w"> </span>01_device_query.cu<span class="w"> </span>-o<span class="w"> </span>./example
+<div class="highlight"><pre><span></span><code><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a>nvcc<span class="w"> </span>-std<span class="o">=</span>c++17<span class="w"> </span>-O2<span class="w"> </span>-arch<span class="o">=</span>sm_80<span class="w"> </span>01_device_query.cu<span class="w"> </span>-o<span class="w"> </span>./example
+<a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a>./example
+</code></pre></div>
+<p><strong>Sample output</strong></p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a>cudaGetDeviceCount() returned: no error (code 0)
+<a id="__codelineno-16-2" name="__codelineno-16-2" href="#__codelineno-16-2"></a>Reported device count: 8
+<a id="__codelineno-16-3" name="__codelineno-16-3" href="#__codelineno-16-3"></a>Device 0: NVIDIA A100-SXM4-40GB -- 42.41 GB total, 41.96 GB free, compute capability 8.0
+<a id="__codelineno-16-4" name="__codelineno-16-4" href="#__codelineno-16-4"></a>Device 1: NVIDIA A100-SXM4-40GB -- 42.41 GB total, 41.96 GB free, compute capability 8.0
+<a id="__codelineno-16-5" name="__codelineno-16-5" href="#__codelineno-16-5"></a>Device 2: NVIDIA A100-SXM4-40GB -- 42.41 GB total, 41.96 GB free, compute capability 8.0
+<a id="__codelineno-16-6" name="__codelineno-16-6" href="#__codelineno-16-6"></a>Device 3: NVIDIA A100-SXM4-40GB -- 42.41 GB total, 41.96 GB free, compute capability 8.0
+<a id="__codelineno-16-7" name="__codelineno-16-7" href="#__codelineno-16-7"></a>Device 4: NVIDIA A100-SXM4-40GB -- 42.41 GB total, 41.96 GB free, compute capability 8.0
+<a id="__codelineno-16-8" name="__codelineno-16-8" href="#__codelineno-16-8"></a>Device 5: NVIDIA A100-SXM4-40GB -- 42.41 GB total, 41.96 GB free, compute capability 8.0
+<a id="__codelineno-16-9" name="__codelineno-16-9" href="#__codelineno-16-9"></a>Device 6: NVIDIA A100-SXM4-40GB -- 42.41 GB total, 41.96 GB free, compute capability 8.0
+<a id="__codelineno-16-10" name="__codelineno-16-10" href="#__codelineno-16-10"></a>Device 7: NVIDIA A100-SXM4-40GB -- 42.41 GB total, 41.96 GB free, compute capability 8.0
+</code></pre></div>
+<!-- execution:end:a100:01_device_query.cu -->
+
+<!-- execution:start:h100:01_device_query.cu -->
+<blockquote>
+<p><strong>Compiled and executed — 2026-11-17-h100: API/host demonstration (exit-only).</strong> Hardware: 2 H100 GPUs. Execution record UTC (run-batch start; per-program time unrecorded): <code>2026-11-17T23:48:18.967387+00:00</code>.</p>
+</blockquote>
+<!-- execution:metadata Source SHA-256: 4a14f312d6406e432c3bd12214a99f9e37288c7dea955f587460413a11d333cc; recorded UTC (run-batch start; per-program time unrecorded): 2026-11-17T23:48:18.967387+00:00 -->
+
+<p><a href="../../validation/2026-11-17-h100/01_device_query/01_device_query.cu">Exact tested source</a> · <a href="../../validation/2026-11-17-h100/01_device_query/compile.log">Compiler log</a> · <a href="../../validation/2026-11-17-h100/01_device_query/run.log">Execution log</a>. Compile exit: <code>0</code>; run exit: <code>0</code>.</p>
+<p>Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a>nvcc<span class="w"> </span>-std<span class="o">=</span>c++17<span class="w"> </span>-O2<span class="w"> </span>-arch<span class="o">=</span>sm_90<span class="w"> </span>01_device_query.cu<span class="w"> </span>-o<span class="w"> </span>./example
 <a id="__codelineno-17-2" name="__codelineno-17-2" href="#__codelineno-17-2"></a>./example
 </code></pre></div>
 <details>
 <summary>Captured current-source output</summary>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-18-1" name="__codelineno-18-1" href="#__codelineno-18-1"></a>cudaGetDeviceCount() returned: no error (code 0)
-<a id="__codelineno-18-2" name="__codelineno-18-2" href="#__codelineno-18-2"></a>Reported device count: 8
-<a id="__codelineno-18-3" name="__codelineno-18-3" href="#__codelineno-18-3"></a>Device 0: NVIDIA A100-SXM4-40GB -- 42.41 GB total, 41.96 GB free, compute capability 8.0
-<a id="__codelineno-18-4" name="__codelineno-18-4" href="#__codelineno-18-4"></a>Device 1: NVIDIA A100-SXM4-40GB -- 42.41 GB total, 41.96 GB free, compute capability 8.0
-<a id="__codelineno-18-5" name="__codelineno-18-5" href="#__codelineno-18-5"></a>Device 2: NVIDIA A100-SXM4-40GB -- 42.41 GB total, 41.96 GB free, compute capability 8.0
-<a id="__codelineno-18-6" name="__codelineno-18-6" href="#__codelineno-18-6"></a>Device 3: NVIDIA A100-SXM4-40GB -- 42.41 GB total, 41.96 GB free, compute capability 8.0
-<a id="__codelineno-18-7" name="__codelineno-18-7" href="#__codelineno-18-7"></a>Device 4: NVIDIA A100-SXM4-40GB -- 42.41 GB total, 41.96 GB free, compute capability 8.0
-<a id="__codelineno-18-8" name="__codelineno-18-8" href="#__codelineno-18-8"></a>Device 5: NVIDIA A100-SXM4-40GB -- 42.41 GB total, 41.96 GB free, compute capability 8.0
-<a id="__codelineno-18-9" name="__codelineno-18-9" href="#__codelineno-18-9"></a>Device 6: NVIDIA A100-SXM4-40GB -- 42.41 GB total, 41.96 GB free, compute capability 8.0
-<a id="__codelineno-18-10" name="__codelineno-18-10" href="#__codelineno-18-10"></a>Device 7: NVIDIA A100-SXM4-40GB -- 42.41 GB total, 41.96 GB free, compute capability 8.0
-</code></pre></div>
-</details>
-<!-- execution:end:a100:01_device_query.cu -->
-
-<!-- execution:start:h100:01_device_query.cu -->
-<blockquote>
-<p><strong>Current execution — 2026-11-17-h100: API/host demonstration (exit-only).</strong> UTC (run-batch start; per-program time unrecorded): <code>2026-11-17T23:48:18.967387+00:00</code>. Source SHA-256: <code>4a14f312d6406e432c3bd12214a99f9e37288c7dea955f587460413a11d333cc</code>.</p>
-</blockquote>
-<p><a href="../../validation/2026-11-17-h100/01_device_query/01_device_query.cu">Exact tested source</a> · <a href="../../validation/2026-11-17-h100/01_device_query/compile.log">Compiler log</a> · <a href="../../validation/2026-11-17-h100/01_device_query/run.log">Execution log</a>. Compile exit: <code>0</code>; run exit: <code>0</code>.</p>
-<p>Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-19-1" name="__codelineno-19-1" href="#__codelineno-19-1"></a>nvcc<span class="w"> </span>-std<span class="o">=</span>c++17<span class="w"> </span>-O2<span class="w"> </span>-arch<span class="o">=</span>sm_90<span class="w"> </span>01_device_query.cu<span class="w"> </span>-o<span class="w"> </span>./example
-<a id="__codelineno-19-2" name="__codelineno-19-2" href="#__codelineno-19-2"></a>./example
-</code></pre></div>
-<details>
-<summary>Captured current-source output</summary>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-20-1" name="__codelineno-20-1" href="#__codelineno-20-1"></a>cudaGetDeviceCount() returned: no error (code 0)
-<a id="__codelineno-20-2" name="__codelineno-20-2" href="#__codelineno-20-2"></a>Reported device count: 2
-<a id="__codelineno-20-3" name="__codelineno-20-3" href="#__codelineno-20-3"></a>Device 0: NVIDIA H100 80GB HBM3 -- 85.02 GB total, 84.47 GB free, compute capability 9.0
-<a id="__codelineno-20-4" name="__codelineno-20-4" href="#__codelineno-20-4"></a>Device 1: NVIDIA H100 80GB HBM3 -- 85.02 GB total, 84.47 GB free, compute capability 9.0
+<a id="__codelineno-18-2" name="__codelineno-18-2" href="#__codelineno-18-2"></a>Reported device count: 2
+<a id="__codelineno-18-3" name="__codelineno-18-3" href="#__codelineno-18-3"></a>Device 0: NVIDIA H100 80GB HBM3 -- 85.02 GB total, 84.47 GB free, compute capability 9.0
+<a id="__codelineno-18-4" name="__codelineno-18-4" href="#__codelineno-18-4"></a>Device 1: NVIDIA H100 80GB HBM3 -- 85.02 GB total, 84.47 GB free, compute capability 9.0
 </code></pre></div>
 </details>
 <!-- execution:end:h100:01_device_query.cu -->
 
-<div class="highlight"><pre><span></span><code><a id="__codelineno-21-1" name="__codelineno-21-1" href="#__codelineno-21-1"></a>nvcc<span class="w"> </span>-arch<span class="o">=</span>sm_80<span class="w"> </span>01_device_query.cu<span class="w"> </span>-o<span class="w"> </span>device_query
-<a id="__codelineno-21-2" name="__codelineno-21-2" href="#__codelineno-21-2"></a>./device_query
+<div class="highlight"><pre><span></span><code><a id="__codelineno-19-1" name="__codelineno-19-1" href="#__codelineno-19-1"></a>nvcc<span class="w"> </span>-arch<span class="o">=</span>sm_80<span class="w"> </span>01_device_query.cu<span class="w"> </span>-o<span class="w"> </span>device_query
+<a id="__codelineno-19-2" name="__codelineno-19-2" href="#__codelineno-19-2"></a>./device_query
 </code></pre></div>
-<p>Output (genuinely compiled with a real <code>nvcc</code> and genuinely run; identical across three consecutive runs):</p>
-<details>
-<summary>Historical authoring output — superseded by the current execution above</summary>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-22-1" name="__codelineno-22-1" href="#__codelineno-22-1"></a>cudaGetDeviceCount() returned: no CUDA-capable device is detected (code 100)
-<a id="__codelineno-22-2" name="__codelineno-22-2" href="#__codelineno-22-2"></a>Reported device count: 0
-<a id="__codelineno-22-3" name="__codelineno-22-3" href="#__codelineno-22-3"></a>No usable CUDA device on this machine.
-<a id="__codelineno-22-4" name="__codelineno-22-4" href="#__codelineno-22-4"></a>This is an honest, unmodified report from the CUDA Runtime API -- not a placeholder.
-</code></pre></div>
-</details>
-<p>The earlier authoring transcript reports a device-less host. The current H100 record executes this query on two visible GPUs. A count query checks discovery only; it is not a numerical workload or topology benchmark.</p>
+<p>The recorded queries discover two H100 devices and eight A100 devices. Discovery is the first setup check; topology and workload results follow in later examples.</p>
 <p>The <a href="../../validation-h100/">2026-11-17 H100 execution record</a> covers two GPUs connected by local NV18. It distinguishes numerical checks, API probes and other executions; a successful exit alone does not establish GPU algorithm correctness.</p>
 <div class="admonition warning">
-<p class="admonition-title">[COMMON TRAP] Hard-coding a device count instead of asking for one</p>
-<p>A program that assumes "there are 2 GPUs" (or 4, or 8) because that's what the machine it was first written on happened to have will crash or misbehave the moment it runs anywhere else — including, honestly, right here. Every device-touching example from Chapter 3 onward loops over whatever <code>cudaGetDeviceCount()</code> actually reports, which is what lets this exact, unmodified source run correctly on a machine with zero devices, one device, or a thousand.</p>
+<p class="admonition-title">[COMMON TRAP] Hard-coding a device count</p>
+<p>Query the devices visible to the process, check the result, and select the participants required by the workload. Report an unmet prerequisite instead of using an unavailable ordinal.</p>
 </div>
 <h2 id="chapter-summary">Chapter Summary<a class="headerlink" href="#chapter-summary" title="Permanent link">&para;</a></h2>
 <p>"Not enough" splits into two independent failures: the memory-capacity wall, a hard binary limit measured exactly in bytes (Section 1.1 found GPT-3's training state needs 35 H100 SXM GPUs' worth of memory, using ZeRO's real 16-bytes-per-parameter mixed-precision Adam breakdown), and the compute-throughput wall, a rate limit measured in FLOPs against a real peak-FLOPS figure (Section 1.2 found the same model needs over 10 years on one GPU even at ideal throughput, and over 20 years at an assumed 50% MFU, using Kaplan's real <code>C≈6ND</code> compute formula). Both walls have the same structural fix — stop asking one device to hold and do everything — but splitting work across devices creates a problem neither wall had: the pieces now have to communicate, correctly and fast enough that communication doesn't become the new bottleneck. Section 1.3's <code>cudaGetDeviceCount()</code> call is the first, smallest piece of the machinery every later chapter uses to manage that communication, and its current H100 result reports real device discovery; this query alone does not validate a numerical GPU algorithm.</p>

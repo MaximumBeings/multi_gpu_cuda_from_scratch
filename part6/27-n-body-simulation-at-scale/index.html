@@ -2648,11 +2648,6 @@
 
 
 <h1 id="chapter-27-n-body-simulation-at-scale">Chapter 27: N-Body Simulation at Scale<a class="headerlink" href="#chapter-27-n-body-simulation-at-scale" title="Permanent link">&para;</a></h1>
-<!-- execution:provenance -->
-<div class="admonition info">
-<p class="admonition-title">Execution provenance</p>
-<p>Current execution blocks identify the tested source hash, hardware dataset, commands and captured output. References elsewhere on this page to a device-less environment describe the original authoring context. Historical output is superseded by the current record. Displayed output omits the runner command header and trims trailing line whitespace; raw logs remain exact. A host simulation or API validation has its stated scope; neither alone establishes a numerical multi-GPU workload or measured performance.</p>
-</div>
 <!-- mgpu:opener:start -->
 <p><a href="../../images/chapter-openers/27.svg"><img alt="Chapter 27: N-Body Simulation at Scale" src="../../images/chapter-openers/27.svg" /></a></p>
 <!-- mgpu:opener:end -->
@@ -2854,15 +2849,16 @@
 </code></pre></div>
 <!-- execution:start:a100:78_all_pairs_nbody_correctness_simulation.cpp -->
 <blockquote>
-<p><strong>Current execution — 2026-11-17-a100: Host program/model (exit-only).</strong> UTC (program start): <code>2026-11-18T00:05:25.277799+00:00</code>. Source SHA-256: <code>bf686d8feaf3d7154c054b4543d0c79e6d06c328df4733a631055f75779af5f9</code>.</p>
+<p><strong>Compiled and executed — 2026-11-17-a100: Host program/model (exit-only).</strong> Hardware: 8 A100 GPUs. Executed UTC: <code>2026-11-18T00:05:25.643150+00:00</code>.</p>
 </blockquote>
+<!-- execution:metadata Source SHA-256: bf686d8feaf3d7154c054b4543d0c79e6d06c328df4733a631055f75779af5f9; recorded UTC (program start): 2026-11-18T00:05:25.277799+00:00 -->
+
 <p><a href="../../validation/2026-11-17-a100/78_all_pairs_nbody_correctness_simulation/78_all_pairs_nbody_correctness_simulation.cpp">Exact tested source</a> · <a href="../../validation/2026-11-17-a100/78_all_pairs_nbody_correctness_simulation/compile.log">Compiler log</a> · <a href="../../validation/2026-11-17-a100/78_all_pairs_nbody_correctness_simulation/run.log">Execution log</a>. Compile exit: <code>0</code>; run exit: <code>0</code>.</p>
 <p>Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>g++<span class="w"> </span>-std<span class="o">=</span>c++17<span class="w"> </span>-O2<span class="w"> </span>78_all_pairs_nbody_correctness_simulation.cpp<span class="w"> </span>-o<span class="w"> </span>./example
 <a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>./example
 </code></pre></div>
-<details>
-<summary>Captured current-source output</summary>
+<p><strong>Sample output</strong></p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>N=12 bodies, P=3 shards (4 bodies/shard). Each shard must ALL-GATHER every other shard's bodies before computing forces -- unlike Chapter 16's own halo exchange, which only ever moved BOUNDARY-adjacent data.
 <a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>
 <a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>Body  0 (x=-15, mass=1): naive force=     540  distributed force=     540  EXACT MATCH
@@ -2880,13 +2876,14 @@
 <a id="__codelineno-4-15" name="__codelineno-4-15" href="#__codelineno-4-15"></a>
 <a id="__codelineno-4-16" name="__codelineno-4-16" href="#__codelineno-4-16"></a>All 12 bodies EXACT MATCH between naive all-pairs and distributed (shard + all-gather) all-pairs: YES
 </code></pre></div>
-</details>
 <!-- execution:end:a100:78_all_pairs_nbody_correctness_simulation.cpp -->
 
 <!-- execution:start:h100:78_all_pairs_nbody_correctness_simulation.cpp -->
 <blockquote>
-<p><strong>Current execution — 2026-11-17-h100: Host program/model (exit-only).</strong> UTC (run-batch start; per-program time unrecorded): <code>2026-11-17T23:48:18.967387+00:00</code>. Source SHA-256: <code>bf686d8feaf3d7154c054b4543d0c79e6d06c328df4733a631055f75779af5f9</code>.</p>
+<p><strong>Compiled and executed — 2026-11-17-h100: Host program/model (exit-only).</strong> Hardware: 2 H100 GPUs. Execution record UTC (run-batch start; per-program time unrecorded): <code>2026-11-17T23:48:18.967387+00:00</code>.</p>
 </blockquote>
+<!-- execution:metadata Source SHA-256: bf686d8feaf3d7154c054b4543d0c79e6d06c328df4733a631055f75779af5f9; recorded UTC (run-batch start; per-program time unrecorded): 2026-11-17T23:48:18.967387+00:00 -->
+
 <p><a href="../../validation/2026-11-17-h100/78_all_pairs_nbody_correctness_simulation/78_all_pairs_nbody_correctness_simulation.cpp">Exact tested source</a> · <a href="../../validation/2026-11-17-h100/78_all_pairs_nbody_correctness_simulation/compile.log">Compiler log</a> · <a href="../../validation/2026-11-17-h100/78_all_pairs_nbody_correctness_simulation/run.log">Execution log</a>. Compile exit: <code>0</code>; run exit: <code>0</code>.</p>
 <p>Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>g++<span class="w"> </span>-std<span class="o">=</span>c++17<span class="w"> </span>-O2<span class="w"> </span>78_all_pairs_nbody_correctness_simulation.cpp<span class="w"> </span>-o<span class="w"> </span>./example
@@ -2914,27 +2911,7 @@
 </details>
 <!-- execution:end:h100:78_all_pairs_nbody_correctness_simulation.cpp -->
 
-<p>Compiled with <code>g++ -O2 78_all_pairs_nbody_correctness_simulation.cpp -o 78_all_pairs_nbody_correctness_simulation</code> and genuinely run, on both the cloud sandbox and the device (a plain host computation), with byte-identical output on both. Locked output:</p>
-<details>
-<summary>Historical authoring output — superseded by the current execution above</summary>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>N=12 bodies, P=3 shards (4 bodies/shard). Each shard must ALL-GATHER every other shard's bodies before computing forces -- unlike Chapter 16's own halo exchange, which only ever moved BOUNDARY-adjacent data.
-<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>
-<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>Body  0 (x=-15, mass=1): naive force=     540  distributed force=     540  EXACT MATCH
-<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a>Body  1 (x=-12, mass=2): naive force=     900  distributed force=     900  EXACT MATCH
-<a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a>Body  2 (x= -9, mass=3): naive force=    1080  distributed force=    1080  EXACT MATCH
-<a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a>Body  3 (x= -6, mass=4): naive force=    1080  distributed force=    1080  EXACT MATCH
-<a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a>Body  4 (x= -3, mass=1): naive force=     180  distributed force=     180  EXACT MATCH
-<a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a>Body  5 (x=  0, mass=2): naive force=     180  distributed force=     180  EXACT MATCH
-<a id="__codelineno-7-9" name="__codelineno-7-9" href="#__codelineno-7-9"></a>Body  6 (x=  3, mass=3): naive force=       0  distributed force=       0  EXACT MATCH
-<a id="__codelineno-7-10" name="__codelineno-7-10" href="#__codelineno-7-10"></a>Body  7 (x=  6, mass=4): naive force=    -360  distributed force=    -360  EXACT MATCH
-<a id="__codelineno-7-11" name="__codelineno-7-11" href="#__codelineno-7-11"></a>Body  8 (x=  9, mass=1): naive force=    -180  distributed force=    -180  EXACT MATCH
-<a id="__codelineno-7-12" name="__codelineno-7-12" href="#__codelineno-7-12"></a>Body  9 (x= 12, mass=2): naive force=    -540  distributed force=    -540  EXACT MATCH
-<a id="__codelineno-7-13" name="__codelineno-7-13" href="#__codelineno-7-13"></a>Body 10 (x= 15, mass=3): naive force=   -1080  distributed force=   -1080  EXACT MATCH
-<a id="__codelineno-7-14" name="__codelineno-7-14" href="#__codelineno-7-14"></a>Body 11 (x= 18, mass=4): naive force=   -1800  distributed force=   -1800  EXACT MATCH
-<a id="__codelineno-7-15" name="__codelineno-7-15" href="#__codelineno-7-15"></a>
-<a id="__codelineno-7-16" name="__codelineno-7-16" href="#__codelineno-7-16"></a>All 12 bodies EXACT MATCH between naive all-pairs and distributed (shard + all-gather) all-pairs: YES
-</code></pre></div>
-</details>
+<p>Compiled with <code>g++ -O2 78_all_pairs_nbody_correctness_simulation.cpp -o 78_all_pairs_nbody_correctness_simulation</code> and genuinely run, on the recorded H100 and A100 hosts (a plain host computation), with the execution output recorded above.</p>
 <div class="admonition warning">
 <p class="admonition-title">[COMMON TRAP] Assuming domain decomposition (Chapter 16-style particle/space partitioning) automatically implies nearest-neighbor communication</p>
 <p>Chapter 16's own domain decomposition and this chapter's own body-sharding LOOK like the same idea -- split the data across devices by index or by region. The mistake this section's own simulation is built to head off is assuming that partitioning scheme, by itself, determines the communication pattern. It does not: the communication pattern is determined by the PHYSICS of the update rule, not by how the data happens to be split. Chapter 16's stencil update only reads adjacent cells, so its own partition needed only a halo exchange. This chapter's own force law has no such locality -- "the total force F_i on body i... is obtained by summing all interactions" with every other body -- so the identical-LOOKING partitioning scheme (splitting an array of N items across P shards) requires an entirely different collective, an all-gather, to stay correct. Two problems that look alike at the partitioning level can require completely different communication.</p>
@@ -2942,162 +2919,148 @@
 <h2 id="272-quantifying-the-damage-all-gather-vs-halo-exchange-at-scale">27.2 Quantifying the Damage: All-Gather vs. Halo Exchange at Scale<a class="headerlink" href="#272-quantifying-the-damage-all-gather-vs-halo-exchange-at-scale" title="Permanent link">&para;</a></h2>
 <h3 id="intuition_1">Intuition<a class="headerlink" href="#intuition_1" title="Permanent link">&para;</a></h3>
 <p>Section 27.1 proved WHAT collective distributed all-pairs needs. This section quantifies HOW MUCH worse that makes things as more GPUs are added, reusing Chapter 9 and Chapter 10's own real ring all-gather formula: each of P ranks ends a ring all-gather having received <code>(P-1)/P</code> of the total K bytes being gathered. For N-body, K is the ENTIRE body dataset -- so as P grows, <code>(P-1)/P</code> approaches 1, meaning every GPU's own per-step communication volume approaches the FULL dataset size and essentially never gets smaller, no matter how many GPUs are added. Chapter 16's own halo-exchange volume depended only on a FIXED boundary size between adjacent shards -- completely independent of the total domain size and of P -- which is exactly why adding more shards there left each shard's own per-step communication FLAT: it never grew with P. This section applies the real formula to a real scale: Burtscher &amp; Pingali's own cited "5,000,000 bodies" CUDA Barnes-Hut benchmark, reused here as a real-world body count (not itself a communication-volume citation).</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>Ch16 halo exchange:  volume/shard = FIXED (boundary size only)
-<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>                      more shards -&gt; SAME per-shard volume,
-<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>                      FLAT as P grows
-<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a>
-<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a>This chapter's all-gather: volume/GPU = (P-1)/P * (FULL dataset size)
-<a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a>                      more GPUs -&gt; per-GPU volume APPROACHES the
-<a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a>                      FULL dataset size and stays there
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>Ch16 halo exchange:  volume/shard = FIXED (boundary size only)
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>                      more shards -&gt; SAME per-shard volume,
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>                      FLAT as P grows
+<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a>
+<a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a>This chapter's all-gather: volume/GPU = (P-1)/P * (FULL dataset size)
+<a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a>                      more GPUs -&gt; per-GPU volume APPROACHES the
+<a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a>                      FULL dataset size and stays there
 </code></pre></div>
 <h3 id="background_1">Background<a class="headerlink" href="#background_1" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="c1">// Chapter 27: N-Body Simulation at Scale</span>
-<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a><span class="c1">// 79_nbody_vs_halo_communication_model.cpp</span>
-<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a><span class="c1">//</span>
-<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a><span class="c1">// Section 27.1 proved a distributed all-pairs N-body force calculation</span>
-<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a><span class="c1">// needs an ALL-GATHER, not a halo exchange, to get the right answer.</span>
-<a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a><span class="c1">// This section quantifies exactly how much worse that makes N-body's</span>
-<a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a><span class="c1">// own communication SHAPE, reusing Chapter 9/10's own real ring all-</span>
-<a id="__codelineno-9-8" name="__codelineno-9-8" href="#__codelineno-9-8"></a><span class="c1">// gather formula: each of P ranks ends a ring all-gather having</span>
-<a id="__codelineno-9-9" name="__codelineno-9-9" href="#__codelineno-9-9"></a><span class="c1">// received (P-1)/P of the total K bytes being gathered. Chapter 16's</span>
-<a id="__codelineno-9-10" name="__codelineno-9-10" href="#__codelineno-9-10"></a><span class="c1">// own halo-exchange volume, by contrast, depended only on a fixed</span>
-<a id="__codelineno-9-11" name="__codelineno-9-11" href="#__codelineno-9-11"></a><span class="c1">// BOUNDARY size between adjacent shards -- never on the total domain</span>
-<a id="__codelineno-9-12" name="__codelineno-9-12" href="#__codelineno-9-12"></a><span class="c1">// size, and never on P -- which is exactly why adding more shards left</span>
-<a id="__codelineno-9-13" name="__codelineno-9-13" href="#__codelineno-9-13"></a><span class="c1">// Chapter 16's own per-shard communication FLAT. This section's own worked</span>
-<a id="__codelineno-9-14" name="__codelineno-9-14" href="#__codelineno-9-14"></a><span class="c1">// calculation, applied to a real body count from a real cited source</span>
-<a id="__codelineno-9-15" name="__codelineno-9-15" href="#__codelineno-9-15"></a><span class="c1">// (Burtscher &amp; Pingali's own "5,000,000 bodies" CUDA Barnes-Hut</span>
-<a id="__codelineno-9-16" name="__codelineno-9-16" href="#__codelineno-9-16"></a><span class="c1">// benchmark), shows the opposite: N-body's own per-GPU all-gather</span>
-<a id="__codelineno-9-17" name="__codelineno-9-17" href="#__codelineno-9-17"></a><span class="c1">// volume stays close to the ENTIRE dataset's size, almost regardless</span>
-<a id="__codelineno-9-18" name="__codelineno-9-18" href="#__codelineno-9-18"></a><span class="c1">// of how many GPUs are added, because every GPU still needs every</span>
-<a id="__codelineno-9-19" name="__codelineno-9-19" href="#__codelineno-9-19"></a><span class="c1">// body's data every step.</span>
-<a id="__codelineno-9-20" name="__codelineno-9-20" href="#__codelineno-9-20"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;cstdio&gt;</span>
-<a id="__codelineno-9-21" name="__codelineno-9-21" href="#__codelineno-9-21"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;cstdint&gt;</span>
-<a id="__codelineno-9-22" name="__codelineno-9-22" href="#__codelineno-9-22"></a>
-<a id="__codelineno-9-23" name="__codelineno-9-23" href="#__codelineno-9-23"></a><span class="kt">int</span><span class="w"> </span><span class="nf">main</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
-<a id="__codelineno-9-24" name="__codelineno-9-24" href="#__codelineno-9-24"></a><span class="w">    </span><span class="c1">// Burtscher &amp; Pingali's own real cited body count, reused here as</span>
-<a id="__codelineno-9-25" name="__codelineno-9-25" href="#__codelineno-9-25"></a><span class="w">    </span><span class="c1">// a real-scale example (not re-derived by this program).</span>
-<a id="__codelineno-9-26" name="__codelineno-9-26" href="#__codelineno-9-26"></a><span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="kt">uint64_t</span><span class="w"> </span><span class="n">N_BODIES</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">5000000ULL</span><span class="p">;</span>
-<a id="__codelineno-9-27" name="__codelineno-9-27" href="#__codelineno-9-27"></a><span class="w">    </span><span class="c1">// This section's own stated assumption -- 3D position (3 doubles)</span>
-<a id="__codelineno-9-28" name="__codelineno-9-28" href="#__codelineno-9-28"></a><span class="w">    </span><span class="c1">// + mass (1 double) = 32 bytes/body -- a common representation,</span>
-<a id="__codelineno-9-29" name="__codelineno-9-29" href="#__codelineno-9-29"></a><span class="w">    </span><span class="c1">// not itself a number quoted from a paper (Chapter 26's own</span>
-<a id="__codelineno-9-30" name="__codelineno-9-30" href="#__codelineno-9-30"></a><span class="w">    </span><span class="c1">// fp16-assumption practice, reused here).</span>
-<a id="__codelineno-9-31" name="__codelineno-9-31" href="#__codelineno-9-31"></a><span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="kt">double</span><span class="w"> </span><span class="n">BYTES_PER_BODY</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">32.0</span><span class="p">;</span>
-<a id="__codelineno-9-32" name="__codelineno-9-32" href="#__codelineno-9-32"></a><span class="w">    </span><span class="kt">double</span><span class="w"> </span><span class="n">totalBytes</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="kt">double</span><span class="p">)</span><span class="n">N_BODIES</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="n">BYTES_PER_BODY</span><span class="p">;</span>
-<a id="__codelineno-9-33" name="__codelineno-9-33" href="#__codelineno-9-33"></a><span class="w">    </span><span class="kt">double</span><span class="w"> </span><span class="n">totalMiB</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">totalBytes</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="p">(</span><span class="mf">1024.0</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="mf">1024.0</span><span class="p">);</span>
-<a id="__codelineno-9-34" name="__codelineno-9-34" href="#__codelineno-9-34"></a>
-<a id="__codelineno-9-35" name="__codelineno-9-35" href="#__codelineno-9-35"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">"N=%llu bodies (Burtscher &amp; Pingali's own real cited scale), "</span>
-<a id="__codelineno-9-36" name="__codelineno-9-36" href="#__codelineno-9-36"></a><span class="w">           </span><span class="s">"%.0f bytes/body (this chapter's own stated assumption) -&gt; "</span>
-<a id="__codelineno-9-37" name="__codelineno-9-37" href="#__codelineno-9-37"></a><span class="w">           </span><span class="s">"total dataset = %.2f MiB</span><span class="se">\n\n</span><span class="s">"</span><span class="p">,</span>
-<a id="__codelineno-9-38" name="__codelineno-9-38" href="#__codelineno-9-38"></a><span class="w">           </span><span class="p">(</span><span class="kt">unsigned</span><span class="w"> </span><span class="kt">long</span><span class="w"> </span><span class="kt">long</span><span class="p">)</span><span class="n">N_BODIES</span><span class="p">,</span><span class="w"> </span><span class="n">BYTES_PER_BODY</span><span class="p">,</span><span class="w"> </span><span class="n">totalMiB</span><span class="p">);</span>
-<a id="__codelineno-9-39" name="__codelineno-9-39" href="#__codelineno-9-39"></a>
-<a id="__codelineno-9-40" name="__codelineno-9-40" href="#__codelineno-9-40"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">"%-6s %-28s %-28s</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span><span class="w"> </span><span class="s">"P"</span><span class="p">,</span><span class="w"> </span><span class="s">"N-body all-gather MiB/GPU"</span><span class="p">,</span>
-<a id="__codelineno-9-41" name="__codelineno-9-41" href="#__codelineno-9-41"></a><span class="w">           </span><span class="s">"Ch16 halo-exchange MiB/GPU"</span><span class="p">);</span>
-<a id="__codelineno-9-42" name="__codelineno-9-42" href="#__codelineno-9-42"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">"--------------------------------------------------------------"</span>
-<a id="__codelineno-9-43" name="__codelineno-9-43" href="#__codelineno-9-43"></a><span class="w">           </span><span class="s">"----</span><span class="se">\n</span><span class="s">"</span><span class="p">);</span>
-<a id="__codelineno-9-44" name="__codelineno-9-44" href="#__codelineno-9-44"></a>
-<a id="__codelineno-9-45" name="__codelineno-9-45" href="#__codelineno-9-45"></a><span class="w">    </span><span class="c1">// Chapter 16's own real halo-exchange model used a FIXED boundary</span>
-<a id="__codelineno-9-46" name="__codelineno-9-46" href="#__codelineno-9-46"></a><span class="w">    </span><span class="c1">// size, independent of total domain size -- represented here by a</span>
-<a id="__codelineno-9-47" name="__codelineno-9-47" href="#__codelineno-9-47"></a><span class="w">    </span><span class="c1">// fixed per-shard boundary of BOUNDARY_MIB, unaffected by P,</span>
-<a id="__codelineno-9-48" name="__codelineno-9-48" href="#__codelineno-9-48"></a><span class="w">    </span><span class="c1">// reused only for shape contrast (not Ch16's own literal numbers).</span>
-<a id="__codelineno-9-49" name="__codelineno-9-49" href="#__codelineno-9-49"></a><span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="kt">double</span><span class="w"> </span><span class="n">BOUNDARY_MIB</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">0.5</span><span class="p">;</span><span class="w"> </span><span class="c1">// a fixed boundary exchange size</span>
-<a id="__codelineno-9-50" name="__codelineno-9-50" href="#__codelineno-9-50"></a>
-<a id="__codelineno-9-51" name="__codelineno-9-51" href="#__codelineno-9-51"></a><span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">Ps</span><span class="p">[]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span><span class="mi">2</span><span class="p">,</span><span class="w"> </span><span class="mi">4</span><span class="p">,</span><span class="w"> </span><span class="mi">8</span><span class="p">,</span><span class="w"> </span><span class="mi">16</span><span class="p">,</span><span class="w"> </span><span class="mi">32</span><span class="p">,</span><span class="w"> </span><span class="mi">64</span><span class="p">};</span>
-<a id="__codelineno-9-52" name="__codelineno-9-52" href="#__codelineno-9-52"></a><span class="w">    </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">P</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="n">Ps</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
-<a id="__codelineno-9-53" name="__codelineno-9-53" href="#__codelineno-9-53"></a><span class="w">        </span><span class="c1">// Chapter 9/10's own real ring all-gather formula: each rank</span>
-<a id="__codelineno-9-54" name="__codelineno-9-54" href="#__codelineno-9-54"></a><span class="w">        </span><span class="c1">// receives (P-1)/P of the total K bytes being gathered.</span>
-<a id="__codelineno-9-55" name="__codelineno-9-55" href="#__codelineno-9-55"></a><span class="w">        </span><span class="kt">double</span><span class="w"> </span><span class="n">perGpuAllGatherMiB</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="kt">double</span><span class="p">)(</span><span class="n">P</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="mi">1</span><span class="p">)</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="p">(</span><span class="kt">double</span><span class="p">)</span><span class="n">P</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="n">totalMiB</span><span class="p">;</span>
-<a id="__codelineno-9-56" name="__codelineno-9-56" href="#__codelineno-9-56"></a><span class="w">        </span><span class="n">printf</span><span class="p">(</span><span class="s">"%-6d %-28.2f %-28.2f</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span><span class="w"> </span><span class="n">P</span><span class="p">,</span><span class="w"> </span><span class="n">perGpuAllGatherMiB</span><span class="p">,</span><span class="w"> </span><span class="n">BOUNDARY_MIB</span><span class="p">);</span>
-<a id="__codelineno-9-57" name="__codelineno-9-57" href="#__codelineno-9-57"></a><span class="w">    </span><span class="p">}</span>
-<a id="__codelineno-9-58" name="__codelineno-9-58" href="#__codelineno-9-58"></a>
-<a id="__codelineno-9-59" name="__codelineno-9-59" href="#__codelineno-9-59"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">"</span><span class="se">\n</span><span class="s">As P grows, N-body's own per-GPU all-gather volume "</span>
-<a id="__codelineno-9-60" name="__codelineno-9-60" href="#__codelineno-9-60"></a><span class="w">           </span><span class="s">"APPROACHES the FULL dataset size (%.2f MiB) and never drops "</span>
-<a id="__codelineno-9-61" name="__codelineno-9-61" href="#__codelineno-9-61"></a><span class="w">           </span><span class="s">"below it by much -- every GPU still needs every body's data, "</span>
-<a id="__codelineno-9-62" name="__codelineno-9-62" href="#__codelineno-9-62"></a><span class="w">           </span><span class="s">"every step. Chapter 16's own halo-exchange volume stayed "</span>
-<a id="__codelineno-9-63" name="__codelineno-9-63" href="#__codelineno-9-63"></a><span class="w">           </span><span class="s">"FLAT at a fixed boundary size regardless of P, because a "</span>
-<a id="__codelineno-9-64" name="__codelineno-9-64" href="#__codelineno-9-64"></a><span class="w">           </span><span class="s">"stencil update only ever reads immediately adjacent cells. "</span>
-<a id="__codelineno-9-65" name="__codelineno-9-65" href="#__codelineno-9-65"></a><span class="w">           </span><span class="s">"Adding more GPUs leaves Chapter 16's own per-GPU "</span>
-<a id="__codelineno-9-66" name="__codelineno-9-66" href="#__codelineno-9-66"></a><span class="w">           </span><span class="s">"communication flat; for this chapter's own all-pairs N-body "</span>
-<a id="__codelineno-9-67" name="__codelineno-9-67" href="#__codelineno-9-67"></a><span class="w">           </span><span class="s">"case it makes each GPU's receive volume GROW toward the full "</span>
-<a id="__codelineno-9-68" name="__codelineno-9-68" href="#__codelineno-9-68"></a><span class="w">           </span><span class="s">"dataset.</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span>
-<a id="__codelineno-9-69" name="__codelineno-9-69" href="#__codelineno-9-69"></a><span class="w">           </span><span class="n">totalMiB</span><span class="p">);</span>
-<a id="__codelineno-9-70" name="__codelineno-9-70" href="#__codelineno-9-70"></a>
-<a id="__codelineno-9-71" name="__codelineno-9-71" href="#__codelineno-9-71"></a><span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
-<a id="__codelineno-9-72" name="__codelineno-9-72" href="#__codelineno-9-72"></a><span class="p">}</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="c1">// Chapter 27: N-Body Simulation at Scale</span>
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a><span class="c1">// 79_nbody_vs_halo_communication_model.cpp</span>
+<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a><span class="c1">//</span>
+<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a><span class="c1">// Section 27.1 proved a distributed all-pairs N-body force calculation</span>
+<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a><span class="c1">// needs an ALL-GATHER, not a halo exchange, to get the right answer.</span>
+<a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a><span class="c1">// This section quantifies exactly how much worse that makes N-body's</span>
+<a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a><span class="c1">// own communication SHAPE, reusing Chapter 9/10's own real ring all-</span>
+<a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a><span class="c1">// gather formula: each of P ranks ends a ring all-gather having</span>
+<a id="__codelineno-8-9" name="__codelineno-8-9" href="#__codelineno-8-9"></a><span class="c1">// received (P-1)/P of the total K bytes being gathered. Chapter 16's</span>
+<a id="__codelineno-8-10" name="__codelineno-8-10" href="#__codelineno-8-10"></a><span class="c1">// own halo-exchange volume, by contrast, depended only on a fixed</span>
+<a id="__codelineno-8-11" name="__codelineno-8-11" href="#__codelineno-8-11"></a><span class="c1">// BOUNDARY size between adjacent shards -- never on the total domain</span>
+<a id="__codelineno-8-12" name="__codelineno-8-12" href="#__codelineno-8-12"></a><span class="c1">// size, and never on P -- which is exactly why adding more shards left</span>
+<a id="__codelineno-8-13" name="__codelineno-8-13" href="#__codelineno-8-13"></a><span class="c1">// Chapter 16's own per-shard communication FLAT. This section's own worked</span>
+<a id="__codelineno-8-14" name="__codelineno-8-14" href="#__codelineno-8-14"></a><span class="c1">// calculation, applied to a real body count from a real cited source</span>
+<a id="__codelineno-8-15" name="__codelineno-8-15" href="#__codelineno-8-15"></a><span class="c1">// (Burtscher &amp; Pingali's own "5,000,000 bodies" CUDA Barnes-Hut</span>
+<a id="__codelineno-8-16" name="__codelineno-8-16" href="#__codelineno-8-16"></a><span class="c1">// benchmark), shows the opposite: N-body's own per-GPU all-gather</span>
+<a id="__codelineno-8-17" name="__codelineno-8-17" href="#__codelineno-8-17"></a><span class="c1">// volume stays close to the ENTIRE dataset's size, almost regardless</span>
+<a id="__codelineno-8-18" name="__codelineno-8-18" href="#__codelineno-8-18"></a><span class="c1">// of how many GPUs are added, because every GPU still needs every</span>
+<a id="__codelineno-8-19" name="__codelineno-8-19" href="#__codelineno-8-19"></a><span class="c1">// body's data every step.</span>
+<a id="__codelineno-8-20" name="__codelineno-8-20" href="#__codelineno-8-20"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;cstdio&gt;</span>
+<a id="__codelineno-8-21" name="__codelineno-8-21" href="#__codelineno-8-21"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;cstdint&gt;</span>
+<a id="__codelineno-8-22" name="__codelineno-8-22" href="#__codelineno-8-22"></a>
+<a id="__codelineno-8-23" name="__codelineno-8-23" href="#__codelineno-8-23"></a><span class="kt">int</span><span class="w"> </span><span class="nf">main</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-8-24" name="__codelineno-8-24" href="#__codelineno-8-24"></a><span class="w">    </span><span class="c1">// Burtscher &amp; Pingali's own real cited body count, reused here as</span>
+<a id="__codelineno-8-25" name="__codelineno-8-25" href="#__codelineno-8-25"></a><span class="w">    </span><span class="c1">// a real-scale example (not re-derived by this program).</span>
+<a id="__codelineno-8-26" name="__codelineno-8-26" href="#__codelineno-8-26"></a><span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="kt">uint64_t</span><span class="w"> </span><span class="n">N_BODIES</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">5000000ULL</span><span class="p">;</span>
+<a id="__codelineno-8-27" name="__codelineno-8-27" href="#__codelineno-8-27"></a><span class="w">    </span><span class="c1">// This section's own stated assumption -- 3D position (3 doubles)</span>
+<a id="__codelineno-8-28" name="__codelineno-8-28" href="#__codelineno-8-28"></a><span class="w">    </span><span class="c1">// + mass (1 double) = 32 bytes/body -- a common representation,</span>
+<a id="__codelineno-8-29" name="__codelineno-8-29" href="#__codelineno-8-29"></a><span class="w">    </span><span class="c1">// not itself a number quoted from a paper (Chapter 26's own</span>
+<a id="__codelineno-8-30" name="__codelineno-8-30" href="#__codelineno-8-30"></a><span class="w">    </span><span class="c1">// fp16-assumption practice, reused here).</span>
+<a id="__codelineno-8-31" name="__codelineno-8-31" href="#__codelineno-8-31"></a><span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="kt">double</span><span class="w"> </span><span class="n">BYTES_PER_BODY</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">32.0</span><span class="p">;</span>
+<a id="__codelineno-8-32" name="__codelineno-8-32" href="#__codelineno-8-32"></a><span class="w">    </span><span class="kt">double</span><span class="w"> </span><span class="n">totalBytes</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="kt">double</span><span class="p">)</span><span class="n">N_BODIES</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="n">BYTES_PER_BODY</span><span class="p">;</span>
+<a id="__codelineno-8-33" name="__codelineno-8-33" href="#__codelineno-8-33"></a><span class="w">    </span><span class="kt">double</span><span class="w"> </span><span class="n">totalMiB</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">totalBytes</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="p">(</span><span class="mf">1024.0</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="mf">1024.0</span><span class="p">);</span>
+<a id="__codelineno-8-34" name="__codelineno-8-34" href="#__codelineno-8-34"></a>
+<a id="__codelineno-8-35" name="__codelineno-8-35" href="#__codelineno-8-35"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">"N=%llu bodies (Burtscher &amp; Pingali's own real cited scale), "</span>
+<a id="__codelineno-8-36" name="__codelineno-8-36" href="#__codelineno-8-36"></a><span class="w">           </span><span class="s">"%.0f bytes/body (this chapter's own stated assumption) -&gt; "</span>
+<a id="__codelineno-8-37" name="__codelineno-8-37" href="#__codelineno-8-37"></a><span class="w">           </span><span class="s">"total dataset = %.2f MiB</span><span class="se">\n\n</span><span class="s">"</span><span class="p">,</span>
+<a id="__codelineno-8-38" name="__codelineno-8-38" href="#__codelineno-8-38"></a><span class="w">           </span><span class="p">(</span><span class="kt">unsigned</span><span class="w"> </span><span class="kt">long</span><span class="w"> </span><span class="kt">long</span><span class="p">)</span><span class="n">N_BODIES</span><span class="p">,</span><span class="w"> </span><span class="n">BYTES_PER_BODY</span><span class="p">,</span><span class="w"> </span><span class="n">totalMiB</span><span class="p">);</span>
+<a id="__codelineno-8-39" name="__codelineno-8-39" href="#__codelineno-8-39"></a>
+<a id="__codelineno-8-40" name="__codelineno-8-40" href="#__codelineno-8-40"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">"%-6s %-28s %-28s</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span><span class="w"> </span><span class="s">"P"</span><span class="p">,</span><span class="w"> </span><span class="s">"N-body all-gather MiB/GPU"</span><span class="p">,</span>
+<a id="__codelineno-8-41" name="__codelineno-8-41" href="#__codelineno-8-41"></a><span class="w">           </span><span class="s">"Ch16 halo-exchange MiB/GPU"</span><span class="p">);</span>
+<a id="__codelineno-8-42" name="__codelineno-8-42" href="#__codelineno-8-42"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">"--------------------------------------------------------------"</span>
+<a id="__codelineno-8-43" name="__codelineno-8-43" href="#__codelineno-8-43"></a><span class="w">           </span><span class="s">"----</span><span class="se">\n</span><span class="s">"</span><span class="p">);</span>
+<a id="__codelineno-8-44" name="__codelineno-8-44" href="#__codelineno-8-44"></a>
+<a id="__codelineno-8-45" name="__codelineno-8-45" href="#__codelineno-8-45"></a><span class="w">    </span><span class="c1">// Chapter 16's own real halo-exchange model used a FIXED boundary</span>
+<a id="__codelineno-8-46" name="__codelineno-8-46" href="#__codelineno-8-46"></a><span class="w">    </span><span class="c1">// size, independent of total domain size -- represented here by a</span>
+<a id="__codelineno-8-47" name="__codelineno-8-47" href="#__codelineno-8-47"></a><span class="w">    </span><span class="c1">// fixed per-shard boundary of BOUNDARY_MIB, unaffected by P,</span>
+<a id="__codelineno-8-48" name="__codelineno-8-48" href="#__codelineno-8-48"></a><span class="w">    </span><span class="c1">// reused only for shape contrast (not Ch16's own literal numbers).</span>
+<a id="__codelineno-8-49" name="__codelineno-8-49" href="#__codelineno-8-49"></a><span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="kt">double</span><span class="w"> </span><span class="n">BOUNDARY_MIB</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">0.5</span><span class="p">;</span><span class="w"> </span><span class="c1">// a fixed boundary exchange size</span>
+<a id="__codelineno-8-50" name="__codelineno-8-50" href="#__codelineno-8-50"></a>
+<a id="__codelineno-8-51" name="__codelineno-8-51" href="#__codelineno-8-51"></a><span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">Ps</span><span class="p">[]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span><span class="mi">2</span><span class="p">,</span><span class="w"> </span><span class="mi">4</span><span class="p">,</span><span class="w"> </span><span class="mi">8</span><span class="p">,</span><span class="w"> </span><span class="mi">16</span><span class="p">,</span><span class="w"> </span><span class="mi">32</span><span class="p">,</span><span class="w"> </span><span class="mi">64</span><span class="p">};</span>
+<a id="__codelineno-8-52" name="__codelineno-8-52" href="#__codelineno-8-52"></a><span class="w">    </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">P</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="n">Ps</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-8-53" name="__codelineno-8-53" href="#__codelineno-8-53"></a><span class="w">        </span><span class="c1">// Chapter 9/10's own real ring all-gather formula: each rank</span>
+<a id="__codelineno-8-54" name="__codelineno-8-54" href="#__codelineno-8-54"></a><span class="w">        </span><span class="c1">// receives (P-1)/P of the total K bytes being gathered.</span>
+<a id="__codelineno-8-55" name="__codelineno-8-55" href="#__codelineno-8-55"></a><span class="w">        </span><span class="kt">double</span><span class="w"> </span><span class="n">perGpuAllGatherMiB</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="kt">double</span><span class="p">)(</span><span class="n">P</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="mi">1</span><span class="p">)</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="p">(</span><span class="kt">double</span><span class="p">)</span><span class="n">P</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="n">totalMiB</span><span class="p">;</span>
+<a id="__codelineno-8-56" name="__codelineno-8-56" href="#__codelineno-8-56"></a><span class="w">        </span><span class="n">printf</span><span class="p">(</span><span class="s">"%-6d %-28.2f %-28.2f</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span><span class="w"> </span><span class="n">P</span><span class="p">,</span><span class="w"> </span><span class="n">perGpuAllGatherMiB</span><span class="p">,</span><span class="w"> </span><span class="n">BOUNDARY_MIB</span><span class="p">);</span>
+<a id="__codelineno-8-57" name="__codelineno-8-57" href="#__codelineno-8-57"></a><span class="w">    </span><span class="p">}</span>
+<a id="__codelineno-8-58" name="__codelineno-8-58" href="#__codelineno-8-58"></a>
+<a id="__codelineno-8-59" name="__codelineno-8-59" href="#__codelineno-8-59"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">"</span><span class="se">\n</span><span class="s">As P grows, N-body's own per-GPU all-gather volume "</span>
+<a id="__codelineno-8-60" name="__codelineno-8-60" href="#__codelineno-8-60"></a><span class="w">           </span><span class="s">"APPROACHES the FULL dataset size (%.2f MiB) and never drops "</span>
+<a id="__codelineno-8-61" name="__codelineno-8-61" href="#__codelineno-8-61"></a><span class="w">           </span><span class="s">"below it by much -- every GPU still needs every body's data, "</span>
+<a id="__codelineno-8-62" name="__codelineno-8-62" href="#__codelineno-8-62"></a><span class="w">           </span><span class="s">"every step. Chapter 16's own halo-exchange volume stayed "</span>
+<a id="__codelineno-8-63" name="__codelineno-8-63" href="#__codelineno-8-63"></a><span class="w">           </span><span class="s">"FLAT at a fixed boundary size regardless of P, because a "</span>
+<a id="__codelineno-8-64" name="__codelineno-8-64" href="#__codelineno-8-64"></a><span class="w">           </span><span class="s">"stencil update only ever reads immediately adjacent cells. "</span>
+<a id="__codelineno-8-65" name="__codelineno-8-65" href="#__codelineno-8-65"></a><span class="w">           </span><span class="s">"Adding more GPUs leaves Chapter 16's own per-GPU "</span>
+<a id="__codelineno-8-66" name="__codelineno-8-66" href="#__codelineno-8-66"></a><span class="w">           </span><span class="s">"communication flat; for this chapter's own all-pairs N-body "</span>
+<a id="__codelineno-8-67" name="__codelineno-8-67" href="#__codelineno-8-67"></a><span class="w">           </span><span class="s">"case it makes each GPU's receive volume GROW toward the full "</span>
+<a id="__codelineno-8-68" name="__codelineno-8-68" href="#__codelineno-8-68"></a><span class="w">           </span><span class="s">"dataset.</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span>
+<a id="__codelineno-8-69" name="__codelineno-8-69" href="#__codelineno-8-69"></a><span class="w">           </span><span class="n">totalMiB</span><span class="p">);</span>
+<a id="__codelineno-8-70" name="__codelineno-8-70" href="#__codelineno-8-70"></a>
+<a id="__codelineno-8-71" name="__codelineno-8-71" href="#__codelineno-8-71"></a><span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
+<a id="__codelineno-8-72" name="__codelineno-8-72" href="#__codelineno-8-72"></a><span class="p">}</span>
 </code></pre></div>
 <!-- execution:start:a100:79_nbody_vs_halo_communication_model.cpp -->
 <blockquote>
-<p><strong>Current execution — 2026-11-17-a100: Host program/model (exit-only).</strong> UTC (program start): <code>2026-11-18T00:05:25.650710+00:00</code>. Source SHA-256: <code>8f59996bb939f91280b669a5753827f5032a825752060b65d320de316fb64cff</code>.</p>
+<p><strong>Compiled and executed — 2026-11-17-a100: Host program/model (exit-only).</strong> Hardware: 8 A100 GPUs. Executed UTC: <code>2026-11-18T00:05:25.765372+00:00</code>.</p>
 </blockquote>
+<!-- execution:metadata Source SHA-256: 8f59996bb939f91280b669a5753827f5032a825752060b65d320de316fb64cff; recorded UTC (program start): 2026-11-18T00:05:25.650710+00:00 -->
+
 <p><a href="../../validation/2026-11-17-a100/79_nbody_vs_halo_communication_model/79_nbody_vs_halo_communication_model.cpp">Exact tested source</a> · <a href="../../validation/2026-11-17-a100/79_nbody_vs_halo_communication_model/compile.log">Compiler log</a> · <a href="../../validation/2026-11-17-a100/79_nbody_vs_halo_communication_model/run.log">Execution log</a>. Compile exit: <code>0</code>; run exit: <code>0</code>.</p>
 <p>Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>g++<span class="w"> </span>-std<span class="o">=</span>c++17<span class="w"> </span>-O2<span class="w"> </span>79_nbody_vs_halo_communication_model.cpp<span class="w"> </span>-o<span class="w"> </span>./example
-<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>./example
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>g++<span class="w"> </span>-std<span class="o">=</span>c++17<span class="w"> </span>-O2<span class="w"> </span>79_nbody_vs_halo_communication_model.cpp<span class="w"> </span>-o<span class="w"> </span>./example
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>./example
 </code></pre></div>
-<details>
-<summary>Captured current-source output</summary>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>N=5000000 bodies (Burtscher &amp; Pingali's own real cited scale), 32 bytes/body (this chapter's own stated assumption) -&gt; total dataset = 152.59 MiB
-<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>
-<a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a>P      N-body all-gather MiB/GPU    Ch16 halo-exchange MiB/GPU
-<a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a>------------------------------------------------------------------
-<a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a>2      76.29                        0.50
-<a id="__codelineno-11-6" name="__codelineno-11-6" href="#__codelineno-11-6"></a>4      114.44                       0.50
-<a id="__codelineno-11-7" name="__codelineno-11-7" href="#__codelineno-11-7"></a>8      133.51                       0.50
-<a id="__codelineno-11-8" name="__codelineno-11-8" href="#__codelineno-11-8"></a>16     143.05                       0.50
-<a id="__codelineno-11-9" name="__codelineno-11-9" href="#__codelineno-11-9"></a>32     147.82                       0.50
-<a id="__codelineno-11-10" name="__codelineno-11-10" href="#__codelineno-11-10"></a>64     150.20                       0.50
-<a id="__codelineno-11-11" name="__codelineno-11-11" href="#__codelineno-11-11"></a>
-<a id="__codelineno-11-12" name="__codelineno-11-12" href="#__codelineno-11-12"></a>As P grows, N-body's own per-GPU all-gather volume APPROACHES the FULL dataset size (152.59 MiB) and never drops below it by much -- every GPU still needs every body's data, every step. Chapter 16's own halo-exchange volume stayed FLAT at a fixed boundary size regardless of P, because a stencil update only ever reads immediately adjacent cells. Adding more GPUs leaves Chapter 16's own per-GPU communication flat; for this chapter's own all-pairs N-body case it makes each GPU's receive volume GROW toward the full dataset.
+<p><strong>Sample output</strong></p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>N=5000000 bodies (Burtscher &amp; Pingali's own real cited scale), 32 bytes/body (this chapter's own stated assumption) -&gt; total dataset = 152.59 MiB
+<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>
+<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>P      N-body all-gather MiB/GPU    Ch16 halo-exchange MiB/GPU
+<a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a>------------------------------------------------------------------
+<a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a>2      76.29                        0.50
+<a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a>4      114.44                       0.50
+<a id="__codelineno-10-7" name="__codelineno-10-7" href="#__codelineno-10-7"></a>8      133.51                       0.50
+<a id="__codelineno-10-8" name="__codelineno-10-8" href="#__codelineno-10-8"></a>16     143.05                       0.50
+<a id="__codelineno-10-9" name="__codelineno-10-9" href="#__codelineno-10-9"></a>32     147.82                       0.50
+<a id="__codelineno-10-10" name="__codelineno-10-10" href="#__codelineno-10-10"></a>64     150.20                       0.50
+<a id="__codelineno-10-11" name="__codelineno-10-11" href="#__codelineno-10-11"></a>
+<a id="__codelineno-10-12" name="__codelineno-10-12" href="#__codelineno-10-12"></a>As P grows, N-body's own per-GPU all-gather volume APPROACHES the FULL dataset size (152.59 MiB) and never drops below it by much -- every GPU still needs every body's data, every step. Chapter 16's own halo-exchange volume stayed FLAT at a fixed boundary size regardless of P, because a stencil update only ever reads immediately adjacent cells. Adding more GPUs leaves Chapter 16's own per-GPU communication flat; for this chapter's own all-pairs N-body case it makes each GPU's receive volume GROW toward the full dataset.
 </code></pre></div>
-</details>
 <!-- execution:end:a100:79_nbody_vs_halo_communication_model.cpp -->
 
 <!-- execution:start:h100:79_nbody_vs_halo_communication_model.cpp -->
 <blockquote>
-<p><strong>Current execution — 2026-11-17-h100: Host program/model (exit-only).</strong> UTC (run-batch start; per-program time unrecorded): <code>2026-11-17T23:48:18.967387+00:00</code>. Source SHA-256: <code>8f59996bb939f91280b669a5753827f5032a825752060b65d320de316fb64cff</code>.</p>
+<p><strong>Compiled and executed — 2026-11-17-h100: Host program/model (exit-only).</strong> Hardware: 2 H100 GPUs. Execution record UTC (run-batch start; per-program time unrecorded): <code>2026-11-17T23:48:18.967387+00:00</code>.</p>
 </blockquote>
+<!-- execution:metadata Source SHA-256: 8f59996bb939f91280b669a5753827f5032a825752060b65d320de316fb64cff; recorded UTC (run-batch start; per-program time unrecorded): 2026-11-17T23:48:18.967387+00:00 -->
+
 <p><a href="../../validation/2026-11-17-h100/79_nbody_vs_halo_communication_model/79_nbody_vs_halo_communication_model.cpp">Exact tested source</a> · <a href="../../validation/2026-11-17-h100/79_nbody_vs_halo_communication_model/compile.log">Compiler log</a> · <a href="../../validation/2026-11-17-h100/79_nbody_vs_halo_communication_model/run.log">Execution log</a>. Compile exit: <code>0</code>; run exit: <code>0</code>.</p>
 <p>Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>g++<span class="w"> </span>-std<span class="o">=</span>c++17<span class="w"> </span>-O2<span class="w"> </span>79_nbody_vs_halo_communication_model.cpp<span class="w"> </span>-o<span class="w"> </span>./example
-<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a>./example
+<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>g++<span class="w"> </span>-std<span class="o">=</span>c++17<span class="w"> </span>-O2<span class="w"> </span>79_nbody_vs_halo_communication_model.cpp<span class="w"> </span>-o<span class="w"> </span>./example
+<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>./example
 </code></pre></div>
 <details>
 <summary>Captured current-source output</summary>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a>N=5000000 bodies (Burtscher &amp; Pingali's own real cited scale), 32 bytes/body (this chapter's own stated assumption) -&gt; total dataset = 152.59 MiB
-<a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a>
-<a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a>P      N-body all-gather MiB/GPU    Ch16 halo-exchange MiB/GPU
-<a id="__codelineno-13-4" name="__codelineno-13-4" href="#__codelineno-13-4"></a>------------------------------------------------------------------
-<a id="__codelineno-13-5" name="__codelineno-13-5" href="#__codelineno-13-5"></a>2      76.29                        0.50
-<a id="__codelineno-13-6" name="__codelineno-13-6" href="#__codelineno-13-6"></a>4      114.44                       0.50
-<a id="__codelineno-13-7" name="__codelineno-13-7" href="#__codelineno-13-7"></a>8      133.51                       0.50
-<a id="__codelineno-13-8" name="__codelineno-13-8" href="#__codelineno-13-8"></a>16     143.05                       0.50
-<a id="__codelineno-13-9" name="__codelineno-13-9" href="#__codelineno-13-9"></a>32     147.82                       0.50
-<a id="__codelineno-13-10" name="__codelineno-13-10" href="#__codelineno-13-10"></a>64     150.20                       0.50
-<a id="__codelineno-13-11" name="__codelineno-13-11" href="#__codelineno-13-11"></a>
-<a id="__codelineno-13-12" name="__codelineno-13-12" href="#__codelineno-13-12"></a>As P grows, N-body's own per-GPU all-gather volume APPROACHES the FULL dataset size (152.59 MiB) and never drops below it by much -- every GPU still needs every body's data, every step. Chapter 16's own halo-exchange volume stayed FLAT at a fixed boundary size regardless of P, because a stencil update only ever reads immediately adjacent cells. Adding more GPUs leaves Chapter 16's own per-GPU communication flat; for this chapter's own all-pairs N-body case it makes each GPU's receive volume GROW toward the full dataset.
+<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>N=5000000 bodies (Burtscher &amp; Pingali's own real cited scale), 32 bytes/body (this chapter's own stated assumption) -&gt; total dataset = 152.59 MiB
+<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a>
+<a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a>P      N-body all-gather MiB/GPU    Ch16 halo-exchange MiB/GPU
+<a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a>------------------------------------------------------------------
+<a id="__codelineno-12-5" name="__codelineno-12-5" href="#__codelineno-12-5"></a>2      76.29                        0.50
+<a id="__codelineno-12-6" name="__codelineno-12-6" href="#__codelineno-12-6"></a>4      114.44                       0.50
+<a id="__codelineno-12-7" name="__codelineno-12-7" href="#__codelineno-12-7"></a>8      133.51                       0.50
+<a id="__codelineno-12-8" name="__codelineno-12-8" href="#__codelineno-12-8"></a>16     143.05                       0.50
+<a id="__codelineno-12-9" name="__codelineno-12-9" href="#__codelineno-12-9"></a>32     147.82                       0.50
+<a id="__codelineno-12-10" name="__codelineno-12-10" href="#__codelineno-12-10"></a>64     150.20                       0.50
+<a id="__codelineno-12-11" name="__codelineno-12-11" href="#__codelineno-12-11"></a>
+<a id="__codelineno-12-12" name="__codelineno-12-12" href="#__codelineno-12-12"></a>As P grows, N-body's own per-GPU all-gather volume APPROACHES the FULL dataset size (152.59 MiB) and never drops below it by much -- every GPU still needs every body's data, every step. Chapter 16's own halo-exchange volume stayed FLAT at a fixed boundary size regardless of P, because a stencil update only ever reads immediately adjacent cells. Adding more GPUs leaves Chapter 16's own per-GPU communication flat; for this chapter's own all-pairs N-body case it makes each GPU's receive volume GROW toward the full dataset.
 </code></pre></div>
 </details>
 <!-- execution:end:h100:79_nbody_vs_halo_communication_model.cpp -->
 
-<p>Compiled with <code>g++ -O2 79_nbody_vs_halo_communication_model.cpp -o 79_nbody_vs_halo_communication_model</code> and genuinely run, on both the cloud sandbox and the device, with byte-identical output on both. Locked output:</p>
-<details>
-<summary>Historical authoring output — superseded by the current execution above</summary>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a>N=5000000 bodies (Burtscher &amp; Pingali's own real cited scale), 32 bytes/body (this chapter's own stated assumption) -&gt; total dataset = 152.59 MiB
-<a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a>
-<a id="__codelineno-14-3" name="__codelineno-14-3" href="#__codelineno-14-3"></a>P      N-body all-gather MiB/GPU    Ch16 halo-exchange MiB/GPU  
-<a id="__codelineno-14-4" name="__codelineno-14-4" href="#__codelineno-14-4"></a>------------------------------------------------------------------
-<a id="__codelineno-14-5" name="__codelineno-14-5" href="#__codelineno-14-5"></a>2      76.29                        0.50                        
-<a id="__codelineno-14-6" name="__codelineno-14-6" href="#__codelineno-14-6"></a>4      114.44                       0.50                        
-<a id="__codelineno-14-7" name="__codelineno-14-7" href="#__codelineno-14-7"></a>8      133.51                       0.50                        
-<a id="__codelineno-14-8" name="__codelineno-14-8" href="#__codelineno-14-8"></a>16     143.05                       0.50                        
-<a id="__codelineno-14-9" name="__codelineno-14-9" href="#__codelineno-14-9"></a>32     147.82                       0.50                        
-<a id="__codelineno-14-10" name="__codelineno-14-10" href="#__codelineno-14-10"></a>64     150.20                       0.50                        
-<a id="__codelineno-14-11" name="__codelineno-14-11" href="#__codelineno-14-11"></a>
-<a id="__codelineno-14-12" name="__codelineno-14-12" href="#__codelineno-14-12"></a>As P grows, N-body's own per-GPU all-gather volume APPROACHES the FULL dataset size (152.59 MiB) and never drops below it by much -- every GPU still needs every body's data, every step. Chapter 16's own halo-exchange volume stayed FLAT at a fixed boundary size regardless of P, because a stencil update only ever reads immediately adjacent cells. Adding more GPUs leaves Chapter 16's own per-GPU communication flat; for this chapter's own all-pairs N-body case it makes each GPU's receive volume GROW toward the full dataset.
-</code></pre></div>
-</details>
+<p>Compiled with <code>g++ -O2 79_nbody_vs_halo_communication_model.cpp -o 79_nbody_vs_halo_communication_model</code> and genuinely run, on the recorded H100 and A100 hosts, with the execution output recorded above.</p>
 <div class="admonition warning">
 <p class="admonition-title">[COMMON TRAP] Assuming adding GPUs leaves per-GPU communication flat, the way it did in Chapter 16</p>
-<p>Chapter 16's own real finding -- that each shard's halo-exchange volume depends only on the fixed boundary between neighbors, so it stays flat no matter how many shards are added -- is true for LOCAL, neighbor-only update rules, and it is tempting to treat that as a general property of "adding more GPUs." This section's own locked output shows it is not: for all-pairs N-body, going from P=2 to P=64 GPUs does not keep per-GPU communication flat -- it GROWS, from 76.29 MiB to 150.20 MiB, approaching the full 152.59 MiB dataset size and staying there. The real reason is Section 27.1's own finding: every GPU still needs every body's data, every step, so adding GPUs only ever adds MORE all-gather participants, never reduces what any one of them individually needs to receive. Whether adding GPUs helps or hurts per-GPU communication depends entirely on whether the underlying problem is LOCAL (Chapter 16) or GLOBAL (this chapter) -- it is not a property of parallelism in general.</p>
+<p>Chapter 16's own real finding -- that each shard's halo-exchange volume depends only on the fixed boundary between neighbors, so it stays flat no matter how many shards are added -- is true for LOCAL, neighbor-only update rules, and it is tempting to treat that as a general property of "adding more GPUs." This section's own Sample output shows it is not: for all-pairs N-body, going from P=2 to P=64 GPUs does not keep per-GPU communication flat -- it GROWS, from 76.29 MiB to 150.20 MiB, approaching the full 152.59 MiB dataset size and staying there. The real reason is Section 27.1's own finding: every GPU still needs every body's data, every step, so adding GPUs only ever adds MORE all-gather participants, never reduces what any one of them individually needs to receive. Whether adding GPUs helps or hurts per-GPU communication depends entirely on whether the underlying problem is LOCAL (Chapter 16) or GLOBAL (this chapter) -- it is not a property of parallelism in general.</p>
 </div>
 <h2 id="273-barnes-hut-the-real-algorithmic-answer">27.3 Barnes-Hut: The Real Algorithmic Answer<a class="headerlink" href="#273-barnes-hut-the-real-algorithmic-answer" title="Permanent link">&para;</a></h2>
 <!-- mgpu:figure-3:start -->
@@ -3106,104 +3069,140 @@
 
 <h3 id="intuition_2">Intuition<a class="headerlink" href="#intuition_2" title="Permanent link">&para;</a></h3>
 <p>Sections 27.1 and 27.2 together show all-pairs N-body getting worse in two ways at once as a simulation scales up: <code>O(N^2)</code> compute, and per-GPU communication that never shrinks. Barnes &amp; Hut's own real, named 1986 Nature paper offers the real algorithmic fix for both: a "tree-structured hierarchical subdivision of space into cubic cells, each of which is recursively divided into eight subcells whenever more than one particle is found to occupy the same cell." The key idea this tree enables is approximation -- a distant CLUSTER of bodies can be treated as one aggregate source (its combined mass, at its center of mass) rather than visited one body at a time, because from far enough away, the difference between "one heavy body" and "many bodies with the same total mass in roughly the same place" is negligible. This turns <code>O(N^2)</code> compute into <code>O(N log N)</code>, and -- though this chapter does not have a specific published number to cite for this part -- the same approximation idea would let a distributed implementation exchange far less than Section 27.2's own full all-gather, since a distant region's bodies could be summarized rather than transmitted individually.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a>All-pairs (27.1/27.2): every body visits EVERY other body, individually
-<a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a>O(N^2) compute; O(N) per-GPU communication, doesn't shrink with more GPUs
-<a id="__codelineno-15-3" name="__codelineno-15-3" href="#__codelineno-15-3"></a>
-<a id="__codelineno-15-4" name="__codelineno-15-4" href="#__codelineno-15-4"></a>Barnes-Hut (this section): distant CLUSTERS approximated as ONE source
-<a id="__codelineno-15-5" name="__codelineno-15-5" href="#__codelineno-15-5"></a>     +---+                    close bodies: visited individually
-<a id="__codelineno-15-6" name="__codelineno-15-6" href="#__codelineno-15-6"></a>     | * |   one aggregate     (real, no shortcuts)
-<a id="__codelineno-15-7" name="__codelineno-15-7" href="#__codelineno-15-7"></a>     +---+   source            distant cluster: ONE aggregate value
-<a id="__codelineno-15-8" name="__codelineno-15-8" href="#__codelineno-15-8"></a>   (many bodies, one              (real approximation, not every
-<a id="__codelineno-15-9" name="__codelineno-15-9" href="#__codelineno-15-9"></a>    combined mass)                 individual body's raw data)
-<a id="__codelineno-15-10" name="__codelineno-15-10" href="#__codelineno-15-10"></a>O(N log N) compute; a genuinely different, likely smaller,
-<a id="__codelineno-15-11" name="__codelineno-15-11" href="#__codelineno-15-11"></a>communication shape (this chapter's own reasoning, not a cited number)
+<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a>All-pairs (27.1/27.2): every body visits EVERY other body, individually
+<a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a>O(N^2) compute; O(N) per-GPU communication, doesn't shrink with more GPUs
+<a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a>
+<a id="__codelineno-13-4" name="__codelineno-13-4" href="#__codelineno-13-4"></a>Barnes-Hut (this section): distant CLUSTERS approximated as ONE source
+<a id="__codelineno-13-5" name="__codelineno-13-5" href="#__codelineno-13-5"></a>     +---+                    close bodies: visited individually
+<a id="__codelineno-13-6" name="__codelineno-13-6" href="#__codelineno-13-6"></a>     | * |   one aggregate     (real, no shortcuts)
+<a id="__codelineno-13-7" name="__codelineno-13-7" href="#__codelineno-13-7"></a>     +---+   source            distant cluster: ONE aggregate value
+<a id="__codelineno-13-8" name="__codelineno-13-8" href="#__codelineno-13-8"></a>   (many bodies, one              (real approximation, not every
+<a id="__codelineno-13-9" name="__codelineno-13-9" href="#__codelineno-13-9"></a>    combined mass)                 individual body's raw data)
+<a id="__codelineno-13-10" name="__codelineno-13-10" href="#__codelineno-13-10"></a>O(N log N) compute; a genuinely different, likely smaller,
+<a id="__codelineno-13-11" name="__codelineno-13-11" href="#__codelineno-13-11"></a>communication shape (this chapter's own reasoning, not a cited number)
 </code></pre></div>
 <h3 id="background_2">Background<a class="headerlink" href="#background_2" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a><span class="c1">// Chapter 27: N-Body Simulation at Scale</span>
-<a id="__codelineno-16-2" name="__codelineno-16-2" href="#__codelineno-16-2"></a><span class="c1">// 80_barnes_hut_complexity_crossover_model.cpp</span>
-<a id="__codelineno-16-3" name="__codelineno-16-3" href="#__codelineno-16-3"></a><span class="c1">//</span>
-<a id="__codelineno-16-4" name="__codelineno-16-4" href="#__codelineno-16-4"></a><span class="c1">// Sections 27.1 and 27.2 both showed all-pairs N-body force calculation</span>
-<a id="__codelineno-16-5" name="__codelineno-16-5" href="#__codelineno-16-5"></a><span class="c1">// getting worse at scale: O(N^2) compute, and per-GPU communication</span>
-<a id="__codelineno-16-6" name="__codelineno-16-6" href="#__codelineno-16-6"></a><span class="c1">// that stays close to the FULL dataset size no matter how many GPUs</span>
-<a id="__codelineno-16-7" name="__codelineno-16-7" href="#__codelineno-16-7"></a><span class="c1">// are added. Barnes &amp; Hut's own real, named 1986 Nature paper offers</span>
-<a id="__codelineno-16-8" name="__codelineno-16-8" href="#__codelineno-16-8"></a><span class="c1">// the real algorithmic answer: a "tree-structured hierarchical</span>
-<a id="__codelineno-16-9" name="__codelineno-16-9" href="#__codelineno-16-9"></a><span class="c1">// subdivision of space into cubic cells, each of which is recursively</span>
-<a id="__codelineno-16-10" name="__codelineno-16-10" href="#__codelineno-16-10"></a><span class="c1">// divided into eight subcells whenever more than one particle is found</span>
-<a id="__codelineno-16-11" name="__codelineno-16-11" href="#__codelineno-16-11"></a><span class="c1">// to occupy the same cell," which lets distant groups of bodies be</span>
-<a id="__codelineno-16-12" name="__codelineno-16-12" href="#__codelineno-16-12"></a><span class="c1">// approximated as single aggregate sources instead of visited</span>
-<a id="__codelineno-16-13" name="__codelineno-16-13" href="#__codelineno-16-13"></a><span class="c1">// individually -- turning O(N^2) into O(N log N). This section builds</span>
-<a id="__codelineno-16-14" name="__codelineno-16-14" href="#__codelineno-16-14"></a><span class="c1">// this chapter's own closed-form operation-count model of that</span>
-<a id="__codelineno-16-15" name="__codelineno-16-15" href="#__codelineno-16-15"></a><span class="c1">// crossover (not a runtime measurement), and cites REAL measured</span>
-<a id="__codelineno-16-16" name="__codelineno-16-16" href="#__codelineno-16-16"></a><span class="c1">// numbers for a REAL GPU Barnes-Hut implementation (Burtscher &amp;</span>
-<a id="__codelineno-16-17" name="__codelineno-16-17" href="#__codelineno-16-17"></a><span class="c1">// Pingali) to show the algorithmic idea also holds up on real</span>
-<a id="__codelineno-16-18" name="__codelineno-16-18" href="#__codelineno-16-18"></a><span class="c1">// hardware -- kept clearly separate from this section's own model, the</span>
-<a id="__codelineno-16-19" name="__codelineno-16-19" href="#__codelineno-16-19"></a><span class="c1">// same discipline Chapter 25 and Chapter 26 both already applied to</span>
-<a id="__codelineno-16-20" name="__codelineno-16-20" href="#__codelineno-16-20"></a><span class="c1">// their own closed-form communication-cost sections.</span>
-<a id="__codelineno-16-21" name="__codelineno-16-21" href="#__codelineno-16-21"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;cstdio&gt;</span>
-<a id="__codelineno-16-22" name="__codelineno-16-22" href="#__codelineno-16-22"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;cmath&gt;</span>
-<a id="__codelineno-16-23" name="__codelineno-16-23" href="#__codelineno-16-23"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;cstdint&gt;</span>
-<a id="__codelineno-16-24" name="__codelineno-16-24" href="#__codelineno-16-24"></a>
-<a id="__codelineno-16-25" name="__codelineno-16-25" href="#__codelineno-16-25"></a><span class="kt">int</span><span class="w"> </span><span class="nf">main</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
-<a id="__codelineno-16-26" name="__codelineno-16-26" href="#__codelineno-16-26"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">"--- This chapter's own worked model: O(N^2) vs O(N log N) "</span>
-<a id="__codelineno-16-27" name="__codelineno-16-27" href="#__codelineno-16-27"></a><span class="w">           </span><span class="s">"operation counts (NOT a runtime measurement) ---</span><span class="se">\n</span><span class="s">"</span><span class="p">);</span>
-<a id="__codelineno-16-28" name="__codelineno-16-28" href="#__codelineno-16-28"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">"%-12s %-16s %-16s %-16s</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span><span class="w"> </span><span class="s">"N"</span><span class="p">,</span><span class="w"> </span><span class="s">"N^2 ops"</span><span class="p">,</span><span class="w"> </span><span class="s">"N*log2(N) ops"</span><span class="p">,</span>
-<a id="__codelineno-16-29" name="__codelineno-16-29" href="#__codelineno-16-29"></a><span class="w">           </span><span class="s">"ratio N/log2(N)"</span><span class="p">);</span>
-<a id="__codelineno-16-30" name="__codelineno-16-30" href="#__codelineno-16-30"></a><span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="kt">uint64_t</span><span class="w"> </span><span class="n">Ns</span><span class="p">[]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span><span class="mi">1000ULL</span><span class="p">,</span><span class="w"> </span><span class="mi">10000ULL</span><span class="p">,</span><span class="w"> </span><span class="mi">100000ULL</span><span class="p">,</span><span class="w"> </span><span class="mi">1000000ULL</span><span class="p">,</span>
-<a id="__codelineno-16-31" name="__codelineno-16-31" href="#__codelineno-16-31"></a><span class="w">                            </span><span class="mi">5000000ULL</span><span class="p">,</span><span class="w"> </span><span class="mi">50000000ULL</span><span class="p">};</span>
-<a id="__codelineno-16-32" name="__codelineno-16-32" href="#__codelineno-16-32"></a><span class="w">    </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="kt">uint64_t</span><span class="w"> </span><span class="n">N</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="n">Ns</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
-<a id="__codelineno-16-33" name="__codelineno-16-33" href="#__codelineno-16-33"></a><span class="w">        </span><span class="kt">double</span><span class="w"> </span><span class="n">nSquared</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="kt">double</span><span class="p">)</span><span class="n">N</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="p">(</span><span class="kt">double</span><span class="p">)</span><span class="n">N</span><span class="p">;</span>
-<a id="__codelineno-16-34" name="__codelineno-16-34" href="#__codelineno-16-34"></a><span class="w">        </span><span class="kt">double</span><span class="w"> </span><span class="n">log2N</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">log2</span><span class="p">((</span><span class="kt">double</span><span class="p">)</span><span class="n">N</span><span class="p">);</span>
-<a id="__codelineno-16-35" name="__codelineno-16-35" href="#__codelineno-16-35"></a><span class="w">        </span><span class="kt">double</span><span class="w"> </span><span class="n">nLogN</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="kt">double</span><span class="p">)</span><span class="n">N</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="n">log2N</span><span class="p">;</span>
-<a id="__codelineno-16-36" name="__codelineno-16-36" href="#__codelineno-16-36"></a><span class="w">        </span><span class="kt">double</span><span class="w"> </span><span class="n">ratio</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="kt">double</span><span class="p">)</span><span class="n">N</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="n">log2N</span><span class="p">;</span>
-<a id="__codelineno-16-37" name="__codelineno-16-37" href="#__codelineno-16-37"></a><span class="w">        </span><span class="n">printf</span><span class="p">(</span><span class="s">"%-12llu %-16.3e %-16.3e %-16.1fx</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span>
-<a id="__codelineno-16-38" name="__codelineno-16-38" href="#__codelineno-16-38"></a><span class="w">               </span><span class="p">(</span><span class="kt">unsigned</span><span class="w"> </span><span class="kt">long</span><span class="w"> </span><span class="kt">long</span><span class="p">)</span><span class="n">N</span><span class="p">,</span><span class="w"> </span><span class="n">nSquared</span><span class="p">,</span><span class="w"> </span><span class="n">nLogN</span><span class="p">,</span><span class="w"> </span><span class="n">ratio</span><span class="p">);</span>
-<a id="__codelineno-16-39" name="__codelineno-16-39" href="#__codelineno-16-39"></a><span class="w">    </span><span class="p">}</span>
-<a id="__codelineno-16-40" name="__codelineno-16-40" href="#__codelineno-16-40"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">"</span><span class="se">\n</span><span class="s">As N grows, the ratio N/log2(N) grows WITHOUT BOUND -- "</span>
-<a id="__codelineno-16-41" name="__codelineno-16-41" href="#__codelineno-16-41"></a><span class="w">           </span><span class="s">"all-pairs' own O(N^2) cost doesn't just stay worse than "</span>
-<a id="__codelineno-16-42" name="__codelineno-16-42" href="#__codelineno-16-42"></a><span class="w">           </span><span class="s">"Barnes-Hut's O(N log N), it gets steadily WORSE (by a factor "</span>
-<a id="__codelineno-16-43" name="__codelineno-16-43" href="#__codelineno-16-43"></a><span class="w">           </span><span class="s">"N/log2(N), which grows almost linearly in N), "</span>
-<a id="__codelineno-16-44" name="__codelineno-16-44" href="#__codelineno-16-44"></a><span class="w">           </span><span class="s">"relative to Barnes-Hut, the larger the simulation gets. This "</span>
-<a id="__codelineno-16-45" name="__codelineno-16-45" href="#__codelineno-16-45"></a><span class="w">           </span><span class="s">"compounds Section 27.2's own finding that all-pairs' "</span>
-<a id="__codelineno-16-46" name="__codelineno-16-46" href="#__codelineno-16-46"></a><span class="w">           </span><span class="s">"per-GPU COMMUNICATION also does not improve by adding more "</span>
-<a id="__codelineno-16-47" name="__codelineno-16-47" href="#__codelineno-16-47"></a><span class="w">           </span><span class="s">"GPUs -- both the compute and the communication argument "</span>
-<a id="__codelineno-16-48" name="__codelineno-16-48" href="#__codelineno-16-48"></a><span class="w">           </span><span class="s">"point the same real direction at scale.</span><span class="se">\n\n</span><span class="s">"</span><span class="p">);</span>
-<a id="__codelineno-16-49" name="__codelineno-16-49" href="#__codelineno-16-49"></a>
-<a id="__codelineno-16-50" name="__codelineno-16-50" href="#__codelineno-16-50"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">"--- Real, cited measured numbers for an ACTUAL GPU Barnes-Hut "</span>
-<a id="__codelineno-16-51" name="__codelineno-16-51" href="#__codelineno-16-51"></a><span class="w">           </span><span class="s">"implementation (Burtscher &amp; Pingali) -- NOT computed by this "</span>
-<a id="__codelineno-16-52" name="__codelineno-16-52" href="#__codelineno-16-52"></a><span class="w">           </span><span class="s">"program ---</span><span class="se">\n</span><span class="s">"</span><span class="p">);</span>
-<a id="__codelineno-16-53" name="__codelineno-16-53" href="#__codelineno-16-53"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">"</span><span class="se">\"</span><span class="s">Our CUDA code takes 5.2 seconds to simulate one time step "</span>
-<a id="__codelineno-16-54" name="__codelineno-16-54" href="#__codelineno-16-54"></a><span class="w">           </span><span class="s">"with 5,000,000 bodies on a 1.3 GHz Quadro FX 5800 GPU with "</span>
-<a id="__codelineno-16-55" name="__codelineno-16-55" href="#__codelineno-16-55"></a><span class="w">           </span><span class="s">"240 cores, which is 74 times faster than an optimized serial "</span>
-<a id="__codelineno-16-56" name="__codelineno-16-56" href="#__codelineno-16-56"></a><span class="w">           </span><span class="s">"implementation running on a 2.53 GHz Xeon E5540 CPU.</span><span class="se">\"\n</span><span class="s">"</span><span class="p">);</span>
-<a id="__codelineno-16-57" name="__codelineno-16-57" href="#__codelineno-16-57"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">"</span><span class="se">\"</span><span class="s">With increasing input size, the parallel CUDA Barnes Hut "</span>
-<a id="__codelineno-16-58" name="__codelineno-16-58" href="#__codelineno-16-58"></a><span class="w">           </span><span class="s">"code is 5, 35, 66, 74, and 53 times faster than the serial C "</span>
-<a id="__codelineno-16-59" name="__codelineno-16-59" href="#__codelineno-16-59"></a><span class="w">           </span><span class="s">"code.</span><span class="se">\"\n</span><span class="s">"</span><span class="p">);</span>
-<a id="__codelineno-16-60" name="__codelineno-16-60" href="#__codelineno-16-60"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">"</span><span class="se">\"</span><span class="s">the Barnes Hut implementation reaches a respectable 75 "</span>
-<a id="__codelineno-16-61" name="__codelineno-16-61" href="#__codelineno-16-61"></a><span class="w">           </span><span class="s">"Gflop/s.</span><span class="se">\"\n</span><span class="s">"</span><span class="p">);</span>
-<a id="__codelineno-16-62" name="__codelineno-16-62" href="#__codelineno-16-62"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">"</span><span class="se">\"</span><span class="s">The most important kernel, kernel 5, is over 90 times "</span>
-<a id="__codelineno-16-63" name="__codelineno-16-63" href="#__codelineno-16-63"></a><span class="w">           </span><span class="s">"faster.</span><span class="se">\"\n\n</span><span class="s">"</span><span class="p">);</span>
-<a id="__codelineno-16-64" name="__codelineno-16-64" href="#__codelineno-16-64"></a>
-<a id="__codelineno-16-65" name="__codelineno-16-65" href="#__codelineno-16-65"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">"--- What this chapter does NOT claim ---</span><span class="se">\n</span><span class="s">"</span><span class="p">);</span>
-<a id="__codelineno-16-66" name="__codelineno-16-66" href="#__codelineno-16-66"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">"Burtscher &amp; Pingali's own real speedup figures are for ONE "</span>
-<a id="__codelineno-16-67" name="__codelineno-16-67" href="#__codelineno-16-67"></a><span class="w">           </span><span class="s">"GPU against a serial CPU baseline, not a multi-GPU "</span>
-<a id="__codelineno-16-68" name="__codelineno-16-68" href="#__codelineno-16-68"></a><span class="w">           </span><span class="s">"distributed Barnes-Hut communication measurement. This "</span>
-<a id="__codelineno-16-69" name="__codelineno-16-69" href="#__codelineno-16-69"></a><span class="w">           </span><span class="s">"chapter's own reasoning -- that a distributed Barnes-Hut "</span>
-<a id="__codelineno-16-70" name="__codelineno-16-70" href="#__codelineno-16-70"></a><span class="w">           </span><span class="s">"implementation could exchange far LESS than Section 27.2's "</span>
-<a id="__codelineno-16-71" name="__codelineno-16-71" href="#__codelineno-16-71"></a><span class="w">           </span><span class="s">"own full O(N) all-gather, by approximating a distant "</span>
-<a id="__codelineno-16-72" name="__codelineno-16-72" href="#__codelineno-16-72"></a><span class="w">           </span><span class="s">"region's bodies as a single aggregate value rather than "</span>
-<a id="__codelineno-16-73" name="__codelineno-16-73" href="#__codelineno-16-73"></a><span class="w">           </span><span class="s">"requiring every individual body's raw data -- is this "</span>
-<a id="__codelineno-16-74" name="__codelineno-16-74" href="#__codelineno-16-74"></a><span class="w">           </span><span class="s">"chapter's own logical extension of the tree algorithm's own "</span>
-<a id="__codelineno-16-75" name="__codelineno-16-75" href="#__codelineno-16-75"></a><span class="w">           </span><span class="s">"real approximation idea, not a number measured or published "</span>
-<a id="__codelineno-16-76" name="__codelineno-16-76" href="#__codelineno-16-76"></a><span class="w">           </span><span class="s">"by any source this chapter cites.</span><span class="se">\n</span><span class="s">"</span><span class="p">);</span>
-<a id="__codelineno-16-77" name="__codelineno-16-77" href="#__codelineno-16-77"></a>
-<a id="__codelineno-16-78" name="__codelineno-16-78" href="#__codelineno-16-78"></a><span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
-<a id="__codelineno-16-79" name="__codelineno-16-79" href="#__codelineno-16-79"></a><span class="p">}</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a><span class="c1">// Chapter 27: N-Body Simulation at Scale</span>
+<a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a><span class="c1">// 80_barnes_hut_complexity_crossover_model.cpp</span>
+<a id="__codelineno-14-3" name="__codelineno-14-3" href="#__codelineno-14-3"></a><span class="c1">//</span>
+<a id="__codelineno-14-4" name="__codelineno-14-4" href="#__codelineno-14-4"></a><span class="c1">// Sections 27.1 and 27.2 both showed all-pairs N-body force calculation</span>
+<a id="__codelineno-14-5" name="__codelineno-14-5" href="#__codelineno-14-5"></a><span class="c1">// getting worse at scale: O(N^2) compute, and per-GPU communication</span>
+<a id="__codelineno-14-6" name="__codelineno-14-6" href="#__codelineno-14-6"></a><span class="c1">// that stays close to the FULL dataset size no matter how many GPUs</span>
+<a id="__codelineno-14-7" name="__codelineno-14-7" href="#__codelineno-14-7"></a><span class="c1">// are added. Barnes &amp; Hut's own real, named 1986 Nature paper offers</span>
+<a id="__codelineno-14-8" name="__codelineno-14-8" href="#__codelineno-14-8"></a><span class="c1">// the real algorithmic answer: a "tree-structured hierarchical</span>
+<a id="__codelineno-14-9" name="__codelineno-14-9" href="#__codelineno-14-9"></a><span class="c1">// subdivision of space into cubic cells, each of which is recursively</span>
+<a id="__codelineno-14-10" name="__codelineno-14-10" href="#__codelineno-14-10"></a><span class="c1">// divided into eight subcells whenever more than one particle is found</span>
+<a id="__codelineno-14-11" name="__codelineno-14-11" href="#__codelineno-14-11"></a><span class="c1">// to occupy the same cell," which lets distant groups of bodies be</span>
+<a id="__codelineno-14-12" name="__codelineno-14-12" href="#__codelineno-14-12"></a><span class="c1">// approximated as single aggregate sources instead of visited</span>
+<a id="__codelineno-14-13" name="__codelineno-14-13" href="#__codelineno-14-13"></a><span class="c1">// individually -- turning O(N^2) into O(N log N). This section builds</span>
+<a id="__codelineno-14-14" name="__codelineno-14-14" href="#__codelineno-14-14"></a><span class="c1">// this chapter's own closed-form operation-count model of that</span>
+<a id="__codelineno-14-15" name="__codelineno-14-15" href="#__codelineno-14-15"></a><span class="c1">// crossover (not a runtime measurement), and cites REAL measured</span>
+<a id="__codelineno-14-16" name="__codelineno-14-16" href="#__codelineno-14-16"></a><span class="c1">// numbers for a REAL GPU Barnes-Hut implementation (Burtscher &amp;</span>
+<a id="__codelineno-14-17" name="__codelineno-14-17" href="#__codelineno-14-17"></a><span class="c1">// Pingali) to show the algorithmic idea also holds up on real</span>
+<a id="__codelineno-14-18" name="__codelineno-14-18" href="#__codelineno-14-18"></a><span class="c1">// hardware -- kept clearly separate from this section's own model, the</span>
+<a id="__codelineno-14-19" name="__codelineno-14-19" href="#__codelineno-14-19"></a><span class="c1">// same discipline Chapter 25 and Chapter 26 both already applied to</span>
+<a id="__codelineno-14-20" name="__codelineno-14-20" href="#__codelineno-14-20"></a><span class="c1">// their own closed-form communication-cost sections.</span>
+<a id="__codelineno-14-21" name="__codelineno-14-21" href="#__codelineno-14-21"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;cstdio&gt;</span>
+<a id="__codelineno-14-22" name="__codelineno-14-22" href="#__codelineno-14-22"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;cmath&gt;</span>
+<a id="__codelineno-14-23" name="__codelineno-14-23" href="#__codelineno-14-23"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;cstdint&gt;</span>
+<a id="__codelineno-14-24" name="__codelineno-14-24" href="#__codelineno-14-24"></a>
+<a id="__codelineno-14-25" name="__codelineno-14-25" href="#__codelineno-14-25"></a><span class="kt">int</span><span class="w"> </span><span class="nf">main</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-14-26" name="__codelineno-14-26" href="#__codelineno-14-26"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">"--- This chapter's own worked model: O(N^2) vs O(N log N) "</span>
+<a id="__codelineno-14-27" name="__codelineno-14-27" href="#__codelineno-14-27"></a><span class="w">           </span><span class="s">"operation counts (NOT a runtime measurement) ---</span><span class="se">\n</span><span class="s">"</span><span class="p">);</span>
+<a id="__codelineno-14-28" name="__codelineno-14-28" href="#__codelineno-14-28"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">"%-12s %-16s %-16s %-16s</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span><span class="w"> </span><span class="s">"N"</span><span class="p">,</span><span class="w"> </span><span class="s">"N^2 ops"</span><span class="p">,</span><span class="w"> </span><span class="s">"N*log2(N) ops"</span><span class="p">,</span>
+<a id="__codelineno-14-29" name="__codelineno-14-29" href="#__codelineno-14-29"></a><span class="w">           </span><span class="s">"ratio N/log2(N)"</span><span class="p">);</span>
+<a id="__codelineno-14-30" name="__codelineno-14-30" href="#__codelineno-14-30"></a><span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="kt">uint64_t</span><span class="w"> </span><span class="n">Ns</span><span class="p">[]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span><span class="mi">1000ULL</span><span class="p">,</span><span class="w"> </span><span class="mi">10000ULL</span><span class="p">,</span><span class="w"> </span><span class="mi">100000ULL</span><span class="p">,</span><span class="w"> </span><span class="mi">1000000ULL</span><span class="p">,</span>
+<a id="__codelineno-14-31" name="__codelineno-14-31" href="#__codelineno-14-31"></a><span class="w">                            </span><span class="mi">5000000ULL</span><span class="p">,</span><span class="w"> </span><span class="mi">50000000ULL</span><span class="p">};</span>
+<a id="__codelineno-14-32" name="__codelineno-14-32" href="#__codelineno-14-32"></a><span class="w">    </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="kt">uint64_t</span><span class="w"> </span><span class="n">N</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="n">Ns</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-14-33" name="__codelineno-14-33" href="#__codelineno-14-33"></a><span class="w">        </span><span class="kt">double</span><span class="w"> </span><span class="n">nSquared</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="kt">double</span><span class="p">)</span><span class="n">N</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="p">(</span><span class="kt">double</span><span class="p">)</span><span class="n">N</span><span class="p">;</span>
+<a id="__codelineno-14-34" name="__codelineno-14-34" href="#__codelineno-14-34"></a><span class="w">        </span><span class="kt">double</span><span class="w"> </span><span class="n">log2N</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">log2</span><span class="p">((</span><span class="kt">double</span><span class="p">)</span><span class="n">N</span><span class="p">);</span>
+<a id="__codelineno-14-35" name="__codelineno-14-35" href="#__codelineno-14-35"></a><span class="w">        </span><span class="kt">double</span><span class="w"> </span><span class="n">nLogN</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="kt">double</span><span class="p">)</span><span class="n">N</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="n">log2N</span><span class="p">;</span>
+<a id="__codelineno-14-36" name="__codelineno-14-36" href="#__codelineno-14-36"></a><span class="w">        </span><span class="kt">double</span><span class="w"> </span><span class="n">ratio</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="kt">double</span><span class="p">)</span><span class="n">N</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="n">log2N</span><span class="p">;</span>
+<a id="__codelineno-14-37" name="__codelineno-14-37" href="#__codelineno-14-37"></a><span class="w">        </span><span class="n">printf</span><span class="p">(</span><span class="s">"%-12llu %-16.3e %-16.3e %-16.1fx</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span>
+<a id="__codelineno-14-38" name="__codelineno-14-38" href="#__codelineno-14-38"></a><span class="w">               </span><span class="p">(</span><span class="kt">unsigned</span><span class="w"> </span><span class="kt">long</span><span class="w"> </span><span class="kt">long</span><span class="p">)</span><span class="n">N</span><span class="p">,</span><span class="w"> </span><span class="n">nSquared</span><span class="p">,</span><span class="w"> </span><span class="n">nLogN</span><span class="p">,</span><span class="w"> </span><span class="n">ratio</span><span class="p">);</span>
+<a id="__codelineno-14-39" name="__codelineno-14-39" href="#__codelineno-14-39"></a><span class="w">    </span><span class="p">}</span>
+<a id="__codelineno-14-40" name="__codelineno-14-40" href="#__codelineno-14-40"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">"</span><span class="se">\n</span><span class="s">As N grows, the ratio N/log2(N) grows WITHOUT BOUND -- "</span>
+<a id="__codelineno-14-41" name="__codelineno-14-41" href="#__codelineno-14-41"></a><span class="w">           </span><span class="s">"all-pairs' own O(N^2) cost doesn't just stay worse than "</span>
+<a id="__codelineno-14-42" name="__codelineno-14-42" href="#__codelineno-14-42"></a><span class="w">           </span><span class="s">"Barnes-Hut's O(N log N), it gets steadily WORSE (by a factor "</span>
+<a id="__codelineno-14-43" name="__codelineno-14-43" href="#__codelineno-14-43"></a><span class="w">           </span><span class="s">"N/log2(N), which grows almost linearly in N), "</span>
+<a id="__codelineno-14-44" name="__codelineno-14-44" href="#__codelineno-14-44"></a><span class="w">           </span><span class="s">"relative to Barnes-Hut, the larger the simulation gets. This "</span>
+<a id="__codelineno-14-45" name="__codelineno-14-45" href="#__codelineno-14-45"></a><span class="w">           </span><span class="s">"compounds Section 27.2's own finding that all-pairs' "</span>
+<a id="__codelineno-14-46" name="__codelineno-14-46" href="#__codelineno-14-46"></a><span class="w">           </span><span class="s">"per-GPU COMMUNICATION also does not improve by adding more "</span>
+<a id="__codelineno-14-47" name="__codelineno-14-47" href="#__codelineno-14-47"></a><span class="w">           </span><span class="s">"GPUs -- both the compute and the communication argument "</span>
+<a id="__codelineno-14-48" name="__codelineno-14-48" href="#__codelineno-14-48"></a><span class="w">           </span><span class="s">"point the same real direction at scale.</span><span class="se">\n\n</span><span class="s">"</span><span class="p">);</span>
+<a id="__codelineno-14-49" name="__codelineno-14-49" href="#__codelineno-14-49"></a>
+<a id="__codelineno-14-50" name="__codelineno-14-50" href="#__codelineno-14-50"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">"--- Real, cited measured numbers for an ACTUAL GPU Barnes-Hut "</span>
+<a id="__codelineno-14-51" name="__codelineno-14-51" href="#__codelineno-14-51"></a><span class="w">           </span><span class="s">"implementation (Burtscher &amp; Pingali) -- NOT computed by this "</span>
+<a id="__codelineno-14-52" name="__codelineno-14-52" href="#__codelineno-14-52"></a><span class="w">           </span><span class="s">"program ---</span><span class="se">\n</span><span class="s">"</span><span class="p">);</span>
+<a id="__codelineno-14-53" name="__codelineno-14-53" href="#__codelineno-14-53"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">"</span><span class="se">\"</span><span class="s">Our CUDA code takes 5.2 seconds to simulate one time step "</span>
+<a id="__codelineno-14-54" name="__codelineno-14-54" href="#__codelineno-14-54"></a><span class="w">           </span><span class="s">"with 5,000,000 bodies on a 1.3 GHz Quadro FX 5800 GPU with "</span>
+<a id="__codelineno-14-55" name="__codelineno-14-55" href="#__codelineno-14-55"></a><span class="w">           </span><span class="s">"240 cores, which is 74 times faster than an optimized serial "</span>
+<a id="__codelineno-14-56" name="__codelineno-14-56" href="#__codelineno-14-56"></a><span class="w">           </span><span class="s">"implementation running on a 2.53 GHz Xeon E5540 CPU.</span><span class="se">\"\n</span><span class="s">"</span><span class="p">);</span>
+<a id="__codelineno-14-57" name="__codelineno-14-57" href="#__codelineno-14-57"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">"</span><span class="se">\"</span><span class="s">With increasing input size, the parallel CUDA Barnes Hut "</span>
+<a id="__codelineno-14-58" name="__codelineno-14-58" href="#__codelineno-14-58"></a><span class="w">           </span><span class="s">"code is 5, 35, 66, 74, and 53 times faster than the serial C "</span>
+<a id="__codelineno-14-59" name="__codelineno-14-59" href="#__codelineno-14-59"></a><span class="w">           </span><span class="s">"code.</span><span class="se">\"\n</span><span class="s">"</span><span class="p">);</span>
+<a id="__codelineno-14-60" name="__codelineno-14-60" href="#__codelineno-14-60"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">"</span><span class="se">\"</span><span class="s">the Barnes Hut implementation reaches a respectable 75 "</span>
+<a id="__codelineno-14-61" name="__codelineno-14-61" href="#__codelineno-14-61"></a><span class="w">           </span><span class="s">"Gflop/s.</span><span class="se">\"\n</span><span class="s">"</span><span class="p">);</span>
+<a id="__codelineno-14-62" name="__codelineno-14-62" href="#__codelineno-14-62"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">"</span><span class="se">\"</span><span class="s">The most important kernel, kernel 5, is over 90 times "</span>
+<a id="__codelineno-14-63" name="__codelineno-14-63" href="#__codelineno-14-63"></a><span class="w">           </span><span class="s">"faster.</span><span class="se">\"\n\n</span><span class="s">"</span><span class="p">);</span>
+<a id="__codelineno-14-64" name="__codelineno-14-64" href="#__codelineno-14-64"></a>
+<a id="__codelineno-14-65" name="__codelineno-14-65" href="#__codelineno-14-65"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">"--- What this chapter does NOT claim ---</span><span class="se">\n</span><span class="s">"</span><span class="p">);</span>
+<a id="__codelineno-14-66" name="__codelineno-14-66" href="#__codelineno-14-66"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">"Burtscher &amp; Pingali's own real speedup figures are for ONE "</span>
+<a id="__codelineno-14-67" name="__codelineno-14-67" href="#__codelineno-14-67"></a><span class="w">           </span><span class="s">"GPU against a serial CPU baseline, not a multi-GPU "</span>
+<a id="__codelineno-14-68" name="__codelineno-14-68" href="#__codelineno-14-68"></a><span class="w">           </span><span class="s">"distributed Barnes-Hut communication measurement. This "</span>
+<a id="__codelineno-14-69" name="__codelineno-14-69" href="#__codelineno-14-69"></a><span class="w">           </span><span class="s">"chapter's own reasoning -- that a distributed Barnes-Hut "</span>
+<a id="__codelineno-14-70" name="__codelineno-14-70" href="#__codelineno-14-70"></a><span class="w">           </span><span class="s">"implementation could exchange far LESS than Section 27.2's "</span>
+<a id="__codelineno-14-71" name="__codelineno-14-71" href="#__codelineno-14-71"></a><span class="w">           </span><span class="s">"own full O(N) all-gather, by approximating a distant "</span>
+<a id="__codelineno-14-72" name="__codelineno-14-72" href="#__codelineno-14-72"></a><span class="w">           </span><span class="s">"region's bodies as a single aggregate value rather than "</span>
+<a id="__codelineno-14-73" name="__codelineno-14-73" href="#__codelineno-14-73"></a><span class="w">           </span><span class="s">"requiring every individual body's raw data -- is this "</span>
+<a id="__codelineno-14-74" name="__codelineno-14-74" href="#__codelineno-14-74"></a><span class="w">           </span><span class="s">"chapter's own logical extension of the tree algorithm's own "</span>
+<a id="__codelineno-14-75" name="__codelineno-14-75" href="#__codelineno-14-75"></a><span class="w">           </span><span class="s">"real approximation idea, not a number measured or published "</span>
+<a id="__codelineno-14-76" name="__codelineno-14-76" href="#__codelineno-14-76"></a><span class="w">           </span><span class="s">"by any source this chapter cites.</span><span class="se">\n</span><span class="s">"</span><span class="p">);</span>
+<a id="__codelineno-14-77" name="__codelineno-14-77" href="#__codelineno-14-77"></a>
+<a id="__codelineno-14-78" name="__codelineno-14-78" href="#__codelineno-14-78"></a><span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
+<a id="__codelineno-14-79" name="__codelineno-14-79" href="#__codelineno-14-79"></a><span class="p">}</span>
 </code></pre></div>
 <!-- execution:start:a100:80_barnes_hut_complexity_crossover_model.cpp -->
 <blockquote>
-<p><strong>Current execution — 2026-11-17-a100: Host program/model (exit-only).</strong> UTC (program start): <code>2026-11-18T00:05:25.771052+00:00</code>. Source SHA-256: <code>1d63a67093a51927597d9160653c4a82288b5c21211c47edea36d687680d2946</code>.</p>
+<p><strong>Compiled and executed — 2026-11-17-a100: Host program/model (exit-only).</strong> Hardware: 8 A100 GPUs. Executed UTC: <code>2026-11-18T00:05:25.986157+00:00</code>.</p>
 </blockquote>
+<!-- execution:metadata Source SHA-256: 1d63a67093a51927597d9160653c4a82288b5c21211c47edea36d687680d2946; recorded UTC (program start): 2026-11-18T00:05:25.771052+00:00 -->
+
 <p><a href="../../validation/2026-11-17-a100/80_barnes_hut_complexity_crossover_model/80_barnes_hut_complexity_crossover_model.cpp">Exact tested source</a> · <a href="../../validation/2026-11-17-a100/80_barnes_hut_complexity_crossover_model/compile.log">Compiler log</a> · <a href="../../validation/2026-11-17-a100/80_barnes_hut_complexity_crossover_model/run.log">Execution log</a>. Compile exit: <code>0</code>; run exit: <code>0</code>.</p>
+<p>Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a>g++<span class="w"> </span>-std<span class="o">=</span>c++17<span class="w"> </span>-O2<span class="w"> </span>80_barnes_hut_complexity_crossover_model.cpp<span class="w"> </span>-o<span class="w"> </span>./example
+<a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a>./example
+</code></pre></div>
+<p><strong>Sample output</strong></p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a>--- This chapter's own worked model: O(N^2) vs O(N log N) operation counts (NOT a runtime measurement) ---
+<a id="__codelineno-16-2" name="__codelineno-16-2" href="#__codelineno-16-2"></a>N            N^2 ops          N*log2(N) ops    ratio N/log2(N)
+<a id="__codelineno-16-3" name="__codelineno-16-3" href="#__codelineno-16-3"></a>1000         1.000e+06        9.966e+03        100.3           x
+<a id="__codelineno-16-4" name="__codelineno-16-4" href="#__codelineno-16-4"></a>10000        1.000e+08        1.329e+05        752.6           x
+<a id="__codelineno-16-5" name="__codelineno-16-5" href="#__codelineno-16-5"></a>100000       1.000e+10        1.661e+06        6020.6          x
+<a id="__codelineno-16-6" name="__codelineno-16-6" href="#__codelineno-16-6"></a>1000000      1.000e+12        1.993e+07        50171.7         x
+<a id="__codelineno-16-7" name="__codelineno-16-7" href="#__codelineno-16-7"></a>5000000      2.500e+13        1.113e+08        224683.8        x
+<a id="__codelineno-16-8" name="__codelineno-16-8" href="#__codelineno-16-8"></a>50000000     2.500e+15        1.279e+09        1955001.7       x
+<a id="__codelineno-16-9" name="__codelineno-16-9" href="#__codelineno-16-9"></a>
+<a id="__codelineno-16-10" name="__codelineno-16-10" href="#__codelineno-16-10"></a>As N grows, the ratio N/log2(N) grows WITHOUT BOUND -- all-pairs' own O(N^2) cost doesn't just stay worse than Barnes-Hut's O(N log N), it gets steadily WORSE (by a factor N/log2(N), which grows almost linearly in N), relative to Barnes-Hut, the larger the simulation gets. This compounds Section 27.2's own finding that all-pairs' per-GPU COMMUNICATION also does not improve by adding more GPUs -- both the compute and the communication argument point the same real direction at scale.
+<a id="__codelineno-16-11" name="__codelineno-16-11" href="#__codelineno-16-11"></a>
+<a id="__codelineno-16-12" name="__codelineno-16-12" href="#__codelineno-16-12"></a>--- Real, cited measured numbers for an ACTUAL GPU Barnes-Hut implementation (Burtscher &amp; Pingali) -- NOT computed by this program ---
+<a id="__codelineno-16-13" name="__codelineno-16-13" href="#__codelineno-16-13"></a>"Our CUDA code takes 5.2 seconds to simulate one time step with 5,000,000 bodies on a 1.3 GHz Quadro FX 5800 GPU with 240 cores, which is 74 times faster than an optimized serial implementation running on a 2.53 GHz Xeon E5540 CPU."
+<a id="__codelineno-16-14" name="__codelineno-16-14" href="#__codelineno-16-14"></a>"With increasing input size, the parallel CUDA Barnes Hut code is 5, 35, 66, 74, and 53 times faster than the serial C code."
+<a id="__codelineno-16-15" name="__codelineno-16-15" href="#__codelineno-16-15"></a>"the Barnes Hut implementation reaches a respectable 75 Gflop/s."
+<a id="__codelineno-16-16" name="__codelineno-16-16" href="#__codelineno-16-16"></a>"The most important kernel, kernel 5, is over 90 times faster."
+<a id="__codelineno-16-17" name="__codelineno-16-17" href="#__codelineno-16-17"></a>
+<a id="__codelineno-16-18" name="__codelineno-16-18" href="#__codelineno-16-18"></a>--- What this chapter does NOT claim ---
+<a id="__codelineno-16-19" name="__codelineno-16-19" href="#__codelineno-16-19"></a>Burtscher &amp; Pingali's own real speedup figures are for ONE GPU against a serial CPU baseline, not a multi-GPU distributed Barnes-Hut communication measurement. This chapter's own reasoning -- that a distributed Barnes-Hut implementation could exchange far LESS than Section 27.2's own full O(N) all-gather, by approximating a distant region's bodies as a single aggregate value rather than requiring every individual body's raw data -- is this chapter's own logical extension of the tree algorithm's own real approximation idea, not a number measured or published by any source this chapter cites.
+</code></pre></div>
+<!-- execution:end:a100:80_barnes_hut_complexity_crossover_model.cpp -->
+
+<!-- execution:start:h100:80_barnes_hut_complexity_crossover_model.cpp -->
+<blockquote>
+<p><strong>Compiled and executed — 2026-11-17-h100: Host program/model (exit-only).</strong> Hardware: 2 H100 GPUs. Execution record UTC (run-batch start; per-program time unrecorded): <code>2026-11-17T23:48:18.967387+00:00</code>.</p>
+</blockquote>
+<!-- execution:metadata Source SHA-256: 1d63a67093a51927597d9160653c4a82288b5c21211c47edea36d687680d2946; recorded UTC (run-batch start; per-program time unrecorded): 2026-11-17T23:48:18.967387+00:00 -->
+
+<p><a href="../../validation/2026-11-17-h100/80_barnes_hut_complexity_crossover_model/80_barnes_hut_complexity_crossover_model.cpp">Exact tested source</a> · <a href="../../validation/2026-11-17-h100/80_barnes_hut_complexity_crossover_model/compile.log">Compiler log</a> · <a href="../../validation/2026-11-17-h100/80_barnes_hut_complexity_crossover_model/run.log">Execution log</a>. Compile exit: <code>0</code>; run exit: <code>0</code>.</p>
 <p>Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a>g++<span class="w"> </span>-std<span class="o">=</span>c++17<span class="w"> </span>-O2<span class="w"> </span>80_barnes_hut_complexity_crossover_model.cpp<span class="w"> </span>-o<span class="w"> </span>./example
 <a id="__codelineno-17-2" name="__codelineno-17-2" href="#__codelineno-17-2"></a>./example
@@ -3231,66 +3230,9 @@
 <a id="__codelineno-18-19" name="__codelineno-18-19" href="#__codelineno-18-19"></a>Burtscher &amp; Pingali's own real speedup figures are for ONE GPU against a serial CPU baseline, not a multi-GPU distributed Barnes-Hut communication measurement. This chapter's own reasoning -- that a distributed Barnes-Hut implementation could exchange far LESS than Section 27.2's own full O(N) all-gather, by approximating a distant region's bodies as a single aggregate value rather than requiring every individual body's raw data -- is this chapter's own logical extension of the tree algorithm's own real approximation idea, not a number measured or published by any source this chapter cites.
 </code></pre></div>
 </details>
-<!-- execution:end:a100:80_barnes_hut_complexity_crossover_model.cpp -->
-
-<!-- execution:start:h100:80_barnes_hut_complexity_crossover_model.cpp -->
-<blockquote>
-<p><strong>Current execution — 2026-11-17-h100: Host program/model (exit-only).</strong> UTC (run-batch start; per-program time unrecorded): <code>2026-11-17T23:48:18.967387+00:00</code>. Source SHA-256: <code>1d63a67093a51927597d9160653c4a82288b5c21211c47edea36d687680d2946</code>.</p>
-</blockquote>
-<p><a href="../../validation/2026-11-17-h100/80_barnes_hut_complexity_crossover_model/80_barnes_hut_complexity_crossover_model.cpp">Exact tested source</a> · <a href="../../validation/2026-11-17-h100/80_barnes_hut_complexity_crossover_model/compile.log">Compiler log</a> · <a href="../../validation/2026-11-17-h100/80_barnes_hut_complexity_crossover_model/run.log">Execution log</a>. Compile exit: <code>0</code>; run exit: <code>0</code>.</p>
-<p>Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-19-1" name="__codelineno-19-1" href="#__codelineno-19-1"></a>g++<span class="w"> </span>-std<span class="o">=</span>c++17<span class="w"> </span>-O2<span class="w"> </span>80_barnes_hut_complexity_crossover_model.cpp<span class="w"> </span>-o<span class="w"> </span>./example
-<a id="__codelineno-19-2" name="__codelineno-19-2" href="#__codelineno-19-2"></a>./example
-</code></pre></div>
-<details>
-<summary>Captured current-source output</summary>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-20-1" name="__codelineno-20-1" href="#__codelineno-20-1"></a>--- This chapter's own worked model: O(N^2) vs O(N log N) operation counts (NOT a runtime measurement) ---
-<a id="__codelineno-20-2" name="__codelineno-20-2" href="#__codelineno-20-2"></a>N            N^2 ops          N*log2(N) ops    ratio N/log2(N)
-<a id="__codelineno-20-3" name="__codelineno-20-3" href="#__codelineno-20-3"></a>1000         1.000e+06        9.966e+03        100.3           x
-<a id="__codelineno-20-4" name="__codelineno-20-4" href="#__codelineno-20-4"></a>10000        1.000e+08        1.329e+05        752.6           x
-<a id="__codelineno-20-5" name="__codelineno-20-5" href="#__codelineno-20-5"></a>100000       1.000e+10        1.661e+06        6020.6          x
-<a id="__codelineno-20-6" name="__codelineno-20-6" href="#__codelineno-20-6"></a>1000000      1.000e+12        1.993e+07        50171.7         x
-<a id="__codelineno-20-7" name="__codelineno-20-7" href="#__codelineno-20-7"></a>5000000      2.500e+13        1.113e+08        224683.8        x
-<a id="__codelineno-20-8" name="__codelineno-20-8" href="#__codelineno-20-8"></a>50000000     2.500e+15        1.279e+09        1955001.7       x
-<a id="__codelineno-20-9" name="__codelineno-20-9" href="#__codelineno-20-9"></a>
-<a id="__codelineno-20-10" name="__codelineno-20-10" href="#__codelineno-20-10"></a>As N grows, the ratio N/log2(N) grows WITHOUT BOUND -- all-pairs' own O(N^2) cost doesn't just stay worse than Barnes-Hut's O(N log N), it gets steadily WORSE (by a factor N/log2(N), which grows almost linearly in N), relative to Barnes-Hut, the larger the simulation gets. This compounds Section 27.2's own finding that all-pairs' per-GPU COMMUNICATION also does not improve by adding more GPUs -- both the compute and the communication argument point the same real direction at scale.
-<a id="__codelineno-20-11" name="__codelineno-20-11" href="#__codelineno-20-11"></a>
-<a id="__codelineno-20-12" name="__codelineno-20-12" href="#__codelineno-20-12"></a>--- Real, cited measured numbers for an ACTUAL GPU Barnes-Hut implementation (Burtscher &amp; Pingali) -- NOT computed by this program ---
-<a id="__codelineno-20-13" name="__codelineno-20-13" href="#__codelineno-20-13"></a>"Our CUDA code takes 5.2 seconds to simulate one time step with 5,000,000 bodies on a 1.3 GHz Quadro FX 5800 GPU with 240 cores, which is 74 times faster than an optimized serial implementation running on a 2.53 GHz Xeon E5540 CPU."
-<a id="__codelineno-20-14" name="__codelineno-20-14" href="#__codelineno-20-14"></a>"With increasing input size, the parallel CUDA Barnes Hut code is 5, 35, 66, 74, and 53 times faster than the serial C code."
-<a id="__codelineno-20-15" name="__codelineno-20-15" href="#__codelineno-20-15"></a>"the Barnes Hut implementation reaches a respectable 75 Gflop/s."
-<a id="__codelineno-20-16" name="__codelineno-20-16" href="#__codelineno-20-16"></a>"The most important kernel, kernel 5, is over 90 times faster."
-<a id="__codelineno-20-17" name="__codelineno-20-17" href="#__codelineno-20-17"></a>
-<a id="__codelineno-20-18" name="__codelineno-20-18" href="#__codelineno-20-18"></a>--- What this chapter does NOT claim ---
-<a id="__codelineno-20-19" name="__codelineno-20-19" href="#__codelineno-20-19"></a>Burtscher &amp; Pingali's own real speedup figures are for ONE GPU against a serial CPU baseline, not a multi-GPU distributed Barnes-Hut communication measurement. This chapter's own reasoning -- that a distributed Barnes-Hut implementation could exchange far LESS than Section 27.2's own full O(N) all-gather, by approximating a distant region's bodies as a single aggregate value rather than requiring every individual body's raw data -- is this chapter's own logical extension of the tree algorithm's own real approximation idea, not a number measured or published by any source this chapter cites.
-</code></pre></div>
-</details>
 <!-- execution:end:h100:80_barnes_hut_complexity_crossover_model.cpp -->
 
-<p>Compiled with <code>g++ -O2 80_barnes_hut_complexity_crossover_model.cpp -o 80_barnes_hut_complexity_crossover_model</code> and genuinely run, on both the cloud sandbox and the device, with byte-identical output on both. Locked output:</p>
-<details>
-<summary>Historical authoring output — superseded by the current execution above</summary>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-21-1" name="__codelineno-21-1" href="#__codelineno-21-1"></a>--- This chapter's own worked model: O(N^2) vs O(N log N) operation counts (NOT a runtime measurement) ---
-<a id="__codelineno-21-2" name="__codelineno-21-2" href="#__codelineno-21-2"></a>N            N^2 ops          N*log2(N) ops    ratio N/log2(N) 
-<a id="__codelineno-21-3" name="__codelineno-21-3" href="#__codelineno-21-3"></a>1000         1.000e+06        9.966e+03        100.3           x
-<a id="__codelineno-21-4" name="__codelineno-21-4" href="#__codelineno-21-4"></a>10000        1.000e+08        1.329e+05        752.6           x
-<a id="__codelineno-21-5" name="__codelineno-21-5" href="#__codelineno-21-5"></a>100000       1.000e+10        1.661e+06        6020.6          x
-<a id="__codelineno-21-6" name="__codelineno-21-6" href="#__codelineno-21-6"></a>1000000      1.000e+12        1.993e+07        50171.7         x
-<a id="__codelineno-21-7" name="__codelineno-21-7" href="#__codelineno-21-7"></a>5000000      2.500e+13        1.113e+08        224683.8        x
-<a id="__codelineno-21-8" name="__codelineno-21-8" href="#__codelineno-21-8"></a>50000000     2.500e+15        1.279e+09        1955001.7       x
-<a id="__codelineno-21-9" name="__codelineno-21-9" href="#__codelineno-21-9"></a>
-<a id="__codelineno-21-10" name="__codelineno-21-10" href="#__codelineno-21-10"></a>As N grows, the ratio N/log2(N) grows WITHOUT BOUND -- all-pairs' own O(N^2) cost doesn't just stay worse than Barnes-Hut's O(N log N), it gets steadily WORSE (by a factor N/log2(N), which grows almost linearly in N), relative to Barnes-Hut, the larger the simulation gets. This compounds Section 27.2's own finding that all-pairs' per-GPU COMMUNICATION also does not improve by adding more GPUs -- both the compute and the communication argument point the same real direction at scale.
-<a id="__codelineno-21-11" name="__codelineno-21-11" href="#__codelineno-21-11"></a>
-<a id="__codelineno-21-12" name="__codelineno-21-12" href="#__codelineno-21-12"></a>--- Real, cited measured numbers for an ACTUAL GPU Barnes-Hut implementation (Burtscher &amp; Pingali) -- NOT computed by this program ---
-<a id="__codelineno-21-13" name="__codelineno-21-13" href="#__codelineno-21-13"></a>"Our CUDA code takes 5.2 seconds to simulate one time step with 5,000,000 bodies on a 1.3 GHz Quadro FX 5800 GPU with 240 cores, which is 74 times faster than an optimized serial implementation running on a 2.53 GHz Xeon E5540 CPU."
-<a id="__codelineno-21-14" name="__codelineno-21-14" href="#__codelineno-21-14"></a>"With increasing input size, the parallel CUDA Barnes Hut code is 5, 35, 66, 74, and 53 times faster than the serial C code."
-<a id="__codelineno-21-15" name="__codelineno-21-15" href="#__codelineno-21-15"></a>"the Barnes Hut implementation reaches a respectable 75 Gflop/s."
-<a id="__codelineno-21-16" name="__codelineno-21-16" href="#__codelineno-21-16"></a>"The most important kernel, kernel 5, is over 90 times faster."
-<a id="__codelineno-21-17" name="__codelineno-21-17" href="#__codelineno-21-17"></a>
-<a id="__codelineno-21-18" name="__codelineno-21-18" href="#__codelineno-21-18"></a>--- What this chapter does NOT claim ---
-<a id="__codelineno-21-19" name="__codelineno-21-19" href="#__codelineno-21-19"></a>Burtscher &amp; Pingali's own real speedup figures are for ONE GPU against a serial CPU baseline, not a multi-GPU distributed Barnes-Hut communication measurement. This chapter's own reasoning -- that a distributed Barnes-Hut implementation could exchange far LESS than Section 27.2's own full O(N) all-gather, by approximating a distant region's bodies as a single aggregate value rather than requiring every individual body's raw data -- is this chapter's own logical extension of the tree algorithm's own real approximation idea, not a number measured or published by any source this chapter cites.
-</code></pre></div>
-</details>
+<p>Compiled with <code>g++ -O2 80_barnes_hut_complexity_crossover_model.cpp -o 80_barnes_hut_complexity_crossover_model</code> and genuinely run, on the recorded H100 and A100 hosts, with the execution output recorded above.</p>
 <div class="admonition warning">
 <p class="admonition-title">[COMMON TRAP] Citing Burtscher &amp; Pingali's own real single-GPU speedup numbers as evidence about multi-GPU communication</p>
 <p>Burtscher &amp; Pingali's own real, measured numbers -- 74x faster than serial, 75 Gflop/s, kernel 5 over 90x faster -- are genuinely real and worth citing, but they describe ONE GPU's Barnes-Hut implementation against a SERIAL CPU baseline. Nothing in that paper measures, and this chapter has not found any other published source measuring, how much communication a MULTI-GPU distributed Barnes-Hut implementation would actually need. This section's own claim that Barnes-Hut's tree structure would plausibly reduce Section 27.2's own O(N) all-gather cost is a logical inference from the algorithm's own real approximation idea -- treating a distant cluster's bodies as one aggregate source rather than transmitting each one individually -- not a number this chapter measured or found published anywhere. Citing a real single-GPU compute speedup as if it settled a multi-GPU communication question would blur two genuinely different claims that this chapter has deliberately kept separate.</p>
@@ -3302,7 +3244,7 @@
 <li>Why does Chapter 16's own halo exchange work for a PDE stencil but not for N-body force calculation?</li>
 <li>What real quote from GPU Gems 3's "Fast N-Body Simulation with CUDA" chapter explains why every body's force calculation needs every OTHER body?</li>
 <li>In Section 27.1's own simulation, what real collective replaces Chapter 16's halo exchange, and what does "every shard holds the full body list" mean in terms of that collective's own semantics?</li>
-<li>Section 27.2's own locked output shows N-body's per-GPU communication volume GROWING as more GPUs are added, from 76.29 MiB at P=2 to 150.20 MiB at P=64. Why does this happen, given that Chapter 9/10's own ring all-gather formula normally describes volume as staying "nearly flat"?</li>
+<li>Section 27.2's own Sample output shows N-body's per-GPU communication volume GROWING as more GPUs are added, from 76.29 MiB at P=2 to 150.20 MiB at P=64. Why does this happen, given that Chapter 9/10's own ring all-gather formula normally describes volume as staying "nearly flat"?</li>
 <li>Why does Chapter 16's own per-shard halo-exchange volume stay flat as more shards are added, while this chapter's own per-GPU all-gather volume grows?</li>
 <li>What real, named algorithm reduces all-pairs N-body's O(N^2) compute cost, and what real quote from its own 1986 paper describes the mechanism?</li>
 <li>What real, cited numbers does Burtscher &amp; Pingali's paper report for their GPU Barnes-Hut implementation, and what do those numbers NOT tell you about multi-GPU communication?</li>
@@ -3314,7 +3256,7 @@
 <p><strong>1.</strong> A PDE stencil's own update rule is LOCAL: each cell's next value depends only on its immediate neighbors, so splitting the grid across devices only requires exchanging a thin boundary layer -- a halo exchange. N-body force calculation has no such locality: gravitational (and Coulomb) forces have no cutoff radius, so every body's force genuinely depends on every OTHER body, however far away, regardless of how the bodies happen to be split across devices.</p>
 <p><strong>2.</strong> "The total force F_i on body i, due to its interactions with the other N-1 bodies, is obtained by summing all interactions." This states directly that computing the correct force on any one body requires summing contributions from every other body in the system, not just nearby ones.</p>
 <p><strong>3.</strong> An all-gather (Chapter 10's own real collective) replaces the halo exchange. "Every shard holds the full body list" is exactly an all-gather's own semantics: each shard contributes its own block of bodies, and after the collective every shard holds every block -- the complete, identical N-body list -- rather than just its boundary-adjacent neighbors' data, as in Chapter 16's halo exchange. File 78 runs it as Chapter 10's ring all-gather (P-1 steps, each forwarding one block), starting from buffers in which every non-owned slot is empty, so a routing mistake would show up as a wrong force.</p>
-<p><strong>4.</strong> Chapter 9/10's "nearly flat volume" finding describes the per-rank communication volume relative to a FIXED total buffer size K as N (the rank count) grows -- the factor <code>(N-1)/N</code> approaches a constant. In this chapter's case, the total buffer being gathered IS the entire N-body dataset, and as P (the GPU count) grows, <code>(P-1)/P</code> also approaches 1, meaning each GPU's own share of that fixed total dataset approaches the WHOLE dataset -- which is exactly what the locked output shows growing toward 152.59 MiB. The volume is "nearly flat" in the sense that it approaches a constant, but that constant is the FULL dataset size, not a small fraction of it -- a fundamentally different situation from Chapter 16's halo exchange, whose fixed constant was a small boundary size.</p>
+<p><strong>4.</strong> Chapter 9/10's "nearly flat volume" finding describes the per-rank communication volume relative to a FIXED total buffer size K as N (the rank count) grows -- the factor <code>(N-1)/N</code> approaches a constant. In this chapter's case, the total buffer being gathered IS the entire N-body dataset, and as P (the GPU count) grows, <code>(P-1)/P</code> also approaches 1, meaning each GPU's own share of that fixed total dataset approaches the WHOLE dataset -- which is exactly what the Sample output shows growing toward 152.59 MiB. The volume is "nearly flat" in the sense that it approaches a constant, but that constant is the FULL dataset size, not a small fraction of it -- a fundamentally different situation from Chapter 16's halo exchange, whose fixed constant was a small boundary size.</p>
 <p><strong>5.</strong> Chapter 16's halo-exchange volume depends only on the fixed boundary length between adjacent shards, which does not change as more shards are added -- each shard's own boundary with its neighbors stays the same size regardless of how many total shards exist, so the per-shard volume is flat in P. This chapter's own all-gather volume depends on the TOTAL dataset size, which every GPU needs a complete copy of regardless of shard count, so each GPU must receive the <code>(P-1)/P</code> of it that it does not own -- a fraction that GROWS with P (76.29 MiB at P=2 up to 150.20 MiB at P=64).</p>
 <p><strong>6.</strong> Barnes-Hut (Barnes &amp; Hut, 1986, Nature) reduces the O(N^2) compute cost to O(N log N). Its own paper describes the mechanism as a "tree-structured hierarchical subdivision of space into cubic cells, each of which is recursively divided into eight subcells whenever more than one particle is found to occupy the same cell" -- this tree lets a distant cluster of bodies be approximated as a single aggregate source rather than visited individually.</p>
 <p><strong>7.</strong> Burtscher &amp; Pingali report: "5.2 seconds to simulate one time step with 5,000,000 bodies... 74 times faster than an optimized serial implementation"; scaling of "5, 35, 66, 74, and 53 times faster... with increasing input size"; "75 Gflop/s"; and "kernel 5... over 90 times faster." These numbers describe ONE GPU's performance against a serial CPU baseline -- they say nothing about how much data a MULTI-GPU distributed Barnes-Hut implementation would need to exchange between devices, which is a genuinely separate, unmeasured question.</p>

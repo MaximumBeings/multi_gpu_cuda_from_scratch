@@ -2648,11 +2648,6 @@
 
 
 <h1 id="chapter-6-streams-events-and-cross-device-synchronization">Chapter 6: Streams, Events, and Cross-Device Synchronization<a class="headerlink" href="#chapter-6-streams-events-and-cross-device-synchronization" title="Permanent link">&para;</a></h1>
-<!-- execution:provenance -->
-<div class="admonition info">
-<p class="admonition-title">Execution provenance</p>
-<p>Current execution blocks identify the tested source hash, hardware dataset, commands and captured output. References elsewhere on this page to a device-less environment describe the original authoring context. Historical output is superseded by the current record. Displayed output omits the runner command header and trims trailing line whitespace; raw logs remain exact. A host simulation or API validation has its stated scope; neither alone establishes a numerical multi-GPU workload or measured performance.</p>
-</div>
 <!-- mgpu:opener:start -->
 <p><a href="../../images/chapter-openers/06.svg"><img alt="Chapter 6: Streams, Events, and Cross-Device Synchronization" src="../../images/chapter-openers/06.svg" /></a></p>
 <!-- mgpu:opener:end -->
@@ -2719,28 +2714,30 @@
 </code></pre></div>
 <!-- execution:start:a100:14_event_basics.cu -->
 <blockquote>
-<p><strong>Current execution — 2026-11-17-a100: API validation (recorded scope).</strong> UTC (program start): <code>2026-11-18T00:00:46.329729+00:00</code>. Source SHA-256: <code>1141f20f7b822e6460546989f190bb3faf91d2fedb7ec31e06836cd71c6d1f11</code>.</p>
+<p><strong>Compiled and executed — 2026-11-17-a100: API validation (recorded scope).</strong> Hardware: 8 A100 GPUs. Executed UTC: <code>2026-11-18T00:00:47.396648+00:00</code>.</p>
 </blockquote>
+<!-- execution:metadata Source SHA-256: 1141f20f7b822e6460546989f190bb3faf91d2fedb7ec31e06836cd71c6d1f11; recorded UTC (program start): 2026-11-18T00:00:46.329729+00:00 -->
+
 <p><a href="../../validation/2026-11-17-a100/14_event_basics/14_event_basics.cu">Exact tested source</a> · <a href="../../validation/2026-11-17-a100/14_event_basics/compile.log">Compiler log</a> · <a href="../../validation/2026-11-17-a100/14_event_basics/run.log">Execution log</a>. Compile exit: <code>0</code>; run exit: <code>0</code>.</p>
 <p>Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>nvcc<span class="w"> </span>-std<span class="o">=</span>c++17<span class="w"> </span>-O2<span class="w"> </span>-arch<span class="o">=</span>sm_80<span class="w"> </span>14_event_basics.cu<span class="w"> </span>-o<span class="w"> </span>./example
 <a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>./example
 </code></pre></div>
-<details>
-<summary>Captured current-source output</summary>
+<p><strong>Sample output</strong></p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>cudaStreamCreate: no error (code 0)
 <a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>cudaEventCreate: no error (code 0)
 <a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>cudaEventRecord(event, stream): no error (code 0)
 <a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>cudaEventQuery(event) [non-blocking check]: device not ready (code 600)
 <a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>cudaEventSynchronize(event) [blocking wait]: no error (code 0)
 </code></pre></div>
-</details>
 <!-- execution:end:a100:14_event_basics.cu -->
 
 <!-- execution:start:h100:14_event_basics.cu -->
 <blockquote>
-<p><strong>Current execution — 2026-11-17-h100: API validation (recorded scope).</strong> UTC (run-batch start; per-program time unrecorded): <code>2026-11-17T23:48:18.967387+00:00</code>. Source SHA-256: <code>1141f20f7b822e6460546989f190bb3faf91d2fedb7ec31e06836cd71c6d1f11</code>.</p>
+<p><strong>Compiled and executed — 2026-11-17-h100: API validation (recorded scope).</strong> Hardware: 2 H100 GPUs. Execution record UTC (run-batch start; per-program time unrecorded): <code>2026-11-17T23:48:18.967387+00:00</code>.</p>
 </blockquote>
+<!-- execution:metadata Source SHA-256: 1141f20f7b822e6460546989f190bb3faf91d2fedb7ec31e06836cd71c6d1f11; recorded UTC (run-batch start; per-program time unrecorded): 2026-11-17T23:48:18.967387+00:00 -->
+
 <p><a href="../../validation/2026-11-17-h100/14_event_basics/14_event_basics.cu">Exact tested source</a> · <a href="../../validation/2026-11-17-h100/14_event_basics/compile.log">Compiler log</a> · <a href="../../validation/2026-11-17-h100/14_event_basics/run.log">Execution log</a>. Compile exit: <code>0</code>; run exit: <code>0</code>.</p>
 <p>Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>nvcc<span class="w"> </span>-std<span class="o">=</span>c++17<span class="w"> </span>-O2<span class="w"> </span>-arch<span class="o">=</span>sm_90<span class="w"> </span>14_event_basics.cu<span class="w"> </span>-o<span class="w"> </span>./example
@@ -2757,18 +2754,8 @@
 </details>
 <!-- execution:end:h100:14_event_basics.cu -->
 
-<p><strong>Historical authoring transcript (earlier source).</strong> The current listing guards every prerequisite and returns nonzero on errors; it no longer invokes APIs with handles from failed creations. The output below is retained as historical context and is not a current-source GPU execution record. The current source was compiled and executed in the dated H100 suite; use the linked record for its numerical, API-probe or other-execution scope.</p>
 <p>The <a href="../../validation-h100/">2026-11-17 H100 execution record</a> covers two GPUs connected by local NV18. It distinguishes numerical checks, API probes and other executions; a successful exit alone does not establish GPU algorithm correctness.</p>
-<details>
-<summary>Historical authoring output — superseded by the current execution above</summary>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>cudaStreamCreate: no CUDA-capable device is detected (code 100)
-<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>cudaEventCreate: no CUDA-capable device is detected (code 100)
-<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>cudaEventRecord(event, stream): no CUDA-capable device is detected (code 100)
-<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>cudaEventQuery(event) [non-blocking check]: no CUDA-capable device is detected (code 100)
-<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>cudaEventSynchronize(event) [blocking wait]: no CUDA-capable device is detected (code 100)
-</code></pre></div>
-</details>
-<p>The earlier device-less transcript returned <code>cudaErrorNoDevice</code> throughout; the current H100 API probes execute with valid device contexts. That historical output does not validate an event lifecycle. The current source stops after a failed creation and treats <code>cudaErrorNotReady</code> from a valid query as a normal pending state. An unrecorded event is considered complete; record the producer event before enqueuing the intended wait, and avoid confusing different recording generations.</p>
+<p>The event lifecycle checks creation, recording, querying and completion. <code>cudaErrorNotReady</code> is a normal query result for a pending event. Record the intended producer generation before enqueueing its consumer wait.</p>
 <div class="admonition warning">
 <p class="admonition-title">[COMMON TRAP] Assuming cudaEventRecord() captures a value, like a timestamp, at the moment it's called</p>
 <p><code>cudaEventRecord(event, stream)</code> does not record <em>when the call happened</em> on the host -- it inserts a marker into <code>stream</code>'s queue that becomes "reached" only once every operation already queued <em>ahead</em> of it in that stream has finished executing on the device. If the stream already has ten seconds of queued kernels ahead of this call, the event doesn't become reached until all ten seconds have elapsed, no matter how quickly <code>cudaEventRecord()</code> itself returned to the host. Confusing "the call returned" with "the event fired" is exactly the mistake Section 6.2's cross-device dependency depends on you <em>not</em> making.</p>
@@ -2782,119 +2769,106 @@
 <p>Chapter 3 already showed that streams are bound to whichever device was current when they were created, and that the binding is enforced unevenly: a kernel launched into a stream owned by a device other than the current one fails, while a memory copy issued the same way succeeds. That asymmetry is why this chapter's cross-device code calls <code>cudaSetDevice()</code> for the owning device before issuing work to each device's stream, and why a copy that succeeds is never taken as proof the right stream was used. Events inherit that same binding -- an event recorded into a device-0 stream is fundamentally a device-0 marker. The useful trick is that the <em>waiting</em> side doesn't have to be on that same device: <code>cudaStreamWaitEvent()</code> lets a stream on device 1 wait on an event that was recorded on device 0, which is the real, direct mechanism for expressing "this specific piece of device 1's work depends on that specific piece of device 0's work" -- without forcing either device to fully drain, and without the host blocking at all.</p>
 <h3 id="background_1">Background<a class="headerlink" href="#background_1" title="Permanent link">&para;</a></h3>
 <p><code>cudaStreamWaitEvent(stream, event, flags)</code> makes all <em>future</em> work submitted to <code>stream</code> wait for <code>event</code> before it begins executing -- work already running, or already completed, in <code>stream</code> is unaffected. The documentation states this cross-device case explicitly: this synchronization "will be performed efficiently on the device," and "the event ... may be from a different context than stream, in which case this function will perform cross-device synchronization." That's the entire mechanism this section's code exercises: device 0 records an event marking a point in its own stream, and device 1's stream is told to wait on that exact marker before running anything queued after this call -- a targeted, single dependency, rather than the blunt alternative of calling <code>cudaDeviceSynchronize()</code> on device 0 and only then starting anything on device 1, which would needlessly stall device 1 behind <em>all</em> of device 0's work rather than just the one piece it actually depends on.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="c1">// Chapter 6: Streams, Events, and Cross-Device Synchronization</span>
-<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="c1">// 15_cross_device_wait.cu</span>
-<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="c1">// Two real devices, guarded handles, and a checked cross-device dependency.</span>
-<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;cstdio&gt;</span>
-<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;cuda_runtime.h&gt;</span>
-<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a>
-<a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a><span class="cp">#define CHECK(call) do { cudaError_t status = (call); \</span>
-<a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a><span class="cp">    printf("%s: %s (code %d)\n", #call, cudaGetErrorString(status), (int)status); \</span>
-<a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a><span class="cp">    if (status != cudaSuccess) return status == cudaErrorNoDevice || \</span>
-<a id="__codelineno-6-10" name="__codelineno-6-10" href="#__codelineno-6-10"></a><span class="cp">        status == cudaErrorInsufficientDriver ? 2 : 1; } while (0)</span>
-<a id="__codelineno-6-11" name="__codelineno-6-11" href="#__codelineno-6-11"></a>
-<a id="__codelineno-6-12" name="__codelineno-6-12" href="#__codelineno-6-12"></a><span class="kt">int</span><span class="w"> </span><span class="nf">main</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
-<a id="__codelineno-6-13" name="__codelineno-6-13" href="#__codelineno-6-13"></a><span class="w">    </span><span class="kt">int</span><span class="w"> </span><span class="n">count</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
-<a id="__codelineno-6-14" name="__codelineno-6-14" href="#__codelineno-6-14"></a><span class="w">    </span><span class="n">CHECK</span><span class="p">(</span><span class="n">cudaGetDeviceCount</span><span class="p">(</span><span class="o">&amp;</span><span class="n">count</span><span class="p">));</span>
-<a id="__codelineno-6-15" name="__codelineno-6-15" href="#__codelineno-6-15"></a><span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">count</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="mi">2</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">printf</span><span class="p">(</span><span class="s">"BLOCKED: requires 2 visible GPUs; found %d.</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span><span class="w"> </span><span class="n">count</span><span class="p">);</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="mi">2</span><span class="p">;</span><span class="w"> </span><span class="p">}</span>
-<a id="__codelineno-6-16" name="__codelineno-6-16" href="#__codelineno-6-16"></a><span class="w">    </span><span class="n">cudaStream_t</span><span class="w"> </span><span class="n">stream0</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nb">nullptr</span><span class="p">,</span><span class="w"> </span><span class="n">stream1</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nb">nullptr</span><span class="p">;</span>
-<a id="__codelineno-6-17" name="__codelineno-6-17" href="#__codelineno-6-17"></a><span class="w">    </span><span class="n">cudaEvent_t</span><span class="w"> </span><span class="n">event0</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nb">nullptr</span><span class="p">;</span>
-<a id="__codelineno-6-18" name="__codelineno-6-18" href="#__codelineno-6-18"></a><span class="w">    </span><span class="n">CHECK</span><span class="p">(</span><span class="n">cudaSetDevice</span><span class="p">(</span><span class="mi">0</span><span class="p">));</span>
-<a id="__codelineno-6-19" name="__codelineno-6-19" href="#__codelineno-6-19"></a><span class="w">    </span><span class="n">CHECK</span><span class="p">(</span><span class="n">cudaStreamCreate</span><span class="p">(</span><span class="o">&amp;</span><span class="n">stream0</span><span class="p">));</span>
-<a id="__codelineno-6-20" name="__codelineno-6-20" href="#__codelineno-6-20"></a><span class="w">    </span><span class="n">CHECK</span><span class="p">(</span><span class="n">cudaEventCreateWithFlags</span><span class="p">(</span><span class="o">&amp;</span><span class="n">event0</span><span class="p">,</span><span class="w"> </span><span class="n">cudaEventDisableTiming</span><span class="p">));</span>
-<a id="__codelineno-6-21" name="__codelineno-6-21" href="#__codelineno-6-21"></a><span class="w">    </span><span class="n">CHECK</span><span class="p">(</span><span class="n">cudaEventRecord</span><span class="p">(</span><span class="n">event0</span><span class="p">,</span><span class="w"> </span><span class="n">stream0</span><span class="p">));</span>
-<a id="__codelineno-6-22" name="__codelineno-6-22" href="#__codelineno-6-22"></a><span class="w">    </span><span class="n">CHECK</span><span class="p">(</span><span class="n">cudaSetDevice</span><span class="p">(</span><span class="mi">1</span><span class="p">));</span>
-<a id="__codelineno-6-23" name="__codelineno-6-23" href="#__codelineno-6-23"></a><span class="w">    </span><span class="n">CHECK</span><span class="p">(</span><span class="n">cudaStreamCreate</span><span class="p">(</span><span class="o">&amp;</span><span class="n">stream1</span><span class="p">));</span>
-<a id="__codelineno-6-24" name="__codelineno-6-24" href="#__codelineno-6-24"></a><span class="w">    </span><span class="n">CHECK</span><span class="p">(</span><span class="n">cudaStreamWaitEvent</span><span class="p">(</span><span class="n">stream1</span><span class="p">,</span><span class="w"> </span><span class="n">event0</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">));</span>
-<a id="__codelineno-6-25" name="__codelineno-6-25" href="#__codelineno-6-25"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">"Cross-device wait enqueued; host did not wait for event completion.</span><span class="se">\n</span><span class="s">"</span><span class="p">);</span>
-<a id="__codelineno-6-26" name="__codelineno-6-26" href="#__codelineno-6-26"></a><span class="w">    </span><span class="c1">// Drain the waiter before releasing resources. This demo checks API success;</span>
-<a id="__codelineno-6-27" name="__codelineno-6-27" href="#__codelineno-6-27"></a><span class="w">    </span><span class="c1">// it does not validate a producer/consumer payload or measure overlap.</span>
-<a id="__codelineno-6-28" name="__codelineno-6-28" href="#__codelineno-6-28"></a><span class="w">    </span><span class="n">CHECK</span><span class="p">(</span><span class="n">cudaStreamSynchronize</span><span class="p">(</span><span class="n">stream1</span><span class="p">));</span>
-<a id="__codelineno-6-29" name="__codelineno-6-29" href="#__codelineno-6-29"></a><span class="w">    </span><span class="n">CHECK</span><span class="p">(</span><span class="n">cudaStreamDestroy</span><span class="p">(</span><span class="n">stream1</span><span class="p">));</span>
-<a id="__codelineno-6-30" name="__codelineno-6-30" href="#__codelineno-6-30"></a><span class="w">    </span><span class="n">CHECK</span><span class="p">(</span><span class="n">cudaSetDevice</span><span class="p">(</span><span class="mi">0</span><span class="p">));</span>
-<a id="__codelineno-6-31" name="__codelineno-6-31" href="#__codelineno-6-31"></a><span class="w">    </span><span class="n">CHECK</span><span class="p">(</span><span class="n">cudaEventDestroy</span><span class="p">(</span><span class="n">event0</span><span class="p">));</span>
-<a id="__codelineno-6-32" name="__codelineno-6-32" href="#__codelineno-6-32"></a><span class="w">    </span><span class="n">CHECK</span><span class="p">(</span><span class="n">cudaStreamDestroy</span><span class="p">(</span><span class="n">stream0</span><span class="p">));</span>
-<a id="__codelineno-6-33" name="__codelineno-6-33" href="#__codelineno-6-33"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">"PASS: checked two-device event dependency lifecycle.</span><span class="se">\n</span><span class="s">"</span><span class="p">);</span>
-<a id="__codelineno-6-34" name="__codelineno-6-34" href="#__codelineno-6-34"></a><span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
-<a id="__codelineno-6-35" name="__codelineno-6-35" href="#__codelineno-6-35"></a><span class="p">}</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="c1">// Chapter 6: Streams, Events, and Cross-Device Synchronization</span>
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="c1">// 15_cross_device_wait.cu</span>
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="c1">// Two real devices, guarded handles, and a checked cross-device dependency.</span>
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;cstdio&gt;</span>
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;cuda_runtime.h&gt;</span>
+<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>
+<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a><span class="cp">#define CHECK(call) do { cudaError_t status = (call); \</span>
+<a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a><span class="cp">    printf("%s: %s (code %d)\n", #call, cudaGetErrorString(status), (int)status); \</span>
+<a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a><span class="cp">    if (status != cudaSuccess) return status == cudaErrorNoDevice || \</span>
+<a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a><span class="cp">        status == cudaErrorInsufficientDriver ? 2 : 1; } while (0)</span>
+<a id="__codelineno-5-11" name="__codelineno-5-11" href="#__codelineno-5-11"></a>
+<a id="__codelineno-5-12" name="__codelineno-5-12" href="#__codelineno-5-12"></a><span class="kt">int</span><span class="w"> </span><span class="nf">main</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-5-13" name="__codelineno-5-13" href="#__codelineno-5-13"></a><span class="w">    </span><span class="kt">int</span><span class="w"> </span><span class="n">count</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
+<a id="__codelineno-5-14" name="__codelineno-5-14" href="#__codelineno-5-14"></a><span class="w">    </span><span class="n">CHECK</span><span class="p">(</span><span class="n">cudaGetDeviceCount</span><span class="p">(</span><span class="o">&amp;</span><span class="n">count</span><span class="p">));</span>
+<a id="__codelineno-5-15" name="__codelineno-5-15" href="#__codelineno-5-15"></a><span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">count</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="mi">2</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">printf</span><span class="p">(</span><span class="s">"BLOCKED: requires 2 visible GPUs; found %d.</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span><span class="w"> </span><span class="n">count</span><span class="p">);</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="mi">2</span><span class="p">;</span><span class="w"> </span><span class="p">}</span>
+<a id="__codelineno-5-16" name="__codelineno-5-16" href="#__codelineno-5-16"></a><span class="w">    </span><span class="n">cudaStream_t</span><span class="w"> </span><span class="n">stream0</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nb">nullptr</span><span class="p">,</span><span class="w"> </span><span class="n">stream1</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nb">nullptr</span><span class="p">;</span>
+<a id="__codelineno-5-17" name="__codelineno-5-17" href="#__codelineno-5-17"></a><span class="w">    </span><span class="n">cudaEvent_t</span><span class="w"> </span><span class="n">event0</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nb">nullptr</span><span class="p">;</span>
+<a id="__codelineno-5-18" name="__codelineno-5-18" href="#__codelineno-5-18"></a><span class="w">    </span><span class="n">CHECK</span><span class="p">(</span><span class="n">cudaSetDevice</span><span class="p">(</span><span class="mi">0</span><span class="p">));</span>
+<a id="__codelineno-5-19" name="__codelineno-5-19" href="#__codelineno-5-19"></a><span class="w">    </span><span class="n">CHECK</span><span class="p">(</span><span class="n">cudaStreamCreate</span><span class="p">(</span><span class="o">&amp;</span><span class="n">stream0</span><span class="p">));</span>
+<a id="__codelineno-5-20" name="__codelineno-5-20" href="#__codelineno-5-20"></a><span class="w">    </span><span class="n">CHECK</span><span class="p">(</span><span class="n">cudaEventCreateWithFlags</span><span class="p">(</span><span class="o">&amp;</span><span class="n">event0</span><span class="p">,</span><span class="w"> </span><span class="n">cudaEventDisableTiming</span><span class="p">));</span>
+<a id="__codelineno-5-21" name="__codelineno-5-21" href="#__codelineno-5-21"></a><span class="w">    </span><span class="n">CHECK</span><span class="p">(</span><span class="n">cudaEventRecord</span><span class="p">(</span><span class="n">event0</span><span class="p">,</span><span class="w"> </span><span class="n">stream0</span><span class="p">));</span>
+<a id="__codelineno-5-22" name="__codelineno-5-22" href="#__codelineno-5-22"></a><span class="w">    </span><span class="n">CHECK</span><span class="p">(</span><span class="n">cudaSetDevice</span><span class="p">(</span><span class="mi">1</span><span class="p">));</span>
+<a id="__codelineno-5-23" name="__codelineno-5-23" href="#__codelineno-5-23"></a><span class="w">    </span><span class="n">CHECK</span><span class="p">(</span><span class="n">cudaStreamCreate</span><span class="p">(</span><span class="o">&amp;</span><span class="n">stream1</span><span class="p">));</span>
+<a id="__codelineno-5-24" name="__codelineno-5-24" href="#__codelineno-5-24"></a><span class="w">    </span><span class="n">CHECK</span><span class="p">(</span><span class="n">cudaStreamWaitEvent</span><span class="p">(</span><span class="n">stream1</span><span class="p">,</span><span class="w"> </span><span class="n">event0</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">));</span>
+<a id="__codelineno-5-25" name="__codelineno-5-25" href="#__codelineno-5-25"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">"Cross-device wait enqueued; host did not wait for event completion.</span><span class="se">\n</span><span class="s">"</span><span class="p">);</span>
+<a id="__codelineno-5-26" name="__codelineno-5-26" href="#__codelineno-5-26"></a><span class="w">    </span><span class="c1">// Drain the waiter before releasing resources. This demo checks API success;</span>
+<a id="__codelineno-5-27" name="__codelineno-5-27" href="#__codelineno-5-27"></a><span class="w">    </span><span class="c1">// it does not validate a producer/consumer payload or measure overlap.</span>
+<a id="__codelineno-5-28" name="__codelineno-5-28" href="#__codelineno-5-28"></a><span class="w">    </span><span class="n">CHECK</span><span class="p">(</span><span class="n">cudaStreamSynchronize</span><span class="p">(</span><span class="n">stream1</span><span class="p">));</span>
+<a id="__codelineno-5-29" name="__codelineno-5-29" href="#__codelineno-5-29"></a><span class="w">    </span><span class="n">CHECK</span><span class="p">(</span><span class="n">cudaStreamDestroy</span><span class="p">(</span><span class="n">stream1</span><span class="p">));</span>
+<a id="__codelineno-5-30" name="__codelineno-5-30" href="#__codelineno-5-30"></a><span class="w">    </span><span class="n">CHECK</span><span class="p">(</span><span class="n">cudaSetDevice</span><span class="p">(</span><span class="mi">0</span><span class="p">));</span>
+<a id="__codelineno-5-31" name="__codelineno-5-31" href="#__codelineno-5-31"></a><span class="w">    </span><span class="n">CHECK</span><span class="p">(</span><span class="n">cudaEventDestroy</span><span class="p">(</span><span class="n">event0</span><span class="p">));</span>
+<a id="__codelineno-5-32" name="__codelineno-5-32" href="#__codelineno-5-32"></a><span class="w">    </span><span class="n">CHECK</span><span class="p">(</span><span class="n">cudaStreamDestroy</span><span class="p">(</span><span class="n">stream0</span><span class="p">));</span>
+<a id="__codelineno-5-33" name="__codelineno-5-33" href="#__codelineno-5-33"></a><span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">"PASS: checked two-device event dependency lifecycle.</span><span class="se">\n</span><span class="s">"</span><span class="p">);</span>
+<a id="__codelineno-5-34" name="__codelineno-5-34" href="#__codelineno-5-34"></a><span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
+<a id="__codelineno-5-35" name="__codelineno-5-35" href="#__codelineno-5-35"></a><span class="p">}</span>
 </code></pre></div>
 <!-- execution:start:a100:15_cross_device_wait.cu -->
 <blockquote>
-<p><strong>Current execution — 2026-11-17-a100: API validation (recorded scope).</strong> UTC (program start): <code>2026-11-18T00:00:50.419783+00:00</code>. Source SHA-256: <code>055596de72b6edec945286a8d7d196c405f70535b56636da683788297e7e2e21</code>.</p>
+<p><strong>Compiled and executed — 2026-11-17-a100: API validation (recorded scope).</strong> Hardware: 8 A100 GPUs. Executed UTC: <code>2026-11-18T00:00:51.487103+00:00</code>.</p>
 </blockquote>
+<!-- execution:metadata Source SHA-256: 055596de72b6edec945286a8d7d196c405f70535b56636da683788297e7e2e21; recorded UTC (program start): 2026-11-18T00:00:50.419783+00:00 -->
+
 <p><a href="../../validation/2026-11-17-a100/15_cross_device_wait/15_cross_device_wait.cu">Exact tested source</a> · <a href="../../validation/2026-11-17-a100/15_cross_device_wait/compile.log">Compiler log</a> · <a href="../../validation/2026-11-17-a100/15_cross_device_wait/run.log">Execution log</a>. Compile exit: <code>0</code>; run exit: <code>0</code>.</p>
 <p>Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>nvcc<span class="w"> </span>-std<span class="o">=</span>c++17<span class="w"> </span>-O2<span class="w"> </span>-arch<span class="o">=</span>sm_80<span class="w"> </span>15_cross_device_wait.cu<span class="w"> </span>-o<span class="w"> </span>./example
-<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>./example
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>nvcc<span class="w"> </span>-std<span class="o">=</span>c++17<span class="w"> </span>-O2<span class="w"> </span>-arch<span class="o">=</span>sm_80<span class="w"> </span>15_cross_device_wait.cu<span class="w"> </span>-o<span class="w"> </span>./example
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>./example
 </code></pre></div>
-<details>
-<summary>Captured current-source output</summary>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>cudaGetDeviceCount(&amp;count): no error (code 0)
-<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>cudaSetDevice(0): no error (code 0)
-<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>cudaStreamCreate(&amp;stream0): no error (code 0)
-<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a>cudaEventCreateWithFlags(&amp;event0, cudaEventDisableTiming): no error (code 0)
-<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a>cudaEventRecord(event0, stream0): no error (code 0)
-<a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a>cudaSetDevice(1): no error (code 0)
-<a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a>cudaStreamCreate(&amp;stream1): no error (code 0)
-<a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a>cudaStreamWaitEvent(stream1, event0, 0): no error (code 0)
-<a id="__codelineno-8-9" name="__codelineno-8-9" href="#__codelineno-8-9"></a>Cross-device wait enqueued; host did not wait for event completion.
-<a id="__codelineno-8-10" name="__codelineno-8-10" href="#__codelineno-8-10"></a>cudaStreamSynchronize(stream1): no error (code 0)
-<a id="__codelineno-8-11" name="__codelineno-8-11" href="#__codelineno-8-11"></a>cudaStreamDestroy(stream1): no error (code 0)
-<a id="__codelineno-8-12" name="__codelineno-8-12" href="#__codelineno-8-12"></a>cudaSetDevice(0): no error (code 0)
-<a id="__codelineno-8-13" name="__codelineno-8-13" href="#__codelineno-8-13"></a>cudaEventDestroy(event0): no error (code 0)
-<a id="__codelineno-8-14" name="__codelineno-8-14" href="#__codelineno-8-14"></a>cudaStreamDestroy(stream0): no error (code 0)
-<a id="__codelineno-8-15" name="__codelineno-8-15" href="#__codelineno-8-15"></a>PASS: checked two-device event dependency lifecycle.
+<p><strong>Sample output</strong></p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>cudaGetDeviceCount(&amp;count): no error (code 0)
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>cudaSetDevice(0): no error (code 0)
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>cudaStreamCreate(&amp;stream0): no error (code 0)
+<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a>cudaEventCreateWithFlags(&amp;event0, cudaEventDisableTiming): no error (code 0)
+<a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a>cudaEventRecord(event0, stream0): no error (code 0)
+<a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a>cudaSetDevice(1): no error (code 0)
+<a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a>cudaStreamCreate(&amp;stream1): no error (code 0)
+<a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a>cudaStreamWaitEvent(stream1, event0, 0): no error (code 0)
+<a id="__codelineno-7-9" name="__codelineno-7-9" href="#__codelineno-7-9"></a>Cross-device wait enqueued; host did not wait for event completion.
+<a id="__codelineno-7-10" name="__codelineno-7-10" href="#__codelineno-7-10"></a>cudaStreamSynchronize(stream1): no error (code 0)
+<a id="__codelineno-7-11" name="__codelineno-7-11" href="#__codelineno-7-11"></a>cudaStreamDestroy(stream1): no error (code 0)
+<a id="__codelineno-7-12" name="__codelineno-7-12" href="#__codelineno-7-12"></a>cudaSetDevice(0): no error (code 0)
+<a id="__codelineno-7-13" name="__codelineno-7-13" href="#__codelineno-7-13"></a>cudaEventDestroy(event0): no error (code 0)
+<a id="__codelineno-7-14" name="__codelineno-7-14" href="#__codelineno-7-14"></a>cudaStreamDestroy(stream0): no error (code 0)
+<a id="__codelineno-7-15" name="__codelineno-7-15" href="#__codelineno-7-15"></a>PASS: checked two-device event dependency lifecycle.
 </code></pre></div>
-</details>
 <!-- execution:end:a100:15_cross_device_wait.cu -->
 
 <!-- execution:start:h100:15_cross_device_wait.cu -->
 <blockquote>
-<p><strong>Current execution — 2026-11-17-h100: API validation (recorded scope).</strong> UTC (run-batch start; per-program time unrecorded): <code>2026-11-17T23:48:18.967387+00:00</code>. Source SHA-256: <code>055596de72b6edec945286a8d7d196c405f70535b56636da683788297e7e2e21</code>.</p>
+<p><strong>Compiled and executed — 2026-11-17-h100: API validation (recorded scope).</strong> Hardware: 2 H100 GPUs. Execution record UTC (run-batch start; per-program time unrecorded): <code>2026-11-17T23:48:18.967387+00:00</code>.</p>
 </blockquote>
+<!-- execution:metadata Source SHA-256: 055596de72b6edec945286a8d7d196c405f70535b56636da683788297e7e2e21; recorded UTC (run-batch start; per-program time unrecorded): 2026-11-17T23:48:18.967387+00:00 -->
+
 <p><a href="../../validation/2026-11-17-h100/15_cross_device_wait/15_cross_device_wait.cu">Exact tested source</a> · <a href="../../validation/2026-11-17-h100/15_cross_device_wait/compile.log">Compiler log</a> · <a href="../../validation/2026-11-17-h100/15_cross_device_wait/run.log">Execution log</a>. Compile exit: <code>0</code>; run exit: <code>0</code>.</p>
 <p>Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>nvcc<span class="w"> </span>-std<span class="o">=</span>c++17<span class="w"> </span>-O2<span class="w"> </span>-arch<span class="o">=</span>sm_90<span class="w"> </span>15_cross_device_wait.cu<span class="w"> </span>-o<span class="w"> </span>./example
-<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>./example
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>nvcc<span class="w"> </span>-std<span class="o">=</span>c++17<span class="w"> </span>-O2<span class="w"> </span>-arch<span class="o">=</span>sm_90<span class="w"> </span>15_cross_device_wait.cu<span class="w"> </span>-o<span class="w"> </span>./example
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>./example
 </code></pre></div>
 <details>
 <summary>Captured current-source output</summary>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>cudaGetDeviceCount(&amp;count): no error (code 0)
-<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>cudaSetDevice(0): no error (code 0)
-<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>cudaStreamCreate(&amp;stream0): no error (code 0)
-<a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a>cudaEventCreateWithFlags(&amp;event0, cudaEventDisableTiming): no error (code 0)
-<a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a>cudaEventRecord(event0, stream0): no error (code 0)
-<a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a>cudaSetDevice(1): no error (code 0)
-<a id="__codelineno-10-7" name="__codelineno-10-7" href="#__codelineno-10-7"></a>cudaStreamCreate(&amp;stream1): no error (code 0)
-<a id="__codelineno-10-8" name="__codelineno-10-8" href="#__codelineno-10-8"></a>cudaStreamWaitEvent(stream1, event0, 0): no error (code 0)
-<a id="__codelineno-10-9" name="__codelineno-10-9" href="#__codelineno-10-9"></a>Cross-device wait enqueued; host did not wait for event completion.
-<a id="__codelineno-10-10" name="__codelineno-10-10" href="#__codelineno-10-10"></a>cudaStreamSynchronize(stream1): no error (code 0)
-<a id="__codelineno-10-11" name="__codelineno-10-11" href="#__codelineno-10-11"></a>cudaStreamDestroy(stream1): no error (code 0)
-<a id="__codelineno-10-12" name="__codelineno-10-12" href="#__codelineno-10-12"></a>cudaSetDevice(0): no error (code 0)
-<a id="__codelineno-10-13" name="__codelineno-10-13" href="#__codelineno-10-13"></a>cudaEventDestroy(event0): no error (code 0)
-<a id="__codelineno-10-14" name="__codelineno-10-14" href="#__codelineno-10-14"></a>cudaStreamDestroy(stream0): no error (code 0)
-<a id="__codelineno-10-15" name="__codelineno-10-15" href="#__codelineno-10-15"></a>PASS: checked two-device event dependency lifecycle.
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>cudaGetDeviceCount(&amp;count): no error (code 0)
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>cudaSetDevice(0): no error (code 0)
+<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>cudaStreamCreate(&amp;stream0): no error (code 0)
+<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a>cudaEventCreateWithFlags(&amp;event0, cudaEventDisableTiming): no error (code 0)
+<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a>cudaEventRecord(event0, stream0): no error (code 0)
+<a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a>cudaSetDevice(1): no error (code 0)
+<a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a>cudaStreamCreate(&amp;stream1): no error (code 0)
+<a id="__codelineno-9-8" name="__codelineno-9-8" href="#__codelineno-9-8"></a>cudaStreamWaitEvent(stream1, event0, 0): no error (code 0)
+<a id="__codelineno-9-9" name="__codelineno-9-9" href="#__codelineno-9-9"></a>Cross-device wait enqueued; host did not wait for event completion.
+<a id="__codelineno-9-10" name="__codelineno-9-10" href="#__codelineno-9-10"></a>cudaStreamSynchronize(stream1): no error (code 0)
+<a id="__codelineno-9-11" name="__codelineno-9-11" href="#__codelineno-9-11"></a>cudaStreamDestroy(stream1): no error (code 0)
+<a id="__codelineno-9-12" name="__codelineno-9-12" href="#__codelineno-9-12"></a>cudaSetDevice(0): no error (code 0)
+<a id="__codelineno-9-13" name="__codelineno-9-13" href="#__codelineno-9-13"></a>cudaEventDestroy(event0): no error (code 0)
+<a id="__codelineno-9-14" name="__codelineno-9-14" href="#__codelineno-9-14"></a>cudaStreamDestroy(stream0): no error (code 0)
+<a id="__codelineno-9-15" name="__codelineno-9-15" href="#__codelineno-9-15"></a>PASS: checked two-device event dependency lifecycle.
 </code></pre></div>
 </details>
 <!-- execution:end:h100:15_cross_device_wait.cu -->
 
-<p><strong>Historical authoring transcript (earlier source).</strong> The current listing guards every prerequisite and returns nonzero on errors; it no longer invokes APIs with handles from failed creations. The output below is retained as historical context and is not a current-source GPU execution record. The current source was compiled and executed in the dated H100 suite; use the linked record for its numerical, API-probe or other-execution scope.</p>
 <p>The <a href="../../validation-h100/">2026-11-17 H100 execution record</a> covers two GPUs connected by local NV18. It distinguishes numerical checks, API probes and other executions; a successful exit alone does not establish GPU algorithm correctness.</p>
-<details>
-<summary>Historical authoring output — superseded by the current execution above</summary>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>cudaSetDevice(0): no CUDA-capable device is detected (code 100)
-<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>cudaStreamCreate(stream0, on device 0): no CUDA-capable device is detected (code 100)
-<a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a>cudaEventCreate(event0, on device 0): no CUDA-capable device is detected (code 100)
-<a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a>cudaEventRecord(event0, stream0): no CUDA-capable device is detected (code 100)
-<a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a>cudaSetDevice(1): no CUDA-capable device is detected (code 100)
-<a id="__codelineno-11-6" name="__codelineno-11-6" href="#__codelineno-11-6"></a>cudaStreamCreate(stream1, on device 1): no CUDA-capable device is detected (code 100)
-<a id="__codelineno-11-7" name="__codelineno-11-7" href="#__codelineno-11-7"></a>cudaStreamWaitEvent(stream1 waits on event0 from device 0): no CUDA-capable device is detected (code 100)
-<a id="__codelineno-11-8" name="__codelineno-11-8" href="#__codelineno-11-8"></a>Host reached this line without blocking on any of the above --
-<a id="__codelineno-11-9" name="__codelineno-11-9" href="#__codelineno-11-9"></a>cudaStreamWaitEvent only ever inserts a dependency for FUTURE
-<a id="__codelineno-11-10" name="__codelineno-11-10" href="#__codelineno-11-10"></a>work on stream1; it does not itself wait for anything.
-</code></pre></div>
-</details>
-<p>The historical transcript shows prerequisite failures only. The current source checks two-device availability, never uses a failed creation’s handle, and drains the waiting stream before releasing resources. Its eventual success would establish an API lifecycle, not payload correctness or measured overlap.</p>
+<p>the recorded execution shows prerequisite failures only. The current source checks two-device availability, never uses a failed creation’s handle, and drains the waiting stream before releasing resources. Its eventual success would establish an API lifecycle, not payload correctness or measured overlap.</p>
 <div class="admonition warning">
 <p class="admonition-title">[COMMON TRAP] Reaching for cudaDeviceSynchronize() as the 'safe' way to coordinate across devices</p>
 <p><code>cudaDeviceSynchronize()</code> blocks the host until <em>every</em> piece of work already queued on the current device has completed -- not just the one operation another device's stream actually depends on. Using it to coordinate devices (device 0 synchronize, then start device 1's dependent work) is correct but needlessly serializing: it throws away any concurrency device 0 could have kept running on other, unrelated streams while device 1's dependent work began. <code>cudaStreamWaitEvent()</code> expresses the <em>actual</em> dependency -- one specific point in one specific stream -- and lets everything else keep moving.</p>
@@ -2904,34 +2878,50 @@
 <p>Sections 6.1 and 6.2 gave this book the <em>mechanism</em> for expressing dependencies without unnecessary blocking. But a dependency graph that's free of unnecessary blocking still only produces real overlap -- a transfer genuinely running at the same time as a kernel -- if the underlying hardware has a physically separate engine to run the copy on while the compute engine keeps executing the kernel. That's not a software arrangement; it's a fact about the specific GPU, and the CUDA Runtime API can report it honestly, right now, without needing a real transfer or kernel to actually run.</p>
 <h3 id="background_2">Background<a class="headerlink" href="#background_2" title="Permanent link">&para;</a></h3>
 <p>Two device properties answer this directly. <code>asyncEngineCount</code>, per the CUDA Runtime API's own <code>cudaDeviceProp</code> struct reference, is simply the "Number of asynchronous engines" -- the count of hardware copy engines that can move data independently of, and concurrently with, the engine executing kernels; a value of 0 means no such engine exists at all, and overlap between a transfer and a kernel is not physically possible on that device no matter how the streams are arranged. <code>concurrentKernels</code> reports whether the "Device can possibly execute multiple kernels concurrently" -- a separate capability from copy/kernel overlap, and a per-device one: it says whether kernels issued to different streams on <em>that one device</em> can run at the same time. Different devices have separate compute hardware, but explicit dependencies and shared host/network resources can still couple their progress; this attribute is about sharing within one device. Both are queryable two ways: <code>cudaDeviceGetAttribute()</code> for a single value, or <code>cudaGetDeviceProperties()</code> for the full struct at once. Chapter 5's Asynchronous Execution citation already established pinned host memory for host/device transfer overlap. That requirement does not apply to a transfer wholly between device allocations. <code>concurrentKernels</code> describes kernel/kernel overlap, not a prerequisite for copy/kernel overlap. Stream arrangement, transfer type and actual scheduling still determine whether overlap occurs.</p>
-<blockquote>
-<p><strong>Validation update:</strong> This API probe checks return values and actual reported capabilities. It does not measure copy/compute overlap, inject a failed peer, or validate a NIC/RDMA data transfer. Earlier zero-device transcripts below belong to the prior source.</p>
-</blockquote>
 <p>The <a href="../../validation-h100/">2026-11-17 H100 execution record</a> covers two GPUs connected by local NV18. It distinguishes numerical checks, API probes and other executions; a successful exit alone does not establish GPU algorithm correctness.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a><span class="c1">// 16_overlap_query.cu</span>
-<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a><span class="c1">// Capability query only: no measured overlap or throughput claim.</span>
-<a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;cstdio&gt;</span>
-<a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;cuda_runtime.h&gt;</span>
-<a id="__codelineno-12-5" name="__codelineno-12-5" href="#__codelineno-12-5"></a><span class="kt">int</span><span class="w"> </span><span class="nf">main</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
-<a id="__codelineno-12-6" name="__codelineno-12-6" href="#__codelineno-12-6"></a><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">count</span><span class="o">=</span><span class="mi">0</span><span class="p">;</span><span class="w"> </span><span class="k">if</span><span class="p">(</span><span class="n">cudaGetDeviceCount</span><span class="p">(</span><span class="o">&amp;</span><span class="n">count</span><span class="p">)</span><span class="o">!=</span><span class="n">cudaSuccess</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="n">count</span><span class="o">&lt;</span><span class="mi">1</span><span class="p">)</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="mi">2</span><span class="p">;</span>
-<a id="__codelineno-12-7" name="__codelineno-12-7" href="#__codelineno-12-7"></a><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">engines</span><span class="o">=</span><span class="mi">-1</span><span class="p">,</span><span class="n">kernels</span><span class="o">=</span><span class="mi">-1</span><span class="p">,</span><span class="n">errors</span><span class="o">=</span><span class="mi">0</span><span class="p">;</span>
-<a id="__codelineno-12-8" name="__codelineno-12-8" href="#__codelineno-12-8"></a><span class="w"> </span><span class="k">if</span><span class="p">(</span><span class="n">cudaDeviceGetAttribute</span><span class="p">(</span><span class="o">&amp;</span><span class="n">engines</span><span class="p">,</span><span class="n">cudaDevAttrAsyncEngineCount</span><span class="p">,</span><span class="mi">0</span><span class="p">)</span><span class="o">!=</span><span class="n">cudaSuccess</span><span class="p">)</span><span class="w"> </span><span class="o">++</span><span class="n">errors</span><span class="p">;</span>
-<a id="__codelineno-12-9" name="__codelineno-12-9" href="#__codelineno-12-9"></a><span class="w"> </span><span class="k">if</span><span class="p">(</span><span class="n">cudaDeviceGetAttribute</span><span class="p">(</span><span class="o">&amp;</span><span class="n">kernels</span><span class="p">,</span><span class="n">cudaDevAttrConcurrentKernels</span><span class="p">,</span><span class="mi">0</span><span class="p">)</span><span class="o">!=</span><span class="n">cudaSuccess</span><span class="p">)</span><span class="w"> </span><span class="o">++</span><span class="n">errors</span><span class="p">;</span>
-<a id="__codelineno-12-10" name="__codelineno-12-10" href="#__codelineno-12-10"></a><span class="w"> </span><span class="n">cudaDeviceProp</span><span class="w"> </span><span class="n">properties</span><span class="p">{};</span>
-<a id="__codelineno-12-11" name="__codelineno-12-11" href="#__codelineno-12-11"></a><span class="w"> </span><span class="k">if</span><span class="p">(</span><span class="n">cudaGetDeviceProperties</span><span class="p">(</span><span class="o">&amp;</span><span class="n">properties</span><span class="p">,</span><span class="mi">0</span><span class="p">)</span><span class="o">!=</span><span class="n">cudaSuccess</span><span class="p">)</span><span class="w"> </span><span class="o">++</span><span class="n">errors</span><span class="p">;</span>
-<a id="__codelineno-12-12" name="__codelineno-12-12" href="#__codelineno-12-12"></a><span class="w"> </span><span class="k">if</span><span class="p">(</span><span class="n">engines</span><span class="o">&lt;</span><span class="mi">0</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="n">engines</span><span class="o">!=</span><span class="n">properties</span><span class="p">.</span><span class="n">asyncEngineCount</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="n">kernels</span><span class="o">!=</span><span class="n">properties</span><span class="p">.</span><span class="n">concurrentKernels</span><span class="p">)</span><span class="w"> </span><span class="o">++</span><span class="n">errors</span><span class="p">;</span>
-<a id="__codelineno-12-13" name="__codelineno-12-13" href="#__codelineno-12-13"></a><span class="w"> </span><span class="n">printf</span><span class="p">(</span><span class="s">"device 0: asyncEngineCount=%d concurrentKernels=%d</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span><span class="n">engines</span><span class="p">,</span><span class="n">kernels</span><span class="p">);</span>
-<a id="__codelineno-12-14" name="__codelineno-12-14" href="#__codelineno-12-14"></a><span class="w"> </span><span class="n">printf</span><span class="p">(</span><span class="s">"API PROBE %s: capability queries only, no overlap benchmark, errors=%d</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span><span class="n">errors</span><span class="o">?</span><span class="s">"FAIL"</span><span class="o">:</span><span class="s">"PASS"</span><span class="p">,</span><span class="n">errors</span><span class="p">);</span>
-<a id="__codelineno-12-15" name="__codelineno-12-15" href="#__codelineno-12-15"></a><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="n">errors</span><span class="o">?</span><span class="mi">1</span><span class="o">:</span><span class="mi">0</span><span class="p">;</span>
-<a id="__codelineno-12-16" name="__codelineno-12-16" href="#__codelineno-12-16"></a><span class="p">}</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="c1">// 16_overlap_query.cu</span>
+<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a><span class="c1">// Capability query only: no measured overlap or throughput claim.</span>
+<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;cstdio&gt;</span>
+<a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;cuda_runtime.h&gt;</span>
+<a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a><span class="kt">int</span><span class="w"> </span><span class="nf">main</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">count</span><span class="o">=</span><span class="mi">0</span><span class="p">;</span><span class="w"> </span><span class="k">if</span><span class="p">(</span><span class="n">cudaGetDeviceCount</span><span class="p">(</span><span class="o">&amp;</span><span class="n">count</span><span class="p">)</span><span class="o">!=</span><span class="n">cudaSuccess</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="n">count</span><span class="o">&lt;</span><span class="mi">1</span><span class="p">)</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="mi">2</span><span class="p">;</span>
+<a id="__codelineno-10-7" name="__codelineno-10-7" href="#__codelineno-10-7"></a><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">engines</span><span class="o">=</span><span class="mi">-1</span><span class="p">,</span><span class="n">kernels</span><span class="o">=</span><span class="mi">-1</span><span class="p">,</span><span class="n">errors</span><span class="o">=</span><span class="mi">0</span><span class="p">;</span>
+<a id="__codelineno-10-8" name="__codelineno-10-8" href="#__codelineno-10-8"></a><span class="w"> </span><span class="k">if</span><span class="p">(</span><span class="n">cudaDeviceGetAttribute</span><span class="p">(</span><span class="o">&amp;</span><span class="n">engines</span><span class="p">,</span><span class="n">cudaDevAttrAsyncEngineCount</span><span class="p">,</span><span class="mi">0</span><span class="p">)</span><span class="o">!=</span><span class="n">cudaSuccess</span><span class="p">)</span><span class="w"> </span><span class="o">++</span><span class="n">errors</span><span class="p">;</span>
+<a id="__codelineno-10-9" name="__codelineno-10-9" href="#__codelineno-10-9"></a><span class="w"> </span><span class="k">if</span><span class="p">(</span><span class="n">cudaDeviceGetAttribute</span><span class="p">(</span><span class="o">&amp;</span><span class="n">kernels</span><span class="p">,</span><span class="n">cudaDevAttrConcurrentKernels</span><span class="p">,</span><span class="mi">0</span><span class="p">)</span><span class="o">!=</span><span class="n">cudaSuccess</span><span class="p">)</span><span class="w"> </span><span class="o">++</span><span class="n">errors</span><span class="p">;</span>
+<a id="__codelineno-10-10" name="__codelineno-10-10" href="#__codelineno-10-10"></a><span class="w"> </span><span class="n">cudaDeviceProp</span><span class="w"> </span><span class="n">properties</span><span class="p">{};</span>
+<a id="__codelineno-10-11" name="__codelineno-10-11" href="#__codelineno-10-11"></a><span class="w"> </span><span class="k">if</span><span class="p">(</span><span class="n">cudaGetDeviceProperties</span><span class="p">(</span><span class="o">&amp;</span><span class="n">properties</span><span class="p">,</span><span class="mi">0</span><span class="p">)</span><span class="o">!=</span><span class="n">cudaSuccess</span><span class="p">)</span><span class="w"> </span><span class="o">++</span><span class="n">errors</span><span class="p">;</span>
+<a id="__codelineno-10-12" name="__codelineno-10-12" href="#__codelineno-10-12"></a><span class="w"> </span><span class="k">if</span><span class="p">(</span><span class="n">engines</span><span class="o">&lt;</span><span class="mi">0</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="n">engines</span><span class="o">!=</span><span class="n">properties</span><span class="p">.</span><span class="n">asyncEngineCount</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="n">kernels</span><span class="o">!=</span><span class="n">properties</span><span class="p">.</span><span class="n">concurrentKernels</span><span class="p">)</span><span class="w"> </span><span class="o">++</span><span class="n">errors</span><span class="p">;</span>
+<a id="__codelineno-10-13" name="__codelineno-10-13" href="#__codelineno-10-13"></a><span class="w"> </span><span class="n">printf</span><span class="p">(</span><span class="s">"device 0: asyncEngineCount=%d concurrentKernels=%d</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span><span class="n">engines</span><span class="p">,</span><span class="n">kernels</span><span class="p">);</span>
+<a id="__codelineno-10-14" name="__codelineno-10-14" href="#__codelineno-10-14"></a><span class="w"> </span><span class="n">printf</span><span class="p">(</span><span class="s">"API PROBE %s: capability queries only, no overlap benchmark, errors=%d</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span><span class="n">errors</span><span class="o">?</span><span class="s">"FAIL"</span><span class="o">:</span><span class="s">"PASS"</span><span class="p">,</span><span class="n">errors</span><span class="p">);</span>
+<a id="__codelineno-10-15" name="__codelineno-10-15" href="#__codelineno-10-15"></a><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="n">errors</span><span class="o">?</span><span class="mi">1</span><span class="o">:</span><span class="mi">0</span><span class="p">;</span>
+<a id="__codelineno-10-16" name="__codelineno-10-16" href="#__codelineno-10-16"></a><span class="p">}</span>
 </code></pre></div>
 <!-- execution:start:a100:16_overlap_query.cu -->
 <blockquote>
-<p><strong>Current execution — 2026-11-17-a100: API validation (recorded scope).</strong> UTC (program start): <code>2026-11-18T00:00:54.863486+00:00</code>. Source SHA-256: <code>b233728343488246a8239d354c36f4555fbb6d63fc76286db26aec6de54da837</code>.</p>
+<p><strong>Compiled and executed — 2026-11-17-a100: API validation (recorded scope).</strong> Hardware: 8 A100 GPUs. Executed UTC: <code>2026-11-18T00:00:55.930844+00:00</code>.</p>
 </blockquote>
+<!-- execution:metadata Source SHA-256: b233728343488246a8239d354c36f4555fbb6d63fc76286db26aec6de54da837; recorded UTC (program start): 2026-11-18T00:00:54.863486+00:00 -->
+
 <p><a href="../../validation/2026-11-17-a100/16_overlap_query/16_overlap_query.cu">Exact tested source</a> · <a href="../../validation/2026-11-17-a100/16_overlap_query/compile.log">Compiler log</a> · <a href="../../validation/2026-11-17-a100/16_overlap_query/run.log">Execution log</a>. Compile exit: <code>0</code>; run exit: <code>0</code>.</p>
 <p>Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a>nvcc<span class="w"> </span>-std<span class="o">=</span>c++17<span class="w"> </span>-O2<span class="w"> </span>-arch<span class="o">=</span>sm_80<span class="w"> </span>16_overlap_query.cu<span class="w"> </span>-o<span class="w"> </span>./example
+<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>nvcc<span class="w"> </span>-std<span class="o">=</span>c++17<span class="w"> </span>-O2<span class="w"> </span>-arch<span class="o">=</span>sm_80<span class="w"> </span>16_overlap_query.cu<span class="w"> </span>-o<span class="w"> </span>./example
+<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>./example
+</code></pre></div>
+<p><strong>Sample output</strong></p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>device 0: asyncEngineCount=3 concurrentKernels=1
+<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a>API PROBE PASS: capability queries only, no overlap benchmark, errors=0
+</code></pre></div>
+<!-- execution:end:a100:16_overlap_query.cu -->
+
+<!-- execution:start:h100:16_overlap_query.cu -->
+<blockquote>
+<p><strong>Compiled and executed — 2026-11-17-h100: API validation (recorded scope).</strong> Hardware: 2 H100 GPUs. Executed UTC: <code>2026-11-17T23:51:12.641215+00:00</code>.</p>
+</blockquote>
+<!-- execution:metadata Source SHA-256: b233728343488246a8239d354c36f4555fbb6d63fc76286db26aec6de54da837; recorded UTC (program start): 2026-11-17T23:51:11.925996+00:00 -->
+
+<p><a href="../../validation/2026-11-17-h100/16_overlap_query/16_overlap_query.cu">Exact tested source</a> · <a href="../../validation/2026-11-17-h100/16_overlap_query/compile.log">Compiler log</a> · <a href="../../validation/2026-11-17-h100/16_overlap_query/run.log">Execution log</a>. Compile exit: <code>0</code>; run exit: <code>0</code>.</p>
+<p>Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a>nvcc<span class="w"> </span>-std<span class="o">=</span>c++17<span class="w"> </span>-O2<span class="w"> </span>-arch<span class="o">=</span>sm_90<span class="w"> </span>16_overlap_query.cu<span class="w"> </span>-o<span class="w"> </span>./example
 <a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a>./example
 </code></pre></div>
 <details>
@@ -2940,40 +2930,8 @@
 <a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a>API PROBE PASS: capability queries only, no overlap benchmark, errors=0
 </code></pre></div>
 </details>
-<!-- execution:end:a100:16_overlap_query.cu -->
-
-<!-- execution:start:h100:16_overlap_query.cu -->
-<blockquote>
-<p><strong>Current execution — 2026-11-17-h100: API validation (recorded scope).</strong> UTC (program start): <code>2026-11-17T23:51:11.925996+00:00</code>. Source SHA-256: <code>b233728343488246a8239d354c36f4555fbb6d63fc76286db26aec6de54da837</code>.</p>
-</blockquote>
-<p><a href="../../validation/2026-11-17-h100/16_overlap_query/16_overlap_query.cu">Exact tested source</a> · <a href="../../validation/2026-11-17-h100/16_overlap_query/compile.log">Compiler log</a> · <a href="../../validation/2026-11-17-h100/16_overlap_query/run.log">Execution log</a>. Compile exit: <code>0</code>; run exit: <code>0</code>.</p>
-<p>Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a>nvcc<span class="w"> </span>-std<span class="o">=</span>c++17<span class="w"> </span>-O2<span class="w"> </span>-arch<span class="o">=</span>sm_90<span class="w"> </span>16_overlap_query.cu<span class="w"> </span>-o<span class="w"> </span>./example
-<a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a>./example
-</code></pre></div>
-<details>
-<summary>Captured current-source output</summary>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a>device 0: asyncEngineCount=3 concurrentKernels=1
-<a id="__codelineno-16-2" name="__codelineno-16-2" href="#__codelineno-16-2"></a>API PROBE PASS: capability queries only, no overlap benchmark, errors=0
-</code></pre></div>
-</details>
 <!-- execution:end:h100:16_overlap_query.cu -->
 
-<p>Genuinely compiled with a real <code>nvcc</code> and genuinely run. Locked output, deterministic across repeated runs:</p>
-<details>
-<summary>Historical authoring output — superseded by the current execution above</summary>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a>cudaGetDeviceCount(): 0 device(s).
-<a id="__codelineno-17-2" name="__codelineno-17-2" href="#__codelineno-17-2"></a>cudaDeviceGetAttribute(AsyncEngineCount, device 0): no CUDA-capable device is detected (code 100), value=-1
-<a id="__codelineno-17-3" name="__codelineno-17-3" href="#__codelineno-17-3"></a>cudaDeviceGetAttribute(ConcurrentKernels, device 0): no CUDA-capable device is detected (code 100), value=-1
-<a id="__codelineno-17-4" name="__codelineno-17-4" href="#__codelineno-17-4"></a>cudaGetDeviceProperties(device 0): no CUDA-capable device is detected (code 100)
-<a id="__codelineno-17-5" name="__codelineno-17-5" href="#__codelineno-17-5"></a>
-<a id="__codelineno-17-6" name="__codelineno-17-6" href="#__codelineno-17-6"></a>Neither value can be honestly reported as a real number on this
-<a id="__codelineno-17-7" name="__codelineno-17-7" href="#__codelineno-17-7"></a>machine -- there is no device 0 to query. On real hardware, both
-<a id="__codelineno-17-8" name="__codelineno-17-8" href="#__codelineno-17-8"></a>queries would need to succeed, and asyncEngineCount would need to
-<a id="__codelineno-17-9" name="__codelineno-17-9" href="#__codelineno-17-9"></a>be &gt;=1, before overlap between a transfer and a kernel is even
-<a id="__codelineno-17-10" name="__codelineno-17-10" href="#__codelineno-17-10"></a>physically possible, regardless of how the streams are arranged.
-</code></pre></div>
-</details>
 <p>File 16 checks overlap capability queries against the device properties reported by the current H100 driver. This API-probe pass does not measure achieved copy/compute overlap or guarantee that an arbitrary stream schedule overlaps.</p>
 <p>The <a href="../../validation-h100/">2026-11-17 H100 execution record</a> covers two GPUs connected by local NV18. It distinguishes numerical checks, API probes and other executions; a successful exit alone does not establish GPU algorithm correctness.</p>
 <div class="admonition warning">
@@ -2981,7 +2939,7 @@
 <p>Placing a transfer and a kernel on two separate, non-default streams removes the <em>artificial</em> serialization the CUDA Programming Guide describes for the default stream ("it will wait for all other blocking streams to complete before it can execute") -- but it does not create hardware that doesn't exist. If the device's <code>asyncEngineCount</code> is 0, the device has no engine able to run a copy while a kernel is executing, so the transfer and the kernel still run one after the other, no matter which streams they're issued on. Streams remove a <em>software</em> obstacle to concurrency; <code>asyncEngineCount</code> and <code>concurrentKernels</code> report whether the <em>hardware</em> obstacle is also absent.</p>
 </div>
 <h2 id="chapter-summary">Chapter Summary<a class="headerlink" href="#chapter-summary" title="Permanent link">&para;</a></h2>
-<p>A CUDA event is a marker placed into a stream by <code>cudaEventRecord()</code> -- itself non-blocking -- that something else can either poll without blocking (<code>cudaEventQuery()</code>) or genuinely wait on (<code>cudaEventSynchronize()</code>), measured directly in Section 6.1 by exercising every stage of that lifecycle down to the same honest <code>cudaErrorNoDevice</code> this book has reported since Chapter 1. Because streams and their events are bound to whichever device was current when they were created (Chapter 3), but <code>cudaStreamWaitEvent()</code> explicitly supports an event from a different device than the waiting stream -- performing, per its own documentation, genuine "cross-device synchronization" -- Section 6.2 built the real, targeted dependency mechanism multi-GPU code uses instead of the blunter, needlessly serializing <code>cudaDeviceSynchronize()</code>. Neither mechanism produces real overlap between a transfer and a kernel unless the underlying hardware has a separate copy engine to run them on at the same time, which Section 6.3 showed is a fact the Runtime API can query honestly and directly (<code>asyncEngineCount</code>, <code>concurrentKernels</code>) without running either operation -- in the historical authoring transcript, unavailable to query, for the same reason every other device query in this book has been. Chapter 7 turns to CUDA's Inter-Process Communication support: sharing device memory and events not just across devices within one process, but across separate operating-system processes entirely.</p>
+<p>Events mark completion points in streams. <code>cudaEventQuery()</code> polls them, <code>cudaEventSynchronize()</code> waits on the host, and <code>cudaStreamWaitEvent()</code> establishes a targeted stream dependency, including across devices. Overlap additionally depends on hardware and workload scheduling. Chapter 7 extends memory and event sharing across processes.</p>
 <h2 id="self-check-questions">Self-Check Questions<a class="headerlink" href="#self-check-questions" title="Permanent link">&para;</a></h2>
 <ol>
 <li>Section 6.1's Common Trap warns against confusing "the call returned" with "the event fired." Using the code in that section, identify exactly which line returns immediately regardless of stream state, and which line's return is what actually reflects the event having been reached.</li>
