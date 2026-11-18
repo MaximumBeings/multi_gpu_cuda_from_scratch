@@ -1,0 +1,9 @@
+$ /private/tmp/110_gdrcopy_fixed_overhead_vs_latency_budget_model-review
+Published figures from distinct experiments (not a controlled comparison):
+cudaMemcpy per-call overhead illustration: 6.0-7.0 us; not a round-trip measurement
+A40 GDRCopy CPU/GPU ping-pong: 1.08762 us round-trip; not a CPU read-latency figure
+GH200 four LSTM_A instances: 4.61 us p99; RTX PRO 6000 small model: 4.30 us p99
+Arithmetic ratios to those separate budgets: memcpy 130.2%/139.5%; ping-pong 23.6%/25.3%
+Ratios do not predict a replacement's latency, throughput or tail percentile.
+CPU writes through mapped GPU memory and CPU reads have different costs; GDRCopy warns device-to-host reads can be slow.
+MODEL CHECK PASS: distinct-operation comparison

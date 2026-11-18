@@ -1,0 +1,16 @@
+{
+  "files": {
+    "results.json": "e2b1e2d961ca60d2ee88139c052fa0fd70d0e2bae5ba75630f4c7eccb58805db",
+    "system.json": "a4879c3fac8bd32a8aaa984d6aa34548058928b4065600ec66d645a4ebe8e8d3",
+    "111_gnn_embedding_fraud_accuracy_model/111_gnn_embedding_fraud_accuracy_model.cpp": "1edc5663412a05aaec3856478160730e749dfac25c0cd9e940fc333068637094",
+    "111_gnn_embedding_fraud_accuracy_model/run.log": "ef3a0b483573ab40aa4ea90f0b6d20ecedec9256f4920fd593e86a2c08cb36e3",
+    "111_gnn_embedding_fraud_accuracy_model/compile.log": "db34c4230f87f7e05d3fe3e28a13cef2a7742c88a5475b7c80de8351bb990c3b",
+    "98_kv_cache_handoff_transfer_cost_model/run.log": "b273c46aa9818b70affb1cabfa423d92e8e4ff032365dd67f6bdf0257a0f8686",
+    "98_kv_cache_handoff_transfer_cost_model/compile.log": "a243d6f9ee6e9f77cb836120341226452a0708592000bda1e0c8cb463a8b1746",
+    "98_kv_cache_handoff_transfer_cost_model/98_kv_cache_handoff_transfer_cost_model.cpp": "cac5907c6d28de3b1410b790e7eedb3a9fef625db9f6557075f0248bc9a79ea7",
+    "110_gdrcopy_fixed_overhead_vs_latency_budget_model/110_gdrcopy_fixed_overhead_vs_latency_budget_model.cpp": "e820cb923d511b84415fa45426a5d08f28aeb198bb126a6abf764fb96cb176d6",
+    "110_gdrcopy_fixed_overhead_vs_latency_budget_model/run.log": "8b2a62eaae06b1c82354931df6fff2ddcdd392406a631cb69f57f44613cd3c89",
+    "110_gdrcopy_fixed_overhead_vs_latency_budget_model/compile.log": "321af7cbf157b6e955fa8d601ac78a0d2baa482d91561d667c2fff40329cbbf3"
+  },
+  "summary_sha256": "c94f6f8359c34cc5b8590d38fc429a196355dce00902195572247893c0d06627"
+}
