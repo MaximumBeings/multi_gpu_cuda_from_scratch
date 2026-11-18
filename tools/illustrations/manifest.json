@@ -875,8 +875,8 @@
       "figures": [
         {
           "key": "figure-overview",
-          "file": "technical/index.svg",
-          "alt": "From one device to a coordinated system",
+          "file": "technical/book-overview.svg",
+          "alt": "From one GPU to a distributed application",
           "section": null
         }
       ]

@@ -185,7 +185,11 @@ def main():
         if name=='index.md':
             proofs.cover()
             (IMAGES/'00-cover.svg').replace(IMAGES/opath)
-        filename='technical/'+name.replace('.md','.svg');f=Figure(key,title);bottom=draw(f,kind,labels);f.finish(filename,title,note,bottom)
+        filename='technical/'+('book-overview.svg' if name=='index.md' else name.replace('.md','.svg'));f=Figure(key,title);bottom=draw(f,kind,labels);f.finish(filename,title,note,bottom)
+        if name=='index.md':
+            from book_overview import build as build_book_overview, TITLE
+            build_book_overview()
+            title=TITLE
         manifest.append(update_page(page,[('figure-overview',filename,title,None)],opath,not args.no_insert))
     for path in IMAGES.rglob('*.svg'):
         # Portable marker color: Cairo and non-Chromium viewers may not support context-stroke.
