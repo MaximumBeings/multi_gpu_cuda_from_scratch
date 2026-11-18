@@ -36,7 +36,7 @@ NVIDIA's own real American Express case study describes a production system "gen
 A single transaction, looked at alone, often looks perfectly ordinary -- a normal amount, at a normal merchant, from a normal-looking account. Fraud rings exploit exactly that: they spread their activity thin across many accounts and merchants so no single transaction ever looks suspicious by itself, the same way a smuggling ring might route small, individually unremarkable packages through many different couriers. NVIDIA's own real Financial Fraud Detection AI Blueprint names this directly: "fraudsters operate within complex networks, often using connections between accounts and transactions to hide their activities." Its own real architecture answers that pattern with a graph neural network, which "consider[s] accounts, transactions, and devices as interconnected nodes -- uncovering suspicious patterns across the entire network" -- and combines that graph model with a more traditional one rather than replacing it: the blueprint "enhances the XGBoost ML model with NVIDIA CUDA-X Data Science libraries including GNNs to generate embeddings that can be used as additional features."
 
 !!! warning "[COMMON TRAP] Treating a real cited accuracy metric as if it directly measures a real-world outcome"
-    File 111's own real cited numbers -- an AUPRC of 0.90 with GNN embeddings versus 0.79 without, on NVIDIA's own real MAG240M benchmark -- are genuine and worth taking seriously, but AUPRC is a model-evaluation metric, not directly a real-world fraud-catch-rate or false-positive-rate percentage. File 111 computes only the honest, literal relative change in the metric itself (13.9%) and explicitly declines to translate that into a claim about real dollars saved or real fraud cases caught, because the real cited source does not provide that translation.
+    File 111's own real cited numbers -- an AUPRC of 0.90 with GNN embeddings versus 0.79 without, on NVIDIA's own real TabFormer fraud workflow -- are genuine and worth taking seriously, but AUPRC is a model-evaluation metric, not directly a real-world fraud-catch-rate or false-positive-rate percentage. File 111 computes only the honest, literal relative change in the metric itself (13.9%) and explicitly declines to translate that into a claim about real dollars saved or real fraud cases caught, because the real cited source does not provide that translation.
 
 ### Background
 
@@ -46,97 +46,40 @@ A single transaction, looked at alone, often looks perfectly ordinary -- a norma
 | GNN over accounts/merchants/transactions as a GRAPH:        |
 |   sees a node's own NEIGHBORS, not just its own features    |
 +----------------------------------------------------------+
-| Real cited result (MAG240M benchmark): AUPRC 0.79 -> 0.90   |
+| Real cited result (TabFormer fraud workflow): AUPRC 0.79 -> 0.90   |
 |   (+13.9% relative) from adding GNN embeddings as features  |
 +----------------------------------------------------------+
 ```
 
-File 111 presents NVIDIA's own real cited American Express production context, the real cited rationale for a graph-based model, and the real cited MAG240M accuracy figures directly, computing one honest relative-improvement number from them.
+File 111 presents NVIDIA's own real cited American Express production context, the real cited rationale for a graph-based model, and the real cited TabFormer accuracy figures directly, computing one honest relative-improvement number from them. The [original NVIDIA article](https://developer.nvidia.com/blog/optimizing-fraud-detection-in-financial-services-with-graph-neural-networks-and-nvidia-gpus/#using_gnn_embeddings_for_downstream_tasks) reports the AUPRC comparison in its fraud workflow; MAG240M is a separate graph-scaling benchmark later in the article.
 
 ```cpp
-// Chapter 38: Real-Time Fraud Detection at Payment Scale
-// 111_gnn_embedding_fraud_accuracy_model.cpp
-//
-// NVIDIA's own real American Express case study describes a real,
-// deployed production system "generating a fraud decision in
-// milliseconds for every card transaction worldwide," on a real cited
-// scale of a company that "monitors more than $1.2 trillion in
-// transaction value every year," using "deep-learning-based models
-// optimized with NVIDIA TensorRT and running on NVIDIA Triton Inference
-// Server." NVIDIA's own real Financial Fraud Detection AI Blueprint
-// explains WHY a graph, not an isolated per-transaction score, is
-// increasingly the real architecture of choice: "fraudsters operate
-// within complex networks, often using connections between accounts and
-// transactions to hide their activities," so the blueprint "enhances
-// the XGBoost ML model with NVIDIA CUDA-X Data Science libraries
-// including GNNs to generate embeddings that can be used as additional
-// features" -- a real, cited HYBRID of two different model families
-// (a graph neural network and a gradient-boosted tree ensemble),
-// analogous in spirit to Chapter 34's own hybrid data/model parallelism
-// but combining two entirely different MODEL TYPES rather than two
-// parallelization strategies. NVIDIA's own real MAG240M benchmark
-// reports the real, measured payoff of adding those embeddings: an
-// XGBoost model "achieved an AUPRC score of 0.9 on the test set,
-// compared to 0.79 without the embeddings." This file presents those
-// real cited numbers directly and computes one honest, simple relative-
-// improvement figure from them -- establishing WHY the rest of this
-// chapter's own multi-GPU machinery (Sections 38.2 and 38.3) is worth
-// building at all.
+// Chapter 38: arithmetic on NVIDIA's published TabFormer fraud workflow.
+// The GNN-embedding/XGBoost AUPRC comparison is not a MAG240M result.
+// MAG240M appears separately as a graph-training scalability benchmark.
+// This program does not train a model or measure fraud detection.
 #include <cstdio>
-
+#include <cmath>
 int main() {
-    printf("Real cited American Express / NVIDIA production context:\n");
-    printf("- \"generating a fraud decision in milliseconds for every "
-           "card transaction worldwide\"\n");
-    printf("- \"monitors more than $1.2 trillion in transaction value "
-           "every year\"\n");
-    printf("- \"deep-learning-based models optimized with NVIDIA "
-           "TensorRT and running on NVIDIA Triton Inference Server\"\n\n");
-
-    printf("Real cited rationale for a GRAPH, not isolated per-"
-           "transaction scoring (NVIDIA Financial Fraud Detection AI "
-           "Blueprint):\n");
-    printf("- \"Fraudsters operate within complex networks, often using "
-           "connections between accounts and transactions to hide their "
-           "activities.\"\n");
-    printf("- \"...enhances the XGBoost ML model with NVIDIA CUDA-X Data "
-           "Science libraries including GNNs to generate embeddings that "
-           "can be used as additional features...\"\n\n");
-
-    // Real cited MAG240M benchmark accuracy figures (NVIDIA Technical
-    // Blog, "Optimizing Fraud Detection... with Graph Neural Networks").
-    double auprcWithGnnEmbeddings = 0.90;
-    double auprcWithoutEmbeddings = 0.79;
-
-    printf("Real cited accuracy figures (MAG240M benchmark, XGBoost "
-           "classifier):\n");
-    printf("- AUPRC WITH GNN embeddings as additional features: %.2f\n",
-           auprcWithGnnEmbeddings);
-    printf("- AUPRC WITHOUT embeddings (XGBoost on raw features alone): "
-           "%.2f\n\n", auprcWithoutEmbeddings);
-
-    double relativeImprovementPct =
-        100.0 * (auprcWithGnnEmbeddings - auprcWithoutEmbeddings) / auprcWithoutEmbeddings;
-
-    printf("Honest, simple arithmetic on those two real cited numbers "
-           "(a relative change in the AUPRC metric itself, not a claim "
-           "about real-world fraud-catch-rate or false-positive-rate "
-           "percentages, which AUPRC does not translate into directly): "
-           "%.1f%% relative improvement in AUPRC from adding GNN "
-           "embeddings as features.\n\n", relativeImprovementPct);
-
-    printf("This is the real, cited motivation for everything the rest "
-           "of this chapter builds: turning transactions, accounts, and "
-           "merchants into a GRAPH, and training a model that can see "
-           "each node's own NEIGHBORS, measurably outperformed treating "
-           "each transaction in isolation on this real cited benchmark. "
-           "Section 38.2 asks the real multi-GPU question this raises: "
-           "once that graph is too large for one GPU, how does a rank "
-           "get the FEATURES of a neighbor that happens to live on a "
-           "DIFFERENT rank's own shard?\n");
+    const double withEmbeddings = 0.90, withoutEmbeddings = 0.79;
+    const double absoluteGain = withEmbeddings - withoutEmbeddings;
+    const double relativeGain = 100.0 * absoluteGain / withoutEmbeddings;
+    std::printf("NVIDIA's TabFormer fraud workflow: XGBoost test AUPRC\n");
+    std::printf("With GNN embeddings: %.2f; without embeddings: %.2f\n", withEmbeddings, withoutEmbeddings);
+    std::printf("Absolute AUPRC gain: %.2f; relative metric gain: %.1f%%\n", absoluteGain, relativeGain);
+    std::printf("MAG240M is a separate academic-paper graph benchmark, not the source of these fraud AUPRC values.\n");
+    std::printf("AUPRC improvement is not a measured fraud-catch rate, false-positive reduction or dollar saving.\n");
+    if (std::fabs(absoluteGain - 0.11) > 1e-12 ||
+        std::fabs(relativeGain - 13.924050632911392) > 1e-10) return 1;
+    std::printf("MODEL CHECK PASS: AUPRC metric arithmetic and dataset attribution\n");
     return 0;
 }
 ```
+
+
+!!! note "Corrected host model — November 18, 2026"
+
+    The listing above corrects the earlier model's fraud-dataset attribution. Its [new local compile/run record](../host-model-corrections.md#111) contains the current source hash, system, date, commands and output. The H100/A100 blocks below retain the earlier revision's actual output; their model claims are superseded by this correction.
 
 <!-- execution:start:h100-rerun:111_gnn_embedding_fraud_accuracy_model.cpp -->
 > **Compiled and executed — 2026-11-18-h100: Host program/model (exit-only).** Hardware: 2 H100 GPUs. Executed UTC: `2026-11-18T11:22:41.238847+00:00`.
@@ -772,7 +715,7 @@ g++ -O2 -ffp-contract=off -o 113_distributed_tree_building_sequential_reduction_
 
 ## Chapter Summary
 
-Real production fraud detection, per NVIDIA's own real American Express case study and Financial Fraud Detection AI Blueprint, increasingly scores transactions with a graph neural network rather than in isolation, because "fraudsters operate within complex networks." File 111 grounded that choice in a real, measured number: a 13.9% relative improvement in AUPRC from adding GNN embeddings as features, on NVIDIA's own real MAG240M benchmark. File 112 then showed how that graph is actually partitioned across GPUs when it grows too large for one: NVIDIA's own real WholeGraph technique shards node features by node (Chapter 16's own domain-decomposition idea, applied to a graph), and fetches a sampled node's own remote neighbors on demand over NVLink or PCIe -- a genuinely new, demand-driven communication shape for this book, verified bit-exact at every tested P because it is pure retrieval, never a value combination, and directly connected to Chapter 4's own real Universal Virtual Addressing idea. File 113 closed the chapter with the real second stage of NVIDIA's own hybrid pipeline: distributed XGBoost tree-building, where "all GPUs collaborate on each tree," producing a real reduction count (31,500 for an illustrative 500-tree ensemble at XGBoost's own real documented default depth) that looks superficially like Chapter 36's own large T, but is structurally different -- chained in strict sequence within each tree, not independent and overlappable.
+Real production fraud detection, per NVIDIA's own real American Express case study and Financial Fraud Detection AI Blueprint, increasingly scores transactions with a graph neural network rather than in isolation, because "fraudsters operate within complex networks." File 111 grounded that choice in a real, measured number: a 13.9% relative improvement in AUPRC from adding GNN embeddings as features, on NVIDIA's own real TabFormer fraud workflow. File 112 then showed how that graph is actually partitioned across GPUs when it grows too large for one: NVIDIA's own real WholeGraph technique shards node features by node (Chapter 16's own domain-decomposition idea, applied to a graph), and fetches a sampled node's own remote neighbors on demand over NVLink or PCIe -- a genuinely new, demand-driven communication shape for this book, verified bit-exact at every tested P because it is pure retrieval, never a value combination, and directly connected to Chapter 4's own real Universal Virtual Addressing idea. File 113 closed the chapter with the real second stage of NVIDIA's own hybrid pipeline: distributed XGBoost tree-building, where "all GPUs collaborate on each tree," producing a real reduction count (31,500 for an illustrative 500-tree ensemble at XGBoost's own real documented default depth) that looks superficially like Chapter 36's own large T, but is structurally different -- chained in strict sequence within each tree, not independent and overlappable.
 
 ## Self-Check Questions
 
@@ -808,7 +751,7 @@ Chapter 39 turns to real-time healthcare, extending this book's own domain-decom
 
 - NVIDIA. American Express fraud-prevention case study, referenced via nvidia.com/en-gb/customer-stories and resources.nvidia.com, fetched fresh this session. (The real "generating a fraud decision in milliseconds for every card transaction worldwide," "monitors more than $1.2 trillion in transaction value every year," and "deep-learning-based models optimized with NVIDIA TensorRT and running on NVIDIA Triton Inference Server" quotes.)
 - NVIDIA Blog. "Bring Receipts: New NVIDIA AI Blueprint Detects Fraudulent Credit Card Transactions With Precision," blogs.nvidia.com, fetched fresh this session. (The real "fraudsters operate within complex networks..." and "...enhances the XGBoost ML model with NVIDIA CUDA-X Data Science libraries including GNNs to generate embeddings..." quotes, and the real NVIDIA Dynamo-Triton/RAPIDS software-stack description.)
-- NVIDIA Technical Blog. "Optimizing Fraud Detection in Financial Services with Graph Neural Networks and NVIDIA GPUs," developer.nvidia.com, fetched fresh this session. (The real MAG240M benchmark's cited AUPRC 0.9-vs-0.79 accuracy figures, and the real "Universal Virtual Addressing (UVA), which allows us to instantiate our graph such that it can be directly accessed by all the GPUs" quote.)
+- NVIDIA Technical Blog. "Optimizing Fraud Detection in Financial Services with Graph Neural Networks and NVIDIA GPUs," developer.nvidia.com, fetched fresh this session. (The real TabFormer fraud workflow's cited AUPRC 0.9-vs-0.79 accuracy figures, and the real "Universal Virtual Addressing (UVA), which allows us to instantiate our graph such that it can be directly accessed by all the GPUs" quote.)
 - NVIDIA. "Multi-GPU Training," Financial Fraud Training container documentation, docs.nvidia.com/nim, fetched fresh this session. (The real "WholeGraph partitions the graph across all GPUs. Each GPU owns a shard of node feature tensors," "during neighbourhood sampling, if a sampled neighbour is on a different GPU, WholeGraph fetches its features transparently over NVLink or PCIe," "each process holds a shard of the embedding data," and "all GPUs collaborate on each tree (splits are computed across all shards simultaneously)" quotes.)
 - XGBoost. Official parameter reference, xgboost.readthedocs.io, fetched fresh this session. (The real cited default, `"max_depth" [default=6, type=int32]`.)
 - This book's own Chapter 4 (Universal Virtual Addressing, reused by real citation in Section 38.2), Chapter 9 (the reduction primitive reused throughout, including Section 38.3), Chapter 16 (domain decomposition, this chapter's point of contrast for graph partitioning), Chapter 28 (distributed BFS, the book's other graph-shaped communication pattern), Chapter 34 (the book's other hybrid-model precedent), and Chapter 36 (the T-independent-reductions structure Section 38.3 directly contrasts against).

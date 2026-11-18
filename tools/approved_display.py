@@ -375,16 +375,6 @@ DISPLAY_EDITS = {'07_multi_device_loop_pattern.cu': [('    printf("The loop belo
                                           'arithmetic-intensity model grounded\n'
                                           "// in Chapter 1. It then presents DistServe's published "
                                           'measurements -- its\n')],
- '98_kv_cache_handoff_transfer_cost_model.cpp': [('// the overhead is negligible. No timing here '
-                                                  'is measured (this sandbox\n'
-                                                  '// has no real GPU or RDMA fabric); every input '
-                                                  'is a real cited number,\n'
-                                                  '// and the only computation performed is bytes '
-                                                  'divided by bandwidth.\n',
-                                                  '// the overhead is negligible. Inputs are cited '
-                                                  'system specifications;\n'
-                                                  '// this model computes transfer time as bytes '
-                                                  'divided by bandwidth.\n')],
  'hello_kernel.cu': [('    // deliberately left with an empty body -- this recipe exists to\n'
                       '    // prove nvcc alone can compile and link a .cu file with a real\n'
                       '    // __global__ kernel, not to exercise runtime kernel launch (this\n'

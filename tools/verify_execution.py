@@ -36,6 +36,8 @@ def verify(root, public, docs=None, summary_text=None):
     expected_current = dict(recorded)
     for rel, revision in revisions.items():
         expected_current[rel] = revision['current_sha256']
+    from verify_host_corrections import verify as verify_host_corrections
+    expected_current.update(verify_host_corrections(root, current, recorded))
     if len(rows) != 145 or len(recorded) != 145 or len(current) != 145:
         errors.append('Expected exactly 145 unique standalone source records.')
     if {rel: sha(path) for rel, path in current.items()} != expected_current:
@@ -120,7 +122,7 @@ def main():
     args = parser.parse_args()
     root = args.root.resolve()
     public = root / 'docs/validation'
-    directories = [public / args.dataset] if args.dataset else sorted(p.parent for p in public.glob('*/integrity.json'))
+    directories = [public / args.dataset] if args.dataset else sorted(p.parent for p in public.glob('*/integrity.json') if p.parent.name != '2026-11-18-host-corrections')
     if not directories:
         print('FAIL: no published execution dataset exists.')
         return 1
@@ -133,7 +135,7 @@ def main():
     for error in errors:
         print('FAIL:', error)
     if not errors:
-        print(f'PASS: {len(directories)} dataset(s); 145 archived source records, commands, UTC scopes, outputs and explicitly pinned pending corrections agree.')
+        print(f'PASS: {len(directories)} dataset(s); 145 archived source records, commands, UTC scopes, outputs and explicitly verified source corrections agree.')
         print('Scope: evidence consistency only; no CUDA execution occurs in this verifier.')
     return bool(errors)
 

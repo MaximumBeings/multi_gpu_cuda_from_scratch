@@ -1,0 +1,101 @@
+[
+  {
+    "source": "docs/part7/code/98_kv_cache_handoff_transfer_cost_model.cpp",
+    "page": "docs/part7/33-disaggregated-llm-inference.md",
+    "archived_sha256": "7a5dc5448a93ac88b1c7c2d0b60e5b4e2e2c9c327a02b44dcba7cc2e6f20288f",
+    "current_sha256": "cac5907c6d28de3b1410b790e7eedb3a9fef625db9f6557075f0248bc9a79ea7",
+    "number": 98,
+    "compile_command": [
+      "/usr/bin/clang++",
+      "-std=c++17",
+      "-O2",
+      "-Wall",
+      "-Wextra",
+      "-Werror",
+      "/private/tmp/mgpu-final-publish-20261118/docs/part7/code/98_kv_cache_handoff_transfer_cost_model.cpp",
+      "-o",
+      "/private/tmp/98_kv_cache_handoff_transfer_cost_model-review"
+    ],
+    "run_command": [
+      "/private/tmp/98_kv_cache_handoff_transfer_cost_model-review"
+    ],
+    "compile": {
+      "exit_code": 0,
+      "started_utc": "2026-11-18T13:04:45.776856+00:00",
+      "finished_utc": "2026-11-18T13:04:46.048108+00:00",
+      "log_sha256": "a243d6f9ee6e9f77cb836120341226452a0708592000bda1e0c8cb463a8b1746"
+    },
+    "run": {
+      "exit_code": 0,
+      "started_utc": "2026-11-18T13:04:46.048350+00:00",
+      "finished_utc": "2026-11-18T13:04:50.435706+00:00",
+      "log_sha256": "b273c46aa9818b70affb1cabfa423d92e8e4ff032365dd67f6bdf0257a0f8686"
+    }
+  },
+  {
+    "source": "docs/part7/code/110_gdrcopy_fixed_overhead_vs_latency_budget_model.cpp",
+    "page": "docs/part7/37-gpudirect-rdma-in-capital-markets.md",
+    "archived_sha256": "718cacfa0ed9687820d55adf81c27bb3cc4348d3fbbd8e525724de47f93d8e4b",
+    "current_sha256": "e820cb923d511b84415fa45426a5d08f28aeb198bb126a6abf764fb96cb176d6",
+    "number": 110,
+    "compile_command": [
+      "/usr/bin/clang++",
+      "-std=c++17",
+      "-O2",
+      "-Wall",
+      "-Wextra",
+      "-Werror",
+      "/private/tmp/mgpu-final-publish-20261118/docs/part7/code/110_gdrcopy_fixed_overhead_vs_latency_budget_model.cpp",
+      "-o",
+      "/private/tmp/110_gdrcopy_fixed_overhead_vs_latency_budget_model-review"
+    ],
+    "run_command": [
+      "/private/tmp/110_gdrcopy_fixed_overhead_vs_latency_budget_model-review"
+    ],
+    "compile": {
+      "exit_code": 0,
+      "started_utc": "2026-11-18T13:04:50.437894+00:00",
+      "finished_utc": "2026-11-18T13:04:50.602322+00:00",
+      "log_sha256": "321af7cbf157b6e955fa8d601ac78a0d2baa482d91561d667c2fff40329cbbf3"
+    },
+    "run": {
+      "exit_code": 0,
+      "started_utc": "2026-11-18T13:04:50.602580+00:00",
+      "finished_utc": "2026-11-18T13:04:50.770067+00:00",
+      "log_sha256": "8b2a62eaae06b1c82354931df6fff2ddcdd392406a631cb69f57f44613cd3c89"
+    }
+  },
+  {
+    "source": "docs/part7/code/111_gnn_embedding_fraud_accuracy_model.cpp",
+    "page": "docs/part7/38-real-time-fraud-detection-at-payment-scale.md",
+    "archived_sha256": "56f630a63f4295412f66336efabf82a4b5947478ace94fdc15babb7a2de6d898",
+    "current_sha256": "1edc5663412a05aaec3856478160730e749dfac25c0cd9e940fc333068637094",
+    "number": 111,
+    "compile_command": [
+      "/usr/bin/clang++",
+      "-std=c++17",
+      "-O2",
+      "-Wall",
+      "-Wextra",
+      "-Werror",
+      "/private/tmp/mgpu-final-publish-20261118/docs/part7/code/111_gnn_embedding_fraud_accuracy_model.cpp",
+      "-o",
+      "/private/tmp/111_gnn_embedding_fraud_accuracy_model-review"
+    ],
+    "run_command": [
+      "/private/tmp/111_gnn_embedding_fraud_accuracy_model-review"
+    ],
+    "compile": {
+      "exit_code": 0,
+      "started_utc": "2026-11-18T13:04:50.773231+00:00",
+      "finished_utc": "2026-11-18T13:04:50.865703+00:00",
+      "log_sha256": "db34c4230f87f7e05d3fe3e28a13cef2a7742c88a5475b7c80de8351bb990c3b"
+    },
+    "run": {
+      "exit_code": 0,
+      "started_utc": "2026-11-18T13:04:50.865961+00:00",
+      "finished_utc": "2026-11-18T13:04:50.958737+00:00",
+      "log_sha256": "ef3a0b483573ab40aa4ea90f0b6d20ecedec9256f4920fd593e86a2c08cb36e3"
+    }
+  }
+]

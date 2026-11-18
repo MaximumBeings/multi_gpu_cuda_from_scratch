@@ -8,7 +8,7 @@ The corrected staged-MPI example (58) passed the November 18 two-H100 numerical 
 
 ## Recorded validation
 
-[H100 records](docs/validation-h100.md) cover two H100 GPUs; [A100 records](docs/validation-a100.md) cover an eight-A100 host with eight-process MPI runs. All 145 recorded source revisions compiled and executed in each pass. Each dataset distinguishes 33 numerical/transport checks, 13 API validations and 99 other executions. The A100 supplement also checks all 56 ordered peer-copy pairs, four eight-rank collective patterns and three halo generations. B200 results are pending actual hardware.
+[H100 records](docs/validation-h100.md) cover two H100 GPUs; [A100 records](docs/validation-a100.md) cover an eight-A100 host with eight-process MPI runs. All 145 recorded source revisions compiled and executed in each pass. The historical datasets distinguish 33 numerical/transport checks, 13 API validations and 99 other executions; the November 18 rerun records 34, 13 and 98 respectively after the staged-MPI correction. Three subsequent host-only model corrections have [separate local execution records](docs/host-model-corrections.md). The A100 supplement also checks all 56 ordered peer-copy pairs, four eight-rank collective patterns and three halo generations. B200 results are pending actual hardware.
 
 ## Build the website
 

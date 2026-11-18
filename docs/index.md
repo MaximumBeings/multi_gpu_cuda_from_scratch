@@ -3,7 +3,7 @@
 <!-- execution:overview -->
 !!! success "Recorded hardware validation"
 
-    The [November 18 two-H100 rerun](validation-h100-rerun.md) compiled and executed all 145 current sources: 34 numerical/transport checks, 13 API checks and 98 other executions. The earlier [two-H100](validation-h100.md) and [eight-A100](validation-a100.md) records remain available with their original scopes. The A100 pass uses eight MPI processes for multi-rank examples; individual programs retain their documented participant counts. A separate eight-device harness checks all 56 ordered peer-copy pairs, four collective patterns and three halo generations.
+    The [November 18 two-H100 rerun](validation-h100-rerun.md) compiled and executed all 145 recorded revisions: 34 numerical/transport checks, 13 API checks and 98 other executions. The earlier [two-H100](validation-h100.md) and [eight-A100](validation-a100.md) records remain available with their original scopes. The A100 pass uses eight MPI processes for multi-rank examples; individual programs retain their documented participant counts. A separate eight-device harness checks all 56 ordered peer-copy pairs, four collective patterns and three halo generations.
 
 
 <!-- mgpu:opener:start -->
@@ -16,7 +16,7 @@ A single-GPU CUDA book can treat "the GPU" as one honest unit of compute with on
 
 This book develops multi-GPU CUDA from device selection and transfers through collectives and parallelization strategies. Every program has dated H100 and A100 execution records. Host models explain the algorithms; numerical checks validate device results for the recorded workloads. Start with [Getting Started](getting-started.md).
 
-The corrected staged-MPI example (58) passed the November 18 two-H100 numerical rerun and memory check. **All 145 current sources have successful execution records.** See the [additional dated H100 results](validation-h100-rerun.md) for commands, system information and sample outputs.
+The corrected staged-MPI example (58) passed the November 18 two-H100 numerical rerun and memory check. **All 145 current sources have successful execution records:** 142 match the H100 dataset; the three corrected CPU-only models have [new local records](host-model-corrections.md). See the [additional dated H100 results](validation-h100-rerun.md) for commands, system information and sample outputs.
 
 ## What this book covers
 

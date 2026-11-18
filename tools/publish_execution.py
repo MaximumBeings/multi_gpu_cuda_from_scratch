@@ -295,12 +295,12 @@ def prepare(inputs, dataset, label, root, temporary):
     (public / 'results.json').write_text(json.dumps(records, indent=2) + '\n')
     counts = collections.Counter(category(row) for row in records)
     summary = ['# ' + ('November 18 H100 rerun' if label == 'h100-rerun' else label.upper() + ' execution validation'), '',
-               f'Dataset: **{dataset}**. All **145 current sources compiled and executed with exit status zero**. The categories below describe evidence scope; an API probe or a host model is not a successful numerical GPU workload.', '',
+               f'Dataset: **{dataset}**. All **145 recorded source revisions compiled and executed with exit status zero**. The categories below describe evidence scope; an API probe or a host model is not a successful numerical GPU workload.', '',
                '| Evidence category | Programs |', '| --- | ---: |']
     summary += [f'| {key} | {value} |' for key, value in sorted(counts.items())]
     summary += ['', f'[Execution manifest](validation/{dataset}/results.json) · [System records](validation/{dataset}/environments.json) · [Integrity inventory](validation/{dataset}/integrity.json). Each program’s chapter contains normalized commands, timestamp scope, source hash and captured output.', '',
                 'Rows without a per-program timestamp explicitly use their recorded run-batch start UTC. Hardware and tool metadata remain attached to each original run; combining matching sources from reruns does not redate earlier executions.', '',
-                'This dataset covers the captured hardware and single-node configurations. Host-only models validate their own modeled arithmetic, not real network performance. It does not establish multi-node behavior, failure recovery under physical faults, or benchmark throughput. H100, A100 and B200 evidence are published separately. A100 execution does not establish B200 compatibility or results.', '',
+                'This dataset covers the captured hardware and single-node configurations. Host-only models validate their own modeled arithmetic, not real network performance. It does not establish multi-node behavior, failure recovery under physical faults, or benchmark throughput. H100 and A100 evidence are published separately. B200 execution is planned; no B200 results are published. A100 execution does not establish B200 compatibility or results.', '',
                 '## Programs', '', '| Source | Evidence category | UTC | Output |', '| --- | --- | --- | --- |']
     for row in records:
         filename = Path(row['source']).name

@@ -1,0 +1,23 @@
+[
+  {
+    "source": "docs/part7/code/98_kv_cache_handoff_transfer_cost_model.cpp",
+    "page": "docs/part7/33-disaggregated-llm-inference.md",
+    "archived_sha256": "7a5dc5448a93ac88b1c7c2d0b60e5b4e2e2c9c327a02b44dcba7cc2e6f20288f",
+    "current_sha256": "cac5907c6d28de3b1410b790e7eedb3a9fef625db9f6557075f0248bc9a79ea7",
+    "number": 98
+  },
+  {
+    "source": "docs/part7/code/110_gdrcopy_fixed_overhead_vs_latency_budget_model.cpp",
+    "page": "docs/part7/37-gpudirect-rdma-in-capital-markets.md",
+    "archived_sha256": "718cacfa0ed9687820d55adf81c27bb3cc4348d3fbbd8e525724de47f93d8e4b",
+    "current_sha256": "e820cb923d511b84415fa45426a5d08f28aeb198bb126a6abf764fb96cb176d6",
+    "number": 110
+  },
+  {
+    "source": "docs/part7/code/111_gnn_embedding_fraud_accuracy_model.cpp",
+    "page": "docs/part7/38-real-time-fraud-detection-at-payment-scale.md",
+    "archived_sha256": "56f630a63f4295412f66336efabf82a4b5947478ace94fdc15babb7a2de6d898",
+    "current_sha256": "1edc5663412a05aaec3856478160730e749dfac25c0cd9e940fc333068637094",
+    "number": 111
+  }
+]

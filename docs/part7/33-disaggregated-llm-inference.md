@@ -529,7 +529,7 @@ g++ -O2 -ffp-contract=off -o 97_phase_specific_tensor_parallelism_correctness_si
 Every collective this book built since Chapter 8 -- broadcast, reduce, all-reduce, all-to-all -- moves data among EVERY member of some group. The KV cache handoff is not that. It is a single, targeted, one-time bulk transfer from one specific place (the prefill instance that just finished the prompt) to one specific other place (the decode instance about to generate the first token) -- structurally much closer to Chapter 5's `cudaMemcpyPeer()` or Chapter 21's GPUDirect RDMA than to anything built since. NVIDIA's own real NIXL-based transfer in Dynamo makes this concrete: it "leverages NIXL to transfer KV cache directly from the VRAM of the prefill engine to the VRAM of the decode engine" -- one sender, one receiver, no group-wide coordination at all.
 
 !!! warning "[COMMON TRAP] Assuming a multi-gigabyte tensor transfer must be a serving bottleneck"
-    A KV cache in the gigabyte range sounds like it should dominate a request's latency. File 98 below runs the actual arithmetic on DistServe's own real cited numbers -- a real 1.13GB KV cache over a real 600 GB/s NVLink link, or a real 800 Gbps InfiniBand link -- and finds the transfer completes in low single-digit to low double-digit MILLISECONDS, small next to a real multi-hundred-millisecond-to-multi-second end-to-end serving latency. The trap is assuming "big number of bytes" automatically means "big cost," without checking it against the real bandwidth actually available -- exactly the same kind of check Chapter 21's own GPUDirect RDMA numbers required.
+    A large KV cache does not by itself determine latency: divide the payload by the usable **one-direction** bandwidth and include packing, launch overhead and contention. A100 NVLink’s 600 GB/s specification is bidirectional aggregate, giving an ideal 300 GB/s ceiling for one sender’s outgoing traffic. A 1.13 GB handoff therefore has a 3.77 ms serialization lower bound at that ceiling; an 800 Gbps link gives 11.3 ms at its ideal 100 GB/s payload ceiling. Neither is a measured transfer time or a guarantee that the handoff is negligible under a tight time-to-first-token target.
 
 ### Background
 
@@ -537,80 +537,43 @@ Every collective this book built since Chapter 8 -- broadcast, reduce, all-reduc
 +----------------------------------------------------------+
 | Prefill instance (VRAM)  --- KV cache, point-to-point --> Decode instance (VRAM)
 |   1.13 GB (real DistServe example, OPT-66B/512 tokens)     |
-|   NVLink: 600 GB/s -> ~1.9 ms      InfiniBand: 100 GB/s -> ~11.3 ms
+|   NVLink: 300 GB/s one-way -> >=3.77 ms      InfiniBand: 100 GB/s -> >=11.3 ms
 |   (NOT a collective -- one sender, one receiver, like Ch5/Ch21)
 +----------------------------------------------------------+
 ```
 
-File 98 takes DistServe's own real cited KV cache size and its own real cited interconnect bandwidths and computes the transfer time those real numbers imply -- the exact arithmetic behind DistServe's own conclusion that the overhead is negligible, not a new estimate this book introduces.
+File 98 models serialization time as bytes divided by bandwidth. DistServe quotes 600 GB/s for A100 NVLink; [NVIDIA’s Ampere Tuning Guide](https://docs.nvidia.com/cuda/ampere-tuning-guide/index.html#third-generation-nvlink) identifies this as bidirectional bandwidth. For a one-way handoff, use at most 300 GB/s per endpoint before protocol overhead and concurrent traffic. Tensor-parallel groups may stripe a cache across multiple endpoints, so their aggregate budget requires an explicit traffic map. The model does not measure transfer latency, queueing or overlap.
 
 ```cpp
-// Chapter 33: Disaggregated LLM Inference
-// 98_kv_cache_handoff_transfer_cost_model.cpp
-//
-// Every collective this book built since Chapter 8 moved data among ALL
-// members of a group (a broadcast to everyone, a reduce from everyone,
-// an all-to-all among everyone). The KV cache handoff between a prefill
-// instance and a decode instance is a genuinely different shape: a
-// targeted, one-time, point-to-point bulk transfer from one specific
-// device (or TP-group) to one other specific device (or TP-group) --
-// the closest ancestor in this book is Chapter 5's explicit
-// cudaMemcpyPeer() and Chapter 21's GPUDirect RDMA, not any collective.
-// Zhong et al.'s own real DistServe paper is candid that this transfer
-// is not free -- "transferring KV caches from prefill to decoding
-// instances incurs notable overheads" -- and gives a real, concrete
-// example: "the KV cache size of a single 512-token request on OPT-66B
-// is approximately 1.13GB." This file takes that exact real number and
-// combines it with DistServe's own real cited interconnect bandwidths
-// -- "Infiniband (e.g., 800 Gbps)" for cross-node transfer and
-// "intra-node NVLINK, where the peak bandwidth between A100 GPUs is 600
-// GB/s" -- to compute the real transfer TIME implied by those real
-// numbers, the same arithmetic DistServe's own paper uses to conclude
-// the overhead is negligible. Inputs are cited system specifications;
-// this model computes transfer time as bytes divided by bandwidth.
-//
+// Chapter 33: KV-cache handoff lower-bound model.
+// DistServe cites 1.13 GB for an OPT-66B, 512-token request.
+// A100's 600 GB/s NVLink specification sums both directions; use at
+// most 300 GB/s for one sender's one-way transfer. These are ideal
+// bytes/bandwidth bounds, not measured latency or a serving guarantee.
 #include <cstdio>
-
+#include <cmath>
 int main() {
-    double kvCacheGB = 1.13;  // DistServe's own real cited OPT-66B/512-token example
-
-    printf("DistServe's own real cited KV cache example: a single 512-token "
-           "OPT-66B request's KV cache is approximately %.2f GB.\n\n", kvCacheGB);
-
-    struct Link { const char *name; double gbPerSec; const char *source; };
-    Link links[] = {
-        {"Intra-node NVLink (A100)", 600.0, "DistServe paper: \"peak bandwidth between A100 GPUs is 600 GB/s\""},
-        {"Cross-node InfiniBand",    100.0, "DistServe paper: \"Infiniband (e.g., 800 Gbps)\" = 800/8 GB/s"},
-    };
-
-    printf("%-28s %-12s %-16s\n", "Link", "GB/s", "Transfer time (ms)");
-    for (auto &l : links) {
-        double seconds = kvCacheGB / l.gbPerSec;
-        double ms = seconds * 1000.0;
-        printf("%-28s %-12.1f %-16.3f\n", l.name, l.gbPerSec, ms);
-    }
-
-    printf("\nAt real NVLink bandwidth, moving this real 1.13GB KV cache takes "
-           "about %.2f milliseconds; even over real cross-node InfiniBand, about "
-           "%.2f milliseconds. Both numbers are small enough next to a real LLM "
-           "serving request's own end-to-end latency (typically hundreds of "
-           "milliseconds to multiple seconds for a multi-hundred-token response) "
-           "that DistServe's own paper calls the transmission overhead "
-           "\"negligible\" -- this is the exact arithmetic behind that real "
-           "conclusion, not a new estimate this book is introducing.\n",
-           (kvCacheGB / 600.0) * 1000.0, (kvCacheGB / 100.0) * 1000.0);
-
-    printf("\nNVIDIA's own real Dynamo documentation adds one further real design "
-           "point this arithmetic alone does not show: the transfer does not even "
-           "need to be on the critical path at all -- \"the KV transfer is "
-           "non-blocking, allowing GPU forward passes to continue serving other "
-           "requests during the transfer.\" A cost small enough to call negligible "
-           "AND overlapped with other useful work is the real, two-part reason "
-           "production disaggregated serving systems treat this handoff as a "
-           "solved problem rather than their main bottleneck.\n");
+    const double cacheGB = 1.13;
+    const double nvlinkOneWayGBps = 600.0 / 2.0;
+    const double infinibandGBps = 800.0 / 8.0;
+    const double nvlinkMs = 1000.0 * cacheGB / nvlinkOneWayGBps;
+    const double infinibandMs = 1000.0 * cacheGB / infinibandGBps;
+    std::printf("Ideal one-way transfer bounds for %.2f decimal GB:\n", cacheGB);
+    std::printf("A100 NVLink: %.0f GB/s one-way ceiling -> %.3f ms\n", nvlinkOneWayGBps, nvlinkMs);
+    std::printf("800 Gbit/s InfiniBand: %.0f GB/s line rate -> %.3f ms\n", infinibandGBps, infinibandMs);
+    std::printf("Protocol overhead, topology, tensor-parallel sharding and contention change achieved latency.\n");
+    std::printf("Overlap can hide work for other requests; this request still depends on its KV arrival.\n");
+    if (std::fabs(nvlinkMs - 3.766666666666667) > 1e-12 ||
+        std::fabs(infinibandMs - 11.3) > 1e-12) return 1;
+    std::printf("MODEL CHECK PASS: directional bandwidth arithmetic\n");
     return 0;
 }
 ```
+
+
+!!! note "Corrected host model — November 18, 2026"
+
+    The listing above corrects the earlier model's directional bandwidth calculation. Its [new local compile/run record](../host-model-corrections.md#98) contains the current source hash, system, date, commands and output. The H100/A100 blocks below retain the earlier revision's actual output; their model claims are superseded by this correction.
 
 <!-- execution:start:h100-rerun:98_kv_cache_handoff_transfer_cost_model.cpp -->
 > **Compiled and executed — 2026-11-18-h100: Host program/model (exit-only).** Hardware: 2 H100 GPUs. Executed UTC: `2026-11-18T11:22:53.287213+00:00`.
@@ -717,7 +680,7 @@ g++ -O2 -ffp-contract=off -o 98_kv_cache_handoff_transfer_cost_model \
 
 ## Chapter Summary
 
-A single LLM inference request hides two very different workloads: DistServe's own real paper shows prefill is compute-bound (parallel work over many tokens at once) while decode is memory-bandwidth-bound (one token per step, but reading an ever-growing KV cache each time) -- File 96's illustrative model, grounded in Chapter 1's own arithmetic-intensity framing, made that contrast concrete, and DistServe's own real cited numbers (4.48x more requests, 10.2x tighter SLOs) show the payoff of treating the two phases separately. NVIDIA Dynamo's own real design takes that separation further by using different tensor-parallelism degrees for each phase -- smaller TP for compute-bound prefill, larger TP for memory-bound decode -- and File 97 confirmed, with a clean integer-only simulation, that this is correctness-preserving for ANY pair of TP degrees, not just the recommended one, because each phase's own reduction is exact on its own and the phases are connected only through the transferred KV cache values, never through shared parallelism structure. That KV cache handoff is itself a genuinely new communication shape for this book: a targeted, one-time, point-to-point bulk transfer between two disjoint device groups, closer to Chapter 5's `cudaMemcpyPeer()` and Chapter 21's GPUDirect RDMA than to any collective -- and File 98 showed, using DistServe's own real cited KV cache size and interconnect bandwidths, that this transfer costs low single-to-double-digit milliseconds, genuinely negligible next to end-to-end serving latency, and NVIDIA Dynamo's own real NIXL-based design overlaps even that small cost with continued serving of other requests.
+Prefill and decode have different resource demands, motivating separate GPU pools and tensor-parallel layouts. File 97 checks exact retrieval and reduction in a small integer model, rather than proving arbitrary production layouts equivalent. A KV-cache handoff is a point-to-point or group-to-group transfer whose cost depends on cache size, endpoint bandwidth and layout conversion. File 98 supplies a serialization model; actual serving latency also includes contention, packing and synchronization. NIXL can overlap transfer with other requests, but the receiving request still needs its cache before decoding.
 
 ## Self-Check Questions
 
@@ -726,7 +689,7 @@ A single LLM inference request hides two very different workloads: DistServe's o
 3. NVIDIA Dynamo's own real documentation recommends a SMALLER tensor-parallelism degree for prefill and a LARGER one for decode. What is the reasoning behind each choice?
 4. File 97 tested combinations where Tp > Td, which Dynamo's own guidance would NOT recommend. Were those combinations still correct? Why or why not?
 5. Why is the KV cache handoff described as a fundamentally different communication shape than anything built in Chapter 8 through Chapter 32, and which two earlier chapters is it actually closest to?
-6. Using File 98's own real cited numbers, roughly how long does it take to move a 1.13GB KV cache over a 600 GB/s NVLink connection? Over a 100 GB/s (800 Gbps) InfiniBand connection?
+6. Why must the A100’s 600 GB/s bidirectional specification be converted before modeling a one-way 1.13 GB cache handoff? What are the ideal serialization bounds for NVLink and an 800 Gbps InfiniBand link?
 7. What does it mean for the KV cache transfer to be "non-blocking," per NVIDIA Dynamo's own real documentation, and why does that matter even though the transfer itself is already fast?
 8. Why did File 97 deliberately use only integer arithmetic instead of floating-point, given that most of Part 6 and Chapter 32 used floating-point to study non-associativity?
 
@@ -741,7 +704,7 @@ Chapter 34 turns to another real, deployed industrial system with its own distin
 3. Prefill is compute-bound, so once each device has enough arithmetic work to stay busy, adding more devices has diminishing returns (the same principle behind any compute-bound workload's parallel scaling limit) -- a smaller TP suffices. Decode is memory-bandwidth-bound, so each additional GPU added to the TP group contributes more AGGREGATE memory bandwidth for reading the growing KV cache, which is the actual bottleneck -- so a larger TP genuinely helps more.
 4. Yes, every Tp > Td combination in File 97's own Sample output still matched the reference exactly. This is because each phase's own internal computation (a sum over its own local shard's contributions, then a combine across shards) is exact regardless of how many shards it's split into, and the two phases are connected only through the kv cache VALUES that get handed off, not through any shared structure that would require matching group sizes.
 5. Every collective this book built from Chapter 8 (broadcast/reduce) through Chapter 32 (MoE dispatch/combine) moves data among every member of some group of ranks, even when that "combining" happens per-token as in Chapter 32. The KV cache handoff instead moves data between exactly one sender and one receiver, a single one-time bulk transfer -- structurally closest to Chapter 5's explicit `cudaMemcpyPeer()` transfer and Chapter 21's GPUDirect RDMA, both of which are also point-to-point rather than collective.
-6. At 600 GB/s, 1.13 GB / 600 GB/s ≈ 1.88 milliseconds. At 100 GB/s (800 Gbps ÷ 8 bits/byte), 1.13 GB / 100 GB/s ≈ 11.3 milliseconds. Both are File 98's own locked, directly-computed values from DistServe's own real cited inputs.
+6. Bidirectional aggregate counts both directions; the ideal one-direction endpoint ceiling is 300 GB/s. Thus 1.13 / 300 × 1000 ≈ 3.77 ms. For 800 Gbps, divide by eight to obtain 100 GB/s, giving 11.3 ms. Protocol overhead, packing and contention increase elapsed time; group-level striping must be modeled separately.
 7. "Non-blocking" means the GPU that just finished prefill does not have to sit idle waiting for the KV cache transfer to complete before doing other useful work -- per Dynamo's own documentation, "GPU forward passes... continue serving other requests during the transfer." It matters even though the transfer is already fast (single-digit-to-low-double-digit milliseconds) because at high request volume, even a small mandatory wait repeated across every single request adds up; overlapping it removes that wait entirely rather than merely shrinking it.
 8. Because this section's own question -- does splitting a request's two phases onto independently-sized device groups (different TP degrees) preserve correctness -- is a genuinely different question from whether floating-point summation is associative under different groupings, which Chapter 8, 25, 29, 31, and 32 already investigated thoroughly. Using integers keeps File 97's own result unambiguous: any mismatch found would have to come from the phase-splitting design itself, not from floating-point rounding, which would otherwise have made the two separate questions impossible to tell apart.
 

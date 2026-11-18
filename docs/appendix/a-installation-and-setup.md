@@ -22,25 +22,22 @@ Two compilers have to agree before a single line of this book's own multi-GPU co
 
 ### The Concept, In Detail
 
-```
-+-----------------------------+     +-----------------------------+
-| apt-get install             |     | pip install                 |
-| cuda-toolkit-12-8           |     | nvidia-cuda-nvcc-cu12       |
-+-----------------------------+     +-----------------------------+
-              |                                    |
-   installs /usr/bin/nvcc              installs .../cuda_nvcc/bin/
-   (a real compiler driver              (ptxas ONLY -- the PTX
-    binary)                              assembler, no nvcc)
-              |                                    |
-   nvcc file.cu -o out                  nvcc file.cu -o out
-        --> SUCCEEDS                          --> command not found
+```text
+NVIDIA APT recipe                     Historical CUDA 12.4 Python wheel
+cuda-toolkit-12-8                      nvidia-cuda-nvcc-cu12
+        |                                      |
+/usr/local/cuda-12.8/bin/nvcc           .../cuda_nvcc/bin/ptxas
+(full compiler driver)                (assembler in that captured wheel)
+        |                                      |
+compile .cu files                     inspect the actual wheel contents;
+with its supported host compiler      do not assume it supplies nvcc
 ```
 
 The earlier authoring environment examined a CUDA 12.4 Python wheel containing `ptxas` without the full `nvcc` compiler driver, and a distribution `nvidia-cuda-toolkit` package providing CUDA 12.0. Those are observations about particular packages, not universal properties of every current wheel or a fresh-install recommendation. The current guide installs NVIDIA's versioned `cuda-toolkit-12-8` package and explicitly checks `nvcc --version`.
 
 The host compiler selected by `nvcc` can also differ from the `g++` found first in a shell, for example through `-ccbin` or an installation-specific wrapper. The earlier CUDA 12.0 distribution package selected GCC 12; the recorded CUDA 12.8.93 GPU runs used GCC 13.3, as the current output below shows. Use the selected CUDA release's supported host compiler instead of bypassing its version checks.
 
-[COMMON TRAP] Seeing `g++ --version` report one GCC version and a program compiled by `nvcc` report a different `__GNUC__` value is not a sign of a broken install. It means the apt-packaged toolchain is correctly protecting itself from a host-compiler version `nvcc` was never validated against, by quietly substituting a compatible `gcc` for its own internal calls only -- the system's own default `g++` is untouched and still used for every ordinary (non-`nvcc`) build on the same machine.
+[COMMON TRAP] A different `__GNUC__` value in an `nvcc`-compiled program identifies the host compiler actually used for that translation unit; it does not by itself prove that the installation is correct or that APT automatically selected a supported compiler. Inspect `nvcc -v`, explicit `-ccbin` options, wrappers and the selected toolkit's host-compiler support table. If a compatible compiler must be selected explicitly, use `-ccbin /path/to/supported/g++` rather than disabling version checks. Ordinary C++ builds still use the compiler selected by their own build command.
 
 ### Code and Verification
 
@@ -719,6 +716,8 @@ Recipe 3: nvcc + NCCL                  -> cuda_nccl
 Recipe 4: mpicxx + libcudart           -> mpi_only
 Recipe 5: nvcc + NVSHMEM + MPI (ccbin) -> cuda_nvshmem_mpi
 ```
+
+The MPI wrapper supplies MPI's own flags; it does not guarantee CUDA header/library paths. The actual recipes below explicitly use `CUDA_INCDIR` and `CUDA_LIBDIR`, which must match the selected toolkit layout in Getting Started. The archived Makefile's older comment about automatic CUDA paths is superseded by this explanation.
 
 Each recipe reuses an exact real flag combination a numbered chapter already established and locked: Recipe 3 is the plain `nvcc ... -lnccl` shape Chapter 11 introduced; Recipe 4 is Chapter 20's own File 58 shape (`mpicxx -Wall -Wextra file.cpp -o out -lcudart`, a real `mpicxx` wrapper driving `g++` while linking a real installed `libcudart` directly); Recipe 5 is Chapter 22's own File 64 shape, where `mpicxx` is handed to `nvcc` as its *own* host compiler via `-ccbin`, not the other way around, so that a single binary can be launched by `mpirun` while still containing real NVSHMEM device code. Recipe 5 also needs one extra step that is easy to miss: the NVSHMEM pip wheel ships only the versioned `libnvshmem_host.so.3`, with no unversioned `libnvshmem_host.so` symlink, so a bare `-lnvshmem_host` fails with `ld: cannot find -lnvshmem_host`. Chapters 22 and 32 fix this with `ln -sf libnvshmem_host.so.3 $NVSHMEM_DIR/lib/libnvshmem_host.so` inside the package directory; the Makefile below instead creates the symlink in a local `nvshmem_shim/` directory and searches it first (a LIBDIR override), which works even when the Python package directory is not writable. None of these five flag combinations is new syntax invented for this appendix -- gathering them into one Makefile is the only new thing here.
 

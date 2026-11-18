@@ -1,0 +1,1 @@
+$ /usr/bin/clang++ -std=c++17 -O2 -Wall -Wextra -Werror /private/tmp/mgpu-final-publish-20261118/docs/part7/code/111_gnn_embedding_fraud_accuracy_model.cpp -o /private/tmp/111_gnn_embedding_fraud_accuracy_model-review

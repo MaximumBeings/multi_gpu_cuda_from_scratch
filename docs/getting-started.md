@@ -3,7 +3,7 @@
 <!-- execution:overview -->
 !!! success "Recorded hardware validation"
 
-    The [November 18 two-H100 rerun](validation-h100-rerun.md) compiled and executed all 145 current sources: 34 numerical/transport checks, 13 API checks and 98 other executions. The earlier [two-H100](validation-h100.md) and [eight-A100](validation-a100.md) records remain available with their original scopes. The A100 pass uses eight MPI processes for multi-rank examples; individual programs retain their documented participant counts. A separate eight-device harness checks all 56 ordered peer-copy pairs, four collective patterns and three halo generations.
+    The [November 18 two-H100 rerun](validation-h100-rerun.md) compiled and executed all 145 recorded revisions: 34 numerical/transport checks, 13 API checks and 98 other executions. The earlier [two-H100](validation-h100.md) and [eight-A100](validation-a100.md) records remain available with their original scopes. The A100 pass uses eight MPI processes for multi-rank examples; individual programs retain their documented participant counts. A separate eight-device harness checks all 56 ordered peer-copy pairs, four collective patterns and three halo generations.
 
 
 <!-- mgpu:opener:start -->
@@ -12,7 +12,7 @@
 
 This book targets CUDA C++ compiled with `nvcc` for real NVIDIA GPU architectures -- the appropriate target must be selected per example -- plus MPI (OpenMPI or MPICH) for Part 5's multi-node material. A real multi-GPU machine with a matching driver is what you need to *run* the code in this book end to end; `nvcc` itself only needs a CUDA toolkit and will happily compile for architectures your current machine doesn't have, and host-only MPI programs can run as multiple local ranks without GPUs; CUDA-aware MPI examples still need CUDA devices.
 
-The corrected staged-MPI example (58) passed the November 18 two-H100 numerical rerun and memory check. **All 145 current sources have successful execution records.** See the [additional dated H100 results](validation-h100-rerun.md) for commands, system information and sample outputs.
+The corrected staged-MPI example (58) passed the November 18 two-H100 numerical rerun and memory check. **All 145 current sources have successful execution records:** 142 match the H100 dataset; the three corrected CPU-only models have [new local records](host-model-corrections.md). See the [additional dated H100 results](validation-h100-rerun.md) for commands, system information and sample outputs.
 
 Select a diagram to open its full-size SVG.
 
@@ -344,7 +344,7 @@ Open <http://127.0.0.1:8000> on the same machine. For a remote preview, keep the
 
 ## The honesty discipline this book follows
 
-All 145 programs were compiled and executed on two H100 GPUs and eight A100 GPUs. Current validation distinguishes numerical/transport checks, API checks and host models:
+The recorded versions of all 145 programs compiled and executed on the two-H100 and eight-A100 hosts; three later host-model corrections have separate local CPU execution records. Current validation distinguishes numerical/transport checks, API checks and host models:
 
 - **Host programs and simulations** are compiled and executed as host programs. Their results check the modeled arithmetic and scheduling, not CUDA concurrency or physical links.
 - **GPU numerical checks** initialize data and compare actual device results with an explicit reference.
@@ -360,10 +360,10 @@ From the repository root, `python3 tools/validate_examples.py --output artifacts
 ## Compile-line conventions
 
 - Plain C++ host files (`.cpp`): `g++ -std=c++17 -Wall -Wextra -O2 file.cpp -o binary`
-- CUDA files with real device code (`.cu`): `nvcc -arch=sm_80 file.cu -o binary`
+- CUDA files with real device code (`.cu`): `nvcc -std=c++17 -arch=sm_90 file.cu -o binary` on H100/H200 (`sm_80` on A100)
 - Files that call the CUDA Runtime API from the host add `-lcudart` and the toolchain's include/library paths, shown inline wherever they're used.
 - MPI files (`.cpp`, built with the MPI wrapper compiler): `mpic++ -std=c++17 -Wall -Wextra -O2 file.cpp -o binary`, run as `mpirun -np N ./binary`.
-- CUDA-aware MPI files combine both: `mpic++ -std=c++17 file.cpp -I$CUDA_HOME/include -L$CUDA_HOME/lib64 -lcudart -o binary`.
+- CUDA-aware MPI files combine both: `mpic++ -std=c++17 file.cpp -I"$CUDA_INCDIR" -L"$CUDA_LIBDIR" -lcudart -o binary` after selecting the layout above.
 
 ## Prerequisites
 
