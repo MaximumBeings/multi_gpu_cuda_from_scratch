@@ -326,6 +326,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#from-one-gpu-to-a-distributed-application" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        From one GPU to a distributed application
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#what-this-book-covers" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2382,6 +2393,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#from-one-gpu-to-a-distributed-application" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        From one GPU to a distributed application
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#what-this-book-covers" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2434,14 +2456,16 @@
 <!-- mgpu:opener:end -->
 
 <p><em>From Peer-to-Peer Memory to Distributed Training Across the Cluster</em></p>
+<h2 id="from-one-gpu-to-a-distributed-application">From one GPU to a distributed application<a class="headerlink" href="#from-one-gpu-to-a-distributed-application" title="Permanent link">&para;</a></h2>
+<!-- mgpu:figure-overview:start -->
+<p><a href="images/technical/book-overview.svg"><img alt="Whole-book reading map: hardware and ownership, safe transfers, collectives, parallel decomposition, multi-node communication, applications and industrial systems." src="images/technical/book-overview.svg" /></a></p>
+<!-- mgpu:figure-overview:end -->
+
+<p><em>Follow the map downward to build the concepts. Use Appendices A–G throughout for setup, profiling and troubleshooting. The chapter routes are a reading guide, rather than a required execution order.</em></p>
 <p>A single-GPU CUDA book can treat "the GPU" as one honest unit of compute with one memory space and one clock. That assumption is the first thing this book removes. The moment a workload needs a second device -- because a model no longer fits in one GPU's memory, or because a dataset takes too long to process on one, or because a real cluster is what production actually runs on -- every earlier assumption about synchronization, memory visibility, and "the" answer being in one place stops holding, and a new set of real questions takes over: how do two devices even see each other, what does it cost to move a byte from one to the other, and what happens when one of them is slower, or fails, mid-collective.</p>
 <p>This book develops multi-GPU CUDA from device selection and transfers through collectives and parallelization strategies. Every program has dated H100 and A100 execution records. Host models explain the algorithms; numerical checks validate device results for the recorded workloads. Start with <a href="getting-started/">Getting Started</a>.</p>
 <p>The corrected staged-MPI example (58) passed the November 18 two-H100 numerical rerun and memory check. <strong>All 145 current sources have successful execution records:</strong> 142 match the H100 dataset; the three corrected CPU-only models have <a href="host-model-corrections/">new local records</a>. See the <a href="validation-h100-rerun/">additional dated H100 results</a> for commands, system information and sample outputs.</p>
 <h2 id="what-this-book-covers">What this book covers<a class="headerlink" href="#what-this-book-covers" title="Permanent link">&para;</a></h2>
-<!-- mgpu:figure-overview:start -->
-<p><a href="images/technical/index.svg"><img alt="From one device to a coordinated system" src="images/technical/index.svg" /></a></p>
-<!-- mgpu:figure-overview:end -->
-
 <ul>
 <li><strong>Part 0 -- Why Multi-GPU, and the Hardware Underneath It.</strong> The real reasons a workload outgrows one device, the real topology a multi-GPU machine actually has (PCIe, NVLink, NVSwitch) and how to read yours, and the CUDA programming model extended from one device and one stream to several.</li>
 <li><strong>Part 1 -- Getting Data Between GPUs.</strong> Peer-to-peer memory access and unified virtual addressing, explicit peer transfers versus staged host transfers and when each genuinely wins, cross-device streams and events, and CUDA's own inter-process communication for sharing memory and events across separate processes.</li>
@@ -2449,7 +2473,12 @@
 <li><strong>Part 3 -- Parallelization Strategies.</strong> Data parallelism, model parallelism for when a single device can't hold the weights, tensor parallelism's own real matrix-splitting math, pipeline parallelism and the bubble that genuinely costs you throughput, and domain decomposition with halo exchange for scientific computing.</li>
 <li><strong>Part 4 -- Synchronization, Load Balancing, and Failure.</strong> Global barriers across devices, load balancing across GPUs that are not identical, and what a real multi-GPU system does about a straggler or an outright failure mid-collective.</li>
 <li><strong>Part 5 -- Scaling Beyond One Node.</strong> Plain MPI point-to-point and collective communication built from scratch first, then CUDA-aware MPI's own real advantage of skipping a host round-trip, GPUDirect RDMA, NVSHMEM's GPU-initiated communication, and CUDA graphs that span multiple GPUs and multiple nodes.</li>
-<li><strong>Part 6 -- Case Studies.</strong> Dense matrix multiplication at scale, distributed neural-network training with data parallelism and ring all-reduce, multi-GPU LLM inference with tensor and pipeline parallelism, N-body simulation, distributed breadth-first search, a distributed Jacobi solver with halo exchange, multi-GPU ray tracing, and Monte Carlo risk simulation -- putting the whole book's toolbox to work on problems that genuinely need more than one device at once.</li>
+<li>
+<p><strong>Part 6 -- Case Studies.</strong> Dense matrix multiplication at scale, distributed neural-network training with data parallelism and ring all-reduce, multi-GPU LLM inference with tensor and pipeline parallelism, N-body simulation, distributed breadth-first search, a distributed Jacobi solver with halo exchange, multi-GPU ray tracing, and Monte Carlo risk simulation -- putting the whole book's toolbox to work on problems that genuinely need more than one device at once.</p>
+</li>
+<li>
+<p><strong>Part 7 -- Industrial Case Studies.</strong> Mixture-of-experts routing, disaggregated inference, recommender embeddings, weather forecasting, portfolio risk, low-latency finance, fraud detection, genomics and medical imaging connect the earlier mechanisms to published system designs.</p>
+</li>
 </ul>
 <h2 id="how-to-read-this-book">How to read this book<a class="headerlink" href="#how-to-read-this-book" title="Permanent link">&para;</a></h2>
 <p>Every chapter develops intuition, complete implementations, worked examples, pitfalls and self-checks. All 145 programs have <a href="validation-h100/">H100</a> and <a href="validation-a100/">A100</a> execution records, with sample output beside the code. The eight-A100 supplement also checks all 56 ordered peer pairs, four collectives and three halo generations.</p>
