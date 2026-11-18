@@ -133,7 +133,7 @@ int main() {
         computeRowRange(GRID_ROWS, deviceCount, rank, &start, &end);
         printf("  rank %d: rows [%d, %d)\n", rank, start, end);
     }
-    printf("  (%d device(s) -- nothing to print above.)\n", deviceCount);
+    printf("  (%d device(s) queried.)\n", deviceCount);
 
     // Hypothetically, with 4 devices: every rank gets a different,
     // non-overlapping, equal-sized band of consecutive rows -- a
@@ -194,7 +194,7 @@ nvcc -std=c++17 -O2 -arch=sm_80 45_domain_decomposition_row_range.cu -o ./exampl
 ./example
 ```
 
-**Sample output**
+**Actual sample output (excerpt)**
 
 ```text
 cudaGetDeviceCount(): 8 device(s).
@@ -208,7 +208,6 @@ Partitioning a 16 x 8 grid's rows across this book's own real deviceCount (8):
   rank 5: rows [10, 12)
   rank 6: rows [12, 14)
   rank 7: rows [14, 16)
-  (8 device(s) -- nothing to print above.)
 
 The same formula, hypothetically, with world size 4:
   rank 0: rows [0, 4)  above: domain boundary (fixed value)  below: rank below (real halo)
@@ -238,7 +237,9 @@ nvcc -std=c++17 -O2 -arch=sm_90 45_domain_decomposition_row_range.cu -o ./exampl
 ./example
 ```
 
-<details markdown="1"><summary>Captured current-source output</summary>
+<details markdown="1"><summary>Actual sample output (excerpt)</summary>
+
+**Actual sample output (excerpt)**
 
 ```text
 cudaGetDeviceCount(): 2 device(s).
@@ -246,7 +247,6 @@ cudaGetDeviceCount(): 2 device(s).
 Partitioning a 16 x 8 grid's rows across this book's own real deviceCount (2):
   rank 0: rows [0, 8)
   rank 1: rows [8, 16)
-  (2 device(s) -- nothing to print above.)
 
 The same formula, hypothetically, with world size 4:
   rank 0: rows [0, 4)  above: domain boundary (fixed value)  below: rank below (real halo)
@@ -463,8 +463,8 @@ Part A below runs the exact same five-point stencil formula, through one shared 
 // Halo Exchange and Distributed Stencils
 // 47_stencil_decomposition_simulation.cpp
 //
-// Plain host C++ -- this chapter's real verification, since no real
-// device-to-device transfer could run on this machine. Part A checks
+// Plain host C++ model of a decomposed stencil. Part A checks
+//
 // the one property that actually matters about domain decomposition:
 // does a grid split across ranks, with halo exchange refreshing each
 // rank's ghost rows every iteration (Section 16.2), compute the exact

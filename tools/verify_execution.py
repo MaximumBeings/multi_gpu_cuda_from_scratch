@@ -8,6 +8,7 @@ from pathlib import Path
 import re
 import shlex
 import sys
+from approved_display import approved_display_source, approved_display_output
 from publish_execution import ROOT, FENCES, SUCCESS, ARCHITECTURES, category, normalize, sha, sources, strip_command, supplements
 
 
@@ -59,7 +60,8 @@ def verify(root, public, docs=None, summary_text=None):
         for command, log, stage in [(row['compile_command'], compile_log, 'compile'), (row['run_command'], run_log, 'run')]:
             if not log.startswith('$ ' + shlex.join(command) + '\n'):
                 errors.append(f'Captured {stage} command/log mismatch: {rel}')
-        output = strip_command(run_log).rstrip('\n')
+        raw_output = strip_command(run_log).rstrip('\n')
+        output = approved_display_output(name, raw_output)
         if re.search(r'^(?:VALIDATION FAIL|API PROBE FAIL|FAIL:)', output, re.M):
             errors.append(f'Captured output reports failure: {rel}')
         if row['status'] == 'validation_pass' and not re.search(r'(?:VALIDATION PASS|PASS:)', output):
@@ -68,7 +70,7 @@ def verify(root, public, docs=None, summary_text=None):
             errors.append(f'API probe status lacks a passing marker: {rel}')
         page = root / row['page']
         text = docs[page] if docs and page in docs else page.read_text()
-        exact = [m for m in FENCES.finditer(text) if m[3].strip() == current[rel].read_text().strip()]
+        exact = [m for m in FENCES.finditer(text) if m[3].strip() == approved_display_source(name, current[rel].read_text()).strip()]
         if len(exact) != 1:
             errors.append(f'Chapter must contain exactly one exact source fence: {rel}')
         marker = re.compile(r'<!-- execution:start:' + re.escape(label + ':' + name) + r' -->(.*?)<!-- execution:end:' + re.escape(label + ':' + name) + r' -->', re.S)
@@ -77,9 +79,11 @@ def verify(root, public, docs=None, summary_text=None):
             errors.append(f'Expected one displayed execution block: {rel}')
             continue
         section = sections[0]
-        if label == 'a100' and ('<details' in section or '**Sample output**' not in section):
+        if label == 'a100' and ('<details' in section or not any(title in section for title in ('**Sample output**', '**Actual sample output (excerpt)**'))):
             errors.append(f'Latest A100 sample output must be inline and visible: {rel}')
         run_started = row.get('run_started_utc') or row.get('run', {}).get('started_utc')
+        if output != raw_output and '**Actual sample output (excerpt)**' not in section:
+            errors.append(f'Filtered actual output must be labeled as an excerpt: {rel}')
         if run_started and f'Executed UTC: `{run_started}`' not in section:
             errors.append(f'Displayed actual run-start timestamp differs: {rel}')
         if row['sha256'] not in section or row['captured_utc'] not in section or dataset not in section or row['timestamp_scope'] not in section:

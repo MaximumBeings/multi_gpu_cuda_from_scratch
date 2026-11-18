@@ -37,8 +37,8 @@ Imagine finally organizing a toolbox after building five different tools from ra
 
 Broadcast, Reduce, AllReduce, AllGather and ReduceScatter map directly to NCCL collectives. The tested NCCL 2.26.2 builds express All-to-All with grouped `ncclSend`/`ncclRecv` calls; dedicated All-to-All APIs are available in newer releases. Chapter 17 uses a dummy-element AllReduce plus stream completion as a barrier, with grouped submission when one host controls multiple ranks.
 
-!!! warning
-    A version number and a unique ID cost nothing -- a communicator costs a device. `ncclGetVersion()` and `ncclGetUniqueId()` are pure host-side bookkeeping and will succeed on a laptop with no GPU at all. `ncclCommInitRank()` is different: it genuinely tries to bind the communicator to a physical device, and on a machine with zero physical GPUs it fails every time, the same real, well-documented limitation Chapters 22, 23, and 32 already found for NVSHMEM init and for captured graph launches. Reading a version string back successfully is not evidence that a communicator will initialize.
+!!! warning "[COMMON TRAP] Confusing a version query with communicator setup"
+    A version query reads library metadata. Communicator initialization binds ranks to CUDA devices and requires every participating rank to complete the setup protocol.
 
 ### Code and Verification
 

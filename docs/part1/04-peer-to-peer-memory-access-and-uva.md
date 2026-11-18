@@ -8,7 +8,7 @@
 
 - Why every pointer in a modern multi-GPU CUDA program — host or device, no matter which device allocated it — lives in one single, flat address space, and what `cudaPointerGetAttributes()` can honestly tell you about any pointer in that space.
 - Why "peer access" is a real, queryable, *unidirectional* permission between two specific devices, not an automatic consequence of Unified Virtual Addressing existing — and exactly which two Runtime API calls establish it.
-- How this book verifies peer-to-peer transfer *logic* — which buffer goes where, under which topology — without a second real device, using the host-side simulation technique this book commits to using honestly whenever real multi-device hardware isn't available.
+- How the GPU transfer checks validate real payloads, while the host simulation independently explores routing and buffer ownership.
 
 **What you need to know first:**
 
@@ -156,9 +156,9 @@ UVA means every device's pointers are meaningful, comparable values in one addre
 // pair with cudaDeviceCanAccessPeer(), then enable access with
 // cudaDeviceEnablePeerAccess() -- called from the "current" side of the
 // pair, since (per the CUDA Runtime API docs) access granted this way
-// is unidirectional. Genuinely compiled with a real nvcc and genuinely
-// run; on this driver-less machine the loop body runs zero times, for
-// exactly the reason Chapter 3 already explained.
+// Peer access is directional; query and enable each ordered device pair.
+//
+//
 #include <cstdio>
 #include <cuda_runtime.h>
 

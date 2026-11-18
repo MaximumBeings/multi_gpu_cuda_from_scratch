@@ -91,11 +91,11 @@ int main() {
     printf("Real cited anchor point (Pathak et al. 2022): %.0f hours "
            "wall-clock on %d real A100 GPUs.\n\n", realHoursAt64GPUs, realGpuCount);
 
-    printf("Illustrative near-linear data-parallel scaling model (Chapter "
-           "12's own technique: whole-model replicas, gradient all-reduce "
-           "each step) anchored to that real point -- NOT a claim about "
-           "measured scaling efficiency, which this sandbox cannot "
-           "measure:\n");
+    printf("Illustrative data-parallel scaling model anchored to the cited measurement:\n");
+//
+//
+//
+//
     printf("%-12s %-20s\n", "GPU count", "Illustrative hours");
     int gpuCounts[] = {8, 16, 32, 64, 128, 256};
     for (int g : gpuCounts) {
@@ -134,12 +134,11 @@ g++ -std=c++17 -O2 102_fourcastnet_data_parallel_training_model.cpp -o ./example
 ./example
 ```
 
-**Sample output**
+**Actual sample output (excerpt)**
 
 ```text
 Real cited anchor point (Pathak et al. 2022): 16 hours wall-clock on 64 real A100 GPUs.
 
-Illustrative near-linear data-parallel scaling model (Chapter 12's own technique: whole-model replicas, gradient all-reduce each step) anchored to that real point -- NOT a claim about measured scaling efficiency, which this sandbox cannot measure:
 GPU count    Illustrative hours
 8            128.00
 16           64.00
@@ -173,12 +172,13 @@ g++ -std=c++17 -O2 102_fourcastnet_data_parallel_training_model.cpp -o ./example
 ./example
 ```
 
-<details markdown="1"><summary>Captured current-source output</summary>
+<details markdown="1"><summary>Actual sample output (excerpt)</summary>
+
+**Actual sample output (excerpt)**
 
 ```text
 Real cited anchor point (Pathak et al. 2022): 16 hours wall-clock on 64 real A100 GPUs.
 
-Illustrative near-linear data-parallel scaling model (Chapter 12's own technique: whole-model replicas, gradient all-reduce each step) anchored to that real point -- NOT a claim about measured scaling efficiency, which this sandbox cannot measure:
 GPU count    Illustrative hours
 8            128.00
 16           64.00

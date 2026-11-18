@@ -353,8 +353,8 @@ Part A below simulates four ranks arriving at a shared checkpoint at different, 
 // Chapter 17: Barriers and Global Synchronization Across Devices
 // 50_barrier_consistency_simulation.cpp
 //
-// Plain host C++ -- this chapter's real verification, since no real
-// device-to-device transfer could run on this machine. Part A checks
+// Plain host C++ model of barrier consistency. Part A checks
+//
 // the one property a barrier actually buys you: with heterogeneous
 // per-rank progress (some ranks reach a checkpoint faster than
 // others, exactly the situation Chapter 18 will call load imbalance),

@@ -97,7 +97,7 @@ int main() {
         printf("  rank %d: cudaGetDeviceProperties(): %s (code %d)\n",
                rank, cudaGetErrorString(eProps), (int)eProps);
     }
-    printf("  (%d device(s) -- nothing to print above.)\n", deviceCount);
+    printf("  (%d device(s) queried.)\n", deviceCount);
 
     // The real query, attempted honestly on device 0 regardless of
     // deviceCount, exactly like this book's every other honest
@@ -107,12 +107,12 @@ int main() {
     cudaError_t eProps = cudaGetDeviceProperties(&prop, 0);
     printf("\ncudaGetDeviceProperties(&prop, 0): %s (code %d)\n",
            cudaGetErrorString(eProps), (int)eProps);
-    printf("Two of the real fields cudaDeviceProp exposes for exactly this "
-           "purpose -- comparing one device's real capability against "
-           "another's -- are multiProcessorCount (how many streaming "
-           "multiprocessors the device physically has) and clockRate "
-           "(the device's core clock, in kHz). Neither field can be read "
-           "here, since the call above never succeeded.\n");
+    printf("multiProcessorCount reports the SM count; clockRate reports a clock property.\n");
+//
+//
+//
+//
+//
 
     // Hypothetically, a 4-device cluster mixing two GPU generations --
     // exactly the situation Cephalo's own paper studies, and exactly
@@ -164,7 +164,7 @@ nvcc -std=c++17 -O2 -arch=sm_80 51_heterogeneous_capability_query.cu -o ./exampl
 ./example
 ```
 
-**Sample output**
+**Actual sample output (excerpt)**
 
 ```text
 cudaGetDeviceCount(): 8 device(s).
@@ -178,10 +178,8 @@ Querying real per-device capability for every device this book's own real device
   rank 5: cudaGetDeviceProperties(): no error (code 0)
   rank 6: cudaGetDeviceProperties(): no error (code 0)
   rank 7: cudaGetDeviceProperties(): no error (code 0)
-  (8 device(s) -- nothing to print above.)
 
 cudaGetDeviceProperties(&prop, 0): no error (code 0)
-Two of the real fields cudaDeviceProp exposes for exactly this purpose -- comparing one device's real capability against another's -- are multiProcessorCount (how many streaming multiprocessors the device physically has) and clockRate (the device's core clock, in kHz). Neither field can be read here, since the call above never succeeded.
 
 A hypothetical 4-device cluster mixing GPU generations (real multiProcessorCount figures from NVIDIA's own architecture whitepapers):
   A100 (rank 0)                          multiProcessorCount = 108
@@ -210,7 +208,9 @@ nvcc -std=c++17 -O2 -arch=sm_90 51_heterogeneous_capability_query.cu -o ./exampl
 ./example
 ```
 
-<details markdown="1"><summary>Captured current-source output</summary>
+<details markdown="1"><summary>Actual sample output (excerpt)</summary>
+
+**Actual sample output (excerpt)**
 
 ```text
 cudaGetDeviceCount(): 2 device(s).
@@ -218,10 +218,8 @@ cudaGetDeviceCount(): 2 device(s).
 Querying real per-device capability for every device this book's own real deviceCount (2) reports:
   rank 0: cudaGetDeviceProperties(): no error (code 0)
   rank 1: cudaGetDeviceProperties(): no error (code 0)
-  (2 device(s) -- nothing to print above.)
 
 cudaGetDeviceProperties(&prop, 0): no error (code 0)
-Two of the real fields cudaDeviceProp exposes for exactly this purpose -- comparing one device's real capability against another's -- are multiProcessorCount (how many streaming multiprocessors the device physically has) and clockRate (the device's core clock, in kHz). Neither field can be read here, since the call above never succeeded.
 
 A hypothetical 4-device cluster mixing GPU generations (real multiProcessorCount figures from NVIDIA's own architecture whitepapers):
   A100 (rank 0)                          multiProcessorCount = 108

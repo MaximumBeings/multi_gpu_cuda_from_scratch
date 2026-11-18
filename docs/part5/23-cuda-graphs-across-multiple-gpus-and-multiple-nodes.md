@@ -183,7 +183,7 @@ VALIDATION PASS: 3 replays, 512 checked values, errors=0
 <!-- execution:end:h100:66_cross_device_graph_capture.cu -->
 
 
-Compiled with `nvcc -gencode=arch=compute_70,code=sm_70 66_cross_device_graph_capture.cu -o 66_cross_device_graph_capture` (real dynamic linking against this environment's own installed CUDA 12.0 runtime) and genuinely run. Sample output:
+The dated records show the compiler target, CUDA version and actual replay output for this graph example.
 
 !!! warning "[COMMON TRAP] Continuing after failed graph setup"
     Check stream, event, capture and instantiation results before using the returned handles. File 66 checks the joined capture and replayed numerical result.

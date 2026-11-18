@@ -75,10 +75,10 @@ The [2026-11-17 H100 execution record](../validation-h100.md) covers two GPUs co
 // computation-bound," while, "in contrast, the decoding phase, despite
 // processing only one new token per step, incurs a similar level of I/O
 // to the prefill phase, making it constrained by the GPU's memory
-// bandwidth." This file builds a small, clearly-labeled ILLUSTRATIVE
-// model of that same contrast (never a measured benchmark -- this
-// sandbox has no real GPU to benchmark on), grounded in Chapter 1's own
-// arithmetic-intensity framing, and then presents DistServe's own real
+// bandwidth." This is an illustrative arithmetic-intensity model grounded
+// in Chapter 1. It then presents DistServe's published measurements -- its
+//
+//
 // cited numbers -- its "goodput" metric and its measured 4.48x/10.2x
 // improvement -- as real data, not something this book derived.
 #include <cstdio>
@@ -488,9 +488,9 @@ File 98 takes DistServe's own real cited KV cache size and its own real cited in
 // "intra-node NVLINK, where the peak bandwidth between A100 GPUs is 600
 // GB/s" -- to compute the real transfer TIME implied by those real
 // numbers, the same arithmetic DistServe's own paper uses to conclude
-// the overhead is negligible. No timing here is measured (this sandbox
-// has no real GPU or RDMA fabric); every input is a real cited number,
-// and the only computation performed is bytes divided by bandwidth.
+// the overhead is negligible. Inputs are cited system specifications;
+// this model computes transfer time as bytes divided by bandwidth.
+//
 #include <cstdio>
 
 int main() {

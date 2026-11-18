@@ -13,9 +13,9 @@
 
 **What you need to know first:**
 
-- Chapter 11's real `ncclCommInitAll()` communicator and the honest error codes it returns in this environment.
-- Chapter 17's real barrier (a throwaway `ncclAllReduce()` plus a required `cudaStreamSynchronize()`) -- this chapter's failures happen at exactly that kind of waiting point.
-- Chapter 18's makespan framing: what a barrier costs when one rank is slower than the rest.
+- Chapter 11’s communicator initialization and checked API results.
+- Chapter 17’s dummy-element AllReduce and stream completion.
+- Chapter 18’s model of straggler delays.
 
 ---
 

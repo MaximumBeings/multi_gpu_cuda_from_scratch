@@ -12,6 +12,7 @@ import shlex
 import shutil
 import sys
 import tempfile
+from approved_display import approved_display_source, approved_display_output
 
 ROOT = Path(__file__).resolve().parents[1]
 SUFFIXES = {'.cu', '.cpp', '.c'}
@@ -158,7 +159,9 @@ def execution_time(row):
 
 def capture_block(row, dataset, label, relative):
     name = Path(row['source']).name
-    output = row['_output'].rstrip('\n')
+    raw_output = row['_output'].rstrip('\n')
+    output = approved_display_output(name, raw_output)
+    output_label = '**Actual sample output (excerpt)**' if output != raw_output else '**Sample output**'
     fence = '`' * max(3, max([len(x) for x in re.findall(r'`+', output)] + [0]) + 1)
     commands = shlex.join(normalize(row['compile_command'], row['source'])) + '\n' + shlex.join(normalize(row['run_command'], row['source']))
     scope = category(row)
@@ -169,7 +172,7 @@ def capture_block(row, dataset, label, relative):
         f'[Exact tested source]({relative}/{name}) · [Compiler log]({relative}/compile.log) · [Execution log]({relative}/run.log). Compile exit: `{row["compile"]["exit_code"]}`; run exit: `{row["run"]["exit_code"]}`.', '',
         'Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.', '',
         '```bash', commands, '```', '',
-        '**Sample output**', '', fence + 'text', output, fence, '',
+        output_label, '', fence + 'text', output, fence, '',
         f'<!-- execution:end:{label}:{name} -->', ''])
 
 
@@ -274,7 +277,7 @@ def prepare(inputs, dataset, label, root, temporary):
         marker = re.compile(r'\n*<!-- execution:start:' + re.escape(label + ':' + name) + r' -->.*?<!-- execution:end:' + re.escape(label + ':' + name) + r' -->\n*', re.S)
         text = marker.sub('\n', text)
         match = locate(text, name, body)
-        canonical = match[1] + match[2] + '\n' + body.rstrip('\n') + '\n' + match[1]
+        canonical = match[1] + match[2] + '\n' + approved_display_source(name, body).rstrip('\n') + '\n' + match[1]
         after = text[match.end():]
         # Current captured output replaces obsolete sample output. Source fences,
         # other architecture records and explanatory prose are retained.

@@ -403,8 +403,8 @@ The check below applies the exact same function, in the exact same order, two di
 // Chapter 13: Model Parallelism -- When One GPU Can't Hold the Weights
 // 38_model_parallel_forward_simulation.cpp
 //
-// Plain host C++ -- this chapter's real verification, since no real
-// forward pass can run without a real device. A tiny 8-layer toy
+// Plain host C++ simulation of a partitioned forward pass. A tiny 8-layer toy
+//
 // network (2-element vectors, one small affine transform + ReLU per
 // layer) stands in for a real model deep enough that no single
 // device could hold every layer. Two host arrays stand in for two

@@ -126,14 +126,14 @@ double partitionedSmoothed(int x, int y, int globalZ, int P) {
     (void)zStart; (void)zEnd; (void)GHOST;
 
     // This models the real paper's own claim directly: with ghost cells
-    // correctly synchronized ("automatically synchronized after FP and
-    // BP operations"), the owning rank can read globalZ-1 and globalZ+1
-    // whether they fall inside its own slab or in its own ghost region,
-    // exactly as if it owned them locally. This environment cannot
-    // exercise real inter-GPU ghost-cell traffic, so the fetch is
-    // modeled as a direct read -- but the RESULT is exactly what
-    // matters for correctness, the same honest modeling choice this
-    // book made for Chapter 38's own remote-neighbor-fetch simulation.
+    // The host model uses synchronized ghost-cell values to check the
+    // slab-boundary stencil against its unsplit reference.
+//
+//
+//
+//
+//
+//
     double sum = voxelValue(x, y, globalZ);
     int count = 1;
     if (globalZ - 1 >= 0) { sum += voxelValue(x, y, globalZ - 1); count++; }

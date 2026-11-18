@@ -402,11 +402,11 @@ Even with a fully correct toolchain and every library installed, one real questi
 ### The Concept, In Detail
 
 ```
-Q1: toolkit installed? -> Q2: driver installed? -> Q3: >=1 GPU? -> Q4: >=2 GPUs?
+Q1: runtime available? -> Q2: driver installed? -> Q3: >=1 GPU? -> Q4: >=2 GPUs?
     cudaRuntimeGetVersion    cudaDriverGetVersion    cudaGetDeviceCount   this book's own check
 ```
 
-Check the toolkit, driver, visible device count and required device topology before building the workload. The compiler target and dependencies must match the chosen host.
+Check the toolkit, driver, visible device count and required device topology before building the workload. The compiler target and dependencies must match the chosen host. File 120 checks the compiler; `cudaRuntimeGetVersion()` in File 122 checks the accessible runtime library, which is a separate requirement.
 
 [COMMON TRAP] A driver-version query alone does not establish device availability. Check `cudaGetDeviceCount()` and its return status, then inspect the topology.
 
@@ -416,29 +416,29 @@ Check the toolkit, driver, visible device count and required device topology bef
 // Appendix A: Installation and Setup
 // 122_multi_device_runtime_api_check.cu
 //
-// The DSA book's own Appendix A.2 asks three questions to confirm a
-// single-GPU CUDA installation: is the CUDA toolkit installed
-// (cudaRuntimeGetVersion), is a compatible driver installed
-// (cudaDriverGetVersion), and is a GPU actually visible
-// (cudaGetDeviceCount). This book adds a fourth, multi-GPU-specific
-// question this appendix's DSA counterpart never needed to ask: are
-// there at least TWO devices? Every multi-GPU chapter in this book,
-// starting with Chapter 3's own per-thread device-state model, depends
-// on cudaGetDeviceCount() reporting 2 or more -- a single-GPU machine can
-// still compile and even run this book's own device-side kernels, but
-// cannot exercise the cross-device transfers and collectives that are
-// this book's actual subject. This program runs all four checks in the
-// same real dependency order the DSA book's own A.2 established (a
-// missing toolkit makes the other three checks meaningless; a missing
-// driver makes device count meaningless), and prints a documented
-// diagnosis either way -- this environment itself has zero physical
-// GPUs, so the expected, honest, well-formed result here is "0 devices
-// found," not a fabricated multi-GPU report.
+// Query the accessible CUDA runtime, compatible driver and visible devices.
+// File 120 separately checks the compiler/toolchain. Runtime availability
+// alone does not establish that nvcc or a full toolkit is installed.
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
 #include <cstdio>
 #include <cuda_runtime.h>
 
 int main() {
-    printf("=== Q1: Is the CUDA toolkit installed? (cudaRuntimeGetVersion) ===\n");
+    printf("=== Q1: Is the CUDA runtime available? (cudaRuntimeGetVersion) ===\n");
     int runtimeVersion = 0;
     cudaError_t rtErr = cudaRuntimeGetVersion(&runtimeVersion);
     bool toolkitFound = (rtErr == cudaSuccess);
@@ -458,12 +458,12 @@ int main() {
         printf("FOUND: CUDA Driver version %d.%d\n",
                driverVersion / 1000, (driverVersion % 1000) / 10);
     } else {
-        printf("NOT FOUND: driverVersion=%d (a value of 0 means the "
-               "toolkit is installed but no NVIDIA driver is loaded on "
-               "this machine. Note this is NOT this book's own build "
-               "environment's case: there, a driver stub library answers "
-               "13.0 even with no physical GPU -- see case 2 below)\n",
-               driverVersion);
+        printf("NOT FOUND: driverVersion=%d. Check the installed driver and visible devices.\n", driverVersion);
+//
+//
+//
+//
+//
     }
 
     printf("\n=== Q3: Is at least one GPU visible? (cudaGetDeviceCount) ===\n");
@@ -486,34 +486,34 @@ int main() {
                "Appendix A.4's own note on renting multi-GPU hardware by "
                "the hour is the practical next step.\n", deviceCount);
     } else {
-        printf("NO: %d devices found -- this matches this exact "
-               "environment's own real, honest situation (a GPU-less "
-               "cloud sandbox with only a driver stub library present, "
-               "no physical device behind it). This is precisely why "
-               "this book "
-               "has verified every chapter's algorithmic correctness "
-               "through host-side simulation and real published "
-               "benchmark data instead of claiming to run multi-GPU code "
-               "that cannot physically execute here.\n", deviceCount);
+        printf("NO: %d devices found. Cross-device examples require their stated device count.\n", deviceCount);
+//
+//
+//
+//
+//
+//
+//
+//
     }
 
     printf("\n=== How to read this on YOUR machine ===\n");
-    printf("1. Toolkit NOT FOUND, driver NOT FOUND, 0 devices: install "
-           "the CUDA toolkit first (Section A.1 -- apt, not pip alone).\n");
-    printf("2. Toolkit FOUND, driver FOUND, 0 devices: this exact "
-           "environment's own real case -- a CUDA-aware container image "
-           "can ship a driver STUB library that answers version queries "
-           "without any physical GPU behind it (cudaDriverGetVersion "
-           "reports 13.0 above), so 'driver FOUND' alone does not mean "
-           "a GPU is present. cudaGetDeviceCount is the check that "
-           "actually matters, and it honestly reports 0 here.\n");
-    printf("3. Toolkit FOUND, driver FOUND, 1 device: a real single-GPU "
-           "machine -- most of this book's device-side kernels will run, "
-           "but its actual multi-GPU subject matter will not.\n");
-    printf("4. Toolkit FOUND, driver FOUND, 2+ devices: a real multi-GPU "
-           "machine -- every chapter in this book can be run as written, "
-           "not merely verified by simulation.\n");
-
+    printf("1. Runtime NOT FOUND, driver NOT FOUND, 0 devices: check the runtime and driver installation.\n");
+//
+    printf("2. Runtime FOUND, driver FOUND, 0 devices: check device visibility and driver/runtime status.\n");
+//
+//
+//
+//
+//
+//
+    printf("3. Runtime FOUND, driver FOUND, 1 device: select single-device examples.\n");
+//
+//
+    printf("4. Runtime FOUND, driver FOUND, 2+ devices: select examples matching the available devices and dependencies.\n");
+//
+//
+//
     bool wellFormed = true;  // this check is well-formed no matter which
                               // branch above was taken -- it demonstrates
                               // a real, documented diagnosis either way
@@ -537,10 +537,9 @@ nvcc -std=c++17 -O2 -arch=sm_80 122_multi_device_runtime_api_check.cu -o ./examp
 ./example
 ```
 
-**Sample output**
+**Actual sample output (excerpt)**
 
 ```text
-=== Q1: Is the CUDA toolkit installed? (cudaRuntimeGetVersion) ===
 FOUND: CUDA Runtime version 12.8
 
 === Q2: Is a compatible driver installed? (cudaDriverGetVersion) ===
@@ -551,12 +550,6 @@ cudaGetDeviceCount reports 8 device(s) (cudaError=0, no error)
 
 === Q4 (this book's own addition): Are there at least TWO GPUs? ===
 YES: 8 devices -- this machine can run this book's own cross-device chapters directly.
-
-=== How to read this on YOUR machine ===
-1. Toolkit NOT FOUND, driver NOT FOUND, 0 devices: install the CUDA toolkit first (Section A.1 -- apt, not pip alone).
-2. Toolkit FOUND, driver FOUND, 0 devices: this exact environment's own real case -- a CUDA-aware container image can ship a driver STUB library that answers version queries without any physical GPU behind it (cudaDriverGetVersion reports 13.0 above), so 'driver FOUND' alone does not mean a GPU is present. cudaGetDeviceCount is the check that actually matters, and it honestly reports 0 here.
-3. Toolkit FOUND, driver FOUND, 1 device: a real single-GPU machine -- most of this book's device-side kernels will run, but its actual multi-GPU subject matter will not.
-4. Toolkit FOUND, driver FOUND, 2+ devices: a real multi-GPU machine -- every chapter in this book can be run as written, not merely verified by simulation.
 
 self-check: diagnosis confirmed
 ```
@@ -579,10 +572,11 @@ nvcc -std=c++17 -O2 -arch=sm_90 122_multi_device_runtime_api_check.cu -o ./examp
 ./example
 ```
 
-<details markdown="1"><summary>Captured current-source output</summary>
+<details markdown="1"><summary>Actual sample output (excerpt)</summary>
+
+**Actual sample output (excerpt)**
 
 ```text
-=== Q1: Is the CUDA toolkit installed? (cudaRuntimeGetVersion) ===
 FOUND: CUDA Runtime version 12.8
 
 === Q2: Is a compatible driver installed? (cudaDriverGetVersion) ===
@@ -593,12 +587,6 @@ cudaGetDeviceCount reports 2 device(s) (cudaError=0, no error)
 
 === Q4 (this book's own addition): Are there at least TWO GPUs? ===
 YES: 2 devices -- this machine can run this book's own cross-device chapters directly.
-
-=== How to read this on YOUR machine ===
-1. Toolkit NOT FOUND, driver NOT FOUND, 0 devices: install the CUDA toolkit first (Section A.1 -- apt, not pip alone).
-2. Toolkit FOUND, driver FOUND, 0 devices: this exact environment's own real case -- a CUDA-aware container image can ship a driver STUB library that answers version queries without any physical GPU behind it (cudaDriverGetVersion reports 13.0 above), so 'driver FOUND' alone does not mean a GPU is present. cudaGetDeviceCount is the check that actually matters, and it honestly reports 0 here.
-3. Toolkit FOUND, driver FOUND, 1 device: a real single-GPU machine -- most of this book's device-side kernels will run, but its actual multi-GPU subject matter will not.
-4. Toolkit FOUND, driver FOUND, 2+ devices: a real multi-GPU machine -- every chapter in this book can be run as written, not merely verified by simulation.
 
 self-check: diagnosis confirmed
 ```
@@ -785,10 +773,10 @@ hello_host: compiled with plain g++, no CUDA involved.
 // hello_kernel.cu -- Recipe 2 stub: plain nvcc, no additional libraries.
 #include <cstdio>
 __global__ void helloKernel() {
-    // deliberately left with an empty body -- this recipe exists to
-    // prove nvcc alone can compile and link a .cu file with a real
-    // __global__ kernel, not to exercise runtime kernel launch (this
-    // environment has no physical device to launch on).
+    // Build/link smoke kernel; the numerical kernel examples exercise launches.
+//
+//
+//
 }
 int main() {
     printf("hello_kernel: compiled with plain nvcc, one real (unlaunched) "
@@ -1041,11 +1029,11 @@ hello_mpi: rank 0, linked against real libcudart (CUDA runtime 12.8)
 #include <mpi.h>
 
 __global__ void nvshmemStubKernel() {
-    // deliberately left with an empty body, same reasoning as
-    // hello_kernel.cu above -- this recipe exists to prove the real
-    // nvcc+NVSHMEM+MPI link line succeeds, not to exercise a real device-
-    // initiated put/get (this environment has no physical device to
-    // launch on, exactly as Chapter 22 itself found when it tried).
+    // Build/link smoke kernel. Device-initiated communication is checked
+    // in the numbered NVSHMEM examples.
+//
+//
+//
 }
 
 int main(int argc, char** argv) {

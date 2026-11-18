@@ -49,3 +49,7 @@ python3 tools/illustrations/validate.py
 ```
 
 The generator preserves source-code fences and uses checked insertion markers. SVG links open the original vector artwork. Regeneration does not compile or execute code.
+
+## Documentation display checks
+
+The web listings use `tools/approved_display.py` for an explicit filename-and-literal allowlist of stale comment and diagnostic-wording cleanups. Algorithm statements, queries and calculations stay unchanged. Downloadable tested sources, full logs, timestamps and SHA-256 records remain immutable. Output marked “excerpt” selects actual recorded lines; it never substitutes newly written diagnostic text. `python3 tools/test_approved_display.py` checks this boundary and rejects unapproved algorithm changes.

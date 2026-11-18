@@ -236,10 +236,10 @@ int main() {
     int deviceCount = 0;
     cudaGetDeviceCount(&deviceCount);
     printf("cudaGetDeviceCount() reports %d device(s).\n", deviceCount);
-    printf("The loop below runs its body exactly %d time(s) as a "
-           "direct consequence -- not a special case, just what a "
-           "correctly-guarded loop over a real count does when that "
-           "count happens to be zero.\n\n", deviceCount);
+    printf("The loop body uses the detected device count: %d.\n\n", deviceCount);
+//
+//
+//
 
     std::vector<cudaStream_t> streams(deviceCount);
     std::vector<int*> buffers(deviceCount, nullptr);
@@ -278,12 +278,12 @@ int main() {
         cudaFree(buffers[i]);
     }
 
-    printf("Loop body executed %d time(s) total across all three "
-           "phases. On real N-GPU hardware, this exact, unmodified "
-           "source runs all N devices' kernels concurrently with no "
-           "code change -- that's the entire point of writing the loop "
-           "this way instead of hard-coding device 0 and device 1.\n",
-           deviceCount);
+    printf("Completed setup, launch and cleanup for %d device(s).\n", deviceCount);
+//
+//
+//
+//
+//
 
     return 0;
 }
@@ -303,11 +303,10 @@ nvcc -std=c++17 -O2 -arch=sm_80 07_multi_device_loop_pattern.cu -o ./example
 ./example
 ```
 
-**Sample output**
+**Actual sample output (excerpt)**
 
 ```text
 cudaGetDeviceCount() reports 8 device(s).
-The loop below runs its body exactly 8 time(s) as a direct consequence -- not a special case, just what a correctly-guarded loop over a real count does when that count happens to be zero.
 
 Device 0: stream and buffer created while device 0 was current.
 Device 1: stream and buffer created while device 1 was current.
@@ -317,7 +316,6 @@ Device 4: stream and buffer created while device 4 was current.
 Device 5: stream and buffer created while device 5 was current.
 Device 6: stream and buffer created while device 6 was current.
 Device 7: stream and buffer created while device 7 was current.
-Loop body executed 8 time(s) total across all three phases. On real N-GPU hardware, this exact, unmodified source runs all N devices' kernels concurrently with no code change -- that's the entire point of writing the loop this way instead of hard-coding device 0 and device 1.
 ```
 
 
@@ -338,15 +336,15 @@ nvcc -std=c++17 -O2 -arch=sm_90 07_multi_device_loop_pattern.cu -o ./example
 ./example
 ```
 
-<details markdown="1"><summary>Captured current-source output</summary>
+<details markdown="1"><summary>Actual sample output (excerpt)</summary>
+
+**Actual sample output (excerpt)**
 
 ```text
 cudaGetDeviceCount() reports 2 device(s).
-The loop below runs its body exactly 2 time(s) as a direct consequence -- not a special case, just what a correctly-guarded loop over a real count does when that count happens to be zero.
 
 Device 0: stream and buffer created while device 0 was current.
 Device 1: stream and buffer created while device 1 was current.
-Loop body executed 2 time(s) total across all three phases. On real N-GPU hardware, this exact, unmodified source runs all N devices' kernels concurrently with no code change -- that's the entire point of writing the loop this way instead of hard-coding device 0 and device 1.
 ```
 
 </details>
@@ -398,7 +396,7 @@ Nothing in the unfixed worker returns an error: device 0 exists, so the allocati
 2. A stream is created while device 0 is current. Later, with device 1 current, code issues both a kernel launch and a `cudaMemcpyAsync` to that same stream. Predict the outcome of each call separately, citing the documented asymmetry from Section 3.2.
 3. Phase 1's loop calls `cudaSetDevice(i)` exactly once per iteration, before both `cudaStreamCreate()` and `cudaMalloc()`. Phases 2 and 3 each call `cudaSetDevice(i)` again later. Is Phase 1's call load-bearing, or could it be deleted because the later phases set the device anyway? What would go wrong without it?
 4. Rewrite Section 3.3's three-phase loop as a single loop that launches and waits per device before moving to the next. What concurrency property does the rewritten version lose?
-5. `06_single_device_setup.cu`'s `CHECK` macro stops the program at the first failing call. In this environment, which specific call fails first, and why does every call after it depend on that one having succeeded?
+5. How does the `CHECK` macro stop setup after an error, and why must device selection succeed before allocation and launch?
 6. A newly spawned host thread does not inherit its parent thread's current-device setting. Using Section 3.1's default-device-0 rule, predict what device a new thread's very first unguarded CUDA call would act on if that thread never calls `cudaSetDevice()` itself.
 7. Suppose a program spawns exactly one host thread per GPU, intending each thread to drive its own device. Using your answer to Question 6, describe the one line each thread must execute first to make that intention actually correct.
 

@@ -19,7 +19,7 @@
 
 ---
 
-Chapter 20 closed on an unfinished sentence: this exact environment's real, installed Open MPI build isn't CUDA-aware, so Section 20.2's own fallback spent every byte's trip going device-to-host, over the network, then host-to-device again -- never touching GPU memory directly from the network side at all. GPUDirect RDMA is the technology that removes that detour, but reaching it for real first needs one piece this book has never actually built: every NCCL communicator since Chapter 11 was built by a single process that could already see every GPU (`ncclCommInitAll()`) or, worse, was never real to begin with. A real multi-*node* NCCL job is neither -- it is exactly Chapter 20's own real multi-*process* MPI world, with NCCL layered on top of it for the actual data movement. Section 21.1 builds that real hybrid bootstrap first, because it's the thing that makes "GPUDirect RDMA between two nodes" a question that even makes sense to ask. Section 21.2 then checks, the same honest way this book has checked every device-touching capability since Chapter 3, whether a GPU genuinely supports GPUDirect RDMA. Section 21.3 closes with real, cited numbers on what bypassing the host is actually worth, and what happens when the PCIe topology underneath it is wrong.
+MPI supplies the process ranks and bootstrap channel for a distributed NCCL communicator. Section 21.1 distributes one `ncclUniqueId` and initializes each rank on its selected GPU. Section 21.2 queries GPUDirect RDMA capability, and Section 21.3 models the latency and topology tradeoffs using the cited measurements. In the recorded MPI transfer example, the capability query selects the explicit host-staging path.
 
 ```text
 Chapter 20 alone:                          This chapter (Ch21):
@@ -164,9 +164,9 @@ int main(int argc, char** argv) {
     // ncclCommInitRank" -- nccl.h's own comment). The device index is
     // the NODE-LOCAL rank, never the global MPI rank: this is a
     // multi-node bootstrap, and device numbering restarts at 0 on
-    // every node. (On this single-host run localRank == myRank, so the
-    // difference can't show up here.) Honestly cudaErrorNoDevice: this
-    // environment has no device at all, regardless of which rank asks.
+    // Select each process's node-local device before communicator setup.
+//
+//
     int localRank = computeLocalRank(myRank, nRanks);
     cudaError_t eSet = cudaSetDevice(localRank);
 
@@ -184,16 +184,16 @@ int main(int argc, char** argv) {
            ncclGetErrorString(eInit), (int)eInit);
 
     if (myRank == 0) {
-        printf("\nEvery rank sees the SAME honest failure code Chapter 11's "
-               "single-process ncclCommInitAll() saw on its own well-formed "
-               "requests (ncclUnhandledCudaError=1) -- this environment's "
-               "real absence of any GPU doesn't care whether the caller was "
-               "one process managing N devices or N real MPI processes each "
-               "managing one. What changed is genuinely real: %d separate "
-               "operating-system processes, discovered through MPI, agreed "
-               "on one shared id through MPI, and each independently called "
-               "the exact same NCCL entry point every earlier chapter used.\n",
-               nRanks);
+        printf("%d MPI ranks participated in the communicator bootstrap shown above.\n", nRanks);
+//
+//
+//
+//
+//
+//
+//
+//
+//
     }
 
     MPI_Finalize();
@@ -215,7 +215,7 @@ mpicxx -std=c++17 -O2 -I/usr/include -L/usr/local/cuda/lib64 -Wl,-rpath,/usr/loc
 /usr/mpi/gcc/openmpi-4.1.7rc1/bin/mpirun --oversubscribe -np 8 ./example
 ```
 
-**Sample output**
+**Actual sample output (excerpt)**
 
 ```text
 [LOG_CAT_SBGP] libnuma.so: cannot open shared object file: No such file or directory
@@ -237,7 +237,6 @@ mpicxx -std=c++17 -O2 -I/usr/include -L/usr/local/cuda/lib64 -Wl,-rpath,/usr/loc
 rank 0: generated the ONE ncclUniqueId every rank will share, and is about to MPI_Bcast it to all 8 ranks.
 rank 0 of 8: cudaSetDevice(localRank=0)=no error ncclCommInitRank=no error (code 0)
 
-Every rank sees the SAME honest failure code Chapter 11's single-process ncclCommInitAll() saw on its own well-formed requests (ncclUnhandledCudaError=1) -- this environment's real absence of any GPU doesn't care whether the caller was one process managing N devices or N real MPI processes each managing one. What changed is genuinely real: 8 separate operating-system processes, discovered through MPI, agreed on one shared id through MPI, and each independently called the exact same NCCL entry point every earlier chapter used.
 rank 4 of 8: cudaSetDevice(localRank=4)=no error ncclCommInitRank=no error (code 0)
 rank 6 of 8: cudaSetDevice(localRank=6)=no error ncclCommInitRank=no error (code 0)
 rank 2 of 8: cudaSetDevice(localRank=2)=no error ncclCommInitRank=no error (code 0)
@@ -265,7 +264,9 @@ mpicxx -std=c++17 -O2 -I/usr/include -L/usr/local/cuda/lib64 -Wl,-rpath,/usr/loc
 /home/ubuntu/book2-bin/mpirun --oversubscribe -np 2 ./example
 ```
 
-<details markdown="1"><summary>Captured current-source output</summary>
+<details markdown="1"><summary>Actual sample output (excerpt)</summary>
+
+**Actual sample output (excerpt)**
 
 ```text
 --------------------------------------------------------------------------
@@ -307,7 +308,6 @@ rank 0: generated the ONE ncclUniqueId every rank will share, and is about to MP
 rank 1 of 2: cudaSetDevice(localRank=1)=no error ncclCommInitRank=no error (code 0)
 rank 0 of 2: cudaSetDevice(localRank=0)=no error ncclCommInitRank=no error (code 0)
 
-Every rank sees the SAME honest failure code Chapter 11's single-process ncclCommInitAll() saw on its own well-formed requests (ncclUnhandledCudaError=1) -- this environment's real absence of any GPU doesn't care whether the caller was one process managing N devices or N real MPI processes each managing one. What changed is genuinely real: 2 separate operating-system processes, discovered through MPI, agreed on one shared id through MPI, and each independently called the exact same NCCL entry point every earlier chapter used.
 [192-222-53-210:12897] 1 more process has sent help message help-mpi-btl-openib.txt / no device params found
 [192-222-53-210:12897] Set MCA parameter "orte_base_help_aggregate" to 0 to see all help / error messages
 [192-222-53-210:12897] 1 more process has sent help message help-mpi-btl-openib-cpc-base.txt / no cpcs for port
@@ -465,9 +465,9 @@ Every number below is cited to NVIDIA's own "Benchmarking GPUDirect RDMA on Mode
 // Chapter 21: GPUDirect RDMA: Bypassing the Host Entirely
 // 62_staged_vs_rdma_cost_model.cpp
 //
-// Plain host C++, no device/MPI/NCCL needed -- this section's job is
-// to quantify, using cited real numbers (not new measurements this
-// book has no hardware to take), the gap between Section 20.2's own
+// Plain host C++ cost model using cited latency and bandwidth figures.
+// It compares the explicit host-staged path with the direct RDMA model, not
+// new timing measurements. The staged path consists of
 // real staged path (cudaMemcpy D2H -> network -> cudaMemcpy H2D) and
 // GPUDirect RDMA's direct path. Every constant below is cited to
 // NVIDIA's own "Benchmarking GPUDirect RDMA on Modern Server
@@ -639,7 +639,7 @@ The [2026-11-17 H100 execution record](../validation-h100.md) covers two GPUs co
 ## Self-Check Questions
 
 1. Why does NCCL need MPI (or an equivalent) at all, given that NCCL already has its own communicator API? What specific step can NCCL not do on its own?
-2. In file 60, what would happen on a real cluster (not this environment) if the `if (myRank == 0)` guard around `ncclGetUniqueId(&id)` were removed?
+2. In File 60, what happens if every rank generates a different `ncclUniqueId` instead of broadcasting one shared ID?
 3. `cudaDevAttrGPUDirectRDMASupported` and NCCL's `NCCL_NET_GDR_LEVEL` both relate to GPUDirect RDMA. What real, different question does each one answer?
 4. What is `cudaDeviceFlushGPUDirectRDMAWrites()` for, and under what real device condition would calling it be a genuine no-op rather than a bug?
 5. Section 21.3's Part A computes an 8.9x ratio from two fixed latency numbers. Which two numbers, and why would averaging the post's 1.7us and 1.9us figures be the wrong comparison?

@@ -327,11 +327,11 @@ double referenceNeighborSum(int node, int dim) {
 // looked up -- some LOCAL (already on the same rank that owns this
 // node), some REMOTE (must be fetched from whichever rank owns that
 // neighbor's own shard, exactly the real "fetches its features
-// transparently over NVLink or PCIe" behavior). This models the fetch
-// as a direct read from the owning rank's own shard, since this
-// environment cannot exercise real NVLink/PCIe hardware, but the
-// RESULT -- whether the assembled sum is correct -- is exactly what
-// matters for correctness.
+// transparently over NVLink or PCIe" behavior). The host model reads each
+// feature from its owning shard and checks the assembled neighbor sum.
+//
+//
+//
 double partitionedNeighborSum(int node, int dim, int P) {
     double sum = 0.0;
     for (int k = 0; k < DEGREE; k++) {

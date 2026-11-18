@@ -56,14 +56,14 @@ The code below takes two optional command-line arguments so one file can drive b
 // Chapter 20: MPI From Scratch, Then CUDA-Aware MPI: Scaling Beyond One Node
 // 57_mpi_ring_send_recv.c
 //
-// Every device-touching call this book has made since Chapter 3 needed
-// EITHER a real GPU (and got an honest cudaErrorNoDevice/ncclInvalidArgument
-// right back, since this environment has never had one) OR a host-side
-// simulation standing in for N real devices (Chapter 4 onward). MPI needs
-// neither. MPI_Init() doesn't ask for a GPU at all -- it's a multi-PROCESS
-// model, and mpirun genuinely launches N separate operating-system
-// processes right now, on this machine's real CPU cores. MPI_Comm_rank()
-// below returns a REAL rank, not a simulated one and not an honest error.
+// MPI launches separate operating-system processes and gives each a rank.
+// This host-buffer ring checks real inter-process communication.
+//
+//
+//
+//
+//
+//
 // This section builds the real basics -- Init/Comm_rank/Comm_size, plus a
 // real point-to-point ring exchange, structurally the same shape as
 // Chapter 9's own ring, but with every buffer now a real, separate
@@ -300,12 +300,12 @@ The code below genuinely links against both the real installed Open MPI and the 
 // MPIX_CUDA_AWARE_SUPPORT (baked into mpiext_cuda_c.h at Open MPI's own
 // build time) and the runtime call MPIX_Query_cuda_support(). This
 // program genuinely links against both the real installed Open MPI and
-// the real installed CUDA runtime, and queries this EXACT environment's
-// real answer -- then, because that answer is "no," performs the real,
-// correct fallback: Chapter 5's own staged host-transfer pattern
-// (cudaMemcpy device-to-host, a real MPI_Send/MPI_Recv over plain host
-// memory, cudaMemcpy host-to-device), reused here between MPI ranks
-// instead of between GPU peers.
+// the installed CUDA runtime. It queries the configured MPI build and
+// demonstrates an explicit host-staged transfer between ranks.
+//
+//
+//
+//
 // Genuinely compiled with a real mpicxx (linked against the real
 // installed libcudart) and genuinely run with a real mpirun. Defines
 // OMPI_SKIP_MPICXX before <mpi.h> to skip Open MPI's own deprecated C++
@@ -349,11 +349,11 @@ int main(int argc, char** argv) {
     float hostBuf[ELEMS];
     if (rank == 0) {
         for (int i = 0; i < ELEMS; ++i) hostBuf[i] = 100.0f + (float)i;
-        // Real staged step 1 (Chapter 5's own device-to-host half),
-        // honestly cudaErrorNoDevice since devPtr was never a real
-        // allocation in this environment -- but this is the exact call
-        // a real CUDA-aware-unaware MPI program issues on real hardware,
-        // right before handing the now-host-resident data to MPI.
+        // Stage the device buffer to host memory before sending it through MPI.
+//
+//
+//
+//
         cudaError_t eD2H = cudaMemcpy(hostBuf, devPtr, ELEMS * sizeof(float), cudaMemcpyDeviceToHost);
         printf("rank 0: cudaMalloc()=%s cudaMemcpy(D2H)=%s -- sending host buffer via a REAL MPI_Send\n",
                cudaGetErrorString(eMalloc), cudaGetErrorString(eD2H));
@@ -499,7 +499,7 @@ The [2026-11-17 H100 execution record](../validation-h100.md) covers two GPUs co
 
 ### Intuition
 
-Chapter 19 quoted MPI's real ULFM extension -- `MPIX_Comm_revoke()`, `MPIX_Comm_shrink()` -- as a genuinely richer alternative to NCCL's abort-and-rebuild cycle, but never called either function. This section explains why, honestly, the same way Chapter 19 itself explained NCCL's own real limits: by checking, not assuming. ULFM has a real, documented history: it began as a separate research project (beta releases in 2012), and, per Open MPI's own current ULFM documentation and the ULFM project's own downloads page, "the ULFM codebase has been integrated into the Open MPI master branch in early 2020 and in the stable releases starting with 5.0." This exact environment's real, apt-installed Open MPI is version `4.1.6` -- built before that merge point -- and this book verified the consequence directly rather than inferring it from the version number alone: `ompi_info`'s own real `"MPI extensions:"` line lists `affinity, cuda, pcollreq` and nothing named `ftmpi`, and grepping the real installed `mpi-ext.h` for `MPIX_Comm_revoke`/`MPIX_Comm_shrink` finds nothing. This book also genuinely attempted to obtain a newer, ULFM-capable Open MPI build to close that gap for real -- and hit a real, different limit worth naming plainly rather than working around silently: this environment's network egress policy blocks `download.open-mpi.org`, and while a `git clone` of Open MPI's own GitHub mirror does succeed, building an MPI implementation directly from a git checkout needs a full Autotools bootstrap this chapter didn't gamble the rest of it on. What standard MPI *does* offer, in every version back to MPI-1.1 -- long before ULFM existed at all -- is `MPI_ERRORS_RETURN`, built for real below. (The handler itself is MPI-1.1; the call this chapter uses to install it, `MPI_Comm_set_errhandler()`, is the MPI-2 name for what MPI-1 spelled `MPI_Errhandler_set()`.)
+ULFM adds communicator revocation and shrinking for fault-tolerant MPI applications. Check the installed extension headers and build configuration before using those APIs. The tested Open MPI 4.1.6 programs use standard `MPI_ERRORS_RETURN`; applications using ULFM need a build that provides the extension.
 
 ```text
 Open MPI's real ULFM history:                  This environment's real installed MPI:
@@ -519,24 +519,24 @@ The code below installs the real, standard `MPI_ERRORS_RETURN` handler and trigg
 // Chapter 20: MPI From Scratch, Then CUDA-Aware MPI: Scaling Beyond One Node
 // 59_mpi_errhandler_return.c
 //
-// Chapter 19 quoted MPI's own real ULFM extension (MPIX_Comm_revoke(),
-// MPIX_Comm_shrink()) as a genuinely richer alternative to NCCL's
-// abort-and-rebuild cycle, but never called either function -- Section
-// 20.3's own Background text explains why, verified the same real way
-// Chapter 19 verified NCCL's own API surface: this exact environment's
-// installed Open MPI (apt's libopenmpi-dev, 4.1.6) predates ULFM's real
-// merge into Open MPI's mainline (2020, stable from 5.0), confirmed by
-// `ompi_info`'s own real "MPI extensions:" list (affinity, cuda,
-// pcollreq -- no ftmpi) and by grepping the installed mpi-ext.h for
-// MPIX_Comm_revoke/MPIX_Comm_shrink (absent). What standard MPI DOES
-// offer, in every version back to MPI-1.1, is a weaker, real
-// alternative this file builds: MPI_ERRORS_RETURN (MPI-1.1), installed
-// via MPI_Comm_set_errhandler() (the MPI-2 name for what MPI-1 called
-// MPI_Errhandler_set()), which lets a rank get an error CODE back
-// instead of the whole job aborting -- but, per the MPI standard's own
-// explicit wording, does NOT guarantee the state of MPI is still usable
-// afterward, which is exactly the gap ULFM's own revoke/shrink exists
-// to close for real.
+// MPI_ERRORS_RETURN reports an error code to the caller.
+// It does not guarantee that communicator state remains usable afterward.
+// Check the installed MPI build for ULFM revocation and shrinking support.
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
 // Genuinely compiled with a real mpicc against the real installed
 // Open MPI, genuinely run with a real mpirun.
 #include <mpi.h>
@@ -751,7 +751,7 @@ The [2026-11-17 H100 execution record](../validation-h100.md) covers two GPUs co
 
 **7.** The standard states: "after an error is detected, the state of MPI is undefined," and that using `MPI_ERRORS_RETURN` "does not necessarily allow the user to continue to use MPI after an error is detected." That gap -- catching an error code says nothing about whether the rest of the MPI runtime is still safely usable afterward -- is exactly what ULFM's own `MPIX_Comm_revoke()` (invalidating the broken communicator consistently across every surviving rank) and `MPIX_Comm_shrink()` (producing a new, smaller communicator the standard actually defines the behavior of) are built to close: they don't just report that something went wrong, they define a real, continued-usable state afterward.
 
-**8.** The first method was downloading a newer Open MPI release tarball directly (`download.open-mpi.org`), which failed because this environment's real network egress policy blocks that specific host outright (a `403`/connection-rejected response from the egress proxy, confirmed directly rather than assumed). The second method was `git clone`-ing Open MPI's own source from its GitHub mirror, which the network genuinely allowed -- but building a full MPI implementation from a raw git checkout (rather than a release tarball) requires running a complete Autotools bootstrap (`autogen.pl`, pulling in several of Open MPI's own submodules) that this chapter judged too large and uncertain a detour to gamble the rest of its own verified content on, so it was left as an honestly-reported real limit rather than attempted and possibly abandoned mid-chapter.
+**8.** Record the compiler, MPI build, runtime options, process count, topology and input shape alongside the result.
 
 ---
 
@@ -759,7 +759,7 @@ The [2026-11-17 H100 execution record](../validation-h100.md) covers two GPUs co
 
 - [MPI Forum, MPI-1.1 standard, Section 7.2 "Error handling"](https://www.mpi-forum.org/docs/mpi-1.1/mpi-11-html/node148.html) -- the exact quotes "The handler, when called, causes the program to abort on all executing processes" (`MPI_ERRORS_ARE_FATAL`), "The handler has no effect other than returning the error code to the user" (`MPI_ERRORS_RETURN`), "after an error is detected, the state of MPI is undefined," and "using a user-defined error handler, or MPI_ERRORS_RETURN, does not necessarily allow the user to continue to use MPI after an error is detected."
 - Snir, M. et al., *MPI: The Complete Reference* (netlib.org mirror), ["Buffering and Safety"](https://www.netlib.org/utk/papers/mpi-book/node39.html) -- a book about the MPI standard, not the MPI standard itself. The exact quotes on `MPI_Send()`'s implementation-defined blocking behavior ("the send call will not complete until a matching receive call occurs... In the second case, the send call may return ahead of the matching receive call"); its Example 2.8 (both ranks receive first), which it says "will always deadlock"; and its Example 2.9 (both ranks send first -- the pattern this chapter's ring uses), which it labels "unsafe" because success "will depend on the amount of buffer space available in a particular implementation." The send-first deadlock was genuinely reproduced and fixed in Section 20.1.
-- [Open MPI 5.0.2 documentation, "User-Level Fault Mitigation (ULFM)"](https://docs.open-mpi.org/en/v5.0.2/features/ulfm.html) -- the exact quotes "As of v5.0.2, ULFM is now integrated directly into the community release of Open MPI" and the built-in-by-default/`--with-ft ulfm` build details, already cited in Chapter 19 and reused here to explain this environment's real version gap.
+- [Open MPI 5.0.2 documentation, "User-Level Fault Mitigation (ULFM)"](https://docs.open-mpi.org/en/v5.0.2/features/ulfm.html) -- the exact quotes "As of v5.0.2, ULFM is now integrated directly into the community release of Open MPI" and the built-in-by-default/`--with-ft ulfm` build details, already cited in Chapter 19 and reused here to explain the feature requirements for the tested MPI build.
 - [Fault Tolerance Research Hub, "ULFM Releases"](https://fault-tolerance.org/ulfm/downloads/) -- the exact quote "The ULFM codebase has been integrated into the Open MPI master branch in early 2020 and in the stable releases starting with 5.0 (configure with --with-ft=mpi)," and confirmation that no prebuilt ULFM binaries are offered beyond obsolete 2012 betas -- source-only, consistent with this chapter's own real build attempt.
-- This exact environment's own real, installed Open MPI 4.1.6 (`apt-get install libopenmpi-dev openmpi-bin`): `/usr/lib/x86_64-linux-gnu/openmpi/include/mpi.h`, `mpi-ext.h`, and `mpiext_cuda_c.h`, and the real `ompi_info` command's own output -- inspected directly the same way Chapter 11 inspected the installed `nccl.h` and Chapter 19 inspected NCCL's own `ncclConfig_t`.
+- This exact environment's own real, installed Open MPI 4.1.6 (`apt-get install libopenmpi-dev openmpi-bin`): `/usr/lib/x86_64-linux-gnu/openmpi/include/mpi.h`, `mpi-ext.h`, and `mpiext_cuda_c.h`, and the real `ompi_info` command's own output -- inspected directly alongside the recorded compiler and library versions.
 - This book's own Chapter 5 (the staged host-transfer fallback pattern, reused in Section 20.2 between MPI ranks instead of GPU peers), Chapter 7 (the established practice of declining to simulate documented undefined behavior, applied in Section 20.2's own COMMON TRAP), Chapter 9 (the ring communication pattern Section 20.1 rebuilds with real point-to-point calls), and Chapter 19 (the ULFM preview this chapter's own Section 20.3 explains the real absence of, and the NCCL abort-and-rebuild contrast reused there).

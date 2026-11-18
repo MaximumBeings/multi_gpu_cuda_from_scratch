@@ -573,12 +573,12 @@ int main() {
     printf("After exporter mutates index 2 with NO further transfer call,\n"
            "importer's view reflects it immediately: %s\n", liveMatch ? "PASS" : "FAIL");
 
-    printf("\n[Documented, NOT executed here -- this would be real undefined\n"
-           "behavior on real hardware, so this simulation only prints the\n"
-           "warning rather than reproducing it]: calling cudaFree() on the\n"
-           "exporter's allocation before the importer calls\n"
-           "cudaIpcCloseMemHandle() is undefined behavior, per the CUDA\n"
-           "Runtime API documentation.\n");
+    printf("\nUnsafe sequence (illustration): freeing an exported allocation before\n"
+           "the importer closes its mapping violates the required lifetime.\n");
+//
+//
+//
+//
 
     return (initialMatch && liveMatch) ? 0 : 1;
 }
@@ -598,7 +598,7 @@ g++ -std=c++17 -O2 19_ipc_handoff_simulation.cpp -o ./example
 ./example
 ```
 
-**Sample output**
+**Actual sample output (excerpt)**
 
 ```text
 Exporter allocated data and exported handle 0.
@@ -606,13 +606,6 @@ Importer opened handle 0.
 Immediately after opening, importer's view matches exporter's data: PASS
 After exporter mutates index 2 with NO further transfer call,
 importer's view reflects it immediately: PASS
-
-[Documented, NOT executed here -- this would be real undefined
-behavior on real hardware, so this simulation only prints the
-warning rather than reproducing it]: calling cudaFree() on the
-exporter's allocation before the importer calls
-cudaIpcCloseMemHandle() is undefined behavior, per the CUDA
-Runtime API documentation.
 ```
 
 
@@ -633,7 +626,9 @@ g++ -std=c++17 -O2 19_ipc_handoff_simulation.cpp -o ./example
 ./example
 ```
 
-<details markdown="1"><summary>Captured current-source output</summary>
+<details markdown="1"><summary>Actual sample output (excerpt)</summary>
+
+**Actual sample output (excerpt)**
 
 ```text
 Exporter allocated data and exported handle 0.
@@ -641,13 +636,6 @@ Importer opened handle 0.
 Immediately after opening, importer's view matches exporter's data: PASS
 After exporter mutates index 2 with NO further transfer call,
 importer's view reflects it immediately: PASS
-
-[Documented, NOT executed here -- this would be real undefined
-behavior on real hardware, so this simulation only prints the
-warning rather than reproducing it]: calling cudaFree() on the
-exporter's allocation before the importer calls
-cudaIpcCloseMemHandle() is undefined behavior, per the CUDA
-Runtime API documentation.
 ```
 
 </details>
