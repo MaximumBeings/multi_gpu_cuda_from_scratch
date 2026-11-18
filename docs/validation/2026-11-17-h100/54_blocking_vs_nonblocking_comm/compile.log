@@ -1,0 +1,1 @@
+$ nvcc -std=c++17 -O2 -arch=sm_90 /home/ubuntu/codex-multigpu-audit-20261117/multi-gpu-audit/docs/part4/code/54_blocking_vs_nonblocking_comm.cu -o /home/ubuntu/codex-multigpu-audit-20261117/multi-gpu-audit/artifacts/h100-final-probes-clean-20261117/54_blocking_vs_nonblocking_comm/example -lnccl

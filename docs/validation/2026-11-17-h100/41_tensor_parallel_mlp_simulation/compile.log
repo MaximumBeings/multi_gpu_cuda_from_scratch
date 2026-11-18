@@ -1,0 +1,1 @@
+$ g++ -std=c++17 -O2 /home/ubuntu/codex-multigpu-audit-20261117/multi-gpu-audit/docs/part3/code/41_tensor_parallel_mlp_simulation.cpp -o /home/ubuntu/codex-multigpu-audit-20261117/multi-gpu-audit/artifacts/h100-reviewed-20261117/41_tensor_parallel_mlp_simulation/example

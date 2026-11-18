@@ -1,8 +1,22 @@
 # Appendix G: Common Failure Modes -- Deadlocks, Silent Corruption From Missed Synchronization, and Topology Mismatches
 
+<!-- execution:provenance -->
+!!! info "Execution provenance"
+
+    Current execution blocks identify the tested source hash, hardware dataset, commands and captured output. References elsewhere on this page to a device-less environment describe the original authoring context. Historical output is superseded by the current record. Displayed output omits the runner command header and trims trailing line whitespace; raw logs remain exact. A host simulation or API validation has its stated scope; neither alone establishes a numerical multi-GPU workload or measured performance.
+
+
+<!-- mgpu:opener:start -->
+[![Appendix G: Common Failure Modes -- Deadlocks, Silent Corruption From Missed Synchronization, and Topology Mismatches](../images/chapter-openers/appendix-g.svg)](../images/chapter-openers/appendix-g.svg)
+<!-- mgpu:opener:end -->
+
 Every chapter in this book has reported one specific real finding at a time. This closing appendix collects three failure modes that have each surfaced, piece by piece, across many of those chapters -- Chapter 17 and Chapter 20's own real deadlocks, Chapter 6's own cross-device event semantics, Chapter 16 and Chapter 40's own halo-sync corruption, Chapter 4's own peer-access query, Chapter 2's own topology model -- and names each one directly, with one new, genuinely tested demonstration per failure mode rather than a repeat of an earlier chapter's own example. None of the three failure modes below announces itself with an error message. A deadlocked program hangs silently; a program with a missed synchronization step returns a wrong answer with `cudaSuccess` on every call; a program built on an assumed topology runs correctly, just slower than planned, with nothing in any return code to say why. That is precisely what makes all three worth a dedicated closing appendix: each one is a program that never crashes and never reports an error, right up until someone notices the number is wrong.
 
 ## G.1 Deadlocks: When Every Process Waits for a Call Another Process Never Makes
+
+<!-- mgpu:figure-1:start -->
+[![A cycle of waits prevents progress](../images/technical/appendix-g/1-failure.svg)](../images/technical/appendix-g/1-failure.svg)
+<!-- mgpu:figure-1:end -->
 
 ### Intuition
 
@@ -106,6 +120,142 @@ int main(int argc, char** argv) {
 }
 ```
 
+<!-- execution:start:a100:138_collective_order_deadlock.c -->
+> **Current execution — 2026-11-17-a100: API/host demonstration (exit-only).** UTC (program start): `2026-11-17T23:59:46.626792+00:00`. Source SHA-256: `7fa763d838b7360e84d88b1860f258077dc2de0a455da5cb40bddb9a4ea86718`.
+
+[Exact tested source](../validation/2026-11-17-a100/138_collective_order_deadlock/138_collective_order_deadlock.c) · [Compiler log](../validation/2026-11-17-a100/138_collective_order_deadlock/compile.log) · [Execution log](../validation/2026-11-17-a100/138_collective_order_deadlock/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+mpicc -std=c11 -O2 138_collective_order_deadlock.c -o ./example
+/usr/mpi/gcc/openmpi-4.1.7rc1/bin/mpirun --oversubscribe -np 8 ./example fixed
+```
+
+<details markdown="1"><summary>Captured current-source output</summary>
+
+```text
+[LOG_CAT_SBGP] libnuma.so: cannot open shared object file: No such file or directory
+[LOG_CAT_SBGP] Failed to dlopen libnuma.so. Fallback to GROUP_BY_SOCKET manual.
+[LOG_CAT_SBGP] libnuma.so: cannot open shared object file: No such file or directory
+[LOG_CAT_SBGP] Failed to dlopen libnuma.so. Fallback to GROUP_BY_SOCKET manual.
+[LOG_CAT_SBGP] libnuma.so: cannot open shared object file: No such file or directory
+[LOG_CAT_SBGP] Failed to dlopen libnuma.so. Fallback to GROUP_BY_SOCKET manual.
+[LOG_CAT_SBGP] libnuma.so: cannot open shared object file: No such file or directory
+[LOG_CAT_SBGP] Failed to dlopen libnuma.so. Fallback to GROUP_BY_SOCKET manual.
+[LOG_CAT_SBGP] libnuma.so: cannot open shared object file: No such file or directory
+[LOG_CAT_SBGP] Failed to dlopen libnuma.so. Fallback to GROUP_BY_SOCKET manual.
+[LOG_CAT_SBGP] libnuma.so: cannot open shared object file: No such file or directory
+[LOG_CAT_SBGP] Failed to dlopen libnuma.so. Fallback to GROUP_BY_SOCKET manual.
+[LOG_CAT_SBGP] libnuma.so: cannot open shared object file: No such file or directory
+[LOG_CAT_SBGP] Failed to dlopen libnuma.so. Fallback to GROUP_BY_SOCKET manual.
+[LOG_CAT_SBGP] libnuma.so: cannot open shared object file: No such file or directory
+[LOG_CAT_SBGP] Failed to dlopen libnuma.so. Fallback to GROUP_BY_SOCKET manual.
+rank 1: about to MPI_Recv from 0 (recv-first order)
+rank 5: about to MPI_Recv from 4 (recv-first order)
+rank 5: MPI_Recv returned; about to MPI_Send to 6
+rank 5: MPI_Send returned
+rank 3: about to MPI_Recv from 2 (recv-first order)
+rank 3: MPI_Recv returned; about to MPI_Send to 4
+rank 3: MPI_Send returned
+rank 2 (even, fixed order): about to MPI_Send to 3
+rank 2: MPI_Send returned; about to MPI_Recv from 1
+rank 6 (even, fixed order): about to MPI_Send to 7
+rank 6: MPI_Send returned; about to MPI_Recv from 5
+rank 6: MPI_Recv returned
+rank 0 (even, fixed order): about to MPI_Send to 1
+rank 0: MPI_Send returned; about to MPI_Recv from 7
+rank 0: MPI_Recv returned
+rank 7: about to MPI_Recv from 6 (recv-first order)
+rank 7: MPI_Recv returned; about to MPI_Send to 0
+rank 7: MPI_Send returned
+rank 4 (even, fixed order): about to MPI_Send to 5
+rank 4: MPI_Send returned; about to MPI_Recv from 3
+rank 4: MPI_Recv returned
+rank 7 done, recvVal=6 (expected 6)
+rank 3 done, recvVal=2 (expected 2)
+rank 6 done, recvVal=5 (expected 5)
+rank 5 done, recvVal=4 (expected 4)
+rank 4 done, recvVal=3 (expected 3)
+rank 0 done, recvVal=7 (expected 7)
+rank 1: MPI_Recv returned; about to MPI_Send to 2
+rank 1: MPI_Send returned
+rank 2: MPI_Recv returned
+rank 2 done, recvVal=1 (expected 1)
+rank 1 done, recvVal=0 (expected 0)
+```
+
+</details>
+<!-- execution:end:a100:138_collective_order_deadlock.c -->
+
+
+<!-- execution:start:h100:138_collective_order_deadlock.c -->
+> **Current execution — 2026-11-17-h100: API/host demonstration (exit-only).** UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`. Source SHA-256: `7fa763d838b7360e84d88b1860f258077dc2de0a455da5cb40bddb9a4ea86718`.
+
+[Exact tested source](../validation/2026-11-17-h100/138_collective_order_deadlock/138_collective_order_deadlock.c) · [Compiler log](../validation/2026-11-17-h100/138_collective_order_deadlock/compile.log) · [Execution log](../validation/2026-11-17-h100/138_collective_order_deadlock/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+mpicc -std=c11 -O2 138_collective_order_deadlock.c -o ./example
+/home/ubuntu/book2-bin/mpirun --oversubscribe -np 2 ./example fixed
+```
+
+<details markdown="1"><summary>Captured current-source output</summary>
+
+```text
+--------------------------------------------------------------------------
+Sorry!  You were supposed to get help about:
+    unavailable
+But I couldn't open the help file:
+    /usr/lib/x86_64-linux-gnu/pmix2/share/pmix/help-pcompress.txt: No such file or directory.  Sorry!
+--------------------------------------------------------------------------
+libibverbs: Warning: couldn't load driver 'libvmw_pvrdma-rdmav34.so': libvmw_pvrdma-rdmav34.so: cannot open shared object file: No such file or directory
+libibverbs: Warning: couldn't load driver 'libvmw_pvrdma-rdmav34.so': libvmw_pvrdma-rdmav34.so: cannot open shared object file: No such file or directory
+--------------------------------------------------------------------------
+WARNING: No preset parameters were found for the device that Open MPI
+detected:
+
+  Local host:            192-222-53-210
+  Device name:           mlx5_0
+  Device vendor ID:      0x02c9
+  Device vendor part ID: 4124
+
+Default device parameters will be used, which may result in lower
+performance.  You can edit any of the files specified by the
+btl_openib_device_param_files MCA parameter to set values for your
+device.
+
+NOTE: You can turn off this warning by setting the MCA parameter
+      btl_openib_warn_no_device_params_found to 0.
+--------------------------------------------------------------------------
+--------------------------------------------------------------------------
+No OpenFabrics connection schemes reported that they were able to be
+used on a specific port.  As such, the openib BTL (OpenFabrics
+support) will be disabled for this port.
+
+  Local host:           192-222-53-210
+  Local device:         mlx5_0
+  Local port:           1
+  CPCs attempted:       udcm
+--------------------------------------------------------------------------
+rank 1: about to MPI_Recv from 0 (recv-first order)
+rank 0 (even, fixed order): about to MPI_Send to 1
+rank 0: MPI_Send returned; about to MPI_Recv from 1
+rank 1: MPI_Recv returned; about to MPI_Send to 0
+rank 0: MPI_Recv returned
+rank 1: MPI_Send returned
+rank 1 done, recvVal=0 (expected 0)
+rank 0 done, recvVal=1 (expected 1)
+[192-222-53-210:10926] 1 more process has sent help message help-mpi-btl-openib.txt / no device params found
+[192-222-53-210:10926] Set MCA parameter "orte_base_help_aggregate" to 0 to see all help / error messages
+[192-222-53-210:10926] 1 more process has sent help message help-mpi-btl-openib-cpc-base.txt / no cpcs for port
+```
+
+</details>
+<!-- execution:end:h100:138_collective_order_deadlock.c -->
+
+
 **Compile and run:**
 
 ```bash
@@ -117,6 +267,8 @@ timeout 6 mpirun --allow-run-as-root --oversubscribe -np 4 ./138_collective_orde
 **Sample input:** `argv[1]` selects the mode (`fixed` or `deadlock`); every rank's own message is just its own rank number, `MPI_INT`, one element.
 
 **Sample output, `fixed` mode (completes; per-rank stderr interleaving is real and varies run to run, since these are genuinely separate OS processes -- stdout ordering, printed after `MPI_Finalize()`, does not affect correctness):**
+
+<details markdown="1"><summary>Historical authoring output — superseded by the current execution above</summary>
 
 ```text
 rank 2 (even, fixed order): about to MPI_Send to 3
@@ -137,6 +289,8 @@ rank 0: MPI_Recv returned
 rank 0 done, recvVal=3 (expected 3)
 ```
 
+</details>
+
 **Sample output, `deadlock` mode (genuinely hangs -- `timeout 6` kills it and the shell reports exit code `124`; every rank's own stderr line printed before it, and nothing after, is the real, complete evidence of the hang):**
 
 ```text
@@ -150,6 +304,10 @@ mpirun: Forwarding signal 18 to job
 The shell's own `$?` after that command reports `124` -- `timeout`'s own documented signal for "the command was killed because it exceeded the time limit," the identical proof technique Chapter 20 already established for its own real deadlock.
 
 ## G.2 Silent Corruption From Missed Synchronization: The Wait That Comes Too Late
+
+<!-- mgpu:figure-2:start -->
+[![A readiness event must follow the writes](../images/technical/appendix-g/2-handoff.svg)](../images/technical/appendix-g/2-handoff.svg)
+<!-- mgpu:figure-2:end -->
 
 ### Intuition
 
@@ -179,129 +337,84 @@ The two orderings above enqueue the exact same two operations -- a `cudaStreamWa
 ### Code and Verification
 
 ```cpp
-// Appendix G: Common Failure Modes -- Deadlocks, Silent Corruption From
-// Missed Synchronization, and Topology Mismatches
 // 139_stream_wait_enqueue_order.cu
-//
-// Appendix G.2 -- Chapter 6's own File 15 already established, in its
-// own real printed output, that "cudaStreamWaitEvent only ever inserts
-// a dependency for FUTURE work on stream1; it does not itself wait for
-// anything." This file makes the natural, genuinely real consequence of
-// that finding concrete: "future work" means work ENQUEUED after the
-// cudaStreamWaitEvent() call, in program order -- not work that is
-// merely EXECUTED after it. If a consumer operation is enqueued onto a
-// stream BEFORE that stream's cudaStreamWaitEvent() call is issued, the
-// wait does not retroactively cover it; the consumer runs whenever its
-// own stream reaches it, with no dependency on the producer's event at
-// all. Because every CUDA call in this environment honestly reports
-// zero physical devices (Chapter 2 onward), this file cannot execute a
-// real race -- so it does two things instead: it genuinely issues both
-// the CORRECT enqueue order (wait before consumer) and the BUGGY
-// enqueue order (consumer before wait) against the real CUDA Runtime
-// API, reporting the real (honestly identical) return codes either way,
-// and it builds a deterministic host-side model of stream QUEUE
-// ORDER -- not execution timing -- that captures the actual rule the
-// CUDA Programming Model documents: dependencies attach to a stream's
-// enqueue position, not to wall-clock time.
-//
-// Compile: nvcc -arch=sm_80 139_stream_wait_enqueue_order.cu -o 139_stream_wait_enqueue_order
-// Run:     ./139_stream_wait_enqueue_order
+// A deterministic missed-dependency example: no intentional concurrent data race.
 #include <cstdio>
-#include <vector>
-#include <string>
+#include <cstdlib>
 #include <cuda_runtime.h>
-
-int main() {
-    printf("=== Section G.2: cudaStreamWaitEvent() only covers work enqueued\n");
-    printf("    AFTER it -- Chapter 6's own File 15 finding, taken to its real\n");
-    printf("    conclusion ===\n\n");
-
-    printf("Chapter 6's own File 15, verbatim: \"cudaStreamWaitEvent only ever\n");
-    printf("inserts a dependency for FUTURE work on stream1; it does not itself\n");
-    printf("wait for anything.\" \"Future\" is an ENQUEUE-ORDER guarantee, not a\n");
-    printf("wall-clock one -- it means \"whatever gets enqueued onto this stream\n");
-    printf("after this call\", not \"whatever happens to run later\".\n\n");
-
-    // === Real API calls, both orders, both genuinely issued. ===
-    cudaSetDevice(0);
-    cudaStream_t consumerStream;
-    cudaError_t eStream = cudaStreamCreate(&consumerStream);
-    cudaEvent_t producerEvent;
-    cudaError_t eEvent = cudaEventCreate(&producerEvent);
-    cudaError_t eRecord = cudaEventRecord(producerEvent, consumerStream);
-
-    printf("=== CORRECT enqueue order: wait enqueued BEFORE the consumer op ===\n");
-    printf("  1. cudaStreamWaitEvent(consumerStream, producerEvent) -- enqueued first\n");
-    cudaError_t eWaitCorrect = cudaStreamWaitEvent(consumerStream, producerEvent, 0);
-    printf("     -> %s\n", cudaGetErrorString(eWaitCorrect));
-    printf("  2. consumer op enqueued SECOND -- genuinely covered by the wait above,\n");
-    printf("     because it was enqueued onto consumerStream AFTER the wait call\n\n");
-
-    printf("=== BUGGY enqueue order: consumer op enqueued BEFORE the wait ===\n");
-    printf("  1. consumer op enqueued FIRST (imagine: issued earlier in the same\n");
-    printf("     function, or by code that runs before the sync call is reached)\n");
-    printf("  2. cudaStreamWaitEvent(consumerStream, producerEvent) -- enqueued SECOND\n");
-    cudaError_t eWaitBuggy = cudaStreamWaitEvent(consumerStream, producerEvent, 0);
-    printf("     -> %s\n", cudaGetErrorString(eWaitBuggy));
-    printf("     on real hardware this call would SUCCEED -- cudaStreamWaitEvent() has\n");
-    printf("     no way to know a consumer op was already enqueued earlier on the same\n");
-    printf("     stream, and no way to retroactively insert a dependency in front of\n");
-    printf("     it. The already-enqueued consumer op runs with NO dependency on\n");
-    printf("     producerEvent at all -- and here, it reports this environment's own\n");
-    printf("     same honest zero-device limitation as every call since Chapter 2.\n\n");
-
-    printf("both real API calls above report the SAME honest return code (%s) in\n",
-           cudaGetErrorString(eWaitCorrect));
-    printf("this zero-physical-GPU environment -- the bug is not a return-code\n");
-    printf("failure, which is exactly what makes it \"silent corruption\": there is no\n");
-    printf("error anywhere to catch, on real hardware or here.\n\n");
-
-    // === Host-side deterministic model of enqueue-order semantics. ===
-    printf("=== deterministic model: what each enqueue order actually guarantees ===\n\n");
-
-    struct QueueEntry { std::string label; bool isWait; bool dependsOnProducer; };
-
-    // Correct order: [wait, consumer] -- consumer is AFTER the wait entry.
-    std::vector<QueueEntry> correctQueue = {
-        {"cudaStreamWaitEvent(producerEvent)", true, false},
-        {"consumer op",                        false, true},   // enqueued after the wait -> depends
-    };
-    // Buggy order: [consumer, wait] -- consumer is BEFORE the wait entry.
-    std::vector<QueueEntry> buggyQueue = {
-        {"consumer op",                        false, false},  // enqueued before the wait -> independent
-        {"cudaStreamWaitEvent(producerEvent)", true, false},
-    };
-
-    auto printQueue = [](const char* label, std::vector<QueueEntry>& q) {
-        printf("%s stream queue, in real enqueue order:\n", label);
-        for (size_t i = 0; i < q.size(); ++i) {
-            printf("  [%zu] %-38s depends on producerEvent: %s\n", i, q[i].label.c_str(),
-                   q[i].dependsOnProducer ? "YES" : "no");
-        }
-        printf("\n");
-    };
-    printQueue("CORRECT-order", correctQueue);
-    printQueue("BUGGY-order", buggyQueue);
-
-    bool correctDependsCorrectly = correctQueue[1].dependsOnProducer == true;
-    bool buggyDoesNotDepend = buggyQueue[0].dependsOnProducer == false;
-
-    printf("self-check: in the CORRECT order, the consumer op (position 1, enqueued\n");
-    printf("after the wait) genuinely depends on producerEvent (%s); in the BUGGY\n",
-           correctDependsCorrectly ? "confirmed" : "MISMATCH");
-    printf("order, the consumer op (position 0, enqueued before the wait) genuinely\n");
-    printf("does NOT depend on it (%s) -- the exact same two lines of code, reordered,\n",
-           buggyDoesNotDepend ? "confirmed" : "MISMATCH");
-    printf("produce two different real dependency graphs, with zero difference in any\n");
-    printf("return code from either cudaStreamWaitEvent() call: %s\n",
-           (correctDependsCorrectly && buggyDoesNotDepend) ? "confirmed" : "MISMATCH");
-
-    if (eEvent == cudaSuccess) cudaEventDestroy(producerEvent);
-    if (eStream == cudaSuccess) cudaStreamDestroy(consumerStream);
-    (void)eRecord;
-    return (correctDependsCorrectly && buggyDoesNotDepend) ? 0 : 1;
+#define CUDA_OK(x) do { cudaError_t e=(x); if(e!=cudaSuccess){fprintf(stderr,"%s: %s\n",#x,cudaGetErrorString(e));exit(1);} } while(0)
+__global__ void produce(int* p){*p=42;}
+int main(){
+    int count=0;CUDA_OK(cudaGetDeviceCount(&count));if(count<2){fprintf(stderr,"Requires 2 GPUs\n");return 2;}
+    int *source=nullptr,*destination=nullptr;cudaStream_t producer=nullptr,consumer=nullptr;cudaEvent_t ready=nullptr;
+    CUDA_OK(cudaSetDevice(0));CUDA_OK(cudaMalloc(&source,sizeof(int)));CUDA_OK(cudaMemset(source,0,sizeof(int)));
+    CUDA_OK(cudaStreamCreateWithFlags(&producer,cudaStreamNonBlocking));CUDA_OK(cudaEventCreateWithFlags(&ready,cudaEventDisableTiming));CUDA_OK(cudaDeviceSynchronize());
+    CUDA_OK(cudaSetDevice(1));CUDA_OK(cudaMalloc(&destination,sizeof(int)));CUDA_OK(cudaStreamCreateWithFlags(&consumer,cudaStreamNonBlocking));
+    // Consumer queued and completed before production: a later wait cannot repair it.
+    CUDA_OK(cudaMemcpyPeerAsync(destination,1,source,0,sizeof(int),consumer));CUDA_OK(cudaStreamSynchronize(consumer));
+    int early=-1;CUDA_OK(cudaMemcpy(&early,destination,sizeof(int),cudaMemcpyDeviceToHost));
+    CUDA_OK(cudaSetDevice(0));produce<<<1,1,0,producer>>>(source);CUDA_OK(cudaGetLastError());CUDA_OK(cudaEventRecord(ready,producer));
+    CUDA_OK(cudaSetDevice(1));CUDA_OK(cudaStreamWaitEvent(consumer,ready,0));CUDA_OK(cudaStreamSynchronize(consumer));
+    int after_late_wait=-1;CUDA_OK(cudaMemcpy(&after_late_wait,destination,sizeof(int),cudaMemcpyDeviceToHost));
+    // The corrected consumer transfer is queued AFTER the recorded-event wait.
+    CUDA_OK(cudaStreamWaitEvent(consumer,ready,0));CUDA_OK(cudaMemcpyPeerAsync(destination,1,source,0,sizeof(int),consumer));CUDA_OK(cudaStreamSynchronize(consumer));
+    int corrected=-1;CUDA_OK(cudaMemcpy(&corrected,destination,sizeof(int),cudaMemcpyDeviceToHost));
+    int errors=(early!=0)+(after_late_wait!=0)+(corrected!=42);
+    printf("Consumer before production: %d; after a too-late wait: %d; correctly ordered copy: %d\n",early,after_late_wait,corrected);
+    printf("The early copy is deliberately completed first, avoiding an intentional data race.\n");
+    printf("VALIDATION %s: errors=%d\n",errors?"FAIL":"PASS",errors);
+    CUDA_OK(cudaFree(destination));CUDA_OK(cudaStreamDestroy(consumer));CUDA_OK(cudaSetDevice(0));CUDA_OK(cudaEventDestroy(ready));CUDA_OK(cudaStreamDestroy(producer));CUDA_OK(cudaFree(source));
+    return errors?1:0;
 }
 ```
+
+<!-- execution:start:a100:139_stream_wait_enqueue_order.cu -->
+> **Current execution — 2026-11-17-a100: Numerical/transport validation (recorded scope).** UTC (program start): `2026-11-17T23:59:47.563300+00:00`. Source SHA-256: `c1461e987bc84659aa73ab3f5c10d20f2f15f665775dd91c614adae3fdd995ea`.
+
+[Exact tested source](../validation/2026-11-17-a100/139_stream_wait_enqueue_order/139_stream_wait_enqueue_order.cu) · [Compiler log](../validation/2026-11-17-a100/139_stream_wait_enqueue_order/compile.log) · [Execution log](../validation/2026-11-17-a100/139_stream_wait_enqueue_order/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+nvcc -std=c++17 -O2 -arch=sm_80 139_stream_wait_enqueue_order.cu -o ./example
+./example
+```
+
+<details markdown="1"><summary>Captured current-source output</summary>
+
+```text
+Consumer before production: 0; after a too-late wait: 0; correctly ordered copy: 42
+The early copy is deliberately completed first, avoiding an intentional data race.
+VALIDATION PASS: errors=0
+```
+
+</details>
+<!-- execution:end:a100:139_stream_wait_enqueue_order.cu -->
+
+
+<!-- execution:start:h100:139_stream_wait_enqueue_order.cu -->
+> **Current execution — 2026-11-17-h100: Numerical/transport validation (recorded scope).** UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`. Source SHA-256: `c1461e987bc84659aa73ab3f5c10d20f2f15f665775dd91c614adae3fdd995ea`.
+
+[Exact tested source](../validation/2026-11-17-h100/139_stream_wait_enqueue_order/139_stream_wait_enqueue_order.cu) · [Compiler log](../validation/2026-11-17-h100/139_stream_wait_enqueue_order/compile.log) · [Execution log](../validation/2026-11-17-h100/139_stream_wait_enqueue_order/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+nvcc -std=c++17 -O2 -arch=sm_90 139_stream_wait_enqueue_order.cu -o ./example
+./example
+```
+
+<details markdown="1"><summary>Captured current-source output</summary>
+
+```text
+Consumer before production: 0; after a too-late wait: 0; correctly ordered copy: 42
+The early copy is deliberately completed first, avoiding an intentional data race.
+VALIDATION PASS: errors=0
+```
+
+</details>
+<!-- execution:end:h100:139_stream_wait_enqueue_order.cu -->
+
 
 **Compile and run:**
 
@@ -313,6 +426,8 @@ nvcc -arch=sm_80 139_stream_wait_enqueue_order.cu -o 139_stream_wait_enqueue_ord
 **Sample input:** none -- every value is either a real return code from the CUDA Runtime API or a compile-time-fixed description of the two enqueue orders being compared.
 
 **Sample output:**
+
+<details markdown="1"><summary>Historical authoring output — superseded by the current execution above</summary>
 
 ```text
 === Section G.2: cudaStreamWaitEvent() only covers work enqueued
@@ -366,6 +481,8 @@ produce two different real dependency graphs, with zero difference in any
 return code from either cudaStreamWaitEvent() call: confirmed
 ```
 
+</details>
+
 ## G.3 Topology Mismatches: When Code Assumes a Link That Isn't There
 
 ### Intuition
@@ -388,10 +505,10 @@ Chapter 4's own File 9 built the real, idiomatic sequence: check `cudaDeviceCanA
   with zero error code anywhere
 ```
 
-Chapter 5's own File 13 already built the closed-form cost comparison between a direct peer transfer and a two-hop staged transfer, using Chapter 2's own already-cited bandwidth figures (31.5 GB/s PCIe 4.0 x16, 50 GB/s a directly-wired NVLink pair). This section reuses that exact model for a different question: not "which route does `cudaMemcpyPeer()` actually take," which Chapter 5 already answered, but "what happens to code that assumed one row of this table and never checked which row actually applies to the pair it is running on." Because `cudaMemcpyPeer()` and `cudaMemcpyPeerAsync()` route correctly regardless -- Chapter 5's own real finding -- nothing in their return code will ever reveal that the assumption was wrong. A capacity plan, a communication-computation overlap budget, or a training-step deadline built around the NVLink row of this table runs, silently, 1.59x slower than planned if the actual pair only has a direct PCIe link, and 3.17x slower if the pair has no direct link at all and every transfer must be staged through the host -- exactly the two-hop cost Chapter 5's own File 12 already measured the call pattern for.
+Chapter 5's own File 13 already built the closed-form cost comparison between a direct peer transfer and a two-hop staged transfer, using Chapter 2's own already-cited bandwidth figures (31.5 GB/s PCIe 4.0 x16, 50 GB/s a directly-wired NVLink pair). This section reuses that exact model for a different question: not "which route does `cudaMemcpyPeer()` actually take," which Chapter 5 already answered, but "what happens to code that assumed one row of this table and never checked which row actually applies to the pair it is running on." Because `cudaMemcpyPeer()` and `cudaMemcpyPeerAsync()` route correctly regardless -- Chapter 5's own real finding -- nothing in their return code will ever reveal that the assumption was wrong. A capacity plan, a communication-computation overlap budget, or a training-step deadline built around the NVLink row of this table has a modeled transfer-time ratio of 1.59 for the assumed direct PCIe bandwidth, or 3.17 for the assumed serialized host-staging bandwidth -- exactly the two-hop cost Chapter 5's own File 12 already measured the call pattern for.
 
 !!! warning "[COMMON TRAP] Trusting a topology number that was measured on a different machine"
-    It is tempting to treat a bandwidth or link-class figure as a property of the *code*, once it has been measured or read off a vendor spec sheet -- something that can be hardcoded into a constant and reused everywhere the same code runs. It is a property of the specific *deployment*, not the code. Chapter 2's own partial-mesh topology model is itself the proof: two GPUs in the same server can be NVLink-wired while another pair in the same server share only a PCIe switch, and a cluster's own topology can differ node to node even running the identical binary. `cudaDeviceCanAccessPeer()` and `cudaDeviceGetP2PAttribute()` query the *actual* topology of the *actual* devices at *actual* runtime -- re-running them on every deployment is the only real defense; a number copied from one cluster's own topology report into a shared constant is a silent liability the moment the code runs anywhere else.
+    It is tempting to treat a bandwidth or link-class figure as a property of the *code*, once it has been measured or read off a vendor spec sheet -- something that can be hardcoded into a constant and reused everywhere the same code runs. It is a property of the specific *deployment*, not the code. Chapter 2's own partial-mesh topology model is itself the proof: two GPUs in the same server can be NVLink-wired while another pair in the same server share only a PCIe switch, and a cluster's own topology can differ node to node even running the identical binary. `cudaDeviceCanAccessPeer()` and `cudaDeviceGetP2PAttribute()` query the *actual* topology of the *actual* devices at *actual* runtime -- use these capability queries together with a saved topology report and measured transfer rates; they do not by themselves establish NVLink wiring or achieved bandwidth; a number copied from one cluster's own topology report into a shared constant is a silent liability the moment the code runs anywhere else.
 
 ### Code and Verification
 
@@ -500,16 +617,19 @@ int main() {
 }
 ```
 
-**Compile and run:**
+<!-- execution:start:a100:140_topology_assumption_cost.cpp -->
+> **Current execution — 2026-11-17-a100: Host program/model (exit-only).** UTC (program start): `2026-11-17T23:59:51.953036+00:00`. Source SHA-256: `efff2db21c05fd964f3eb08a49f3cae199d6a7e965aaedd4323c52d504666c02`.
+
+[Exact tested source](../validation/2026-11-17-a100/140_topology_assumption_cost/140_topology_assumption_cost.cpp) · [Compiler log](../validation/2026-11-17-a100/140_topology_assumption_cost/compile.log) · [Execution log](../validation/2026-11-17-a100/140_topology_assumption_cost/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
 
 ```bash
-g++ -std=c++17 -Wall -Wextra -O2 140_topology_assumption_cost.cpp -o 140_topology_assumption_cost
-./140_topology_assumption_cost
+g++ -std=c++17 -O2 140_topology_assumption_cost.cpp -o ./example
+./example
 ```
 
-**Sample input:** none -- every figure is Chapter 2's own already-cited bandwidth constant or arithmetic derived from it, identical to Chapter 5's own File 13 model.
-
-**Sample output:**
+<details markdown="1"><summary>Captured current-source output</summary>
 
 ```text
 === Section G.3: assuming a topology class instead of querying it ===
@@ -568,6 +688,157 @@ assumption's own real slowdown strictly increases as the actual topology
 gets worse (confirmed): confirmed
 ```
 
+</details>
+<!-- execution:end:a100:140_topology_assumption_cost.cpp -->
+
+
+<!-- execution:start:h100:140_topology_assumption_cost.cpp -->
+> **Current execution — 2026-11-17-h100: Host program/model (exit-only).** UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`. Source SHA-256: `efff2db21c05fd964f3eb08a49f3cae199d6a7e965aaedd4323c52d504666c02`.
+
+[Exact tested source](../validation/2026-11-17-h100/140_topology_assumption_cost/140_topology_assumption_cost.cpp) · [Compiler log](../validation/2026-11-17-h100/140_topology_assumption_cost/compile.log) · [Execution log](../validation/2026-11-17-h100/140_topology_assumption_cost/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+g++ -std=c++17 -O2 140_topology_assumption_cost.cpp -o ./example
+./example
+```
+
+<details markdown="1"><summary>Captured current-source output</summary>
+
+```text
+=== Section G.3: assuming a topology class instead of querying it ===
+
+Chapter 4's own real idiom (File 9): cudaDeviceCanAccessPeer(&canAccess,
+i, j), checked for every ordered pair, BEFORE calling
+cudaDeviceEnablePeerAccess(). Chapter 5's own File 11/13 showed why
+skipping it never breaks CORRECTNESS -- cudaMemcpyPeer() falls back to a
+staged host copy transparently for any pair without enabled peer access.
+What it CAN silently break is a performance assumption baked into calling
+code that never re-queries the real topology for the deployment it is
+actually running on.
+
+Chapter 2/5's own three real topology classes for a device pair, and the
+real transfer time for 1.0 GB under each:
+
+actual topology class             real time (s)
+NVLink-wired pair (1 hop)              0.020000
+PCIe-only direct pair (1 hop)          0.031746
+no direct link (2-hop staged)          0.063492
+
+=== the silent cost of code that ASSUMED NVLink and never re-queried ===
+
+code that hardcodes the NVLink figure (a real, common shortcut when a
+number is copied from one cluster's own topology report into a capacity
+plan or a scheduling deadline) pays NO error and NO crash when deployed
+on a DIFFERENT pair's real topology -- cudaMemcpyPeer() still returns
+cudaSuccess either way -- only a silent multiple of the assumed number:
+
+actual topology at runtime        real time (s)    x assumed
+NVLink (assumption correct)            0.020000       1.0000
+PCIe-only direct                       0.031746       1.5873
+no direct link (staged)                0.063492       3.1746
+
+a schedule or capacity plan built around the NVLink number silently runs
+1.5873x slower than planned on a PCIe-only-direct pair, and 3.1746x slower on
+a pair with no direct link at all -- Chapter 2's own partial-mesh topology
+model already established that NOT every pair on a real multi-GPU machine
+shares the same link class, so this is not a hypothetical: two GPUs on the
+SAME machine can genuinely fall into different rows of this table.
+
+=== the real fix: query, don't assume ===
+
+Chapter 4's own File 9 sequence -- cudaDeviceCanAccessPeer() for the
+SPECIFIC pair actually in use, re-run on the actual deployment rather than
+hardcoded from a different one -- is the only way to know which row of
+this table applies BEFORE building a schedule or capacity plan around it.
+Real device attribute queries (Chapter 2's own cudaDeviceProp fields, and
+cudaDeviceGetP2PAttribute() for the specific link's own reported
+performance rank) are what genuinely observe the topology; nothing about
+cudaMemcpyPeer()'s own return code ever will.
+
+self-check: the three real topology classes are strictly ordered fastest-
+to-slowest (NVLink < PCIe-direct < staged, confirmed), and an NVLink-based
+assumption's own real slowdown strictly increases as the actual topology
+gets worse (confirmed): confirmed
+```
+
+</details>
+<!-- execution:end:h100:140_topology_assumption_cost.cpp -->
+
+
+**Compile and run:**
+
+```bash
+g++ -std=c++17 -Wall -Wextra -O2 140_topology_assumption_cost.cpp -o 140_topology_assumption_cost
+./140_topology_assumption_cost
+```
+
+**Sample input:** none -- every figure is Chapter 2's own already-cited bandwidth constant or arithmetic derived from it, identical to Chapter 5's own File 13 model.
+
+**Sample output:**
+
+<details markdown="1"><summary>Historical authoring output — superseded by the current execution above</summary>
+
+```text
+=== Section G.3: assuming a topology class instead of querying it ===
+
+Chapter 4's own real idiom (File 9): cudaDeviceCanAccessPeer(&canAccess,
+i, j), checked for every ordered pair, BEFORE calling
+cudaDeviceEnablePeerAccess(). Chapter 5's own File 11/13 showed why
+skipping it never breaks CORRECTNESS -- cudaMemcpyPeer() falls back to a
+staged host copy transparently for any pair without enabled peer access.
+What it CAN silently break is a performance assumption baked into calling
+code that never re-queries the real topology for the deployment it is
+actually running on.
+
+Chapter 2/5's own three real topology classes for a device pair, and the
+real transfer time for 1.0 GB under each:
+
+actual topology class             real time (s)
+NVLink-wired pair (1 hop)              0.020000
+PCIe-only direct pair (1 hop)          0.031746
+no direct link (2-hop staged)          0.063492
+
+=== the silent cost of code that ASSUMED NVLink and never re-queried ===
+
+code that hardcodes the NVLink figure (a real, common shortcut when a
+number is copied from one cluster's own topology report into a capacity
+plan or a scheduling deadline) pays NO error and NO crash when deployed
+on a DIFFERENT pair's real topology -- cudaMemcpyPeer() still returns
+cudaSuccess either way -- only a silent multiple of the assumed number:
+
+actual topology at runtime        real time (s)    x assumed
+NVLink (assumption correct)            0.020000       1.0000
+PCIe-only direct                       0.031746       1.5873
+no direct link (staged)                0.063492       3.1746
+
+a schedule or capacity plan built around the NVLink number silently runs
+1.5873x slower than planned on a PCIe-only-direct pair, and 3.1746x slower on
+a pair with no direct link at all -- Chapter 2's own partial-mesh topology
+model already established that NOT every pair on a real multi-GPU machine
+shares the same link class, so this is not a hypothetical: two GPUs on the
+SAME machine can genuinely fall into different rows of this table.
+
+=== the real fix: query, don't assume ===
+
+Chapter 4's own File 9 sequence -- cudaDeviceCanAccessPeer() for the
+SPECIFIC pair actually in use, re-run on the actual deployment rather than
+hardcoded from a different one -- is the only way to know which row of
+this table applies BEFORE building a schedule or capacity plan around it.
+Real device attribute queries (Chapter 2's own cudaDeviceProp fields, and
+cudaDeviceGetP2PAttribute() for the specific link's own reported
+performance rank) are what genuinely observe the topology; nothing about
+cudaMemcpyPeer()'s own return code ever will.
+
+self-check: the three real topology classes are strictly ordered fastest-
+to-slowest (NVLink < PCIe-direct < staged, confirmed), and an NVLink-based
+assumption's own real slowdown strictly increases as the actual topology
+gets worse (confirmed): confirmed
+```
+
+</details>
+
 ## G.4 A Diagnostic Checklist for Recognizing These Failure Modes
 
 None of this appendix's three failure modes announce themselves with an error message -- a program suffering from any of them can run to completion (or hang forever) without ever printing a return code that says why. The following questions are the ones worth asking of any multi-device program that behaves strangely without ever actually reporting an error.
@@ -580,7 +851,4 @@ Is a bandwidth, latency, or link-class figure anywhere in a capacity plan, a sch
 
 ## Appendix Summary
 
-- Deadlocks are not always a message-size problem, even though Chapter 20's own real deadlock happened to be one -- a ring where every process calls `MPI_Recv()` before any process calls `MPI_Send()` hangs absolutely, at any message size, because `MPI_Recv()` has no buffering escape hatch the way `MPI_Send()` does; the real, general fix restructures the *order* of blocking calls (even ranks send first, odd ranks receive first) so some participant is always positioned to unblock another, confirmed here by genuinely triggering the hang under a bounded `timeout` (exit code 124) and genuinely completing the fixed version.
-- `cudaStreamWaitEvent()` only ever constrains work enqueued onto its stream *after* the call, in program order, not work that merely executes later -- Chapter 6's own File 15 already stated this, and this appendix showed the real consequence: a consumer operation enqueued before the wait call runs with no dependency on the producer's event at all, with zero difference in any return code from either enqueue order, which is exactly what makes a missed or misplaced synchronization step silent rather than crash-worthy.
-- A topology figure copied from one deployment's own measured link class into a hardcoded constant is a silent liability the moment the code runs on a different pair of devices -- `cudaMemcpyPeer()` itself always routes correctly regardless (Chapter 5's own real finding), but a capacity plan or scheduling deadline built around an assumed NVLink number pays a real, unannounced multiple (1.59x to 3.17x in this appendix's own model) when the actual topology turns out to be PCIe-direct or has no direct link at all; the only real defense is re-querying `cudaDeviceCanAccessPeer()`/`cudaDeviceGetP2PAttribute()` on the actual deployment, not trusting a number measured somewhere else.
-- Section G.4's diagnostic checklist collects the three questions worth asking of any multi-device program that behaves strangely without ever reporting an error: does a blocking-call sequence leave every participant waiting on a call none of them has reached, does a synchronization call protect an operation that was actually enqueued before it, and is a topology-dependent performance number a hardcoded assumption rather than a live query.
+Match collective order and participants, distinguish enqueue from completion, and verify the actual peer route. The event-order example deliberately completes an early consumer before production to show that a later wait cannot repair it, then checks the correctly ordered transfer. This deterministic test avoids intentionally racing unsynchronized device accesses. Numerical checks and timeouts complement API return codes.

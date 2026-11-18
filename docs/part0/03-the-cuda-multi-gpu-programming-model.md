@@ -1,5 +1,15 @@
 # Chapter 3: The CUDA Multi-GPU Programming Model: Devices, Contexts, and Streams Across Them
 
+<!-- execution:provenance -->
+!!! info "Execution provenance"
+
+    Current execution blocks identify the tested source hash, hardware dataset, commands and captured output. References elsewhere on this page to a device-less environment describe the original authoring context. Historical output is superseded by the current record. Displayed output omits the runner command header and trims trailing line whitespace; raw logs remain exact. A host simulation or API validation has its stated scope; neither alone establishes a numerical multi-GPU workload or measured performance.
+
+
+<!-- mgpu:opener:start -->
+[![Chapter 3: The CUDA Multi-GPU Programming Model: Devices, Contexts, and Streams Across Them](../images/chapter-openers/03.svg)](../images/chapter-openers/03.svg)
+<!-- mgpu:opener:end -->
+
 **What you will understand by the end of this chapter:**
 
 - Why "current device" is state that belongs to a host thread, not the process as a whole, and what defaults to when nobody sets it.
@@ -17,6 +27,10 @@
 Chapter 2 established that GPUs are wired together in specific, uneven ways. Before this book can move a single byte between two of them, it needs the vocabulary the CUDA Runtime API actually uses to talk about "which device" — because that vocabulary has sharp edges that cause real, well-documented bugs the moment more than one device is involved.
 
 ## 3.1 "Current Device" Is a Per-Thread Setting, Not a Global One
+
+<!-- mgpu:figure-1:start -->
+[![Current device is thread-local](../images/technical/ch03/1-threads.svg)](../images/technical/ch03/1-threads.svg)
+<!-- mgpu:figure-1:end -->
 
 ### Intuition
 
@@ -42,6 +56,10 @@ This is the single most important fact in this chapter, and nearly everything el
     `cudaSetDevice()` changes the current-device state for the *calling thread only*. A common, incorrect assumption is that calling it once near the start of a program sets the device for the whole process — it does not. Section 3.4's multithreading pitfall is the direct consequence of forgetting this.
 
 ## 3.2 Streams and Events Belong to Whichever Device Was Current When They Were Born
+
+<!-- mgpu:figure-2:start -->
+[![Resources retain their device owner](../images/technical/ch03/2-events.svg)](../images/technical/ch03/2-events.svg)
+<!-- mgpu:figure-2:end -->
 
 ### Intuition
 
@@ -78,7 +96,14 @@ Before running a relay with four runners, you first make sure one runner can com
 The single-device sequence is: set the device, allocate, launch, wait, read back, free.
 
 ```cpp
+// Chapter 3: The CUDA Multi-GPU Programming Model
 // 06_single_device_setup.cu
+//
+// The single-device baseline every multi-device program is built from:
+// pick a device, allocate on it, launch on it, wait for it, read the
+// result back, free it. Every step's return code is checked -- that
+// discipline is what turns "no device present" from a crash into an
+// honest, informative report instead.
 #include <cstdio>
 #include <cuda_runtime.h>
 
@@ -126,6 +151,62 @@ int main() {
 }
 ```
 
+<!-- execution:start:a100:06_single_device_setup.cu -->
+> **Current execution — 2026-11-17-a100: API/host demonstration (exit-only).** UTC (program start): `2026-11-18T00:00:15.466514+00:00`. Source SHA-256: `0a16e1d4b5d38ac9091b11d28b12db3a0c353d8dce75f782553003a2e602fe23`.
+
+[Exact tested source](../validation/2026-11-17-a100/06_single_device_setup/06_single_device_setup.cu) · [Compiler log](../validation/2026-11-17-a100/06_single_device_setup/compile.log) · [Execution log](../validation/2026-11-17-a100/06_single_device_setup/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+nvcc -std=c++17 -O2 -arch=sm_80 06_single_device_setup.cu -o ./example
+./example
+```
+
+<details markdown="1"><summary>Captured current-source output</summary>
+
+```text
+cudaSetDevice(0)             no error (code 0)
+cudaMalloc                   no error (code 0)
+cudaMemcpy H2D               no error (code 0)
+kernel launch                no error (code 0)
+cudaDeviceSynchronize        no error (code 0)
+cudaMemcpy D2H               no error (code 0)
+Result: 1 2 3 4 5 6 7 8
+```
+
+</details>
+<!-- execution:end:a100:06_single_device_setup.cu -->
+
+
+<!-- execution:start:h100:06_single_device_setup.cu -->
+> **Current execution — 2026-11-17-h100: API/host demonstration (exit-only).** UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`. Source SHA-256: `0a16e1d4b5d38ac9091b11d28b12db3a0c353d8dce75f782553003a2e602fe23`.
+
+[Exact tested source](../validation/2026-11-17-h100/06_single_device_setup/06_single_device_setup.cu) · [Compiler log](../validation/2026-11-17-h100/06_single_device_setup/compile.log) · [Execution log](../validation/2026-11-17-h100/06_single_device_setup/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+nvcc -std=c++17 -O2 -arch=sm_90 06_single_device_setup.cu -o ./example
+./example
+```
+
+<details markdown="1"><summary>Captured current-source output</summary>
+
+```text
+cudaSetDevice(0)             no error (code 0)
+cudaMalloc                   no error (code 0)
+cudaMemcpy H2D               no error (code 0)
+kernel launch                no error (code 0)
+cudaDeviceSynchronize        no error (code 0)
+cudaMemcpy D2H               no error (code 0)
+Result: 1 2 3 4 5 6 7 8
+```
+
+</details>
+<!-- execution:end:h100:06_single_device_setup.cu -->
+
+
 ```bash
 nvcc -arch=sm_80 06_single_device_setup.cu -o single_device_setup
 ./single_device_setup
@@ -133,14 +214,19 @@ nvcc -arch=sm_80 06_single_device_setup.cu -o single_device_setup
 
 Output (genuinely compiled with a real `nvcc` and genuinely run; identical across three consecutive runs):
 
+<details markdown="1"><summary>Historical authoring output — superseded by the current execution above</summary>
+
 ```text
 cudaSetDevice(0)             no CUDA-capable device is detected (code 100)
 Stopping here -- every step after this one depends on this one having succeeded.
 ```
 
+</details>
+
 Checking every single call's return code — rather than assuming success — is what turns this into an honest, one-line diagnostic instead of a crash or a silent wrong answer. Generalizing to N devices means moving each step into a loop over `cudaGetDeviceCount()`'s result, calling `cudaSetDevice(i)` before every single device-`i`-specific operation, because per Section 3.1 none of them remembers "device i" on your behalf:
 
 ```cpp
+// Chapter 3: The CUDA Multi-GPU Programming Model
 // 07_multi_device_loop_pattern.cu
 //
 // The idiomatic multi-device pattern this book uses from here on: never
@@ -216,6 +302,66 @@ int main() {
 }
 ```
 
+<!-- execution:start:a100:07_multi_device_loop_pattern.cu -->
+> **Current execution — 2026-11-17-a100: API/host demonstration (exit-only).** UTC (program start): `2026-11-18T00:00:19.706136+00:00`. Source SHA-256: `a876bc6228ec5b0d82ea556321644f8d55e5a3f3a3dc7022f4ae0088d8c77805`.
+
+[Exact tested source](../validation/2026-11-17-a100/07_multi_device_loop_pattern/07_multi_device_loop_pattern.cu) · [Compiler log](../validation/2026-11-17-a100/07_multi_device_loop_pattern/compile.log) · [Execution log](../validation/2026-11-17-a100/07_multi_device_loop_pattern/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+nvcc -std=c++17 -O2 -arch=sm_80 07_multi_device_loop_pattern.cu -o ./example
+./example
+```
+
+<details markdown="1"><summary>Captured current-source output</summary>
+
+```text
+cudaGetDeviceCount() reports 8 device(s).
+The loop below runs its body exactly 8 time(s) as a direct consequence -- not a special case, just what a correctly-guarded loop over a real count does when that count happens to be zero.
+
+Device 0: stream and buffer created while device 0 was current.
+Device 1: stream and buffer created while device 1 was current.
+Device 2: stream and buffer created while device 2 was current.
+Device 3: stream and buffer created while device 3 was current.
+Device 4: stream and buffer created while device 4 was current.
+Device 5: stream and buffer created while device 5 was current.
+Device 6: stream and buffer created while device 6 was current.
+Device 7: stream and buffer created while device 7 was current.
+Loop body executed 8 time(s) total across all three phases. On real N-GPU hardware, this exact, unmodified source runs all N devices' kernels concurrently with no code change -- that's the entire point of writing the loop this way instead of hard-coding device 0 and device 1.
+```
+
+</details>
+<!-- execution:end:a100:07_multi_device_loop_pattern.cu -->
+
+
+<!-- execution:start:h100:07_multi_device_loop_pattern.cu -->
+> **Current execution — 2026-11-17-h100: API/host demonstration (exit-only).** UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`. Source SHA-256: `a876bc6228ec5b0d82ea556321644f8d55e5a3f3a3dc7022f4ae0088d8c77805`.
+
+[Exact tested source](../validation/2026-11-17-h100/07_multi_device_loop_pattern/07_multi_device_loop_pattern.cu) · [Compiler log](../validation/2026-11-17-h100/07_multi_device_loop_pattern/compile.log) · [Execution log](../validation/2026-11-17-h100/07_multi_device_loop_pattern/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+nvcc -std=c++17 -O2 -arch=sm_90 07_multi_device_loop_pattern.cu -o ./example
+./example
+```
+
+<details markdown="1"><summary>Captured current-source output</summary>
+
+```text
+cudaGetDeviceCount() reports 2 device(s).
+The loop below runs its body exactly 2 time(s) as a direct consequence -- not a special case, just what a correctly-guarded loop over a real count does when that count happens to be zero.
+
+Device 0: stream and buffer created while device 0 was current.
+Device 1: stream and buffer created while device 1 was current.
+Loop body executed 2 time(s) total across all three phases. On real N-GPU hardware, this exact, unmodified source runs all N devices' kernels concurrently with no code change -- that's the entire point of writing the loop this way instead of hard-coding device 0 and device 1.
+```
+
+</details>
+<!-- execution:end:h100:07_multi_device_loop_pattern.cu -->
+
+
 ```bash
 nvcc -arch=sm_80 07_multi_device_loop_pattern.cu -o multi_device_loop
 ./multi_device_loop
@@ -223,12 +369,16 @@ nvcc -arch=sm_80 07_multi_device_loop_pattern.cu -o multi_device_loop
 
 Output (genuinely compiled and run; identical across runs):
 
+<details markdown="1"><summary>Historical authoring output — superseded by the current execution above</summary>
+
 ```text
 cudaGetDeviceCount() reports 0 device(s).
 The loop below runs its body exactly 0 time(s) as a direct consequence -- not a special case, just what a correctly-guarded loop over a real count does when that count happens to be zero.
 
 Loop body executed 0 time(s) total across all three phases. On real N-GPU hardware, this exact, unmodified source runs all N devices' kernels concurrently with no code change -- that's the entire point of writing the loop this way instead of hard-coding device 0 and device 1.
 ```
+
+</details>
 
 !!! warning "[COMMON TRAP] Combining the launch loop and the wait loop into one"
     Writing a single loop that launches device `i`'s kernel and immediately waits for it before moving to device `i+1` looks equivalent to the two-loop version above, but it isn't: waiting on device 0 before device 1's kernel has even been launched forces the two devices to run one after another instead of together, turning an N-GPU program into an N-times-slower single-GPU program in disguise. The separate launch-then-wait loops in Phases 2 and 3 above are what actually let the devices overlap.
@@ -288,7 +438,9 @@ Chapter 4 puts this vocabulary to work on the first real multi-device operation:
 
 **4.** The rewrite would call, per device in a single loop: `cudaSetDevice(i); launch kernel; cudaStreamSynchronize(streams[i]);` before moving to `i+1`. It loses concurrency across devices: waiting for device `i`'s stream to finish before ever launching device `i+1`'s kernel forces every device to run strictly one after another, rather than all launching first (Phase 2) and only then all waiting (Phase 3), which is what allows them to execute concurrently.
 
-**5.** `cudaSetDevice(0)` fails first, with `cudaErrorNoDevice` (code 100), because this environment has zero CUDA devices — there is no device 0 to set as current. Every later step (`cudaMalloc`, the memcpy, the kernel launch) is written to operate on "whatever the current device is," and since no device was ever successfully made current, none of those later calls could possibly act on anything meaningful — the `CHECK` macro stops the program right there rather than let it proceed on an undefined foundation.
+**5.** `cudaSetDevice(0)` establishes the calling host thread’s current device when device 0 is available. Check its result before allocation, copies or launch. A no-device host fails at that prerequisite; the current two-H100 run has real devices and must be interpreted from its actual log.
+
+The [2026-11-17 H100 execution record](../validation-h100.md) covers two GPUs connected by local NV18. It distinguishes numerical checks, API probes and other executions; a successful exit alone does not establish GPU algorithm correctness.
 
 **6.** Device 0. Section 3.1's rule is that current-device state defaults to device 0 until a thread calls `cudaSetDevice()` itself; a new thread that never makes that call, regardless of what any other thread (including its parent) has done, starts from that same default and stays there for its first (and every subsequent) unguarded call.
 

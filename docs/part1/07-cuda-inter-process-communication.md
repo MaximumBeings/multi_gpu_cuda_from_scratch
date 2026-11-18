@@ -1,5 +1,15 @@
 # Chapter 7: CUDA Inter-Process Communication: Sharing Memory and Events Across Processes
 
+<!-- execution:provenance -->
+!!! info "Execution provenance"
+
+    Current execution blocks identify the tested source hash, hardware dataset, commands and captured output. References elsewhere on this page to a device-less environment describe the original authoring context. Historical output is superseded by the current record. Displayed output omits the runner command header and trims trailing line whitespace; raw logs remain exact. A host simulation or API validation has its stated scope; neither alone establishes a numerical multi-GPU workload or measured performance.
+
+
+<!-- mgpu:opener:start -->
+[![Chapter 7: CUDA Inter-Process Communication: Sharing Memory and Events Across Processes](../images/chapter-openers/07.svg)](../images/chapter-openers/07.svg)
+<!-- mgpu:opener:end -->
+
 **What you will understand by the end of this chapter:**
 
 - Why a device pointer that's perfectly meaningful inside the process that allocated it is meaningless to a different operating-system process, even on the very same GPU -- and what `cudaIpcGetMemHandle()`/`cudaIpcOpenMemHandle()` actually exchange to fix that.
@@ -48,6 +58,10 @@ Everything above the last block was one process reaching across a device boundar
 
 ## 7.1 cudaIpcGetMemHandle / cudaIpcOpenMemHandle: Sharing Device Memory Across Processes
 
+<!-- mgpu:figure-1:start -->
+[![Export a handle, not a pointer](../images/technical/ch07/1-ipc.svg)](../images/technical/ch07/1-ipc.svg)
+<!-- mgpu:figure-1:end -->
+
 ### Intuition
 
 A raw pointer value is just a number, and numbers don't carry any information about which process's address space they're meaningful in. If process A allocates device memory and somehow sends the raw pointer value to process B -- over a pipe, a socket, whatever -- that number means nothing to process B's own CUDA runtime; dereferencing it (directly or through any CUDA call) is simply undefined. What has to cross the process boundary instead is an opaque, driver-issued *handle*: a token process A requests specifically for the purpose of being handed to another process, which process B then presents back to its own CUDA runtime to receive a pointer that *is* valid in its address space, pointing at the exact same underlying physical memory.
@@ -82,43 +96,171 @@ The handle itself carries no data -- it is a description the driver can turn bac
 
 ### Background
 
-`cudaIpcGetMemHandle(&handle, devPtr)` is the export side. Per the CUDA Runtime API documentation, it "takes a pointer to the base of an existing device memory allocation created with `cudaMalloc` and exports it for use in another process," and importantly, "this is a lightweight operation and may be called multiple times on an allocation without adverse effects" -- it doesn't move or duplicate the underlying bytes, only produces a token describing them. `cudaIpcOpenMemHandle(&devPtr, handle, flags)` is the import side, run in the *other* process: it "opens an interprocess memory handle exported from another process and returns a device pointer usable in the local process." The documentation is specific about both platform scope and lifetime rules: "IPC functionality is restricted to devices with support for unified addressing on Linux and Windows operating systems," with the further note that "IPC functionality on Windows is restricted to GPUs in TCC mode" (a device can be tested with `cudaDeviceGetAttribute()` and `cudaDevAttrIpcEventSupport`), and critically, "memory returned from `cudaIpcOpenMemHandle` must be freed with `cudaIpcCloseMemHandle`," because "calling `cudaFree` on an exported memory region before calling `cudaIpcCloseMemHandle` in the importing context will result in undefined behavior."
+`cudaIpcGetMemHandle(&handle, devPtr)` is the export side. Per the CUDA Runtime API documentation, it "takes a pointer to the base of an existing device memory allocation created with `cudaMalloc` and exports it for use in another process," and importantly, "this is a lightweight operation and may be called multiple times on an allocation without adverse effects" -- it doesn't move or duplicate the underlying bytes, only produces a token describing them. `cudaIpcOpenMemHandle(&devPtr, handle, flags)` is the import side, run in the *other* process: it "opens an interprocess memory handle exported from another process and returns a device pointer usable in the local process." The current [NVIDIA IPC guide](https://docs.nvidia.com/cuda/cuda-programming-guide/04-special-topics/inter-process-communication.html) scopes the legacy IPC APIs used here to Linux and excludes `cudaMallocManaged` allocations. These listings also require POSIX `fork` and pipes; they are not Windows examples. Importers close mappings with `cudaIpcCloseMemHandle`, and the exporter must keep the allocation alive until importers have finished. Driver VMM sharing is a separate API family with broader platform-specific handle support.
 
 ```cpp
-// Chapter 7: CUDA Inter-Process Communication -- Sharing Memory and
-// Events Across Processes
+// Chapter 7: two-process CUDA IPC with a checked nonuniform payload.
 // 17_ipc_mem_handle.cu
-//
-// The real IPC memory-sharing sequence: export a device allocation
-// with cudaIpcGetMemHandle(), open the resulting opaque handle with
-// cudaIpcOpenMemHandle() (as another process would), and release it
-// with cudaIpcCloseMemHandle(). Genuinely compiled with a real nvcc
-// and genuinely run.
+// Linux/POSIX: fork happens before any CUDA initialization. Producer device 0
+// stays alive until consumer device 1 closes its imported resources.
 #include <cstdio>
+#include <cerrno>
+#include <csignal>
+#include <cstdint>
+#include <vector>
+#include <unistd.h>
+#include <sys/wait.h>
 #include <cuda_runtime.h>
 
-int main() {
-    void* devPtr = nullptr;
-    cudaError_t eAlloc = cudaMalloc(&devPtr, 64);
-    printf("cudaMalloc(exported allocation): %s (code %d)\n", cudaGetErrorString(eAlloc), (int)eAlloc);
+constexpr int COUNT = 4096;
+static float expected(int i) { return float((i * 17) % 4093 - 2046) / 8.0f; }
+static int error(cudaError_t status, const char* call) {
+    if (status == cudaSuccess) return 0;
+    fprintf(stderr, "%s: %s (code %d)\n", call, cudaGetErrorString(status), int(status));
+    return status == cudaErrorNoDevice || status == cudaErrorInsufficientDriver ? 2 : 1;
+}
+#define CUDA(call) do { int code = error((call), #call); if (code) return code; } while (0)
+static bool transfer(int fd, void* data, size_t size, bool writing) {
+    char* bytes = static_cast<char*>(data);
+    while (size) {
+        ssize_t done = writing ? write(fd, bytes, size) : read(fd, bytes, size);
+        if (done < 0 && errno == EINTR) continue;
+        if (done <= 0) return false;
+        bytes += done; size -= size_t(done);
+    }
+    return true;
+}
+struct Handles { cudaIpcMemHandle_t memory;  };
 
-    cudaIpcMemHandle_t handle;
-    cudaError_t eGet = cudaIpcGetMemHandle(&handle, devPtr);
-    printf("cudaIpcGetMemHandle: %s (code %d)\n", cudaGetErrorString(eGet), (int)eGet);
+static int consumer(int fd) {
+    Handles handles{};
+    if (!transfer(fd, &handles, sizeof(handles), false)) {
+        fprintf(stderr, "IPC handle transport failed; producer did not publish resources.\n");
+        return 1;
+    }
+    close(fd);
+    CUDA(cudaSetDevice(1));
+    void* imported = nullptr;
+    CUDA(cudaIpcOpenMemHandle(&imported, handles.memory, cudaIpcMemLazyEnablePeerAccess));
 
-    void* importedPtr = nullptr;
-    cudaError_t eOpen = cudaIpcOpenMemHandle(&importedPtr, handle, cudaIpcMemLazyEnablePeerAccess);
-    printf("cudaIpcOpenMemHandle: %s (code %d)\n", cudaGetErrorString(eOpen), (int)eOpen);
+    std::vector<float> output(COUNT);
+    CUDA(cudaMemcpy(output.data(), imported, COUNT * sizeof(float), cudaMemcpyDeviceToHost));
+    int mismatches = 0;
+    for (int i = 0; i < COUNT; ++i) if (output[i] != expected(i)) {
+        if (mismatches < 4) fprintf(stderr, "Mismatch[%d]: %.9g expected %.9g\n", i, output[i], expected(i));
+        ++mismatches;
+    }
 
-    cudaError_t eClose = cudaIpcCloseMemHandle(importedPtr);
-    printf("cudaIpcCloseMemHandle: %s (code %d)\n", cudaGetErrorString(eClose), (int)eClose);
+    CUDA(cudaIpcCloseMemHandle(imported));
+    printf("Consumer: %d / %d exact payload values correct.\n", COUNT - mismatches, COUNT);
+    return mismatches ? 1 : 0;
+}
 
-    if (eAlloc == cudaSuccess) cudaFree(devPtr);
+static int producer(int fd) {
+    int count = 0;
+    CUDA(cudaGetDeviceCount(&count));
+    if (count < 2) { fprintf(stderr, "BLOCKED: requires 2 visible GPUs; found %d.\n", count); return 2; }
+    CUDA(cudaSetDevice(0));
+    int peer = 0;
+    CUDA(cudaDeviceCanAccessPeer(&peer, 1, 0));
+    if (!peer) { fprintf(stderr, "BLOCKED: device 1 cannot access device 0 memory.\n"); return 2; }
+    std::vector<float> input(COUNT);
+    for (int i = 0; i < COUNT; ++i) input[i] = expected(i);
+    float* memory = nullptr;
+    CUDA(cudaMalloc(&memory, COUNT * sizeof(float)));
+
+    CUDA(cudaMemcpy(memory, input.data(), COUNT * sizeof(float), cudaMemcpyHostToDevice));
+    Handles handles{};
+    CUDA(cudaIpcGetMemHandle(&handles.memory, memory));
+
+    if (!transfer(fd, &handles, sizeof(handles), true)) {
+        fprintf(stderr, "Could not send IPC handles.\n"); return 1;
+    }
+    close(fd);
+    // main waits for child process exit before destroying producer resources.
+    // Allocation remains live through cudaIpcCloseMemHandle in the consumer.
     return 0;
+}
+
+int main() {
+    signal(SIGPIPE, SIG_IGN);
+    int descriptors[2];
+    if (pipe(descriptors) != 0) { perror("pipe"); return 1; }
+    pid_t child = fork(); // No CUDA API has been called in this process yet.
+    if (child < 0) { perror("fork"); close(descriptors[0]); close(descriptors[1]); return 1; }
+    if (child == 0) {
+        close(descriptors[1]);
+        int code = consumer(descriptors[0]);
+        fflush(nullptr);
+        _exit(code);
+    }
+    close(descriptors[0]);
+    int result = producer(descriptors[1]);
+    // Closing also releases a consumer blocked on read if production failed.
+    if (result != 0) close(descriptors[1]);
+    int status = 0;
+    while (waitpid(child, &status, 0) < 0) {
+        if (errno == EINTR) continue;
+        perror("waitpid"); return 1;
+    }
+    int child_result = WIFEXITED(status) ? WEXITSTATUS(status) : 1;
+    if (result == 0) result = child_result;
+    // Destroy the producer context only after the importing process is gone.
+    if (result != 2) { int cleanup = error(cudaDeviceReset(), "cudaDeviceReset"); if (cleanup) result = 1; }
+    if (result == 0) printf("PASS: two-process IPC memory, 4096 nonuniform values checked.\n");
+    return result;
 }
 ```
 
-Genuinely compiled with a real `nvcc` and genuinely run. Locked output, deterministic across repeated runs:
+<!-- execution:start:a100:17_ipc_mem_handle.cu -->
+> **Current execution — 2026-11-17-a100: Numerical/transport validation (recorded scope).** UTC (program start): `2026-11-18T00:00:58.753373+00:00`. Source SHA-256: `fc4bd504bca901310ce7d63d5c62facc6b5093bb53c7ca06864026ce83df4ee5`.
+
+[Exact tested source](../validation/2026-11-17-a100/17_ipc_mem_handle/17_ipc_mem_handle.cu) · [Compiler log](../validation/2026-11-17-a100/17_ipc_mem_handle/compile.log) · [Execution log](../validation/2026-11-17-a100/17_ipc_mem_handle/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+nvcc -std=c++17 -O2 -arch=sm_80 17_ipc_mem_handle.cu -o ./example
+./example
+```
+
+<details markdown="1"><summary>Captured current-source output</summary>
+
+```text
+Consumer: 4096 / 4096 exact payload values correct.
+PASS: two-process IPC memory, 4096 nonuniform values checked.
+```
+
+</details>
+<!-- execution:end:a100:17_ipc_mem_handle.cu -->
+
+
+<!-- execution:start:h100:17_ipc_mem_handle.cu -->
+> **Current execution — 2026-11-17-h100: Numerical/transport validation (recorded scope).** UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`. Source SHA-256: `fc4bd504bca901310ce7d63d5c62facc6b5093bb53c7ca06864026ce83df4ee5`.
+
+[Exact tested source](../validation/2026-11-17-h100/17_ipc_mem_handle/17_ipc_mem_handle.cu) · [Compiler log](../validation/2026-11-17-h100/17_ipc_mem_handle/compile.log) · [Execution log](../validation/2026-11-17-h100/17_ipc_mem_handle/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+nvcc -std=c++17 -O2 -arch=sm_90 17_ipc_mem_handle.cu -o ./example
+./example
+```
+
+<details markdown="1"><summary>Captured current-source output</summary>
+
+```text
+Consumer: 4096 / 4096 exact payload values correct.
+PASS: two-process IPC memory, 4096 nonuniform values checked.
+```
+
+</details>
+<!-- execution:end:h100:17_ipc_mem_handle.cu -->
+
+
+**Historical authoring transcript (earlier single-process source).** The current two-process implementation has a checked nonuniform payload oracle and passed its two-process numerical H100 check on 2026-11-17. This earlier no-device output does not establish successful IPC and is retained only as authoring history.
+
+<details markdown="1"><summary>Historical authoring output — superseded by the current execution above</summary>
 
 ```
 cudaMalloc(exported allocation): no CUDA-capable device is detected (code 100)
@@ -127,12 +269,20 @@ cudaIpcOpenMemHandle: no CUDA-capable device is detected (code 100)
 cudaIpcCloseMemHandle: no CUDA-capable device is detected (code 100)
 ```
 
-The same honest `cudaErrorNoDevice` this book has reported at every real Runtime API call since Chapter 1, for the same underlying reason: there is no device context here to allocate the memory this chapter's handles would describe. This section's own code runs both roles -- exporter and importer -- inside a single process, since IPC's actual cross-process delivery mechanism (a pipe, a socket, shared memory for the handle bytes themselves) is an operating-system concern outside CUDA's own scope; what genuinely compiles and genuinely runs here is the real CUDA-side half of that exchange.
+</details>
+
+The earlier single-process no-device diagnostic did not validate IPC. The current listings fork before CUDA initialization, exchange opaque handles through a pipe, use producer GPU 0 and consumer GPU 1, and check 4,096 nonuniform values. Both IPC programs passed on the H100 pair. The exporter waits for the importer to close its mapping before teardown; the event variant also checks a consumer-stream wait. This is a correctness demonstration, not a transfer-overlap benchmark.
+
+The [2026-11-17 H100 execution record](../validation-h100.md) covers two GPUs connected by local NV18. It distinguishes numerical checks, API probes and other executions; a successful exit alone does not establish GPU algorithm correctness.
 
 !!! warning "[COMMON TRAP] Believing a device pointer's numeric value is portable between processes"
     UVA (Chapter 4) makes a pointer's *meaning* consistent across every device within one process's single address space -- but a process's address space itself is private to that process. Two different processes can each have a perfectly valid, UVA-consistent pointer value that happens to be the identical number, referring to two completely unrelated pieces of memory, or to nothing at all. The handle this section exchanges exists specifically because the pointer's raw value was never going to be safely portable on its own -- only the driver-issued handle, opened through `cudaIpcOpenMemHandle()`, produces a pointer that's actually valid in the *importing* process's own address space.
 
 ## 7.2 cudaIpcGetEventHandle / cudaIpcOpenEventHandle: Sharing Synchronization Across Processes
+
+<!-- mgpu:figure-2:start -->
+[![Memory sharing needs a readiness handoff](../images/technical/ch07/2-handoff.svg)](../images/technical/ch07/2-handoff.svg)
+<!-- mgpu:figure-2:end -->
 
 ### Intuition
 
@@ -168,39 +318,179 @@ The bottom line of this diagram is the payoff: once `importedEvent` exists in pr
 `cudaEventCreateWithFlags()` is the same event-creation call Chapter 6 used, but with two flags that matter here specifically: the documentation states that `cudaEventInterprocess` "specifies that the created event may be used as an interprocess event by `cudaIpcGetEventHandle()`," and that "`cudaEventInterprocess` must be specified along with `cudaEventDisableTiming`" -- an interprocess event gives up per-event timing data as the cost of being shareable at all. From there, the pattern mirrors Section 7.1 exactly: `cudaIpcGetEventHandle(&handle, event)` exports an opaque handle for an event created with both required flags, and `cudaIpcOpenEventHandle(&importedEvent, handle)`, called in the other process, returns a local `cudaEvent_t` that refers to the same underlying event -- one that can then be handed directly to `cudaStreamWaitEvent()` (Chapter 6, Section 6.2) exactly like any other event, cross-device or not.
 
 ```cpp
-// Chapter 7: CUDA Inter-Process Communication -- Sharing Memory and
-// Events Across Processes
+// Chapter 7: two-process CUDA IPC with a checked nonuniform payload.
 // 18_ipc_event_handle.cu
-//
-// The real IPC event-sharing sequence: create an event with the two
-// flags interprocess sharing requires (cudaEventDisableTiming |
-// cudaEventInterprocess), export it with cudaIpcGetEventHandle(), and
-// open the resulting handle with cudaIpcOpenEventHandle(). Genuinely
-// compiled with a real nvcc and genuinely run.
+// Linux/POSIX: fork happens before any CUDA initialization. Producer device 0
+// stays alive until consumer device 1 closes its imported resources.
 #include <cstdio>
+#include <cerrno>
+#include <csignal>
+#include <cstdint>
+#include <vector>
+#include <unistd.h>
+#include <sys/wait.h>
 #include <cuda_runtime.h>
 
-int main() {
-    cudaEvent_t event;
-    cudaError_t eCreate = cudaEventCreateWithFlags(&event, cudaEventDisableTiming | cudaEventInterprocess);
-    printf("cudaEventCreateWithFlags(DisableTiming|Interprocess): %s (code %d)\n",
-           cudaGetErrorString(eCreate), (int)eCreate);
+constexpr int COUNT = 4096;
+static float expected(int i) { return float((i * 17) % 4093 - 2046) / 8.0f; }
+static int error(cudaError_t status, const char* call) {
+    if (status == cudaSuccess) return 0;
+    fprintf(stderr, "%s: %s (code %d)\n", call, cudaGetErrorString(status), int(status));
+    return status == cudaErrorNoDevice || status == cudaErrorInsufficientDriver ? 2 : 1;
+}
+#define CUDA(call) do { int code = error((call), #call); if (code) return code; } while (0)
+static bool transfer(int fd, void* data, size_t size, bool writing) {
+    char* bytes = static_cast<char*>(data);
+    while (size) {
+        ssize_t done = writing ? write(fd, bytes, size) : read(fd, bytes, size);
+        if (done < 0 && errno == EINTR) continue;
+        if (done <= 0) return false;
+        bytes += done; size -= size_t(done);
+    }
+    return true;
+}
+struct Handles { cudaIpcMemHandle_t memory; cudaIpcEventHandle_t ready; };
 
-    cudaIpcEventHandle_t handle;
-    cudaError_t eGet = cudaIpcGetEventHandle(&handle, event);
-    printf("cudaIpcGetEventHandle: %s (code %d)\n", cudaGetErrorString(eGet), (int)eGet);
+static int consumer(int fd) {
+    Handles handles{};
+    if (!transfer(fd, &handles, sizeof(handles), false)) {
+        fprintf(stderr, "IPC handle transport failed; producer did not publish resources.\n");
+        return 1;
+    }
+    close(fd);
+    CUDA(cudaSetDevice(1));
+    void* imported = nullptr;
+    CUDA(cudaIpcOpenMemHandle(&imported, handles.memory, cudaIpcMemLazyEnablePeerAccess));
+    cudaEvent_t ready = nullptr;
+    CUDA(cudaIpcOpenEventHandle(&ready, handles.ready));
+    cudaStream_t stream = nullptr;
+    CUDA(cudaStreamCreate(&stream));
+    CUDA(cudaStreamWaitEvent(stream, ready, 0));
+    std::vector<float> output(COUNT);
+    CUDA(cudaMemcpyAsync(output.data(), imported, COUNT * sizeof(float), cudaMemcpyDeviceToHost, stream));
+    CUDA(cudaStreamSynchronize(stream));
+    int mismatches = 0;
+    for (int i = 0; i < COUNT; ++i) if (output[i] != expected(i)) {
+        if (mismatches < 4) fprintf(stderr, "Mismatch[%d]: %.9g expected %.9g\n", i, output[i], expected(i));
+        ++mismatches;
+    }
+    CUDA(cudaStreamDestroy(stream));
+    CUDA(cudaEventDestroy(ready));
+    CUDA(cudaIpcCloseMemHandle(imported));
+    printf("Consumer: %d / %d exact payload values correct.\n", COUNT - mismatches, COUNT);
+    return mismatches ? 1 : 0;
+}
 
-    cudaEvent_t importedEvent;
-    cudaError_t eOpen = cudaIpcOpenEventHandle(&importedEvent, handle);
-    printf("cudaIpcOpenEventHandle: %s (code %d)\n", cudaGetErrorString(eOpen), (int)eOpen);
-
-    if (eCreate == cudaSuccess) cudaEventDestroy(event);
-    if (eOpen == cudaSuccess) cudaEventDestroy(importedEvent);
+static int producer(int fd) {
+    int count = 0;
+    CUDA(cudaGetDeviceCount(&count));
+    if (count < 2) { fprintf(stderr, "BLOCKED: requires 2 visible GPUs; found %d.\n", count); return 2; }
+    CUDA(cudaSetDevice(0));
+    int peer = 0;
+    CUDA(cudaDeviceCanAccessPeer(&peer, 1, 0));
+    if (!peer) { fprintf(stderr, "BLOCKED: device 1 cannot access device 0 memory.\n"); return 2; }
+    std::vector<float> input(COUNT);
+    for (int i = 0; i < COUNT; ++i) input[i] = expected(i);
+    float* memory = nullptr;
+    CUDA(cudaMalloc(&memory, COUNT * sizeof(float)));
+    cudaEvent_t ready = nullptr;
+    CUDA(cudaEventCreateWithFlags(&ready, cudaEventDisableTiming | cudaEventInterprocess));
+    cudaStream_t stream = nullptr;
+    CUDA(cudaStreamCreate(&stream));
+    CUDA(cudaMemcpyAsync(memory, input.data(), COUNT * sizeof(float), cudaMemcpyHostToDevice, stream));
+    CUDA(cudaEventRecord(ready, stream));
+    Handles handles{};
+    CUDA(cudaIpcGetMemHandle(&handles.memory, memory));
+    CUDA(cudaIpcGetEventHandle(&handles.ready, ready));
+    CUDA(cudaStreamSynchronize(stream));
+    if (!transfer(fd, &handles, sizeof(handles), true)) {
+        fprintf(stderr, "Could not send IPC handles.\n"); return 1;
+    }
+    close(fd);
+    // main waits for child process exit before destroying producer resources.
+    // Allocation remains live through cudaIpcCloseMemHandle in the consumer.
     return 0;
+}
+
+int main() {
+    signal(SIGPIPE, SIG_IGN);
+    int descriptors[2];
+    if (pipe(descriptors) != 0) { perror("pipe"); return 1; }
+    pid_t child = fork(); // No CUDA API has been called in this process yet.
+    if (child < 0) { perror("fork"); close(descriptors[0]); close(descriptors[1]); return 1; }
+    if (child == 0) {
+        close(descriptors[1]);
+        int code = consumer(descriptors[0]);
+        fflush(nullptr);
+        _exit(code);
+    }
+    close(descriptors[0]);
+    int result = producer(descriptors[1]);
+    // Closing also releases a consumer blocked on read if production failed.
+    if (result != 0) close(descriptors[1]);
+    int status = 0;
+    while (waitpid(child, &status, 0) < 0) {
+        if (errno == EINTR) continue;
+        perror("waitpid"); return 1;
+    }
+    int child_result = WIFEXITED(status) ? WEXITSTATUS(status) : 1;
+    if (result == 0) result = child_result;
+    // Destroy the producer context only after the importing process is gone.
+    if (result != 2) { int cleanup = error(cudaDeviceReset(), "cudaDeviceReset"); if (cleanup) result = 1; }
+    if (result == 0) printf("PASS: two-process IPC memory + event readiness, 4096 nonuniform values checked.\n");
+    return result;
 }
 ```
 
-Genuinely compiled with a real `nvcc` and genuinely run. Locked output, deterministic across repeated runs:
+<!-- execution:start:a100:18_ipc_event_handle.cu -->
+> **Current execution — 2026-11-17-a100: Numerical/transport validation (recorded scope).** UTC (program start): `2026-11-18T00:01:03.795830+00:00`. Source SHA-256: `5ca751f5113e67325f9bae932f5e16777800d3202b844a28b4c80bf3afffbebf`.
+
+[Exact tested source](../validation/2026-11-17-a100/18_ipc_event_handle/18_ipc_event_handle.cu) · [Compiler log](../validation/2026-11-17-a100/18_ipc_event_handle/compile.log) · [Execution log](../validation/2026-11-17-a100/18_ipc_event_handle/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+nvcc -std=c++17 -O2 -arch=sm_80 18_ipc_event_handle.cu -o ./example
+./example
+```
+
+<details markdown="1"><summary>Captured current-source output</summary>
+
+```text
+Consumer: 4096 / 4096 exact payload values correct.
+PASS: two-process IPC memory + event readiness, 4096 nonuniform values checked.
+```
+
+</details>
+<!-- execution:end:a100:18_ipc_event_handle.cu -->
+
+
+<!-- execution:start:h100:18_ipc_event_handle.cu -->
+> **Current execution — 2026-11-17-h100: Numerical/transport validation (recorded scope).** UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`. Source SHA-256: `5ca751f5113e67325f9bae932f5e16777800d3202b844a28b4c80bf3afffbebf`.
+
+[Exact tested source](../validation/2026-11-17-h100/18_ipc_event_handle/18_ipc_event_handle.cu) · [Compiler log](../validation/2026-11-17-h100/18_ipc_event_handle/compile.log) · [Execution log](../validation/2026-11-17-h100/18_ipc_event_handle/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+nvcc -std=c++17 -O2 -arch=sm_90 18_ipc_event_handle.cu -o ./example
+./example
+```
+
+<details markdown="1"><summary>Captured current-source output</summary>
+
+```text
+Consumer: 4096 / 4096 exact payload values correct.
+PASS: two-process IPC memory + event readiness, 4096 nonuniform values checked.
+```
+
+</details>
+<!-- execution:end:h100:18_ipc_event_handle.cu -->
+
+
+**Historical authoring transcript (earlier single-process source).** The current two-process implementation has a checked nonuniform payload oracle and passed its two-process numerical H100 check on 2026-11-17. This earlier no-device output does not establish successful IPC and is retained only as authoring history.
+
+<details markdown="1"><summary>Historical authoring output — superseded by the current execution above</summary>
 
 ```
 cudaEventCreateWithFlags(DisableTiming|Interprocess): no CUDA-capable device is detected (code 100)
@@ -208,7 +498,9 @@ cudaIpcGetEventHandle: no CUDA-capable device is detected (code 100)
 cudaIpcOpenEventHandle: no CUDA-capable device is detected (code 100)
 ```
 
-The same `cudaErrorNoDevice` throughout, for the same reason as every device-bound call in this book -- even creating an event, the very first step, needs a context that doesn't exist here. What this section's code verifies honestly is the exact, real flag combination and call sequence a real multi-process program needs -- genuinely compiled, and genuinely failing at the correct, honest first step rather than anywhere else.
+</details>
+
+File 18 now checks actual interprocess event/memory handoff with 4,096 nonuniform values on the H100 pair. The timing-disabled interprocess event and exporter/importer lifetimes are checked parts of that test; the earlier no-device diagnostic did not validate them.
 
 !!! warning "[COMMON TRAP] Trying to export an ordinary event created with cudaEventCreate()"
     An event created with the plain `cudaEventCreate()` (Chapter 6, Section 6.1) was never given the `cudaEventInterprocess` flag, because that flag is only available through `cudaEventCreateWithFlags()`. Passing such an event to `cudaIpcGetEventHandle()` is not something the API quietly tolerates -- the interprocess capability has to be requested at the moment the event is created, not added afterward. If Chapter 6's event basics are the pattern in your head, remember that this chapter's events need one extra, deliberate step at creation time that Chapter 6's never did.
@@ -217,7 +509,9 @@ The same `cudaErrorNoDevice` throughout, for the same reason as every device-bou
 
 ### Intuition
 
-This machine cannot honestly run two real, separate OS processes each initializing their own CUDA context and exchanging real IPC handles over a real pipe -- there's no device for either process's context to initialize against in the first place, so the whole scenario has nothing to attach to. But the *logic* of the handoff -- export produces an opaque token that describes shared memory without copying it; open consumes exactly that token and yields a reference to the same underlying storage; the importer's view and the exporter's view are never two independently-updated copies, they are the same memory -- is exactly the kind of orchestration logic this book already verified honestly once before, in Chapter 4's Section 4.3, using real in-memory stand-ins instead of real hardware.
+Files 17 and 18 now execute real two-process CUDA IPC and check 4,096 values on the H100 pair. The model below separately illustrates opaque-handle handoff and shared-storage semantics. It does not replace those hardware checks or establish IPC support across nodes.
+
+The [2026-11-17 H100 execution record](../validation-h100.md) covers two GPUs connected by local NV18. It distinguishes numerical checks, API probes and other executions; a successful exit alone does not establish GPU algorithm correctness.
 
 The one picture that actually distinguishes this chapter's IPC sharing from every transfer this book has written since Chapter 5 is what happens to a LATE mutation -- one made after the hand-off has already happened:
 
@@ -313,7 +607,75 @@ int main() {
 }
 ```
 
+<!-- execution:start:a100:19_ipc_handoff_simulation.cpp -->
+> **Current execution — 2026-11-17-a100: Host program/model (exit-only).** UTC (program start): `2026-11-18T00:01:08.902977+00:00`. Source SHA-256: `3aa9454c4e495de3b81eaa7c6e447215e78102ea3733ee046b70673513faa6f6`.
+
+[Exact tested source](../validation/2026-11-17-a100/19_ipc_handoff_simulation/19_ipc_handoff_simulation.cpp) · [Compiler log](../validation/2026-11-17-a100/19_ipc_handoff_simulation/compile.log) · [Execution log](../validation/2026-11-17-a100/19_ipc_handoff_simulation/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+g++ -std=c++17 -O2 19_ipc_handoff_simulation.cpp -o ./example
+./example
+```
+
+<details markdown="1"><summary>Captured current-source output</summary>
+
+```text
+Exporter allocated data and exported handle 0.
+Importer opened handle 0.
+Immediately after opening, importer's view matches exporter's data: PASS
+After exporter mutates index 2 with NO further transfer call,
+importer's view reflects it immediately: PASS
+
+[Documented, NOT executed here -- this would be real undefined
+behavior on real hardware, so this simulation only prints the
+warning rather than reproducing it]: calling cudaFree() on the
+exporter's allocation before the importer calls
+cudaIpcCloseMemHandle() is undefined behavior, per the CUDA
+Runtime API documentation.
+```
+
+</details>
+<!-- execution:end:a100:19_ipc_handoff_simulation.cpp -->
+
+
+<!-- execution:start:h100:19_ipc_handoff_simulation.cpp -->
+> **Current execution — 2026-11-17-h100: Host program/model (exit-only).** UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`. Source SHA-256: `3aa9454c4e495de3b81eaa7c6e447215e78102ea3733ee046b70673513faa6f6`.
+
+[Exact tested source](../validation/2026-11-17-h100/19_ipc_handoff_simulation/19_ipc_handoff_simulation.cpp) · [Compiler log](../validation/2026-11-17-h100/19_ipc_handoff_simulation/compile.log) · [Execution log](../validation/2026-11-17-h100/19_ipc_handoff_simulation/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+g++ -std=c++17 -O2 19_ipc_handoff_simulation.cpp -o ./example
+./example
+```
+
+<details markdown="1"><summary>Captured current-source output</summary>
+
+```text
+Exporter allocated data and exported handle 0.
+Importer opened handle 0.
+Immediately after opening, importer's view matches exporter's data: PASS
+After exporter mutates index 2 with NO further transfer call,
+importer's view reflects it immediately: PASS
+
+[Documented, NOT executed here -- this would be real undefined
+behavior on real hardware, so this simulation only prints the
+warning rather than reproducing it]: calling cudaFree() on the
+exporter's allocation before the importer calls
+cudaIpcCloseMemHandle() is undefined behavior, per the CUDA
+Runtime API documentation.
+```
+
+</details>
+<!-- execution:end:h100:19_ipc_handoff_simulation.cpp -->
+
+
 Genuinely compiled with `g++` and genuinely run. Locked output, deterministic across repeated runs:
+
+<details markdown="1"><summary>Historical authoring output — superseded by the current execution above</summary>
 
 ```
 Exporter allocated data and exported handle 0.
@@ -329,6 +691,8 @@ exporter's allocation before the importer calls
 cudaIpcCloseMemHandle() is undefined behavior, per the CUDA
 Runtime API documentation.
 ```
+
+</details>
 
 Both checks pass, and the second one is the point of this whole section: no `transferDirectP2P()`-style call, no `cudaMemcpy()`-style call, nothing at all moved the mutated value from the exporter's reference to the importer's -- there was never a second copy to move it *to*. This is the one property that distinguishes IPC memory sharing from every other cross-process or cross-device operation this book has modeled: it doesn't transfer data faster, it removes the need to transfer data at all.
 
@@ -377,5 +741,5 @@ Part 2 begins with Chapter 8: broadcast and reduce, the first two collective com
 **Sources cited in this chapter:**
 
 - [CUDA Runtime API — Device Management (`cudaIpcGetMemHandle`)](https://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__DEVICE.html) -- the "lightweight operation" wording and the current platform restriction (unified addressing, Linux and Windows, Windows limited to TCC mode); the same text appears in the CUDA 12.0 toolkit's `cuda_runtime_api.h` header this book compiles against.
-- [cudaIpcOpenMemHandle — CUDA Runtime API documentation, mirrored](https://docs.rs/rcudnn-sys/latest/rcudnn_sys/fn.cudaIpcOpenMemHandle.html) -- the per-context-per-process open constraint, the `cudaIpcCloseMemHandle()` cleanup requirement, and the documented undefined-behavior warning.
+- [CUDA IPC — NVIDIA Programming Guide](https://docs.nvidia.com/cuda/cuda-programming-guide/04-special-topics/inter-process-communication.html) -- the per-context-per-process open constraint, the `cudaIpcCloseMemHandle()` cleanup requirement, and the documented undefined-behavior warning.
 - [CUDA Runtime API — Event Management (`cudaEventCreateWithFlags`)](https://docs.nvidia.com/cuda/archive/12.4.1/cuda-runtime-api/group__CUDART__EVENT.html) -- the exact `cudaEventInterprocess`/`cudaEventDisableTiming` flag requirement for interprocess events.

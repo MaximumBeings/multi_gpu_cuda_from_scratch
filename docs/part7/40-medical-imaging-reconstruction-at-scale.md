@@ -1,3 +1,15 @@
+# Chapter 40: Medical Imaging Reconstruction at Scale
+
+<!-- execution:provenance -->
+!!! info "Execution provenance"
+
+    Current execution blocks identify the tested source hash, hardware dataset, commands and captured output. References elsewhere on this page to a device-less environment describe the original authoring context. Historical output is superseded by the current record. Displayed output omits the runner command header and trims trailing line whitespace; raw logs remain exact. A host simulation or API validation has its stated scope; neither alone establishes a numerical multi-GPU workload or measured performance.
+
+
+<!-- mgpu:opener:start -->
+[![Chapter 40: Medical Imaging Reconstruction at Scale](../images/chapter-openers/40.svg)](../images/chapter-openers/40.svg)
+<!-- mgpu:opener:end -->
+
 **What you will understand after this chapter:** how a real, peer-reviewed distributed tomographic-reconstruction system (the distributed ASTRA toolbox) re-derives Chapter 16's own row-strip domain decomposition and halo exchange for a 3D medical-imaging volume, calling the halo a "ghost cell"; why the SAME real z-axis slab partition needs real communication for one of its two core operations (forward projection) but genuinely none at all for the other (backprojection), verified directly from the real paper's own published numbers; and why forward projection's own real, documented scaling hits an honest, measured near-wall at 17 or more GPUs -- a sharper real finding than this book's own earlier "more ranks is not free" lessons, because here the marginal benefit of an additional real GPU becomes genuinely close to negligible, not merely smaller.
 
 **What you need to know first:** Chapter 5 (the closed-form cost-model discipline reused in Section 40.3), Chapter 9 (the round-count formula this chapter's own communication-volume reasoning builds on), Chapter 16 (domain decomposition and halo exchange, this entire chapter's real point of departure), Chapter 18 (load imbalance, the category this chapter's own "min slab depth" finding belongs to), and Chapter 34 (the "more ranks is not free" saturating-fraction lesson Section 40.3 sharpens into an honest near-wall).
@@ -20,6 +32,10 @@ Part 7 closes with the second of this book's own two healthcare/medicine case st
 ```
 
 ## 40.1 Slabs and Ghost Cells: Chapter 16's Halo Exchange in 3D
+
+<!-- mgpu:figure-1:start -->
+[![Three-dimensional slabs exchange ghost cells](../images/technical/ch40/1-halo.svg)](../images/technical/ch40/1-halo.svg)
+<!-- mgpu:figure-1:end -->
 
 ### Intuition
 
@@ -177,6 +193,82 @@ int main() {
 }
 ```
 
+<!-- execution:start:a100:117_zslab_ghost_cell_correctness_simulation.cpp -->
+> **Current execution — 2026-11-17-a100: Host program/model (exit-only).** UTC (program start): `2026-11-18T00:05:33.279576+00:00`. Source SHA-256: `95402f1d4080bdd0fd8cd54ac19045540823020b195d04155987371408fa11c3`.
+
+[Exact tested source](../validation/2026-11-17-a100/117_zslab_ghost_cell_correctness_simulation/117_zslab_ghost_cell_correctness_simulation.cpp) · [Compiler log](../validation/2026-11-17-a100/117_zslab_ghost_cell_correctness_simulation/compile.log) · [Execution log](../validation/2026-11-17-a100/117_zslab_ghost_cell_correctness_simulation/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+g++ -std=c++17 -O2 117_zslab_ghost_cell_correctness_simulation.cpp -o ./example
+./example
+```
+
+<details markdown="1"><summary>Captured current-source output</summary>
+
+```text
+Reference (single-process): volume 6x6x60, smoothed value at (0,0,0)=4.3500, (2,3,30)=54.8333, (5,5,59)=36.7000
+
+P      all match  min slab depth (z-slices)
+1      YES        60
+2      YES        30
+3      YES        20
+4      YES        15
+5      YES        12
+6      YES        10
+10     YES        6
+12     YES        5
+15     YES        4
+20     YES        3
+30     YES        2
+60     YES        1
+
+Every P reproduces the exact same smoothed volume as the single-process reference, at every tested P from 1 to 60 -- the real, peer-reviewed ASTRA toolbox's own ghost-cell mechanism is Chapter 16's own halo exchange, re-derived independently for a 3D medical-imaging volume sliced along the z-axis instead of a 2D grid sliced along rows. Note the "min slab depth" column: at P=60, every rank owns exactly one z-slice, and the ghost-cell region (its two neighbors) is now LARGER than the rank's own local data -- the same real shape of problem Chapter 16 first raised (a halo that does not shrink as fast as the local partition does), and the direct setup for Section 40.3's own real, documented communication wall.
+```
+
+</details>
+<!-- execution:end:a100:117_zslab_ghost_cell_correctness_simulation.cpp -->
+
+
+<!-- execution:start:h100:117_zslab_ghost_cell_correctness_simulation.cpp -->
+> **Current execution — 2026-11-17-h100: Host program/model (exit-only).** UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`. Source SHA-256: `95402f1d4080bdd0fd8cd54ac19045540823020b195d04155987371408fa11c3`.
+
+[Exact tested source](../validation/2026-11-17-h100/117_zslab_ghost_cell_correctness_simulation/117_zslab_ghost_cell_correctness_simulation.cpp) · [Compiler log](../validation/2026-11-17-h100/117_zslab_ghost_cell_correctness_simulation/compile.log) · [Execution log](../validation/2026-11-17-h100/117_zslab_ghost_cell_correctness_simulation/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+g++ -std=c++17 -O2 117_zslab_ghost_cell_correctness_simulation.cpp -o ./example
+./example
+```
+
+<details markdown="1"><summary>Captured current-source output</summary>
+
+```text
+Reference (single-process): volume 6x6x60, smoothed value at (0,0,0)=4.3500, (2,3,30)=54.8333, (5,5,59)=36.7000
+
+P      all match  min slab depth (z-slices)
+1      YES        60
+2      YES        30
+3      YES        20
+4      YES        15
+5      YES        12
+6      YES        10
+10     YES        6
+12     YES        5
+15     YES        4
+20     YES        3
+30     YES        2
+60     YES        1
+
+Every P reproduces the exact same smoothed volume as the single-process reference, at every tested P from 1 to 60 -- the real, peer-reviewed ASTRA toolbox's own ghost-cell mechanism is Chapter 16's own halo exchange, re-derived independently for a 3D medical-imaging volume sliced along the z-axis instead of a 2D grid sliced along rows. Note the "min slab depth" column: at P=60, every rank owns exactly one z-slice, and the ghost-cell region (its two neighbors) is now LARGER than the rank's own local data -- the same real shape of problem Chapter 16 first raised (a halo that does not shrink as fast as the local partition does), and the direct setup for Section 40.3's own real, documented communication wall.
+```
+
+</details>
+<!-- execution:end:h100:117_zslab_ghost_cell_correctness_simulation.cpp -->
+
+
 Compile and run (plain host `.cpp`, cross-verified on both the cloud sandbox and the device):
 
 ```bash
@@ -186,6 +278,8 @@ g++ -O2 -ffp-contract=off -o 117_zslab_ghost_cell_correctness_simulation \
 ```
 
 Locked output:
+
+<details markdown="1"><summary>Historical authoring output — superseded by the current execution above</summary>
 
 ```
 Reference (single-process): volume 6x6x60, smoothed value at (0,0,0)=4.3500, (2,3,30)=54.8333, (5,5,59)=36.7000
@@ -206,6 +300,8 @@ P      all match  min slab depth (z-slices)
 
 Every P reproduces the exact same smoothed volume as the single-process reference, at every tested P from 1 to 60 -- the real, peer-reviewed ASTRA toolbox's own ghost-cell mechanism is Chapter 16's own halo exchange, re-derived independently for a 3D medical-imaging volume sliced along the z-axis instead of a 2D grid sliced along rows. Note the "min slab depth" column: at P=60, every rank owns exactly one z-slice, and the ghost-cell region (its two neighbors) is now LARGER than the rank's own local data -- the same real shape of problem Chapter 16 first raised (a halo that does not shrink as fast as the local partition does), and the direct setup for Section 40.3's own real, documented communication wall.
 ```
+
+</details>
 
 ## 40.2 Backprojection: The Same Slabs, Zero Communication
 
@@ -357,6 +453,88 @@ int main() {
 }
 ```
 
+<!-- execution:start:a100:118_backprojection_zero_comm_and_real_scaling_arithmetic.cpp -->
+> **Current execution — 2026-11-17-a100: Host program/model (exit-only).** UTC (program start): `2026-11-18T00:05:33.501129+00:00`. Source SHA-256: `b1ffd134328759a877a4b130bdd4fcfe68bbd6150134e2d69ddc298e120bfede`.
+
+[Exact tested source](../validation/2026-11-17-a100/118_backprojection_zero_comm_and_real_scaling_arithmetic/118_backprojection_zero_comm_and_real_scaling_arithmetic.cpp) · [Compiler log](../validation/2026-11-17-a100/118_backprojection_zero_comm_and_real_scaling_arithmetic/compile.log) · [Execution log](../validation/2026-11-17-a100/118_backprojection_zero_comm_and_real_scaling_arithmetic/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+g++ -std=c++17 -O2 118_backprojection_zero_comm_and_real_scaling_arithmetic.cpp -o ./example
+./example
+```
+
+<details markdown="1"><summary>Captured current-source output</summary>
+
+```text
+Reference (single-process) BP: volume 6x6x60, value at (0,0,0)=0.0000
+
+P      all match (zero cross-slab reads)
+1      YES
+2      YES
+4      YES
+6      YES
+10     YES
+15     YES
+20     YES
+30     YES
+60     YES
+
+Every P matches, and unlike File 117's own smoothing operation, this computation never reads globalZ-1 or globalZ+1 at all -- BP's own real cited independence from neighboring z-slabs, not merely a correctly-synchronized ghost cell standing in for one.
+
+Real cited timing (Palenstijn et al. 2017, Figure 5, parallel-beam, N=1024):
+- BP: 1 GPU = 0.80s, 21 GPUs = 0.05s
+- FP: 1 GPU = 1.20s, 21 GPUs = 0.15s
+
+Honest arithmetic on those real cited numbers: going from 1 to 21 GPUs, BP achieved a real 16.0x speedup (76.2% of ideal 21x), while FP achieved only a real 8.0x speedup (38.1% of ideal 21x) -- on the exact same real paper's own benchmark, the exact same real hardware, the exact same GPU counts. This is the real, measured consequence of the real structural difference the paper itself names: "each node locally stores the part of the detector data needed to perform a BP operation, so this can be performed locally and independently on each node," while "computing the result of an FP operation on the overlapping regions on the detector requires volume data from multiple nodes." Section 40.3 asks what happens to FP's own already-weaker scaling as the GPU count keeps growing past 21.
+```
+
+</details>
+<!-- execution:end:a100:118_backprojection_zero_comm_and_real_scaling_arithmetic.cpp -->
+
+
+<!-- execution:start:h100:118_backprojection_zero_comm_and_real_scaling_arithmetic.cpp -->
+> **Current execution — 2026-11-17-h100: Host program/model (exit-only).** UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`. Source SHA-256: `b1ffd134328759a877a4b130bdd4fcfe68bbd6150134e2d69ddc298e120bfede`.
+
+[Exact tested source](../validation/2026-11-17-h100/118_backprojection_zero_comm_and_real_scaling_arithmetic/118_backprojection_zero_comm_and_real_scaling_arithmetic.cpp) · [Compiler log](../validation/2026-11-17-h100/118_backprojection_zero_comm_and_real_scaling_arithmetic/compile.log) · [Execution log](../validation/2026-11-17-h100/118_backprojection_zero_comm_and_real_scaling_arithmetic/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+g++ -std=c++17 -O2 118_backprojection_zero_comm_and_real_scaling_arithmetic.cpp -o ./example
+./example
+```
+
+<details markdown="1"><summary>Captured current-source output</summary>
+
+```text
+Reference (single-process) BP: volume 6x6x60, value at (0,0,0)=0.0000
+
+P      all match (zero cross-slab reads)
+1      YES
+2      YES
+4      YES
+6      YES
+10     YES
+15     YES
+20     YES
+30     YES
+60     YES
+
+Every P matches, and unlike File 117's own smoothing operation, this computation never reads globalZ-1 or globalZ+1 at all -- BP's own real cited independence from neighboring z-slabs, not merely a correctly-synchronized ghost cell standing in for one.
+
+Real cited timing (Palenstijn et al. 2017, Figure 5, parallel-beam, N=1024):
+- BP: 1 GPU = 0.80s, 21 GPUs = 0.05s
+- FP: 1 GPU = 1.20s, 21 GPUs = 0.15s
+
+Honest arithmetic on those real cited numbers: going from 1 to 21 GPUs, BP achieved a real 16.0x speedup (76.2% of ideal 21x), while FP achieved only a real 8.0x speedup (38.1% of ideal 21x) -- on the exact same real paper's own benchmark, the exact same real hardware, the exact same GPU counts. This is the real, measured consequence of the real structural difference the paper itself names: "each node locally stores the part of the detector data needed to perform a BP operation, so this can be performed locally and independently on each node," while "computing the result of an FP operation on the overlapping regions on the detector requires volume data from multiple nodes." Section 40.3 asks what happens to FP's own already-weaker scaling as the GPU count keeps growing past 21.
+```
+
+</details>
+<!-- execution:end:h100:118_backprojection_zero_comm_and_real_scaling_arithmetic.cpp -->
+
+
 Compile and run (plain host `.cpp`, cross-verified on both the cloud sandbox and the device):
 
 ```bash
@@ -366,6 +544,8 @@ g++ -O2 -ffp-contract=off -o 118_backprojection_zero_comm_and_real_scaling_arith
 ```
 
 Locked output:
+
+<details markdown="1"><summary>Historical authoring output — superseded by the current execution above</summary>
 
 ```
 Reference (single-process) BP: volume 6x6x60, value at (0,0,0)=0.0000
@@ -390,7 +570,13 @@ Real cited timing (Palenstijn et al. 2017, Figure 5, parallel-beam, N=1024):
 Honest arithmetic on those real cited numbers: going from 1 to 21 GPUs, BP achieved a real 16.0x speedup (76.2% of ideal 21x), while FP achieved only a real 8.0x speedup (38.1% of ideal 21x) -- on the exact same real paper's own benchmark, the exact same real hardware, the exact same GPU counts. This is the real, measured consequence of the real structural difference the paper itself names: "each node locally stores the part of the detector data needed to perform a BP operation, so this can be performed locally and independently on each node," while "computing the result of an FP operation on the overlapping regions on the detector requires volume data from multiple nodes." Section 40.3 asks what happens to FP's own already-weaker scaling as the GPU count keeps growing past 21.
 ```
 
+</details>
+
 ## 40.3 Forward Projection: A Real, Documented Communication Wall
+
+<!-- mgpu:figure-3:start -->
+[![Forward projection combines overlapping contributions](../images/technical/ch40/3-reduce.svg)](../images/technical/ch40/3-reduce.svg)
+<!-- mgpu:figure-3:end -->
 
 ### Intuition
 
@@ -539,6 +725,86 @@ int main() {
 }
 ```
 
+<!-- execution:start:a100:119_forward_projection_communication_wall_cost_model.cpp -->
+> **Current execution — 2026-11-17-a100: Host program/model (exit-only).** UTC (program start): `2026-11-18T00:05:33.722624+00:00`. Source SHA-256: `478ddee027a8c16cf30e0574eb570fd3983a5ba7468b88eb59d333774181d7ab`.
+
+[Exact tested source](../validation/2026-11-17-a100/119_forward_projection_communication_wall_cost_model/119_forward_projection_communication_wall_cost_model.cpp) · [Compiler log](../validation/2026-11-17-a100/119_forward_projection_communication_wall_cost_model/compile.log) · [Execution log](../validation/2026-11-17-a100/119_forward_projection_communication_wall_cost_model/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+g++ -std=c++17 -O2 119_forward_projection_communication_wall_cost_model.cpp -o ./example
+./example
+```
+
+<details markdown="1"><summary>Captured current-source output</summary>
+
+```text
+Illustrative, clearly-labeled model (reproducing the real cone-beam FP scaling SHAPE the paper describes, not real exact timings, which the paper does not publish for this specific case -- the 1-GPU compute constant below is tuned so this model's own crossover lands at the real cited P=17 threshold, for illustration, not because the paper states this exact number): 1-GPU compute time = 17.0s, fixed per-round ghost-cell communication time = 1.0s.
+
+GPUs       compute(s)        comm(s)   total=max(s)    speedup
+1              17.000          1.000         17.000      1.00x
+2               8.500          1.000          8.500      2.00x
+4               4.250          1.000          4.250      4.00x
+8               2.125          1.000          2.125      8.00x
+12              1.417          1.000          1.417     12.00x
+16              1.062          1.000          1.062     16.00x
+17              1.000          1.000          1.000     17.00x
+20              0.850          1.000          1.000     17.00x
+24              0.708          1.000          1.000     17.00x
+32              0.531          1.000          1.000     17.00x
+48              0.354          1.000          1.000     17.00x
+64              0.266          1.000          1.000     17.00x
+
+This illustrative model's own communication floor is first reached at P=17 GPUs (the first tested P where local compute time drops to or below the fixed per-round communication time) -- by this file's own deliberate tuning choice, the same P the real cited cone-beam finding names: "with 17 or more GPUs, we hardly see any improvement in the execution time as it is dominated by the communication time." The MATCH at P=17 is a property of this file's own chosen illustrative constant, not a claim that the real paper published a 17-second 1-GPU compute time -- what is real is the qualitative SHAPE this model reproduces from first principles: shrinking compute against a fixed communication floor.
+
+This file's own idealized max() model plateaus PERFECTLY flat past P=17 (speedup stays exactly 17.00x forever after) -- an honest simplification, not a claim about the real paper's own exact behavior. The real paper's own more careful finding is slightly softer than a perfectly hard wall: "Although the network communication negatively impacts the scaling, the execution time keeps decreasing when more GPUs are added" -- real execution time still creeps down past 17 GPUs, just by an amount small enough that the paper itself calls it "hardly any improvement," not zero improvement. This file's own hard floor is still the right illustrative shape for the real underlying mechanism (a fixed communication cost that stops shrinking while compute keeps shrinking), and is a genuinely sharper real finding than Chapter 16's own halo overhead (which shrinks the RELATIVE benefit of more ranks but never fully erases it in that chapter's own model) or Chapter 34's own saturating all-to-all fraction (which approaches, but never reaches, 100%) -- here, a real, peer-reviewed, PUBLISHED result shows the marginal benefit of an additional real GPU can become close to negligible in practice, even though it never mathematically reaches exactly zero, once the fixed real communication cost per round approaches the shrinking real local compute cost it is competing against.
+```
+
+</details>
+<!-- execution:end:a100:119_forward_projection_communication_wall_cost_model.cpp -->
+
+
+<!-- execution:start:h100:119_forward_projection_communication_wall_cost_model.cpp -->
+> **Current execution — 2026-11-17-h100: Host program/model (exit-only).** UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`. Source SHA-256: `478ddee027a8c16cf30e0574eb570fd3983a5ba7468b88eb59d333774181d7ab`.
+
+[Exact tested source](../validation/2026-11-17-h100/119_forward_projection_communication_wall_cost_model/119_forward_projection_communication_wall_cost_model.cpp) · [Compiler log](../validation/2026-11-17-h100/119_forward_projection_communication_wall_cost_model/compile.log) · [Execution log](../validation/2026-11-17-h100/119_forward_projection_communication_wall_cost_model/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+g++ -std=c++17 -O2 119_forward_projection_communication_wall_cost_model.cpp -o ./example
+./example
+```
+
+<details markdown="1"><summary>Captured current-source output</summary>
+
+```text
+Illustrative, clearly-labeled model (reproducing the real cone-beam FP scaling SHAPE the paper describes, not real exact timings, which the paper does not publish for this specific case -- the 1-GPU compute constant below is tuned so this model's own crossover lands at the real cited P=17 threshold, for illustration, not because the paper states this exact number): 1-GPU compute time = 17.0s, fixed per-round ghost-cell communication time = 1.0s.
+
+GPUs       compute(s)        comm(s)   total=max(s)    speedup
+1              17.000          1.000         17.000      1.00x
+2               8.500          1.000          8.500      2.00x
+4               4.250          1.000          4.250      4.00x
+8               2.125          1.000          2.125      8.00x
+12              1.417          1.000          1.417     12.00x
+16              1.062          1.000          1.062     16.00x
+17              1.000          1.000          1.000     17.00x
+20              0.850          1.000          1.000     17.00x
+24              0.708          1.000          1.000     17.00x
+32              0.531          1.000          1.000     17.00x
+48              0.354          1.000          1.000     17.00x
+64              0.266          1.000          1.000     17.00x
+
+This illustrative model's own communication floor is first reached at P=17 GPUs (the first tested P where local compute time drops to or below the fixed per-round communication time) -- by this file's own deliberate tuning choice, the same P the real cited cone-beam finding names: "with 17 or more GPUs, we hardly see any improvement in the execution time as it is dominated by the communication time." The MATCH at P=17 is a property of this file's own chosen illustrative constant, not a claim that the real paper published a 17-second 1-GPU compute time -- what is real is the qualitative SHAPE this model reproduces from first principles: shrinking compute against a fixed communication floor.
+
+This file's own idealized max() model plateaus PERFECTLY flat past P=17 (speedup stays exactly 17.00x forever after) -- an honest simplification, not a claim about the real paper's own exact behavior. The real paper's own more careful finding is slightly softer than a perfectly hard wall: "Although the network communication negatively impacts the scaling, the execution time keeps decreasing when more GPUs are added" -- real execution time still creeps down past 17 GPUs, just by an amount small enough that the paper itself calls it "hardly any improvement," not zero improvement. This file's own hard floor is still the right illustrative shape for the real underlying mechanism (a fixed communication cost that stops shrinking while compute keeps shrinking), and is a genuinely sharper real finding than Chapter 16's own halo overhead (which shrinks the RELATIVE benefit of more ranks but never fully erases it in that chapter's own model) or Chapter 34's own saturating all-to-all fraction (which approaches, but never reaches, 100%) -- here, a real, peer-reviewed, PUBLISHED result shows the marginal benefit of an additional real GPU can become close to negligible in practice, even though it never mathematically reaches exactly zero, once the fixed real communication cost per round approaches the shrinking real local compute cost it is competing against.
+```
+
+</details>
+<!-- execution:end:h100:119_forward_projection_communication_wall_cost_model.cpp -->
+
+
 Compile and run (plain host `.cpp`, cross-verified on both the cloud sandbox and the device):
 
 ```bash
@@ -548,6 +814,8 @@ g++ -O2 -ffp-contract=off -o 119_forward_projection_communication_wall_cost_mode
 ```
 
 Locked output:
+
+<details markdown="1"><summary>Historical authoring output — superseded by the current execution above</summary>
 
 ```
 Illustrative, clearly-labeled model (reproducing the real cone-beam FP scaling SHAPE the paper describes, not real exact timings, which the paper does not publish for this specific case -- the 1-GPU compute constant below is tuned so this model's own crossover lands at the real cited P=17 threshold, for illustration, not because the paper states this exact number): 1-GPU compute time = 17.0s, fixed per-round ghost-cell communication time = 1.0s.
@@ -570,6 +838,8 @@ This illustrative model's own communication floor is first reached at P=17 GPUs 
 
 This file's own idealized max() model plateaus PERFECTLY flat past P=17 (speedup stays exactly 17.00x forever after) -- an honest simplification, not a claim about the real paper's own exact behavior. The real paper's own more careful finding is slightly softer than a perfectly hard wall: "Although the network communication negatively impacts the scaling, the execution time keeps decreasing when more GPUs are added" -- real execution time still creeps down past 17 GPUs, just by an amount small enough that the paper itself calls it "hardly any improvement," not zero improvement. This file's own hard floor is still the right illustrative shape for the real underlying mechanism (a fixed communication cost that stops shrinking while compute keeps shrinking), and is a genuinely sharper real finding than Chapter 16's own halo overhead (which shrinks the RELATIVE benefit of more ranks but never fully erases it in that chapter's own model) or Chapter 34's own saturating all-to-all fraction (which approaches, but never reaches, 100%) -- here, a real, peer-reviewed, PUBLISHED result shows the marginal benefit of an additional real GPU can become close to negligible in practice, even though it never mathematically reaches exactly zero, once the fixed real communication cost per round approaches the shrinking real local compute cost it is competing against.
 ```
+
+</details>
 
 ## Chapter Summary
 

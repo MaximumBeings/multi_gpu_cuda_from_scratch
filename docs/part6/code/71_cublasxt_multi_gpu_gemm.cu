@@ -48,6 +48,8 @@ int main() {
     printf("cublasXtCreate(&handle) -> %s (%s)\n",
            cublasGetStatusName(createErr), cublasGetStatusString(createErr));
 
+    if (createErr != CUBLAS_STATUS_SUCCESS) return 1;
+
     printf("\n--- Checking real device count BEFORE selecting any device ordinals ---\n");
     int deviceCount = 0;
     cudaError_t countErr = cudaGetDeviceCount(&deviceCount);
@@ -64,7 +66,7 @@ int main() {
         cublasXtDestroy(handle);
         printf("cublasXtDestroy(handle) -> cleanly destroyed (handle was never "
                "given an invalid device list, so nothing here was corrupted)\n");
-        return 0;
+        return 2;
     }
 
     // This real code path -- selecting devices, setting a block size,
@@ -88,6 +90,11 @@ int main() {
            M, K, N, cublasGetStatusName(gemmErr));
 
     cublasXtDestroy(handle);
+    int errors = (selectErr != CUBLAS_STATUS_SUCCESS || blockDimErr != CUBLAS_STATUS_SUCCESS || gemmErr != CUBLAS_STATUS_SUCCESS);
+    const float expected = 2.0f * K;
+    for (float value : C) if (value != expected) ++errors;
+    printf("VALIDATION %s: checked %zu GEMM outputs, expected=%g errors=%d\n",
+           errors ? "FAIL" : "PASS", C.size(), expected, errors);
 
     printf("\n--- What this means for genuinely MULTI-NODE dense GEMM ---\n");
     printf("Everything above is real cuBLAS-Xt, but cuBLAS-Xt is explicitly "
@@ -100,5 +107,5 @@ int main() {
            "infrastructure is precisely the substrate a library like that "
            "needs underneath it.\n");
 
-    return 0;
+    return errors ? 1 : 0;
 }

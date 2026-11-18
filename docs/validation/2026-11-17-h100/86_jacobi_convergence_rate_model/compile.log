@@ -1,0 +1,1 @@
+$ g++ -std=c++17 -O2 /home/ubuntu/codex-multigpu-audit-20261117/multi-gpu-audit/docs/part6/code/86_jacobi_convergence_rate_model.cpp -o /home/ubuntu/codex-multigpu-audit-20261117/multi-gpu-audit/artifacts/h100-reviewed-20261117/86_jacobi_convergence_rate_model/example

@@ -1,0 +1,12 @@
+$ /home/ubuntu/codex-multigpu-audit-20261117/multi-gpu-audit/artifacts/h100-reviewed-20261117/36_model_shard_memory_model/example
+Model                Params  Training(Adam,mp)      Min SXM x      Min NVL x
+GPT-2 (1.5B)          1.5B            24.0 GB             1             1
+7B-class model        7.0B           112.0 GB             2             2
+GPT-3 (175B)        175.0B          2800.0 GB            35            30
+
+Self-consistency check against Chapter 1's own locked GPT-3 figures (35 H100 SXM, 30 H100 NVL): PASS
+
+Running 8 data-parallel replicas of GPT-3 (Chapter 12's own technique) needs 22400.0 GB of TOTAL cluster memory (8 x 2800.0 GB) -- but EACH replica still individually needs the same 35 H100 SXM GPUs' worth of memory to exist at all.
+Data parallelism multiplies how many times the model exists;
+it does not reduce how big any one copy has to be. Only model
+parallelism -- splitting the model ITSELF, this chapter's subject -- changes that number.

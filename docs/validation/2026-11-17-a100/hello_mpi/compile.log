@@ -1,0 +1,1 @@
+$ mpicxx -std=c++17 -O2 -I/usr/include -L/usr/local/cuda/lib64 -Wl,-rpath,/usr/local/cuda/lib64 /home/ubuntu/codex-eight-gpu-audit-20261117/multi-gpu-audit/docs/appendix/code/hello_mpi.cpp -o /home/ubuntu/codex-eight-gpu-audit-20261117/multi-gpu-audit/artifacts/a100-eight-20261117/hello_mpi/example -lcudart

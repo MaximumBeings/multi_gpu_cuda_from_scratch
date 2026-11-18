@@ -1,0 +1,10 @@
+$ /home/ubuntu/codex-eight-gpu-audit-20261117/multi-gpu-audit/artifacts/a100-eight-20261117/113_distributed_tree_building_sequential_reduction_model/example
+Real cited XGBoost default: max_depth=6 (xgboost.readthedocs.io official parameter reference).
+Illustrative production-scale ensemble size (not an XGBoost default -- XGBoost has none; chosen here as a realistic illustrative figure): 500 trees.
+
+Splits per tree at max_depth=6 (fully-grown complete binary tree, 2^6 - 1): 63
+Total splits across all 500 trees: 31500
+
+Per NVIDIA's own real cited description, EVERY one of those splits is itself a real cross-shard reduction ("all GPUs collaborate on each tree") -- so this ensemble requires 31500 total real reductions.
+
+Chapter 36's own File 105 found T=360 independent reductions for a full XVA exposure profile -- independent because date 5's own reduction never needed date 4's own result. Here, the story is structurally different: within one tree, split k+1 needs to know WHERE split k put its own boundary before it can even decide which shard's own data to look at next -- a real SEQUENTIAL dependency chain of depth 6 per tree, 500 trees deep. The total reduction COUNT (31500) is large for the same reason Chapter 36's own T was large -- an unchanged technique repeated many times -- but unlike Chapter 36's own T independent reductions, these 6-deep chains cannot be issued concurrently with each other WITHIN one tree: each one's own real cross-shard reduction must complete before the next split in that same tree can even be computed. Only ACROSS different trees (if built independently rather than in strict boosting sequence) is there room for the kind of overlap Chapter 36's own T dates already had throughout.

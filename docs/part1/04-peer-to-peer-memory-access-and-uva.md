@@ -1,5 +1,15 @@
 # Chapter 4: Peer-to-Peer Memory Access and Unified Virtual Addressing
 
+<!-- execution:provenance -->
+!!! info "Execution provenance"
+
+    Current execution blocks identify the tested source hash, hardware dataset, commands and captured output. References elsewhere on this page to a device-less environment describe the original authoring context. Historical output is superseded by the current record. Displayed output omits the runner command header and trims trailing line whitespace; raw logs remain exact. A host simulation or API validation has its stated scope; neither alone establishes a numerical multi-GPU workload or measured performance.
+
+
+<!-- mgpu:opener:start -->
+[![Chapter 4: Peer-to-Peer Memory Access and Unified Virtual Addressing](../images/chapter-openers/04.svg)](../images/chapter-openers/04.svg)
+<!-- mgpu:opener:end -->
+
 **What you will understand by the end of this chapter:**
 
 - Why every pointer in a modern multi-GPU CUDA program — host or device, no matter which device allocated it — lives in one single, flat address space, and what `cudaPointerGetAttributes()` can honestly tell you about any pointer in that space.
@@ -18,13 +28,19 @@ Part 0 established *where* the devices are and *whose problem* it is to pick one
 
 ## 4.1 Unified Virtual Addressing: One Address Space, Many Memories
 
+<!-- mgpu:figure-1:start -->
+[![One address space, separate allocations](../images/technical/ch04/1-ownership.svg)](../images/technical/ch04/1-ownership.svg)
+<!-- mgpu:figure-1:end -->
+
 ### Intuition
 
 Before CUDA 4.0, a raw pointer value was ambiguous: the same numeric address could be a valid host address on one system and simultaneously mean nothing (or something else entirely) as a device address, so the runtime had to be told explicitly, for every copy, which direction the data was moving (`cudaMemcpyHostToDevice`, `cudaMemcpyDeviceToHost`, and so on). Unified Virtual Addressing removes that ambiguity by construction: the host and every visible CUDA device share one flat virtual address range, so a given pointer *value* uniquely identifies where it points — the host's memory, or a specific device's memory, and if the latter, which device. That single fact is what lets `cudaMemcpyDefault` figure out a copy's direction on its own, and — more importantly for this chapter — it's the precondition for peer-to-peer access even being a coherent idea: two devices can only dereference each other's pointers directly because those pointers already live in address ranges both devices agree on the meaning of.
 
 ### Background
 
-The CUDA Runtime API's `cudaPointerGetAttributes()` function is the honest, queryable answer to "whose memory does this pointer actually point into?" Given any pointer, it reports (among other fields) a `type` — is this host memory, device memory, or something else — and, when relevant, which `device` ordinal owns it. On a UVA-enabled system (every system this book's target hardware runs on; UVA has applied to all CUDA-capable 64-bit systems for well over a decade), this call works uniformly on *any* pointer, host or device, without the caller needing to already know which kind it is. That is the entire point: the caller can ask the question generically. On this machine, with zero real devices, both possible inputs to that question are worth trying honestly: an ordinary host stack array, and a pointer returned by `cudaMalloc`. Since there is no real driver here at all, `cudaMalloc` itself cannot succeed — so the code below tries both, and honestly reports whichever real Runtime API error each one hits.
+`cudaPointerGetAttributes()` reports allocation type and, where meaningful, device ownership. On supported UVA systems, inspect the type before interpreting other fields: an unregistered host pointer has no meaningful owning GPU ordinal, and managed memory is a separate type. The current probe checks these reported properties; pointer bits alone do not grant peer access.
+
+The [2026-11-17 H100 execution record](../validation-h100.md) covers two GPUs connected by local NV18. It distinguishes numerical checks, API probes and other executions; a successful exit alone does not establish GPU algorithm correctness.
 
 ```cpp
 // Chapter 4: Peer-to-Peer Memory Access and Unified Virtual Addressing
@@ -63,19 +79,79 @@ int main() {
 }
 ```
 
+<!-- execution:start:a100:08_pointer_attributes.cu -->
+> **Current execution — 2026-11-17-a100: API/host demonstration (exit-only).** UTC (program start): `2026-11-18T00:00:26.201079+00:00`. Source SHA-256: `41c5abf56f01114560b72e04c1db7a3056be50dfe7fc6d9905fbf9998a553e58`.
+
+[Exact tested source](../validation/2026-11-17-a100/08_pointer_attributes/08_pointer_attributes.cu) · [Compiler log](../validation/2026-11-17-a100/08_pointer_attributes/compile.log) · [Execution log](../validation/2026-11-17-a100/08_pointer_attributes/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+nvcc -std=c++17 -O2 -arch=sm_80 08_pointer_attributes.cu -o ./example
+./example
+```
+
+<details markdown="1"><summary>Captured current-source output</summary>
+
+```text
+cudaPointerGetAttributes(ordinary stack array): no error (code 0)
+  type=0 device=-1
+cudaMalloc: no error (code 0)
+cudaPointerGetAttributes(device ptr): no error
+```
+
+</details>
+<!-- execution:end:a100:08_pointer_attributes.cu -->
+
+
+<!-- execution:start:h100:08_pointer_attributes.cu -->
+> **Current execution — 2026-11-17-h100: API/host demonstration (exit-only).** UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`. Source SHA-256: `41c5abf56f01114560b72e04c1db7a3056be50dfe7fc6d9905fbf9998a553e58`.
+
+[Exact tested source](../validation/2026-11-17-h100/08_pointer_attributes/08_pointer_attributes.cu) · [Compiler log](../validation/2026-11-17-h100/08_pointer_attributes/compile.log) · [Execution log](../validation/2026-11-17-h100/08_pointer_attributes/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+nvcc -std=c++17 -O2 -arch=sm_90 08_pointer_attributes.cu -o ./example
+./example
+```
+
+<details markdown="1"><summary>Captured current-source output</summary>
+
+```text
+cudaPointerGetAttributes(ordinary stack array): no error (code 0)
+  type=0 device=-1
+cudaMalloc: no error (code 0)
+cudaPointerGetAttributes(device ptr): no error
+```
+
+</details>
+<!-- execution:end:h100:08_pointer_attributes.cu -->
+
+
 Genuinely compiled with a real `nvcc` and genuinely run. Locked output, deterministic across repeated runs on this machine:
+
+<details markdown="1"><summary>Historical authoring output — superseded by the current execution above</summary>
 
 ```
 cudaPointerGetAttributes(ordinary stack array): no CUDA-capable device is detected (code 100)
 cudaMalloc: no CUDA-capable device is detected (code 100)
 ```
 
-Both calls fail with the same `cudaErrorNoDevice` this book has reported since Chapter 1 — for the same reason: every CUDA Runtime API call that needs a real device context, including one asking about an *ordinary host pointer*, must first initialize that context, and there is no physical GPU here to initialize one against. This is itself an honest, useful data point: even a query about host memory is not a "host-only" operation once UVA is involved, because answering it correctly requires consulting the same device state that a device-to-device query would.
+</details>
+
+A query about an ordinary host pointer must be interpreted using its returned allocation type. Do not infer that such a query always fails or requires ownership by a GPU. The old no-driver error was an environment-specific diagnostic; use the current H100 query log for the executed probe.
+
+The [2026-11-17 H100 execution record](../validation-h100.md) covers two GPUs connected by local NV18. It distinguishes numerical checks, API probes and other executions; a successful exit alone does not establish GPU algorithm correctness.
 
 !!! warning "[COMMON TRAP] Assuming a pointer's *type* tells you whether an operation on it is legal"
     `cudaPointerGetAttributes()` tells you what a pointer *is* — host memory, or device memory belonging to a specific device ordinal. It does not tell you what operations are currently *permitted* on it from somewhere else. Knowing that a pointer belongs to device 1 does not mean device 0 can dereference it; that is a completely separate, unidirectional permission — the subject of the next section — that has to be established on its own, regardless of what UVA has already told you about the pointer's identity.
 
 ## 4.2 Checking and Enabling Peer Access
+
+<!-- mgpu:figure-2:start -->
+[![Capability precedes enabled access](../images/technical/ch04/2-flow.svg)](../images/technical/ch04/2-flow.svg)
+<!-- mgpu:figure-2:end -->
 
 ### Intuition
 
@@ -128,14 +204,124 @@ int main() {
 }
 ```
 
+<!-- execution:start:a100:09_peer_access_setup.cu -->
+> **Current execution — 2026-11-17-a100: API/host demonstration (exit-only).** UTC (program start): `2026-11-18T00:00:30.292363+00:00`. Source SHA-256: `740c8c5876f47659619e118e3c553087839f81fc4ec57913b61dcb4654881bf5`.
+
+[Exact tested source](../validation/2026-11-17-a100/09_peer_access_setup/09_peer_access_setup.cu) · [Compiler log](../validation/2026-11-17-a100/09_peer_access_setup/compile.log) · [Execution log](../validation/2026-11-17-a100/09_peer_access_setup/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+nvcc -std=c++17 -O2 -arch=sm_80 09_peer_access_setup.cu -o ./example
+./example
+```
+
+<details markdown="1"><summary>Captured current-source output</summary>
+
+```text
+cudaGetDeviceCount(): 8 device(s).
+Enabled i=0 -> j=1: no error
+Enabled i=0 -> j=2: no error
+Enabled i=0 -> j=3: no error
+Enabled i=0 -> j=4: no error
+Enabled i=0 -> j=5: no error
+Enabled i=0 -> j=6: no error
+Enabled i=0 -> j=7: no error
+Enabled i=1 -> j=0: no error
+Enabled i=1 -> j=2: no error
+Enabled i=1 -> j=3: no error
+Enabled i=1 -> j=4: no error
+Enabled i=1 -> j=5: no error
+Enabled i=1 -> j=6: no error
+Enabled i=1 -> j=7: no error
+Enabled i=2 -> j=0: no error
+Enabled i=2 -> j=1: no error
+Enabled i=2 -> j=3: no error
+Enabled i=2 -> j=4: no error
+Enabled i=2 -> j=5: no error
+Enabled i=2 -> j=6: no error
+Enabled i=2 -> j=7: no error
+Enabled i=3 -> j=0: no error
+Enabled i=3 -> j=1: no error
+Enabled i=3 -> j=2: no error
+Enabled i=3 -> j=4: no error
+Enabled i=3 -> j=5: no error
+Enabled i=3 -> j=6: no error
+Enabled i=3 -> j=7: no error
+Enabled i=4 -> j=0: no error
+Enabled i=4 -> j=1: no error
+Enabled i=4 -> j=2: no error
+Enabled i=4 -> j=3: no error
+Enabled i=4 -> j=5: no error
+Enabled i=4 -> j=6: no error
+Enabled i=4 -> j=7: no error
+Enabled i=5 -> j=0: no error
+Enabled i=5 -> j=1: no error
+Enabled i=5 -> j=2: no error
+Enabled i=5 -> j=3: no error
+Enabled i=5 -> j=4: no error
+Enabled i=5 -> j=6: no error
+Enabled i=5 -> j=7: no error
+Enabled i=6 -> j=0: no error
+Enabled i=6 -> j=1: no error
+Enabled i=6 -> j=2: no error
+Enabled i=6 -> j=3: no error
+Enabled i=6 -> j=4: no error
+Enabled i=6 -> j=5: no error
+Enabled i=6 -> j=7: no error
+Enabled i=7 -> j=0: no error
+Enabled i=7 -> j=1: no error
+Enabled i=7 -> j=2: no error
+Enabled i=7 -> j=3: no error
+Enabled i=7 -> j=4: no error
+Enabled i=7 -> j=5: no error
+Enabled i=7 -> j=6: no error
+Peer access enabled for 56 ordered pair(s) out of 8 device(s) checked. On real multi-GPU hardware this same loop enables every accessible ordered pair exactly once, each direction independently, per the API's own unidirectional-access note.
+```
+
+</details>
+<!-- execution:end:a100:09_peer_access_setup.cu -->
+
+
+<!-- execution:start:h100:09_peer_access_setup.cu -->
+> **Current execution — 2026-11-17-h100: API/host demonstration (exit-only).** UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`. Source SHA-256: `740c8c5876f47659619e118e3c553087839f81fc4ec57913b61dcb4654881bf5`.
+
+[Exact tested source](../validation/2026-11-17-h100/09_peer_access_setup/09_peer_access_setup.cu) · [Compiler log](../validation/2026-11-17-h100/09_peer_access_setup/compile.log) · [Execution log](../validation/2026-11-17-h100/09_peer_access_setup/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+nvcc -std=c++17 -O2 -arch=sm_90 09_peer_access_setup.cu -o ./example
+./example
+```
+
+<details markdown="1"><summary>Captured current-source output</summary>
+
+```text
+cudaGetDeviceCount(): 2 device(s).
+Enabled i=0 -> j=1: no error
+Enabled i=1 -> j=0: no error
+Peer access enabled for 2 ordered pair(s) out of 2 device(s) checked. On real multi-GPU hardware this same loop enables every accessible ordered pair exactly once, each direction independently, per the API's own unidirectional-access note.
+```
+
+</details>
+<!-- execution:end:h100:09_peer_access_setup.cu -->
+
+
 Genuinely compiled with a real `nvcc` and genuinely run. Locked output, deterministic across repeated runs:
+
+<details markdown="1"><summary>Historical authoring output — superseded by the current execution above</summary>
 
 ```
 cudaGetDeviceCount(): 0 device(s).
 Peer access enabled for 0 ordered pair(s) out of 0 device(s) checked. On real multi-GPU hardware this same loop enables every accessible ordered pair exactly once, each direction independently, per the API's own unidirectional-access note.
 ```
 
-With zero devices reported, both loops have zero iterations, so `cudaDeviceCanAccessPeer()` and `cudaDeviceEnablePeerAccess()` are never even called — there is no ordered pair to check. This is the same honest degradation Chapter 2's peer-access query (`05_peer_access_query.cu`) already demonstrated for a single hardcoded pair; this section's version is the general loop form that real multi-device code actually uses, shown here running correctly down to zero real iterations rather than crashing or needing a special case for "fewer than two devices."
+</details>
+
+The current ordered-pair loop queries the actual H100 pair and enables supported peer routes with checked API results. Access is directional; enabling one direction does not grant the reverse direction. Capability queries establish permission, not achieved bandwidth.
+
+The [2026-11-17 H100 execution record](../validation-h100.md) covers two GPUs connected by local NV18. It distinguishes numerical checks, API probes and other executions; a successful exit alone does not establish GPU algorithm correctness.
 
 !!! warning "[COMMON TRAP] Enabling peer access once and assuming it covers both directions"
     A single call to `cudaDeviceEnablePeerAccess(1, 0)` made while device 0 is current grants device 0 the ability to access device 1 — and only that direction. If code on device 1 later tries to access device 0's memory without a separate call (`cudaSetDevice(1); cudaDeviceEnablePeerAccess(0, 0);`), that access is not permitted, even though it looks symmetric to the first call. The loop in this section's code checks and enables *both* orderings of every pair for exactly this reason — skipping half the loop silently leaves half the possible accesses disabled.
@@ -144,7 +330,9 @@ With zero devices reported, both loops have zero iterations, so `cudaDeviceCanAc
 
 ### Intuition
 
-Sections 4.1 and 4.2 established what this machine can honestly say about UVA and peer access with zero real devices: both real Runtime API calls, both consistently and correctly reporting `cudaErrorNoDevice`. But this book's job isn't only to report that error correctly — it's to teach the *logic* of how a multi-device program should route its transfers once real devices exist: use a direct peer write where peer access exists, fall back to a host-staged copy where it doesn't, and — the property that actually matters — guarantee both routes land the same, correct data at the destination. That logic can be verified completely honestly right now, using this book's own simulation technique: real in-memory buffers standing in for real device memories, exchanging data through the exact same message pattern real code would use, checked against an independently-kept reference.
+The hardware queries establish the available UVA and peer-access properties. The simulation below independently checks routing logic: direct transfer where peer access is modeled and host staging otherwise. A simulation checks its buffers and arithmetic, not actual CUDA visibility, permissions or stream ordering.
+
+The [2026-11-17 H100 execution record](../validation-h100.md) covers two GPUs connected by local NV18. It distinguishes numerical checks, API probes and other executions; a successful exit alone does not establish GPU algorithm correctness.
 
 ### Background
 
@@ -250,7 +438,69 @@ int main() {
 }
 ```
 
+<!-- execution:start:a100:10_p2p_simulation.cpp -->
+> **Current execution — 2026-11-17-a100: Host program/model (exit-only).** UTC (program start): `2026-11-18T00:00:36.337372+00:00`. Source SHA-256: `8ef2739bea00136f3e1810c7e4d9bb37b7eb346f1d0876f53c99c58ee044aac4`.
+
+[Exact tested source](../validation/2026-11-17-a100/10_p2p_simulation/10_p2p_simulation.cpp) · [Compiler log](../validation/2026-11-17-a100/10_p2p_simulation/compile.log) · [Execution log](../validation/2026-11-17-a100/10_p2p_simulation/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+g++ -std=c++17 -O2 10_p2p_simulation.cpp -o ./example
+./example
+```
+
+<details markdown="1"><summary>Captured current-source output</summary>
+
+```text
+Device 0 initialized. Attempting device 0 -> device 1 (peer-accessible per the simulated topology) and device 0 -> device 2 (NOT peer-accessible).
+
+Transfer 0->1: direct P2P write (peer access exists)
+Transfer 0->2: direct P2P refused (no peer access, correctly) -- falling back to host-staged copy.
+
+Correctness check, device 1 contents vs. independent reference: PASS
+Correctness check, device 2 contents vs. independent reference: PASS
+
+Both destinations hold identical, correct data despite using two different transfer mechanisms -- exactly the property real P2P code depends on: the *method* changes with topology, the *result* must not.
+```
+
+</details>
+<!-- execution:end:a100:10_p2p_simulation.cpp -->
+
+
+<!-- execution:start:h100:10_p2p_simulation.cpp -->
+> **Current execution — 2026-11-17-h100: Host program/model (exit-only).** UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`. Source SHA-256: `8ef2739bea00136f3e1810c7e4d9bb37b7eb346f1d0876f53c99c58ee044aac4`.
+
+[Exact tested source](../validation/2026-11-17-h100/10_p2p_simulation/10_p2p_simulation.cpp) · [Compiler log](../validation/2026-11-17-h100/10_p2p_simulation/compile.log) · [Execution log](../validation/2026-11-17-h100/10_p2p_simulation/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+g++ -std=c++17 -O2 10_p2p_simulation.cpp -o ./example
+./example
+```
+
+<details markdown="1"><summary>Captured current-source output</summary>
+
+```text
+Device 0 initialized. Attempting device 0 -> device 1 (peer-accessible per the simulated topology) and device 0 -> device 2 (NOT peer-accessible).
+
+Transfer 0->1: direct P2P write (peer access exists)
+Transfer 0->2: direct P2P refused (no peer access, correctly) -- falling back to host-staged copy.
+
+Correctness check, device 1 contents vs. independent reference: PASS
+Correctness check, device 2 contents vs. independent reference: PASS
+
+Both destinations hold identical, correct data despite using two different transfer mechanisms -- exactly the property real P2P code depends on: the *method* changes with topology, the *result* must not.
+```
+
+</details>
+<!-- execution:end:h100:10_p2p_simulation.cpp -->
+
+
 Genuinely compiled with `g++` and genuinely run. Locked output, deterministic across repeated runs:
+
+<details markdown="1"><summary>Historical authoring output — superseded by the current execution above</summary>
 
 ```
 Device 0 initialized. Attempting device 0 -> device 1 (peer-accessible per the simulated topology) and device 0 -> device 2 (NOT peer-accessible).
@@ -264,6 +514,8 @@ Correctness check, device 2 contents vs. independent reference: PASS
 Both destinations hold identical, correct data despite using two different transfer mechanisms -- exactly the property real P2P code depends on: the *method* changes with topology, the *result* must not.
 ```
 
+</details>
+
 Both destinations end up holding the identical, correct reference data — device 1 via the direct-write path, device 2 via the host-staged fallback — which is exactly the property real multi-device code depends on: which mechanism a transfer uses is a topology decision, but the *result* it produces must never depend on which mechanism was chosen. This is what this simulation verifies honestly, without needing a second real GPU: not the real transfer's bandwidth or latency (Chapter 2 already handled those questions, honestly, as separate cost models), but the correctness of the routing logic itself.
 
 !!! warning "[COMMON TRAP] Treating this simulation as a stand-in for measuring real P2P performance"
@@ -271,11 +523,13 @@ Both destinations end up holding the identical, correct reference data — devic
 
 ## Chapter Summary
 
-Unified Virtual Addressing puts the host and every device's memory into one flat address space, which is what makes `cudaPointerGetAttributes()` able to identify any pointer's owner generically — measured directly in Section 4.1, where even a query about an ordinary host stack array requires the same device-context machinery this book has reported as `cudaErrorNoDevice` since Chapter 1. UVA alone does not grant any device permission to dereference another device's pointers; that permission is a separate, queryable, and deliberately unidirectional setting established by `cudaDeviceCanAccessPeer()` and `cudaDeviceEnablePeerAccess()` — measured directly in Section 4.2's ordered-pair loop, which correctly runs zero iterations against zero reported devices rather than crashing or needing a special case. Because this environment cannot exercise a real transfer across that permission, Section 4.3 verified the *routing logic* multi-device code depends on — direct write where peer access exists, host-staged fallback where it doesn't — using this book's host-side simulation technique, confirming both paths converge on identical, correct data against an independent reference. Chapter 5 builds directly on this: the actual transfer *mechanism* — `cudaMemcpy` variants and asynchronous, stream-ordered copies — that Section 4.3's simulation stood in for.
+UVA provides a unified address space; it does not grant peer dereference permission. Interpret pointer attributes by allocation type and query peer capability in each direction before enabling access. The current H100 record exercises the real queries, while the host simulation independently checks direct-versus-staged routing logic. Chapter 5 checks actual transfer mechanisms and destination data.
+
+The [2026-11-17 H100 execution record](../validation-h100.md) covers two GPUs connected by local NV18. It distinguishes numerical checks, API probes and other executions; a successful exit alone does not establish GPU algorithm correctness.
 
 ## Self-Check Questions
 
-1. Section 4.1's code calls `cudaPointerGetAttributes()` on an ordinary host stack array, not a device pointer, and it still fails with `cudaErrorNoDevice`. Explain why a query about host memory needs the same device-context machinery a device-memory query would.
+1. Why must allocation type be inspected before interpreting the device-ownership field returned by `cudaPointerGetAttributes()` for an ordinary host pointer?
 2. What specific field does `cudaPointerGetAttributes()` return that lets a caller distinguish "this pointer belongs to device 2" from "this pointer belongs to device 3," and why is that distinction only meaningful because of UVA?
 3. Section 4.2 states that `cudaDeviceEnablePeerAccess()` grants access from the perspective of whichever device is currently the caller's *current device*. If a program wants device 0 and device 1 to access each other's memory, how many calls to `cudaDeviceEnablePeerAccess()` are required, and what must happen between them?
 4. Section 4.2's loop iterates over every *ordered* pair `(i, j)` with `i != j`, rather than every unordered pair. Explain concretely why an unordered-pair loop would be insufficient, using the unidirectional-access fact from Section 4.2.
@@ -291,7 +545,9 @@ Chapter 5 picks up exactly where Section 4.3's simulation left off — the actua
 
 ## Worked Solutions
 
-**1.** UVA means the runtime cannot answer "what kind of memory is this pointer" by inspecting the pointer's bits alone — the same numeric range could, in principle, need to be resolved against live device-context state to know for certain. Since no device context can be initialized at all on this machine (there is no real driver or GPU), any call that would need to consult that state — including one about a plain host array — fails at the same first step every other Runtime API call in this book has failed at: `cudaErrorNoDevice`.
+**1.** Inspect the query result and allocation type before reading ownership fields. An unregistered host pointer has no meaningful GPU owner. A no-driver/no-device error in an earlier transcript is an environment-specific result, not a general rule that every host-pointer attribute query fails.
+
+The [2026-11-17 H100 execution record](../validation-h100.md) covers two GPUs connected by local NV18. It distinguishes numerical checks, API probes and other executions; a successful exit alone does not establish GPU algorithm correctness.
 
 **2.** The `device` field of the `cudaPointerAttributes` struct — an integer device ordinal. This distinction is only meaningful because of UVA: without a single shared address space, there would be no way to even ask "which device does this pointer belong to" using the pointer's value alone, since the same address could independently exist in multiple devices' separate address spaces with different meanings in each.
 

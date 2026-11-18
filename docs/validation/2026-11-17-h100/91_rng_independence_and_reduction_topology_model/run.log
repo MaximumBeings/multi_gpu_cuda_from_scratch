@@ -1,0 +1,14 @@
+$ /home/ubuntu/codex-multigpu-audit-20261117/multi-gpu-audit/artifacts/h100-reviewed-20261117/91_rng_independence_and_reduction_topology_model/example
+--- Real production RNG independence: cuRAND's own real Philox family ---
+NVIDIA's own real cuRAND documentation: "CURAND_RNG_PSEUDO_PHILOX4_32_10 is a member of Philox family, which is one of the three non-cryptographic Counter Based Random Number Generators." Device-API guidance (from its XORWOW/MRG32k3a section, same subsequence mechanism): "each thread of computation should be assigned a unique sequence number" -- that number alone (no message from any other thread or GPU) is enough to generate a provably independent, non-overlapping stream: "Subsequence and offset together define offset in a sequence with period 2^128."
+
+A naive STATEFUL sequential generator cannot do this without coordination: GPU r would need to know the EXACT COUNT of random numbers every earlier GPU (0..r-1) already consumed, just to pick up the stream at the right point without overlap -- a real, avoidable communication requirement this chapter's own Section 31.1 simulation never had to pay, precisely because its own counterBasedHash() function needs only a path INDEX, matching cuRAND's own real counter-based design.
+
+--- Does the REDUCTION TOPOLOGY (not just the partition) matter? ---
+This book's own Chapter 11 already contrasted a SEQUENTIAL, hop-by-hop ring shape against a TREE shape for round-COUNT reasons. This section checks a different question: holding the SAME P=8 partition and the SAME per-rank partial statistics fixed, does combining them SEQUENTIALLY (fold rank 0, then 1, then 2, ...) versus combining them as a TREE (pair up, combine, repeat) change the final M2, even though both use Chan et al.'s own real pairwise formula at every single step?
+
+Sequential fold (7 rounds, chain shape, rank 0,1,2,...): mean=10.541666666666666  M2=3837.9583333333335
+Tree fold       (3 rounds, Chapter 11's tree shape):     mean=10.541666666666666  M2=3837.958333333333
+Mean match: YES   M2 match: NO
+
+The mean matches; the M2 does NOT. Both reductions combine the exact SAME 8 partial statistics, using the exact SAME real Chan et al. formula at every step -- the ONLY difference is the ORDER AND GROUPING in which those 8 partial results are combined. The tree's real round-count advantage (fewer rounds: 3 vs 7 here) is not the only reason production systems care which reduction shape they use -- the reduction shape can also change the LAST FEW BITS of a floating-point risk statistic, independently of how the data was partitioned in the first place.

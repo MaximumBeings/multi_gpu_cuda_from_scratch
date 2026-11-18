@@ -1,0 +1,1 @@
+$ nvcc -std=c++17 -O2 -arch=sm_80 -ccbin mpicxx /home/ubuntu/codex-eight-gpu-audit-20261117/multi-gpu-audit/docs/part6/code/72_bucketed_gradient_allreduce.cu -o /home/ubuntu/codex-eight-gpu-audit-20261117/multi-gpu-audit/artifacts/a100-eight-20261117/72_bucketed_gradient_allreduce/example -lnccl

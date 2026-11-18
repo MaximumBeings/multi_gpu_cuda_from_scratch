@@ -1,0 +1,1 @@
+$ g++ -std=c++17 -O2 /home/ubuntu/codex-eight-gpu-audit-20261117/multi-gpu-audit/docs/part7/code/97_phase_specific_tensor_parallelism_correctness_simulation.cpp -o /home/ubuntu/codex-eight-gpu-audit-20261117/multi-gpu-audit/artifacts/a100-eight-20261117/97_phase_specific_tensor_parallelism_correctness_simulation/example

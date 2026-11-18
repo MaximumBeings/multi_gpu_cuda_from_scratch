@@ -13,7 +13,10 @@ CXX := g++
 CXXFLAGS := -std=c++17 -Wall -Wextra -O2
 
 NVCC := nvcc
-NVCC_ARCH := -arch=sm_80
+NVCC_ARCH ?= -arch=sm_90
+CUDA_HOME ?= /usr/local/cuda
+CUDA_INCDIR ?= $(if $(wildcard $(CUDA_HOME)/include/cuda_runtime.h),$(CUDA_HOME)/include,/usr/include)
+CUDA_LIBDIR ?= $(if $(wildcard $(CUDA_HOME)/lib64/libcudart.so),$(CUDA_HOME)/lib64,/usr/lib/x86_64-linux-gnu)
 
 NCCL_INC := /usr/include
 NCCL_LIB := /usr/lib/x86_64-linux-gnu
@@ -22,7 +25,7 @@ MPICC := mpicc
 MPICXX := mpicxx
 MPI_INC := /usr/lib/x86_64-linux-gnu/openmpi/include
 
-NVSHMEM_DIR := $(shell python3 -c "import nvidia.nvshmem; print(list(nvidia.nvshmem.__path__)[0])" 2>/dev/null)
+NVSHMEM_DIR ?= $(if $(NVSHMEM_HOME),$(NVSHMEM_HOME),$(shell python3 -c "import nvidia.nvshmem; print(list(nvidia.nvshmem.__path__)[0])" 2>/dev/null))
 NVSHMEM_INC := $(NVSHMEM_DIR)/include
 NVSHMEM_LIB := $(NVSHMEM_DIR)/lib
 
@@ -43,11 +46,11 @@ host_only: hello_host.cpp
 # Recipe 2: plain nvcc, no additional libraries (most of Part 1-5's own
 # single- and multi-GPU kernels: cudaMemcpy, streams, events).
 cuda_only: hello_kernel.cu
-	$(NVCC) $(NVCC_ARCH) $< -o $@
+	$(NVCC) -std=c++17 $(NVCC_ARCH) $< -o $@
 
 # Recipe 3: nvcc + NCCL (Chapter 11 onward: ncclAllReduce and friends).
 cuda_nccl: hello_nccl.cu
-	$(NVCC) $(NVCC_ARCH) -I$(NCCL_INC) -L$(NCCL_LIB) $< -o $@ -lnccl
+	$(NVCC) -std=c++17 $(NVCC_ARCH) -I$(NCCL_INC) -L$(NCCL_LIB) $< -o $@ -lnccl
 
 # Recipe 4: mpicxx, CUDA-aware host-side process launch -- the exact real
 # flag shape Chapter 20's own File 58 established: `mpicxx -Wall -Wextra
@@ -55,12 +58,12 @@ cuda_nccl: hello_nccl.cu
 # real installed libcudart directly, no -I/-L needed because mpicxx's own
 # wrapper already knows its include/lib paths).
 mpi_only: hello_mpi.cpp
-	$(MPICXX) -Wall -Wextra -DOMPI_SKIP_MPICXX $< -o $@ -lcudart
+	$(MPICXX) -std=c++17 -Wall -Wextra -DOMPI_SKIP_MPICXX -I$(CUDA_INCDIR) -L$(CUDA_LIBDIR) -Wl,-rpath,$(CUDA_LIBDIR) $< -o $@ -lcudart
 
 # Recipe 5: nvcc + NVSHMEM + MPI, real GPU-initiated one-sided put/get
 # bootstrapped over MPI -- the exact real flag shape Chapter 22's own
 # File 64 established: `nvcc -rdc=true -ccbin mpicxx -gencode=arch=
-# compute_70,code=sm_70 -I $NVSHMEM_HOME/include file.cu -o out
+# $(NVCC_ARCH) -I $NVSHMEM_HOME/include file.cu -o out
 # -L $LIBDIR -lnvshmem_host -lnvshmem_device -lcuda -lmpi` (mpicxx as
 # nvcc's OWN host compiler, not the other way around), plus the
 # unversioned-symlink LIBDIR override described above.
@@ -69,7 +72,7 @@ $(NVSHMEM_SHIM)/libnvshmem_host.so:
 	ln -sf $(NVSHMEM_LIB)/libnvshmem_host.so.3 $@
 
 cuda_nvshmem_mpi: hello_nvshmem.cu $(NVSHMEM_SHIM)/libnvshmem_host.so
-	$(NVCC) -rdc=true -ccbin $(MPICXX) -gencode=arch=compute_70,code=sm_70 \
+	$(NVCC) -std=c++17 $(NVCC_ARCH) -rdc=true -ccbin $(MPICXX) \
 		-I$(NVSHMEM_INC) -L$(NVSHMEM_SHIM) -L$(NVSHMEM_LIB) \
 		$< -o $@ -lnvshmem_host -lnvshmem_device -lcuda -lmpi
 

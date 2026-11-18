@@ -1,0 +1,3 @@
+$ /home/ubuntu/codex-multigpu-audit-20261117/multi-gpu-audit/artifacts/h100-reviewed-20261117/129_graph_exec_update/example
+Compatible update: new pointer and scalar argument; original buffer unchanged.
+VALIDATION PASS: errors=0

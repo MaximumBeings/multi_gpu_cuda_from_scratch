@@ -1,0 +1,1 @@
+$ nvcc -std=c++17 -O2 -arch=sm_90 /home/ubuntu/codex-multigpu-audit-20261117/multi-gpu-audit/docs/part3/code/40_row_parallel_allreduce.cu -o /home/ubuntu/codex-multigpu-audit-20261117/multi-gpu-audit/artifacts/h100-reviewed-20261117/40_row_parallel_allreduce/example -lnccl

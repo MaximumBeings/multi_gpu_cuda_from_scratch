@@ -1,0 +1,1 @@
+$ mpicc -std=c11 -O2 /home/ubuntu/codex-eight-gpu-audit-20261117/multi-gpu-audit/docs/part5/code/59_mpi_errhandler_return.c -o /home/ubuntu/codex-eight-gpu-audit-20261117/multi-gpu-audit/artifacts/a100-eight-20261117/59_mpi_errhandler_return/example

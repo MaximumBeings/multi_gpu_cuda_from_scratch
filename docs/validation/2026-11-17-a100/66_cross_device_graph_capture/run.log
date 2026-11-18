@@ -1,0 +1,2 @@
+$ /home/ubuntu/codex-eight-gpu-audit-20261117/multi-gpu-audit/artifacts/a100-eight-20261117/66_cross_device_graph_capture/example
+VALIDATION PASS: 3 replays, 512 checked values, errors=0

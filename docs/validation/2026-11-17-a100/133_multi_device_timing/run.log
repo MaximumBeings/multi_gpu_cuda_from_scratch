@@ -1,0 +1,13 @@
+$ /home/ubuntu/codex-eight-gpu-audit-20261117/multi-gpu-audit/artifacts/a100-eight-20261117/133_multi_device_timing/example
+GPU 0 local stream duration: 0.102400 ms
+GPU 1 local stream duration: 0.048128 ms
+GPU 2 local stream duration: 0.051200 ms
+GPU 3 local stream duration: 0.070656 ms
+GPU 4 local stream duration: 0.061440 ms
+GPU 5 local stream duration: 0.056320 ms
+GPU 6 local stream duration: 0.052224 ms
+GPU 7 local stream duration: 0.061440 ms
+Maximum local duration: 0.102400 ms (GPU clocks are not a shared timeline)
+Host launch-to-all-complete: 1.187402 ms (includes submission and completion waits)
+Independent kernels only; this is not a collective bandwidth benchmark.
+VALIDATION PASS: errors=0

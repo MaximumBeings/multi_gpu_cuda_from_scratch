@@ -1,0 +1,17 @@
+$ /home/ubuntu/codex-eight-gpu-audit-20261117/multi-gpu-audit/artifacts/a100-eight-20261117/111_gnn_embedding_fraud_accuracy_model/example
+Real cited American Express / NVIDIA production context:
+- "generating a fraud decision in milliseconds for every card transaction worldwide"
+- "monitors more than $1.2 trillion in transaction value every year"
+- "deep-learning-based models optimized with NVIDIA TensorRT and running on NVIDIA Triton Inference Server"
+
+Real cited rationale for a GRAPH, not isolated per-transaction scoring (NVIDIA Financial Fraud Detection AI Blueprint):
+- "Fraudsters operate within complex networks, often using connections between accounts and transactions to hide their activities."
+- "...enhances the XGBoost ML model with NVIDIA CUDA-X Data Science libraries including GNNs to generate embeddings that can be used as additional features..."
+
+Real cited accuracy figures (MAG240M benchmark, XGBoost classifier):
+- AUPRC WITH GNN embeddings as additional features: 0.90
+- AUPRC WITHOUT embeddings (XGBoost on raw features alone): 0.79
+
+Honest, simple arithmetic on those two real cited numbers (a relative change in the AUPRC metric itself, not a claim about real-world fraud-catch-rate or false-positive-rate percentages, which AUPRC does not translate into directly): 13.9% relative improvement in AUPRC from adding GNN embeddings as features.
+
+This is the real, cited motivation for everything the rest of this chapter builds: turning transactions, accounts, and merchants into a GRAPH, and training a model that can see each node's own NEIGHBORS, measurably outperformed treating each transaction in isolation on this real cited benchmark. Section 38.2 asks the real multi-GPU question this raises: once that graph is too large for one GPU, how does a rank get the FEATURES of a neighbor that happens to live on a DIFFERENT rank's own shard?

@@ -1,0 +1,2179 @@
+{
+  "identity": "Multi-GPU from scratch / plum, coral, warm paper",
+  "page_count": 49,
+  "chapter_count": 40,
+  "appendix_count": 7,
+  "policy": "Manual semantic review before replacement; preserve all code and captured evidence.",
+  "proof_files": [
+    "docs/images/proofs/00-cover.svg",
+    "docs/images/proofs/02-topology.svg"
+  ],
+  "rollout": [
+    "Review two visual proofs and palette in the reading column.",
+    "Define one chapter opener per chapter plus index/getting-started; preserve heading hierarchy.",
+    "Map each genuine prose diagram to topology, collective flow, timeline, ownership, matrix, or cost-model layout.",
+    "Review figure claims with the technical audit; link to existing chapter primary sources.",
+    "Replace reviewed ASCII figures individually; retain captured outputs and numerical reference blocks.",
+    "Render every SVG with embedded licensed font and inspect representative figures plus automated text bounds.",
+    "Apply max-width:100%, height:auto and min-width:0 in the site reading column; verify mobile and desktop."
+  ],
+  "pages": [
+    {
+      "page": "docs/appendix/a-installation-and-setup.md",
+      "fences": [
+        {
+          "line": 13,
+          "language": "unlabeled",
+          "classification": "review-graphic",
+          "preview": "+-----------------------------+     +-----------------------------+ / | apt-get install             |     | pip install                 | / | nv"
+        },
+        {
+          "line": 117,
+          "language": "unlabeled",
+          "classification": "preserve-output-or-reference",
+          "preview": "=== Host compiler (g++) === / __GNUC__ = 12, __GNUC_MINOR__ = 4, __GNUC_PATCHLEVEL__ = 0 /  / === C++ language standard actually in effect === / __c"
+        },
+        {
+          "line": 146,
+          "language": "unlabeled",
+          "classification": "review-graphic",
+          "preview": "+-----------------------------------------------------------------+ / |         Application code (this book's own Chapters 1-40)        | / +---"
+        },
+        {
+          "line": 254,
+          "language": "unlabeled",
+          "classification": "preserve-output-or-reference",
+          "preview": "=== NCCL (collective communication) === / NCCL_MAJOR = 2, NCCL_MINOR = 18, NCCL_PATCH = 3 (NCCL_VERSION_CODE = 21803) /  / === Open MPI (host-side"
+        },
+        {
+          "line": 275,
+          "language": "unlabeled",
+          "classification": "preserve-output-or-reference",
+          "preview": "Q1: toolkit installed? -> Q2: driver installed? -> Q3: >=1 GPU? -> Q4: >=2 GPUs? /     cudaRuntimeGetVersion    cudaDriverGetVersion    cudaGe"
+        },
+        {
+          "line": 403,
+          "language": "unlabeled",
+          "classification": "preserve-output-or-reference",
+          "preview": "=== Q1: Is the CUDA toolkit installed? (cudaRuntimeGetVersion) === / FOUND: CUDA Runtime version 12.0 /  / === Q2: Is a compatible driver installe"
+        },
+        {
+          "line": 433,
+          "language": "unlabeled",
+          "classification": "preserve-output-or-reference",
+          "preview": "Recipe 1: g++                          -> host_only / Recipe 2: nvcc                         -> cuda_only / Recipe 3: nvcc + NCCL               "
+        },
+        {
+          "line": 624,
+          "language": "unlabeled",
+          "classification": "preserve-output-or-reference",
+          "preview": "$ make all / g++ -std=c++17 -Wall -Wextra -O2 hello_host.cpp -o host_only / nvcc -arch=sm_80 hello_kernel.cu -o cuda_only / nvcc -arch=sm_80 -I/us"
+        }
+      ]
+    },
+    {
+      "page": "docs/appendix/b-practice-quiz.md",
+      "fences": [
+        {
+          "line": 199,
+          "language": "text",
+          "classification": "preserve-output-or-reference",
+          "preview": "=== initial state (before reduce-scatter) === /   rank 0: [10, 11, 12, 13] /   rank 1: [20, 21, 22, 23] /   rank 2: [30, 31, 32, 33] /   rank 3: [40"
+        },
+        {
+          "line": 304,
+          "language": "text",
+          "classification": "preserve-output-or-reference",
+          "preview": "=== summing the same four doubles in two different orders === / a=10000000000000000.0, b=1.0, c=-10000000000000000.0, d=1.0 /  / sequential ((a+b)"
+        },
+        {
+          "line": 450,
+          "language": "text",
+          "classification": "preserve-output-or-reference",
+          "preview": "=== 8-cell array split across 2 ranks, 4 interior cells each === /  / cell   reference      correct-sync   buggy(no-sync) / 0      10.5000        "
+        }
+      ]
+    },
+    {
+      "page": "docs/appendix/c-nccl-and-nvshmem.md",
+      "fences": [
+        {
+          "line": 13,
+          "language": "unlabeled",
+          "classification": "review-graphic",
+          "preview": "  hand-built (Ch 8-10)         matching real NCCL call /   +----------------------------+---+--------------------------+ /   |Ch8  8.1  Broadcas"
+        },
+        {
+          "line": 120,
+          "language": "text",
+          "classification": "preserve-output-or-reference",
+          "preview": "=== Section C.1: NCCL's five core collectives, matched to the chapter that hand-built each one === /  / real installed NCCL version: 2.18.3 /  / NCC"
+        },
+        {
+          "line": 150,
+          "language": "unlabeled",
+          "classification": "review-graphic",
+          "preview": "  one ncclGroupStart() / ncclGroupEnd() issues six sends: /  /     issue order:  (0,100) (0,101) (0,102) (1,200) (2,300) (2,301) /  /   +-----------"
+        },
+        {
+          "line": 302,
+          "language": "text",
+          "classification": "preserve-output-or-reference",
+          "preview": "=== Section C.2: NCCL point-to-point (ncclSend/ncclRecv), consolidated from Chapter 11 === /  / real symbols resolved: ncclSend=0x7f2a1c3b4a10 n"
+        },
+        {
+          "line": 350,
+          "language": "unlabeled",
+          "classification": "review-graphic",
+          "preview": "  PE 0 (initiates every operation)         PE 1 (remote, never calls in) /  /   nvshmem_int_p(dest, val, pe=1)   -->    writes directly into PE "
+        },
+        {
+          "line": 508,
+          "language": "text",
+          "classification": "preserve-output-or-reference",
+          "preview": "=== Section C.3: NVSHMEM's fuller real API, beyond Chapter 22's own nvshmem_int_p() === /  / real symbols resolved: /   nvshmem_int_get         = "
+        },
+        {
+          "line": 550,
+          "language": "unlabeled",
+          "classification": "review-graphic",
+          "preview": "  fewer, larger transfers with a       many small, irregular, device- /   fixed group shape (broadcast,        triggered transfers (put a valu"
+        }
+      ]
+    },
+    {
+      "page": "docs/appendix/d-cuda-graphs-and-cooperative-multi-device-kernels.md",
+      "fences": [
+        {
+          "line": 13,
+          "language": "unlabeled",
+          "classification": "review-graphic",
+          "preview": "  iteration 1:  capture graph  -->  instantiate  -->  launch /                                         | /                                      "
+        },
+        {
+          "line": 183,
+          "language": "text",
+          "classification": "preserve-output-or-reference",
+          "preview": "=== Section D.1: cudaGraphExecUpdate() on Chapter 23's own graph shape === /  /   cudaGetDeviceCount                     -> cudaErrorNoDevice   "
+        },
+        {
+          "line": 239,
+          "language": "unlabeled",
+          "classification": "review-graphic",
+          "preview": "  cudaLaunchCooperativeKernelMultiDevice()'s own real guarantee: /  /   device 0 stream:  prior work --> PRE-SYNC BARRIER --> kernel --+ /   devic"
+        },
+        {
+          "line": 405,
+          "language": "text",
+          "classification": "preserve-output-or-reference",
+          "preview": "130_cooperative_multi_device.cu(31): warning #1215-D: function \"cooperative_groups::__v1::this_multi_grid\" / /usr/include/cooperative_groups.h"
+        },
+        {
+          "line": 417,
+          "language": "text",
+          "classification": "preserve-output-or-reference",
+          "preview": "=== Section D.2: cudaLaunchCooperativeKernelMultiDevice() and cg::this_multi_grid() === /  /   cudaGetDeviceCount                         -> cud"
+        },
+        {
+          "line": 490,
+          "language": "unlabeled",
+          "classification": "review-graphic",
+          "preview": "  device 0's own kernel          device 1's own kernel /   +----------------------+       +----------------------+ /   | block 0 | block 1 |...|"
+        },
+        {
+          "line": 710,
+          "language": "text",
+          "classification": "preserve-output-or-reference",
+          "preview": "=== Section D.3: composing single-device grid.sync() with Chapter 23's own /     cross-device event capture -- the non-deprecated equivalent ="
+        },
+        {
+          "line": 788,
+          "language": "unlabeled",
+          "classification": "preserve-output-or-reference",
+          "preview": "  graph SHAPE stable across replays,      graph SHAPE changes, or a /   only node parameters change              one-off launch /             | "
+        }
+      ]
+    },
+    {
+      "page": "docs/appendix/e-profiling-and-benchmarking-multi-gpu-communication.md",
+      "fences": [
+        {
+          "line": 13,
+          "language": "unlabeled",
+          "classification": "preserve-output-or-reference",
+          "preview": "  volume moved per GPU, as a multiple of buffer size K: /  /   N     naive (N-1)     ring 2(N-1)/N /   2     1.00 K          1.00 K          (equa"
+        },
+        {
+          "line": 114,
+          "language": "text",
+          "classification": "preserve-output-or-reference",
+          "preview": "=== Section E.1: comparing two all-reduce strategies by DATA VOLUME MOVED, not wall-clock time === /  / Chapter 9's own real formulas, reused he"
+        },
+        {
+          "line": 150,
+          "language": "unlabeled",
+          "classification": "preserve-output-or-reference",
+          "preview": "  device 0 stream: [ start_0 ]---[ dummy work ]---[ stop_0 ]  elapsed_0 = 2.1 ms /   device 1 stream: [ start_1 ]---[ dummy work, more queued "
+        },
+        {
+          "line": 290,
+          "language": "text",
+          "classification": "preserve-output-or-reference",
+          "preview": "=== Section E.2: timing a MULTI-DEVICE collective correctly === /  /   cudaGetDeviceCount               -> cudaErrorNoDevice            (no CUDA"
+        },
+        {
+          "line": 339,
+          "language": "unlabeled",
+          "classification": "preserve-output-or-reference",
+          "preview": "  NCCL_DEBUG=INFO -- one library's own internal log /     bootstrap network chosen, plugin load attempts, driver version, /     per-communicator"
+        },
+        {
+          "line": 413,
+          "language": "text",
+          "classification": "preserve-output-or-reference",
+          "preview": "=== Section E.3: NCCL_DEBUG=INFO, run against a genuine ncclCommInitRank() === /  / ncclCommInitRank() -> unhandled cuda error (run with NCCL_DE"
+        },
+        {
+          "line": 425,
+          "language": "text",
+          "classification": "preserve-output-or-reference",
+          "preview": "=== Section E.3: NCCL_DEBUG=INFO, run against a genuine ncclCommInitRank() === /  / vm:549:549 [22016] NCCL INFO Bootstrap : Using eth0:192.0.2."
+        },
+        {
+          "line": 460,
+          "language": "unlabeled",
+          "classification": "preserve-output-or-reference",
+          "preview": "  message size (Ch5):        vary SIZE, hold GPU count/topology fixed -- /                               find the latency-bound vs bandwidth-b"
+        }
+      ]
+    },
+    {
+      "page": "docs/appendix/f-pytorch-distributed-and-deepspeed-to-cpp-rosetta-stone.md",
+      "fences": [
+        {
+          "line": 13,
+          "language": "unlabeled",
+          "classification": "review-graphic",
+          "preview": "  torch.distributed (Python)          real NCCL call (this book, Ch11-) /   +------------------------------+   +---------------------------+ /  "
+        },
+        {
+          "line": 141,
+          "language": "text",
+          "classification": "preserve-output-or-reference",
+          "preview": "=== Section F.1: torch.distributed's collectives, matched to this book's /     own hand-built chapter AND to the real NCCL call underneath ==="
+        },
+        {
+          "line": 201,
+          "language": "unlabeled",
+          "classification": "preserve-output-or-reference",
+          "preview": "  backward pass fires autograd hooks in this REAL simulated order /   (last layer's gradient is ready first): /  /     bucket 0 ready -> bucket 2 "
+        },
+        {
+          "line": 373,
+          "language": "text",
+          "classification": "preserve-output-or-reference",
+          "preview": "=== Section F.2: DistributedDataParallel's bucketed all-reduce, built on /     Chapter 12's own ncclAllReduce(..., ncclAvg, ...) call === /  / buc"
+        },
+        {
+          "line": 418,
+          "language": "unlabeled",
+          "classification": "review-graphic",
+          "preview": "  GB/replica (GPT-3, 8-way data-parallel group, Chapter 13's own 16 /   bytes/parameter, sharded per Section F.3's own derived formula) /  /   +--"
+        },
+        {
+          "line": 559,
+          "language": "text",
+          "classification": "preserve-output-or-reference",
+          "preview": "=== Section F.3: DeepSpeed's ZeRO stages, derived from Chapter 13's own /     16-bytes-per-parameter breakdown, not a new formula === /  / Chapter"
+        }
+      ]
+    },
+    {
+      "page": "docs/appendix/g-common-failure-modes-deadlocks-silent-corruption-topology-mismatches.md",
+      "fences": [
+        {
+          "line": 13,
+          "language": "unlabeled",
+          "classification": "preserve-output-or-reference",
+          "preview": "  ring, 4 ranks, DEADLOCK order (every rank: Recv before Send) /  /   rank0 -- blocked in Recv(from rank3) -- waiting for rank3's Send /   rank1 -"
+        },
+        {
+          "line": 121,
+          "language": "text",
+          "classification": "preserve-output-or-reference",
+          "preview": "rank 2 (even, fixed order): about to MPI_Send to 3 / rank 2: MPI_Send returned; about to MPI_Recv from 1 / rank 0 (even, fixed order): about to "
+        },
+        {
+          "line": 142,
+          "language": "text",
+          "classification": "preserve-output-or-reference",
+          "preview": "rank 3: about to MPI_Recv from 2 (recv-first order) / rank 0: about to MPI_Recv from 3 (recv-first order) / rank 2: about to MPI_Recv from 1 (re"
+        },
+        {
+          "line": 160,
+          "language": "unlabeled",
+          "classification": "preserve-output-or-reference",
+          "preview": "  CORRECT enqueue order            BUGGY enqueue order /   stream queue (top = enqueued     stream queue (top = enqueued /   first):            "
+        },
+        {
+          "line": 317,
+          "language": "text",
+          "classification": "preserve-output-or-reference",
+          "preview": "=== Section G.2: cudaStreamWaitEvent() only covers work enqueued /     AFTER it -- Chapter 6's own File 15 finding, taken to its real /     conc"
+        },
+        {
+          "line": 377,
+          "language": "unlabeled",
+          "classification": "review-graphic",
+          "preview": "  real transfer time for 1.0 GB, by ACTUAL topology (Ch2/Ch5 figures) /  /   +--------------------------------+------------------------------+ /  "
+        },
+        {
+          "line": 514,
+          "language": "text",
+          "classification": "preserve-output-or-reference",
+          "preview": "=== Section G.3: assuming a topology class instead of querying it === /  / Chapter 4's own real idiom (File 9): cudaDeviceCanAccessPeer(&canAcce"
+        }
+      ]
+    },
+    {
+      "page": "docs/getting-started.md",
+      "fences": []
+    },
+    {
+      "page": "docs/index.md",
+      "fences": []
+    },
+    {
+      "page": "docs/part0/01-why-one-gpu-is-not-enough.md",
+      "fences": [
+        {
+          "line": 32,
+          "language": "unlabeled",
+          "classification": "preserve-output-or-reference",
+          "preview": "2 (fp16 params) + 2 (fp16 grads) + 4 (fp32 params) + 4 (momentum) + 4 (variance) / = 16 bytes per parameter / "
+        },
+        {
+          "line": 104,
+          "language": "text",
+          "classification": "preserve-output-or-reference",
+          "preview": "Model                Params  Inference(fp16) Training(Adam,mp) H100 SXM x H100 NVL x / 7B-class model        7.0B          14.0 GB         112"
+        },
+        {
+          "line": 127,
+          "language": "unlabeled",
+          "classification": "preserve-output-or-reference",
+          "preview": "C \u2248 6 \u00b7 N \u00b7 D / "
+        },
+        {
+          "line": 175,
+          "language": "text",
+          "classification": "preserve-output-or-reference",
+          "preview": "Total training compute (C = 6*N*D): 3.150e+23 FLOPs / N (parameters, approx.):            1.750e+11 / D (tokens):                         3.000e"
+        },
+        {
+          "line": 244,
+          "language": "text",
+          "classification": "preserve-output-or-reference",
+          "preview": "cudaGetDeviceCount() returned: no CUDA-capable device is detected (code 100) / Reported device count: 0 / No usable CUDA device on this machine."
+        }
+      ]
+    },
+    {
+      "page": "docs/part0/02-multi-gpu-hardware-topology.md",
+      "fences": [
+        {
+          "line": 29,
+          "language": "text",
+          "classification": "review-graphic",
+          "preview": "PCIe-only pair (through a shared switch):        NVLink pair (direct): / GPU0 --- PCIe switch --- GPU1                    GPU0 ======= NVLink "
+        },
+        {
+          "line": 51,
+          "language": "text",
+          "classification": "review-graphic",
+          "preview": "CPU0 -- PCIe switch -- GPU0, GPU1, GPU2, GPU3   (same-switch pairs: full x16 bandwidth) / CPU1 -- PCIe switch -- GPU4, GPU5, GPU6, GPU7   (sam"
+        },
+        {
+          "line": 84,
+          "language": "text",
+          "classification": "preserve-output-or-reference",
+          "preview": "Partial NVLink mesh (some pairs direct,           NVSwitch (every pair, same bandwidth): / some fall back to PCIe): /                           "
+        },
+        {
+          "line": 254,
+          "language": "text",
+          "classification": "preserve-output-or-reference",
+          "preview": "PCIe tree (dual-socket) (GB/s): /      0.0  31.5  31.5  31.5  15.8  15.8  15.8  15.8 /     31.5   0.0  31.5  31.5  15.8  15.8  15.8  15.8 /     31"
+        },
+        {
+          "line": 361,
+          "language": "text",
+          "classification": "preserve-output-or-reference",
+          "preview": "cudaGetDeviceCount(): no CUDA-capable device is detected, count = 0 / Fewer than 2 devices are present, so there is no GPU pair to ask cudaDev"
+        }
+      ]
+    },
+    {
+      "page": "docs/part0/03-the-cuda-multi-gpu-programming-model.md",
+      "fences": [
+        {
+          "line": 29,
+          "language": "text",
+          "classification": "preserve-output-or-reference",
+          "preview": "default (no cudaSetDevice() called yet): current device = 0 /  / cudaSetDevice(2); / current device = 2 /   -> every un-decorated call from here on "
+        },
+        {
+          "line": 56,
+          "language": "text",
+          "classification": "preserve-output-or-reference",
+          "preview": "cudaSetDevice(0); cudaStreamCreate(&streamA);   // streamA now belongs to GPU 0, permanently / cudaSetDevice(1); cudaStreamCreate(&streamB);  "
+        },
+        {
+          "line": 136,
+          "language": "text",
+          "classification": "preserve-output-or-reference",
+          "preview": "cudaSetDevice(0)             no CUDA-capable device is detected (code 100) / Stopping here -- every step after this one depends on this one ha"
+        },
+        {
+          "line": 226,
+          "language": "text",
+          "classification": "preserve-output-or-reference",
+          "preview": "cudaGetDeviceCount() reports 0 device(s). / The loop below runs its body exactly 0 time(s) as a direct consequence -- not a special case, just"
+        },
+        {
+          "line": 246,
+          "language": "text",
+          "classification": "preserve-output-or-reference",
+          "preview": "main thread:     cudaSetDevice(1);          // main thread's current device = 1 /                  std::thread worker(work);  // spawn a worke"
+        }
+      ]
+    },
+    {
+      "page": "docs/part1/04-peer-to-peer-memory-access-and-uva.md",
+      "fences": [
+        {
+          "line": 68,
+          "language": "unlabeled",
+          "classification": "preserve-output-or-reference",
+          "preview": "cudaPointerGetAttributes(ordinary stack array): no CUDA-capable device is detected (code 100) / cudaMalloc: no CUDA-capable device is detected"
+        },
+        {
+          "line": 133,
+          "language": "unlabeled",
+          "classification": "preserve-output-or-reference",
+          "preview": "cudaGetDeviceCount(): 0 device(s). / Peer access enabled for 0 ordered pair(s) out of 0 device(s) checked. On real multi-GPU hardware this sam"
+        },
+        {
+          "line": 255,
+          "language": "unlabeled",
+          "classification": "preserve-output-or-reference",
+          "preview": "Device 0 initialized. Attempting device 0 -> device 1 (peer-accessible per the simulated topology) and device 0 -> device 2 (NOT peer-access"
+        }
+      ]
+    },
+    {
+      "page": "docs/part1/05-explicit-transfers-cudamemcpypeer-staged-host-transfers.md",
+      "fences": [
+        {
+          "line": 73,
+          "language": "unlabeled",
+          "classification": "preserve-output-or-reference",
+          "preview": "cudaMalloc(device 0 buffer): no CUDA-capable device is detected (code 100) / cudaMalloc(device 1 buffer): no CUDA-capable device is detected ("
+        },
+        {
+          "line": 147,
+          "language": "unlabeled",
+          "classification": "preserve-output-or-reference",
+          "preview": "cudaMalloc(device 0 buffer): no CUDA-capable device is detected (code 100) / cudaMalloc(device 1 buffer): no CUDA-capable device is detected ("
+        },
+        {
+          "line": 232,
+          "language": "unlabeled",
+          "classification": "preserve-output-or-reference",
+          "preview": "Transfer size: 1.0 GB /  / Peer-direct route, NVLink-wired pair:   0.020000 s (50.0 GB/s, one hop) / Peer-direct route, PCIe-only direct pair: 0.0"
+        }
+      ]
+    },
+    {
+      "page": "docs/part1/06-streams-events-and-cross-device-synchronization.md",
+      "fences": [
+        {
+          "line": 68,
+          "language": "unlabeled",
+          "classification": "preserve-output-or-reference",
+          "preview": "cudaStreamCreate: no CUDA-capable device is detected (code 100) / cudaEventCreate: no CUDA-capable device is detected (code 100) / cudaEventReco"
+        },
+        {
+          "line": 150,
+          "language": "unlabeled",
+          "classification": "preserve-output-or-reference",
+          "preview": "cudaSetDevice(0): no CUDA-capable device is detected (code 100) / cudaStreamCreate(stream0, on device 0): no CUDA-capable device is detected ("
+        },
+        {
+          "line": 224,
+          "language": "unlabeled",
+          "classification": "preserve-output-or-reference",
+          "preview": "cudaGetDeviceCount(): 0 device(s). / cudaDeviceGetAttribute(AsyncEngineCount, device 0): no CUDA-capable device is detected (code 100), value="
+        }
+      ]
+    },
+    {
+      "page": "docs/part1/07-cuda-inter-process-communication.md",
+      "fences": [
+        {
+          "line": 21,
+          "language": "text",
+          "classification": "review-graphic",
+          "preview": "Chapter 4 -- within one process, across DEVICES: /  /     Process A /     +----------------------------------------------+ /     |  [ Device 0 ] --p"
+        },
+        {
+          "line": 55,
+          "language": "text",
+          "classification": "review-graphic",
+          "preview": "   PROCESS A (exporter)                    PROCESS B (importer) /    +----------------------------------+    +-------------------------+ /    | "
+        },
+        {
+          "line": 123,
+          "language": "unlabeled",
+          "classification": "preserve-output-or-reference",
+          "preview": "cudaMalloc(exported allocation): no CUDA-capable device is detected (code 100) / cudaIpcGetMemHandle: no CUDA-capable device is detected (code"
+        },
+        {
+          "line": 141,
+          "language": "text",
+          "classification": "review-graphic",
+          "preview": "   PROCESS A                                    PROCESS B /    +----------------------------+               +----------------------------+ /    "
+        },
+        {
+          "line": 205,
+          "language": "unlabeled",
+          "classification": "preserve-output-or-reference",
+          "preview": "cudaEventCreateWithFlags(DisableTiming|Interprocess): no CUDA-capable device is detected (code 100) / cudaIpcGetEventHandle: no CUDA-capable d"
+        },
+        {
+          "line": 224,
+          "language": "text",
+          "classification": "review-graphic",
+          "preview": "   IPC-STYLE SHARING (this chapter)          COPY-STYLE TRANSFER (Chapter 5) /  /    g_table[0].data                           src (device 0) = "
+        },
+        {
+          "line": 318,
+          "language": "unlabeled",
+          "classification": "preserve-output-or-reference",
+          "preview": "Exporter allocated data and exported handle 0. / Importer opened handle 0. / Immediately after opening, importer's view matches exporter's data:"
+        }
+      ]
+    },
+    {
+      "page": "docs/part2/08-broadcast-and-reduce-the-first-two-collectives-by-hand.md",
+      "fences": [
+        {
+          "line": 82,
+          "language": "unlabeled",
+          "classification": "preserve-output-or-reference",
+          "preview": "cudaGetDeviceCount(): 0 device(s). / cudaSetDevice(root=0): no CUDA-capable device is detected (code 100) / cudaMalloc(root's data): no CUDA-cap"
+        },
+        {
+          "line": 159,
+          "language": "unlabeled",
+          "classification": "preserve-output-or-reference",
+          "preview": "cudaGetDeviceCount(): 0 device(s). / Reduced 0 of 0 device(s) into the host accumulator. On real / hardware this same per-device stage-then-accu"
+        },
+        {
+          "line": 285,
+          "language": "unlabeled",
+          "classification": "preserve-output-or-reference",
+          "preview": "Broadcast: all 4 devices hold an identical copy of the root's data: PASS / Reduce (device order 0..3): result matches independent reference: P"
+        }
+      ]
+    },
+    {
+      "page": "docs/part2/09-ring-all-reduce-the-algorithm-behind-every-multi-gpu-training-job.md",
+      "fences": [
+        {
+          "line": 19,
+          "language": "text",
+          "classification": "review-graphic",
+          "preview": "NAIVE (Chapter 8's two collectives, chained): /  /   REDUCE:     dev0 --+ /               dev1 --+ /               dev2 --+--> [ HUB ] /              "
+        },
+        {
+          "line": 149,
+          "language": "unlabeled",
+          "classification": "preserve-output-or-reference",
+          "preview": "cudaGetDeviceCount(): 0 device(s). / Broadcast phase, cudaMemcpy(host result -> root device): no CUDA-capable device is detected (code 100) /  / R"
+        },
+        {
+          "line": 177,
+          "language": "text",
+          "classification": "review-graphic",
+          "preview": "ONE ring step, all N devices simultaneously: /  /     dev0 --chunk--> dev1        dev1 --chunk--> dev2 /     dev2 --chunk--> dev3        dev3 --ch"
+        },
+        {
+          "line": 241,
+          "language": "unlabeled",
+          "classification": "preserve-output-or-reference",
+          "preview": "cudaGetDeviceCount(): 0 device(s). /  / 0 of 0 device(s) completed this ring step. On real hardware, / every device performs exactly one cudaMemcp"
+        },
+        {
+          "line": 265,
+          "language": "text",
+          "classification": "review-graphic",
+          "preview": "Tracking just CHUNK 0 as it travels around the ring (N=4 devices): /  / SCATTER-REDUCE phase (each hop ADDS the local value in): /  /   dev0(10) --c"
+        },
+        {
+          "line": 390,
+          "language": "unlabeled",
+          "classification": "preserve-output-or-reference",
+          "preview": "Independent reference (sum of all 4 devices' chunks): 100 104 108 112  /  / After 6 ring steps (scatter-reduce + all-gather), all 4 devices hold"
+        }
+      ]
+    },
+    {
+      "page": "docs/part2/10-all-gather-reduce-scatter-and-all-to-all.md",
+      "fences": [
+        {
+          "line": 19,
+          "language": "text",
+          "classification": "preserve-output-or-reference",
+          "preview": "This chapter's three collectives, N=4 devices, one chunk per device: /  / ALL-GATHER (10.1)                    REDUCE-SCATTER (10.2) / collect eve"
+        },
+        {
+          "line": 52,
+          "language": "text",
+          "classification": "review-graphic",
+          "preview": "All-gather as N simultaneous single-chunk broadcasts: /  /   dev0 broadcasts chunk \"10\"  --->  dev1, dev2, dev3 each receive it /   dev1 broadcast"
+        },
+        {
+          "line": 128,
+          "language": "unlabeled",
+          "classification": "preserve-output-or-reference",
+          "preview": "cudaGetDeviceCount(): 0 device(s). /  / 0 of 0 attempted point-to-point transfers completed. On real / hardware, every device ends up holding all "
+        },
+        {
+          "line": 149,
+          "language": "text",
+          "classification": "preserve-output-or-reference",
+          "preview": "Reduce-scatter as N independent single-chunk reduces: /  /   chunk 0, gathered from all 4 devices and summed: 10+20+30+40 = 100  -> dev0 /   chunk"
+        },
+        {
+          "line": 242,
+          "language": "unlabeled",
+          "classification": "preserve-output-or-reference",
+          "preview": "cudaGetDeviceCount(): 0 device(s). / 0 of 0 chunk(s) fully reduced, 0 of 0 chunk(s) scattered to / their owner. On real hardware, EVERY device e"
+        },
+        {
+          "line": 262,
+          "language": "text",
+          "classification": "preserve-output-or-reference",
+          "preview": "All-to-all as a full transpose (N=4, chunk \"ij\" = from device i, for device j): /  /   BEFORE (each device's own row, ready to send):     AFTER "
+        },
+        {
+          "line": 344,
+          "language": "unlabeled",
+          "classification": "preserve-output-or-reference",
+          "preview": "cudaGetDeviceCount(): 0 device(s). /  / 0 of 0 attempted point-to-point transfers completed -- / exactly 0 * (0 - 1) of them, one per ordered (src"
+        },
+        {
+          "line": 489,
+          "language": "unlabeled",
+          "classification": "preserve-output-or-reference",
+          "preview": "All-gather (N=4): independent reference chunks: 10 20 30 40  /   Every device's gathered array matches the reference: PASS /  / Reduce-scatter (N="
+        }
+      ]
+    },
+    {
+      "page": "docs/part2/11-nccl-what-it-actually-does-differently.md",
+      "fences": [
+        {
+          "line": 19,
+          "language": "text",
+          "classification": "review-graphic",
+          "preview": "This book's hand-built collectives (Ch8-10)         NCCL's real API (this chapter) /  /   broadcast:      cudaMemcpyPeer loop, from root  -->  n"
+        },
+        {
+          "line": 42,
+          "language": "text",
+          "classification": "review-graphic",
+          "preview": "Before any collective call, a real NCCL program needs a communicator: /  /   cudaGetDeviceCount()  -->  ncclCommInitAll(comms, ndev, devlist)  -"
+        },
+        {
+          "line": 141,
+          "language": "unlabeled",
+          "classification": "preserve-output-or-reference",
+          "preview": "cudaGetDeviceCount(): 0 device(s). / ncclGetVersion(): no error (code 0), reports version 21803 (major.minor.patch = 2.18.3) /  / (a) ncclCommInit"
+        },
+        {
+          "line": 171,
+          "language": "text",
+          "classification": "review-graphic",
+          "preview": "Chapter 8-10's six collectives, and their real NCCL 2.18.3 call: /  /   Ch8 8.1   --> ncclBroadcast()          Ch10 10.1 --> ncclAllGather() /   C"
+        },
+        {
+          "line": 285,
+          "language": "unlabeled",
+          "classification": "preserve-output-or-reference",
+          "preview": "cudaGetDeviceCount(): 0 device(s). /  / -- Five of this book's six hand-built collectives, as one /    real NCCL call each: -- /  / ncclBroadcast()   "
+        },
+        {
+          "line": 326,
+          "language": "text",
+          "classification": "review-graphic",
+          "preview": "Ring (Ch9): every device touches only its 2 neighbors, but a chunk / needs N-1 hops to cross the whole ring once: /  /   dev0 -> dev1 -> dev2 -> d"
+        },
+        {
+          "line": 404,
+          "language": "unlabeled",
+          "classification": "preserve-output-or-reference",
+          "preview": "N          Ring rounds (Ch9)      Tree rounds (up+down)  Ratio      / -          2*(N-1)                2*ceil(log2(N))        ring/tree  / 4   "
+        }
+      ]
+    },
+    {
+      "page": "docs/part3/12-data-parallelism-replicated-model-sharded-data.md",
+      "fences": [
+        {
+          "line": 19,
+          "language": "text",
+          "classification": "preserve-output-or-reference",
+          "preview": "Data parallelism, N=4 devices, ONE global batch of 16 samples: /  /   SAME weights, broadcast to every device:      DIFFERENT data, sharded acro"
+        },
+        {
+          "line": 41,
+          "language": "text",
+          "classification": "review-graphic",
+          "preview": "Setting up one training step's replicas: /  /   cudaGetDeviceCount()  ------------------>  \"how many replicas?\" /         | /         +--> then: /   c"
+        },
+        {
+          "line": 148,
+          "language": "unlabeled",
+          "classification": "preserve-output-or-reference",
+          "preview": "cudaGetDeviceCount(): 0 device(s). /  / Sharding a global batch of 16 across this book's own real deviceCount (0): /   (0 device(s) -- nothing to "
+        },
+        {
+          "line": 179,
+          "language": "text",
+          "classification": "preserve-output-or-reference",
+          "preview": "Before this chapter: ncclSum only              This chapter: ncclAvg too /  /   ncclAllReduce(g, ..., ncclSum, ...)            ncclAllReduce(g, "
+        },
+        {
+          "line": 257,
+          "language": "unlabeled",
+          "classification": "preserve-output-or-reference",
+          "preview": "cudaGetDeviceCount(): 0 device(s). / ncclAllReduce(localGradients, ..., ncclAvg, ...): invalid argument (run with NCCL_DEBUG=WARN for details)"
+        },
+        {
+          "line": 283,
+          "language": "text",
+          "classification": "preserve-output-or-reference",
+          "preview": "After just ONE training step, starting all four replicas at w=0: /  /   WITH all-reduce (average, then same update):    WITHOUT all-reduce (each"
+        },
+        {
+          "line": 423,
+          "language": "unlabeled",
+          "classification": "preserve-output-or-reference",
+          "preview": "WITH synchronization (average gradients via ncclAvg every step): / step 0: replica0=0.0000 replica1=0.0000 replica2=0.0000 replica3=0.0000  | "
+        }
+      ]
+    },
+    {
+      "page": "docs/part3/13-model-parallelism-when-one-gpu-cant-hold-the-weights.md",
+      "fences": [
+        {
+          "line": 20,
+          "language": "text",
+          "classification": "review-graphic",
+          "preview": "Data parallelism (Chapter 12):        Model parallelism (this chapter): /   every device holds the WHOLE model    every device holds a PART of"
+        },
+        {
+          "line": 41,
+          "language": "text",
+          "classification": "preserve-output-or-reference",
+          "preview": "8 data-parallel replicas of GPT-3:        Model parallelism, 35-way split: /  /   dev  0- 4: replica 0 (needs 35 GPUs'      dev 0: layers  0- k "
+        },
+        {
+          "line": 152,
+          "language": "unlabeled",
+          "classification": "preserve-output-or-reference",
+          "preview": "Model                Params  Training(Adam,mp)      Min SXM x      Min NVL x / GPT-2 (1.5B)          1.5B            24.0 GB             1    "
+        },
+        {
+          "line": 177,
+          "language": "text",
+          "classification": "preserve-output-or-reference",
+          "preview": "Assigning layers (pure arithmetic,          Moving activations between them / needs no device):                          (a REAL transfer, nee"
+        },
+        {
+          "line": 290,
+          "language": "unlabeled",
+          "classification": "preserve-output-or-reference",
+          "preview": "cudaGetDeviceCount(): 0 device(s). /  / Partitioning 96 layers across this book's own real deviceCount (0): /   (0 device(s) -- nothing to print a"
+        },
+        {
+          "line": 326,
+          "language": "text",
+          "classification": "review-graphic",
+          "preview": "Unsplit (one device, all 8 layers):        Split (4 devices, 2 layers each): /  /   x -> L0 -> L1 -> L2 -> L3 -> L4 ->         dev0: x -> L0 -> "
+        },
+        {
+          "line": 469,
+          "language": "unlabeled",
+          "classification": "preserve-output-or-reference",
+          "preview": "input (1.00, 1.00): unsplit reference = (0.3285223992, 0.2628870847), split across 4 devices = (0.3285223992, 0.2628870847) -- PASS (bit-ide"
+        }
+      ]
+    },
+    {
+      "page": "docs/part3/14-tensor-parallelism-splitting-a-single-matrix-multiply-across-devices.md",
+      "fences": [
+        {
+          "line": 19,
+          "language": "text",
+          "classification": "review-graphic",
+          "preview": "Tensor parallelism, ONE MLP block, 2 devices: /  /   X (replicated on both devices, from an earlier broadcast) /      | /      +--------------------"
+        },
+        {
+          "line": 48,
+          "language": "text",
+          "classification": "preserve-output-or-reference",
+          "preview": "Column-parallel split of A (2 devices):        What each device needs: /  /   A = [ a00 a01 | a02 a03 ]                     rank 0: X (the FULL "
+        },
+        {
+          "line": 167,
+          "language": "unlabeled",
+          "classification": "preserve-output-or-reference",
+          "preview": "cudaGetDeviceCount(): 0 device(s). /  / Unsplit reference H = ReLU(X * A): [1.1000, 0.0000, 1.1000, 2.0000] / rank 0 computes columns [0, 2) indep"
+        },
+        {
+          "line": 199,
+          "language": "text",
+          "classification": "review-graphic",
+          "preview": "Row-parallel split of B (2 devices), matching       Partial products, before combining: / Section 14.1's column split of A: /  /   B = [ b00 b01 ]"
+        },
+        {
+          "line": 318,
+          "language": "unlabeled",
+          "classification": "preserve-output-or-reference",
+          "preview": "cudaGetDeviceCount(): 0 device(s). /  / Unsplit reference Z = H * B: [2.1700000000, 2.3700000000] / rank 0 computes a PARTIAL product from rows [0"
+        },
+        {
+          "line": 341,
+          "language": "text",
+          "classification": "review-graphic",
+          "preview": "One block, chained (Sections 14.1 + 14.2):        The claim being checked: /  /   X --> [column-split GEMM + ReLU] --> H            naive: sync "
+        },
+        {
+          "line": 515,
+          "language": "unlabeled",
+          "classification": "preserve-output-or-reference",
+          "preview": "input (1.00, 2.00): /   unsplit reference       = (2.1699999999999999, 2.3700000000000001) /   tensor-parallel (2-way) = (2.1699999999999999, 2."
+        }
+      ]
+    },
+    {
+      "page": "docs/part3/15-pipeline-parallelism-splitting-layers-across-devices-and-the-bubble-that-costs-you.md",
+      "fences": [
+        {
+          "line": 19,
+          "language": "text",
+          "classification": "preserve-output-or-reference",
+          "preview": "Chapter 13 (ONE micro-batch, K=4 devices):     This chapter (M micro-batches, PIPELINED): /  /   t=0  dev0: [mb0]                               "
+        },
+        {
+          "line": 39,
+          "language": "text",
+          "classification": "preserve-output-or-reference",
+          "preview": "Micro-batch m enters device 0 at time t=m,          Device d's own busy time steps, / reaches device d at time t=m+d:                     as m"
+        },
+        {
+          "line": 132,
+          "language": "unlabeled",
+          "classification": "preserve-output-or-reference",
+          "preview": "Pipeline schedule, K=4 devices, M=6 micro-batches (totalTimeSteps = M+K-1 = 9): /  / device \\ t   0  1  2  3  4  5  6  7  8 / dev 0        0  1  2"
+        },
+        {
+          "line": 161,
+          "language": "text",
+          "classification": "preserve-output-or-reference",
+          "preview": "Section 15.1's schedule says:              Chapter 6's real mechanism enforces it: /  /   t=0  dev0 starts micro-batch 0             dev0: ... k"
+        },
+        {
+          "line": 259,
+          "language": "unlabeled",
+          "classification": "preserve-output-or-reference",
+          "preview": "cudaSetDevice(0) [producer]: no CUDA-capable device is detected (code 100) / cudaStreamCreate(producerStream, on device 0): no CUDA-capable de"
+        },
+        {
+          "line": 289,
+          "language": "text",
+          "classification": "preserve-output-or-reference",
+          "preview": "Formula vs. counted result (Section 15.1's own K=4, M=6):     Correctness under interleaving: /  /   (K-1)/(M+K-1) = 3/9 = 0.3333...            "
+        },
+        {
+          "line": 444,
+          "language": "unlabeled",
+          "classification": "preserve-output-or-reference",
+          "preview": "Part A: bubble fraction (K-1)/(M+K-1), for real K values this / book has already used, checked at GPipe's own empirical / threshold M = 4xK: /  / K "
+        }
+      ]
+    },
+    {
+      "page": "docs/part3/16-domain-decomposition-for-scientific-computing-halo-exchange-and-distributed-stencils.md",
+      "fences": [
+        {
+          "line": 21,
+          "language": "text",
+          "classification": "preserve-output-or-reference",
+          "preview": "Chapters 12-15 split something ABSTRACT:        This chapter splits something PHYSICAL: /   data batches, model layers, matrices,            a"
+        },
+        {
+          "line": 48,
+          "language": "text",
+          "classification": "preserve-output-or-reference",
+          "preview": "Interior grid, 16 rows x 8 cols, split 4 ways (row-strip decomposition): /  /   row  0 ................   <- rank 0 owns rows [ 0, 4) /   row  1 ."
+        },
+        {
+          "line": 177,
+          "language": "unlabeled",
+          "classification": "preserve-output-or-reference",
+          "preview": "cudaGetDeviceCount(): 0 device(s). /  / Partitioning a 16 x 8 grid's rows across this book's own real deviceCount (0): /   (0 device(s) -- nothing"
+        },
+        {
+          "line": 204,
+          "language": "text",
+          "classification": "review-graphic",
+          "preview": "Halo exchange (this chapter):               Ring all-reduce (Chapter 9): /  /   dev0 <-> dev1 <-> dev2 <-> dev3             dev0 -> dev1 -> dev2"
+        },
+        {
+          "line": 310,
+          "language": "unlabeled",
+          "classification": "preserve-output-or-reference",
+          "preview": "cudaGetDeviceCount(): 0 device(s). /  / Halo exchange for a 4-way row-strip decomposition. Each rank exchanges exactly one row (64 bytes) with e"
+        },
+        {
+          "line": 342,
+          "language": "text",
+          "classification": "review-graphic",
+          "preview": "Jacobi (this chapter, order-independent):     Gauss-Seidel (NOT used here): /  /   read ALL of old[] --------> write new[]       read/write the "
+        },
+        {
+          "line": 611,
+          "language": "unlabeled",
+          "classification": "preserve-output-or-reference",
+          "preview": "Part A: domain-decomposed vs. unsplit Jacobi stencil, 30 iterations, 16 x 8 interior grid, 4-way row-strip decomposition (4 rows/rank). /  / Sam"
+        }
+      ]
+    },
+    {
+      "page": "docs/part4/17-barriers-and-global-synchronization-across-devices.md",
+      "fences": [
+        {
+          "line": 21,
+          "language": "text",
+          "classification": "preserve-output-or-reference",
+          "preview": "Per-device sync (Chapter 6):              A global barrier (this chapter): /  /   dev0: [ work ] -- sync -- done?          dev0: [ work ] -- BAR"
+        },
+        {
+          "line": 41,
+          "language": "text",
+          "classification": "review-graphic",
+          "preview": "What the loop from Chapter 3 actually checks, one device at a time: /  /   t=0: cudaSetDevice(0); cudaDeviceSynchronize();  --> dev0's queue con"
+        },
+        {
+          "line": 111,
+          "language": "unlabeled",
+          "classification": "preserve-output-or-reference",
+          "preview": "cudaGetDeviceCount(): 0 device(s). /  / Synchronizing 4 devices the way every device loop since Chapter 3 has -- one at a time, on this one CPU "
+        },
+        {
+          "line": 144,
+          "language": "text",
+          "classification": "preserve-output-or-reference",
+          "preview": "NCCL's documented collectives (2.31.2):     MPI's real barrier: /  /   AllReduce, Broadcast, Reduce,              MPI_Barrier() -- \"synchronizat"
+        },
+        {
+          "line": 249,
+          "language": "unlabeled",
+          "classification": "review-graphic",
+          "preview": "cudaGetDeviceCount(): 0 device(s). /  / ncclCommInitAll(worldSize=4): unhandled cuda error (run with NCCL_DEBUG=INFO for details) (code 1) / ncclA"
+        },
+        {
+          "line": 270,
+          "language": "text",
+          "classification": "preserve-output-or-reference",
+          "preview": "WITHOUT a barrier (heterogeneous arrival):    WITH a barrier: /  /   rank 2 arrives EARLY, writes, THEN            ALL ranks write first -- /   re"
+        },
+        {
+          "line": 440,
+          "language": "unlabeled",
+          "classification": "preserve-output-or-reference",
+          "preview": "Part A: 4 ranks, heterogeneous arrival times 3/7/2/5 (rank 2 arrives first, rank 1 arrives last), each contributing to a shared checkpoint t"
+        }
+      ]
+    },
+    {
+      "page": "docs/part4/18-load-balancing-across-heterogeneous-gpus.md",
+      "fences": [
+        {
+          "line": 21,
+          "language": "text",
+          "classification": "preserve-output-or-reference",
+          "preview": "Equal split (every chapter since Ch12):    Weighted split (this chapter): /  /   dev0 (1.0x): ==========  finishes t=225    dev0 (1.0x): ======="
+        },
+        {
+          "line": 41,
+          "language": "text",
+          "classification": "preserve-output-or-reference",
+          "preview": "A real cluster, growing over time: /  /   Quarter 1: [ A100 ] [ A100 ]              -- 2 identical GPUs, equal split is fine /   Quarter 3: [ A100"
+        },
+        {
+          "line": 147,
+          "language": "unlabeled",
+          "classification": "preserve-output-or-reference",
+          "preview": "cudaGetDeviceCount(): 0 device(s). /  / Querying real per-device capability for every device this book's own real deviceCount (0) reports: /   (0 "
+        },
+        {
+          "line": 176,
+          "language": "text",
+          "classification": "preserve-output-or-reference",
+          "preview": "Equal split (fair in WORK, not in TIME):     Weighted split (fair in TIME): /  /   dev0 (1.0x): [====] 225 units               dev0 (1.0x): [==="
+        },
+        {
+          "line": 294,
+          "language": "unlabeled",
+          "classification": "preserve-output-or-reference",
+          "preview": "4-device cluster, relative measured speeds: rank0=1.0x, rank1=1.0x, rank2=1.5x (faster H100), rank3=0.5x (throttled A100). Total work to spl"
+        },
+        {
+          "line": 318,
+          "language": "text",
+          "classification": "preserve-output-or-reference",
+          "preview": "Continuous ideal (Part A):                  Real, integer-quantized (Part B): /  /   work_i = totalWork * speed_i / speedSum      Same formula, "
+        },
+        {
+          "line": 496,
+          "language": "unlabeled",
+          "classification": "preserve-output-or-reference",
+          "preview": "Part A: continuous (infinitely divisible) ideal, 4 ranks, speeds 1.0x/1.0x/1.5x/0.5x, 900 total work units. /  /   equal split:    every rank ge"
+        }
+      ]
+    },
+    {
+      "page": "docs/part4/19-stragglers-failures-and-fault-tolerant-collectives.md",
+      "fences": [
+        {
+          "line": 21,
+          "language": "text",
+          "classification": "preserve-output-or-reference",
+          "preview": "This book's own environment            A real cluster, one peer dies / (no device, ever):                     mid-collective: /  /   rank0 -> nccl"
+        },
+        {
+          "line": 43,
+          "language": "text",
+          "classification": "review-graphic",
+          "preview": "Blocking communicator (every real NCCL call this book has made, Ch11-18): /  /   ncclCommInitRankConfig(blocking=1)  or  ncclAllReduce(...)  or "
+        },
+        {
+          "line": 137,
+          "language": "unlabeled",
+          "classification": "preserve-output-or-reference",
+          "preview": "cudaGetDeviceCount(): 0 device(s). /  / ncclGetUniqueId(): no error (code 0) / ncclCommInitRankConfig(blocking=1): unhandled cuda error (run with "
+        },
+        {
+          "line": 158,
+          "language": "text",
+          "classification": "preserve-output-or-reference",
+          "preview": "NCCL's real escape (this section):          MPI ULFM's real escape (preview):    /  /   detect: poll ncclCommGetAsyncError()          MPIX_Comm_"
+        },
+        {
+          "line": 319,
+          "language": "unlabeled",
+          "classification": "preserve-output-or-reference",
+          "preview": "cudaGetDeviceCount(): 0 device(s). /  / ncclCommInitRankConfig(blocking=0): unhandled cuda error (run with NCCL_DEBUG=INFO for details) (code 1)"
+        },
+        {
+          "line": 345,
+          "language": "text",
+          "classification": "preserve-output-or-reference",
+          "preview": "N=4 required + b=2 backup workers, one step: /  /   required: [ 10 ][ 11 ][ 9 ][ 1000000 ]   one of these is a catastrophic straggler /   backup: "
+        },
+        {
+          "line": 498,
+          "language": "unlabeled",
+          "classification": "preserve-output-or-reference",
+          "preview": "Section 19.3: backup workers, N=4 required + b=2 backup, 3 fixed scenarios. /  / Scenario: no true straggler /   required times: [10.0, 11.0, 9.0,"
+        }
+      ]
+    },
+    {
+      "page": "docs/part5/20-mpi-from-scratch-then-cuda-aware-mpi-scaling-beyond-one-node.md",
+      "fences": [
+        {
+          "line": 20,
+          "language": "text",
+          "classification": "preserve-output-or-reference",
+          "preview": "Every earlier chapter (Ch3-19):              This chapter (Ch20), Part 5: /  /   cudaSetDevice()/ncclCommInitAll()             mpirun -np 4 ./a."
+        },
+        {
+          "line": 40,
+          "language": "text",
+          "classification": "preserve-output-or-reference",
+          "preview": "GPU multi-device model (every chapter so far):     MPI multi-process model (this chapter): /  /   ONE process                                   "
+        },
+        {
+          "line": 146,
+          "language": "unlabeled",
+          "classification": "preserve-output-or-reference",
+          "preview": "rank 0 of 4: sent 0, received 300 (elems=1, mode=naive) / rank 1 of 4: sent 100, received 0 (elems=1, mode=naive) / rank 2 of 4: sent 200, recei"
+        },
+        {
+          "line": 157,
+          "language": "unlabeled",
+          "classification": "preserve-output-or-reference",
+          "preview": "    rank 0 of 4: sent 0, received 300 (elems=1000000, mode=sendrecv) /     rank 1 of 4: sent 100, received 0 (elems=1000000, mode=sendrecv) /   "
+        },
+        {
+          "line": 171,
+          "language": "text",
+          "classification": "preserve-output-or-reference",
+          "preview": "CUDA-aware MPI (if MPIX_Query_cuda_support()==1):    NOT CUDA-aware (this build, ==0): /  /   rank 0: MPI_Send(devicePtr, ...)                  "
+        },
+        {
+          "line": 273,
+          "language": "unlabeled",
+          "classification": "preserve-output-or-reference",
+          "preview": "MPIX_CUDA_AWARE_SUPPORT (compile-time macro): 0 / MPIX_Query_cuda_support() (runtime query):    0 / Both report 0 (false) for this exact install"
+        },
+        {
+          "line": 293,
+          "language": "text",
+          "classification": "preserve-output-or-reference",
+          "preview": "Open MPI's real ULFM history:                  This environment's real installed MPI: /  /   2012: ULFM beta (separate project)              apt"
+        },
+        {
+          "line": 372,
+          "language": "unlabeled",
+          "classification": "preserve-output-or-reference",
+          "preview": "rank 0: about to MPI_Send to invalid destination rank 999 (real world size 2), now under MPI_ERRORS_RETURN / rank 0: MPI_Send RETURNED rc=6 (M"
+        },
+        {
+          "line": 382,
+          "language": "unlabeled",
+          "classification": "preserve-output-or-reference",
+          "preview": "[vm:01220] *** An error occurred in MPI_Send / [vm:01220] *** reported by process [1748959233,0] / [vm:01220] *** on communicator MPI_COMM_WORLD"
+        }
+      ]
+    },
+    {
+      "page": "docs/part5/21-gpudirect-rdma-bypassing-the-host-entirely.md",
+      "fences": [
+        {
+          "line": 20,
+          "language": "text",
+          "classification": "preserve-output-or-reference",
+          "preview": "Chapter 20 alone:                          This chapter (Ch21): /  /   MPI_Init/Comm_rank/Comm_size                MPI bootstraps NCCL's id (21."
+        },
+        {
+          "line": 44,
+          "language": "text",
+          "classification": "review-graphic",
+          "preview": "Step 1: mpirun -np N ./job launches N real OS processes (Chapter 20, unchanged) /  /   +--------+   +--------+   +--------+   +----------+ /   | r"
+        },
+        {
+          "line": 198,
+          "language": "text",
+          "classification": "preserve-output-or-reference",
+          "preview": "rank 0: generated the ONE ncclUniqueId every rank will share, and is about to MPI_Bcast it to all 4 ranks. / rank 1 of 4: cudaSetDevice(localR"
+        },
+        {
+          "line": 221,
+          "language": "text",
+          "classification": "preserve-output-or-reference",
+          "preview": "Without GPUDirect RDMA (Ch20's own Section 20.2 fallback) -- four real hops: /  /   GPU memory -> cudaMemcpy(D2H) -> Host buffer -> network hop "
+        },
+        {
+          "line": 351,
+          "language": "text",
+          "classification": "preserve-output-or-reference",
+          "preview": "cudaGetDeviceCount(): no CUDA-capable device is detected, count=0 /  / cudaDeviceGetAttribute(cudaDevAttrGPUDirectRDMASupported): no CUDA-capabl"
+        },
+        {
+          "line": 374,
+          "language": "text",
+          "classification": "preserve-output-or-reference",
+          "preview": "Good PCIe path (single rail):           Crossing inter-socket QPI (single rail, Ivy Bridge): /  /   GPU --- PCIe switch --- NIC            GPU -"
+        },
+        {
+          "line": 488,
+          "language": "text",
+          "classification": "preserve-output-or-reference",
+          "preview": "Part A -- small-message fixed latency (cited, not measured here): /   GPUDirect RDMA, GPU-to-GPU:  1.9us  (Host-to-GPU: 1.7us, a different pat"
+        }
+      ]
+    },
+    {
+      "page": "docs/part5/22-nvshmem-and-gpu-initiated-communication.md",
+      "fences": [
+        {
+          "line": 20,
+          "language": "text",
+          "classification": "review-graphic",
+          "preview": "Host-initiated (every chapter since Ch8): / +--------+     +--------------------+     +------------------+ / |  CPU   | --> | ncclAllReduce(...)"
+        },
+        {
+          "line": 45,
+          "language": "text",
+          "classification": "review-graphic",
+          "preview": "Every cudaMalloc() since Ch4:               NVSHMEM's own nvshmem_malloc(): /  / +-----------------------+                   +------------------"
+        },
+        {
+          "line": 136,
+          "language": "text",
+          "classification": "preserve-output-or-reference",
+          "preview": "./src/host/init/init.cu:709 Cuda failure. Status = CUDA_ERROR_NO_DEVICE. Description = no CUDA-capable device is detectednvshmem_init() retu"
+        },
+        {
+          "line": 152,
+          "language": "text",
+          "classification": "review-graphic",
+          "preview": "Section 22.1 (no bootstrap): / +----------------+     +------------------+ / | nvshmem_init() | --> | n_pes=1, my_pe=0 |  (correct -- but the wh"
+        },
+        {
+          "line": 239,
+          "language": "text",
+          "classification": "preserve-output-or-reference",
+          "preview": "./src/host/init/init.cu:709 Cuda failure. Status = CUDA_ERROR_NO_DEVICE. Description = no CUDA-capable device is detectedPE 0 of 2: nvshmemx"
+        },
+        {
+          "line": 260,
+          "language": "text",
+          "classification": "review-graphic",
+          "preview": "Every kernel launch since Ch3:                 This section's own launch: /  / +----------------------------+                 +-----------------"
+        },
+        {
+          "line": 354,
+          "language": "text",
+          "classification": "preserve-output-or-reference",
+          "preview": "./src/host/init/init.cu:709 Cuda failure. Status = CUDA_ERROR_NO_DEVICE. Description = no CUDA-capable device is detected./src/host/init/ini"
+        }
+      ]
+    },
+    {
+      "page": "docs/part5/23-cuda-graphs-across-multiple-gpus-and-multiple-nodes.md",
+      "fences": [
+        {
+          "line": 20,
+          "language": "text",
+          "classification": "review-graphic",
+          "preview": "Every earlier chapter's device work:               This chapter's own graphs: /  / +--------+     +------------------+                 +--------"
+        },
+        {
+          "line": 45,
+          "language": "text",
+          "classification": "review-graphic",
+          "preview": "Device 0's stream (origin stream)        Device 1's stream /  / +-----------------------+ / | cudaMallocAsync()     | / | increment kernel launch| / |"
+        },
+        {
+          "line": 189,
+          "language": "text",
+          "classification": "preserve-output-or-reference",
+          "preview": "cudaGetDeviceCount() -> no CUDA-capable device is detected, count=0 /  / --- Building device 0's stream and event --- / cudaSetDevice(0) -> no CUD"
+        },
+        {
+          "line": 235,
+          "language": "text",
+          "classification": "review-graphic",
+          "preview": "Chapter 21's own hybrid bootstrap:                This chapter's own addition: /  / +---------------------+ / | ncclGetUniqueId()    |  (rank 0 on"
+        },
+        {
+          "line": 353,
+          "language": "text",
+          "classification": "preserve-output-or-reference",
+          "preview": "Rank 0: ncclGetUniqueId() -> no error / Rank 0: MPI_Bcast(id) done -- every rank now holds the SAME id (Chapter 21's own bootstrap, reused unc"
+        },
+        {
+          "line": 368,
+          "language": "text",
+          "classification": "preserve-output-or-reference",
+          "preview": "    Signal: Segmentation fault (11) /     Signal code: Address not mapped (1) /     [...] /     /lib/x86_64-linux-gnu/libnccl.so.2(ncclAllReduce+0"
+        },
+        {
+          "line": 383,
+          "language": "text",
+          "classification": "review-graphic",
+          "preview": "What a host node CAN do:                      What a host node CANNOT do: /  / +------------------------+                     +-----------------"
+        },
+        {
+          "line": 508,
+          "language": "text",
+          "classification": "preserve-output-or-reference",
+          "preview": "--- Building a graph object and a host node (no device touched yet) --- / cudaGraphCreate(&graph, 0) -> no CUDA-capable device is detected / cud"
+        }
+      ]
+    },
+    {
+      "page": "docs/part6/24-multi-gpu-dense-matrix-multiplication-at-scale.md",
+      "fences": [
+        {
+          "line": 20,
+          "language": "text",
+          "classification": "review-graphic",
+          "preview": "Section 24.1:                   Section 24.2:                    Section 24.3: / \"does it fit?\"                  \"how do you split it         "
+        },
+        {
+          "line": 40,
+          "language": "text",
+          "classification": "review-graphic",
+          "preview": "Ch13's own question:                       This section's own question: /  / +----------------------+                    +----------------------"
+        },
+        {
+          "line": 138,
+          "language": "text",
+          "classification": "preserve-output-or-reference",
+          "preview": "Single-device budget (Ch1's own real H100 SXM figure): 80 GB = 74.51 GiB /  / GPT-3 FFN GEMM, small batch (M=12288 tokens) /   M=12288 K=12288 N=4"
+        },
+        {
+          "line": 171,
+          "language": "text",
+          "classification": "review-graphic",
+          "preview": "A 3x3 device grid, step l=1 (0-indexed): /  / A's column-panel 1 lives in device COLUMN 1 (one row-block per / device); each of those devices broa"
+        },
+        {
+          "line": 387,
+          "language": "text",
+          "classification": "preserve-output-or-reference",
+          "preview": "Grid: 3x3 processes, M=6 K=6 N=6 (blockM=2, blockN=2, A block K-width=2, B block K-height=2, panel kb=2, 3 steps) / Step 1/3: K-panel 0 -- A's"
+        },
+        {
+          "line": 422,
+          "language": "text",
+          "classification": "review-graphic",
+          "preview": "cuBLAS-Xt (this section, real, shipping):        cuBLASMp (NVIDIA's real current /                                                    multi-NO"
+        },
+        {
+          "line": 549,
+          "language": "text",
+          "classification": "preserve-output-or-reference",
+          "preview": "--- Creating a cuBLAS-Xt handle (real, host-side library object) --- / cublasXtCreate(&handle) -> CUBLAS_STATUS_SUCCESS (success) /  / --- Checkin"
+        },
+        {
+          "line": 563,
+          "language": "text",
+          "classification": "preserve-output-or-reference",
+          "preview": "    double free or corruption (fasttop) /     "
+        }
+      ]
+    },
+    {
+      "page": "docs/part6/25-distributed-training-of-a-neural-network-data-parallelism-and-ring-all-reduce.md",
+      "fences": [
+        {
+          "line": 20,
+          "language": "text",
+          "classification": "review-graphic",
+          "preview": "Chapter 12's own demonstration:              This chapter's own case study: /  /   ONE ncclAllReduce() call,                    STEPS x BUCKETS "
+        },
+        {
+          "line": 41,
+          "language": "text",
+          "classification": "preserve-output-or-reference",
+          "preview": "One training step's real bucket timeline (DDP's own overlap): /  / Backward pass:  [---bucket 4---][---bucket 3---][---bucket 2---][---bucket 1-"
+        },
+        {
+          "line": 111,
+          "language": "text",
+          "classification": "preserve-output-or-reference",
+          "preview": "ncclCommInitRank() -> unhandled cuda error (run with NCCL_DEBUG=INFO for details) (honestly failing -- no real device -- but every rank reac"
+        },
+        {
+          "line": 125,
+          "language": "text",
+          "classification": "preserve-output-or-reference",
+          "preview": "Reference (single process):          Distributed (N=4 replicas): /  /   ALL 8 samples, ONE flat pass          shard 0: samples 0-1  -> local gra"
+        },
+        {
+          "line": 374,
+          "language": "text",
+          "classification": "preserve-output-or-reference",
+          "preview": "After 20 steps (M=8 samples, N=4 replicas, lr=0.010): /   Reference (full-batch, single process): w=3.221214533 b=0.702814102 /   Replica 0 (sha"
+        },
+        {
+          "line": 404,
+          "language": "text",
+          "classification": "review-graphic",
+          "preview": "Ring all-reduce's own real cost (Ch9's formula), per rank:  2(N-1)/N * K /     N=2 ->   1.0 * K        N=256 -> ~1.99 * K   (approaches a CONS"
+        },
+        {
+          "line": 507,
+          "language": "text",
+          "classification": "preserve-output-or-reference",
+          "preview": "ResNet-50 fp32 gradient buffer: K = 102228128 bytes (97.49 MiB) /  / N      rounds     ring: 2(N-1)/N*K (MiB)   naive: 2(N-1)*K (GiB)    ratio  "
+        }
+      ]
+    },
+    {
+      "page": "docs/part6/26-multi-gpu-llm-inference-tensor-and-pipeline-parallelism-in-practice.md",
+      "fences": [
+        {
+          "line": 20,
+          "language": "text",
+          "classification": "review-graphic",
+          "preview": "Chapter 14 (isolated):        Chapter 15 (isolated):        This chapter (combined): /  /   TP split ONE GEMM             PP split LAYERS across"
+        },
+        {
+          "line": 43,
+          "language": "text",
+          "classification": "review-graphic",
+          "preview": "A 2 x 2 grid: PP_STAGES=2, TP_DEGREE=2 (4 devices total) /  / Stage 0                              Stage 1 / +----------------+----------------+  "
+        },
+        {
+          "line": 250,
+          "language": "text",
+          "classification": "preserve-output-or-reference",
+          "preview": "Grid: PP_STAGES=2 x TP_DEGREE=2 = 4 total simulated devices, 4 layers (2 per stage), 4 microbatches (inference: forward only) /  / Microbatch 0:"
+        },
+        {
+          "line": 275,
+          "language": "text",
+          "classification": "preserve-output-or-reference",
+          "preview": "Real config: TP=8 (within ONE node)      Hypothetical: TP=280 (whole replica, /              PP=35 (across nodes)                      no PP a"
+        },
+        {
+          "line": 389,
+          "language": "text",
+          "classification": "preserve-output-or-reference",
+          "preview": "Megatron-Turing NLG 530B (Smith et al.): 530000000000 params, TP=8 (within a node), PP=35 (across nodes), TOTAL=280 GPUs per model replica /  / "
+        },
+        {
+          "line": 413,
+          "language": "text",
+          "classification": "review-graphic",
+          "preview": "TP=1 (one GPU, capacity C):        TP=2 (two GPUs, capacity C each): /  / +----------------------+           +----------+  +----------+ / | model "
+        },
+        {
+          "line": 518,
+          "language": "text",
+          "classification": "preserve-output-or-reference",
+          "preview": "--- Real, cited numbers (vLLM blog post) -- NOT computed by this program --- / Between TP=1 and TP=2: KV cache blocks increase 13.9x; measured"
+        }
+      ]
+    },
+    {
+      "page": "docs/part6/27-n-body-simulation-at-scale.md",
+      "fences": [
+        {
+          "line": 19,
+          "language": "text",
+          "classification": "review-graphic",
+          "preview": "Chapter 16 (PDE stencil, halo exchange):     This chapter (N-body, all-gather): /  /   device owns a GRID REGION                    device owns "
+        },
+        {
+          "line": 41,
+          "language": "text",
+          "classification": "preserve-output-or-reference",
+          "preview": "Chapter 16's halo exchange (2 shards):        This chapter's all-gather (3 shards): /  / Shard 0: [own region][boundary from 1]        Shard 0: "
+        },
+        {
+          "line": 208,
+          "language": "text",
+          "classification": "preserve-output-or-reference",
+          "preview": "N=12 bodies, P=3 shards (4 bodies/shard). Each shard must ALL-GATHER every other shard's bodies before computing forces -- unlike Chapter 16"
+        },
+        {
+          "line": 236,
+          "language": "text",
+          "classification": "preserve-output-or-reference",
+          "preview": "Ch16 halo exchange:  volume/shard = FIXED (boundary size only) /                       more shards -> SAME per-shard volume, /                  "
+        },
+        {
+          "line": 325,
+          "language": "text",
+          "classification": "preserve-output-or-reference",
+          "preview": "N=5000000 bodies (Burtscher & Pingali's own real cited scale), 32 bytes/body (this chapter's own stated assumption) -> total dataset = 152.5"
+        },
+        {
+          "line": 349,
+          "language": "text",
+          "classification": "review-graphic",
+          "preview": "All-pairs (27.1/27.2): every body visits EVERY other body, individually / O(N^2) compute; O(N) per-GPU communication, doesn't shrink with more"
+        },
+        {
+          "line": 449,
+          "language": "text",
+          "classification": "preserve-output-or-reference",
+          "preview": "--- This chapter's own worked model: O(N^2) vs O(N log N) operation counts (NOT a runtime measurement) --- / N            N^2 ops          N*l"
+        }
+      ]
+    },
+    {
+      "page": "docs/part6/28-distributed-breadth-first-search.md",
+      "fences": [
+        {
+          "line": 19,
+          "language": "text",
+          "classification": "review-graphic",
+          "preview": "Chapter 16 (fixed, minimum):   Chapter 27 (fixed, maximum):    This chapter (variable): /  /   ALWAYS the same 2             ALWAYS all P-1 othe"
+        },
+        {
+          "line": 39,
+          "language": "text",
+          "classification": "preserve-output-or-reference",
+          "preview": "Chapter 16's fixed halo pairs (3 ranks, always the same): /   (0,1) (1,2)                       -- and nothing else, ever /  / This chapter's grap"
+        },
+        {
+          "line": 232,
+          "language": "text",
+          "classification": "preserve-output-or-reference",
+          "preview": "Graph: 12 vertices, 17 edges, 1D-partitioned across 3 ranks (4 vertices/rank). Source vertex: 0. /  / Vertex  0 (owner rank 0): naive level= 0  "
+        },
+        {
+          "line": 263,
+          "language": "text",
+          "classification": "preserve-output-or-reference",
+          "preview": "Ch16 (fixed minimum):  ALWAYS 2 partners, regardless of P / Ch27 (fixed maximum):  ALWAYS P-1 partners, EVERY step, no choice / Ch28 (variable, "
+        },
+        {
+          "line": 349,
+          "language": "text",
+          "classification": "preserve-output-or-reference",
+          "preview": "P        Ch16 halo partners/rank  Ch27 all-gather partners/rank Ch28 1D-BFS WORST CASE/rank / ------------------------------------------------"
+        },
+        {
+          "line": 384,
+          "language": "text",
+          "classification": "preserve-output-or-reference",
+          "preview": "2D partitioning (Yoo et al.):          Direction-optimizing (Beamer et al.): /  /   edges, not vertices, owned              small frontier -> TO"
+        },
+        {
+          "line": 490,
+          "language": "text",
+          "classification": "preserve-output-or-reference",
+          "preview": "--- Beamer et al.'s own real direction-optimizing idea, illustrated (NOT a real graph's measured data) --- / This chapter's own illustrative f"
+        }
+      ]
+    },
+    {
+      "page": "docs/part6/29-distributed-jacobi-solver.md",
+      "fences": [
+        {
+          "line": 13,
+          "language": "text",
+          "classification": "review-graphic",
+          "preview": "Chapter 16's stencil sweep:              This chapter's Jacobi solver: /  /   rank 0 ---halo--- rank 1                rank 0 ---halo--- rank 1 /  "
+        },
+        {
+          "line": 43,
+          "language": "unlabeled",
+          "classification": "preserve-output-or-reference",
+          "preview": "const int top = rank > 0 ? rank - 1 : (size - 1); / const int bottom = (rank + 1) % size; / MPI_CALL(MPI_Sendrecv(a_new + iy_start * nx, nx, MPI"
+        },
+        {
+          "line": 252,
+          "language": "unlabeled",
+          "classification": "preserve-output-or-reference",
+          "preview": "g++ -O2 -ffp-contract=off 84_distributed_jacobi_correctness_simulation.cpp -o 84_distributed_jacobi_correctness_simulation / ./84_distributed_"
+        },
+        {
+          "line": 257,
+          "language": "text",
+          "classification": "preserve-output-or-reference",
+          "preview": "Reference (single-process) 12x8-grid Jacobi solve, 40 iterations. / Global residual norm (full-grid single-pass sum): 1.3874786747088721 /  / P   "
+        },
+        {
+          "line": 275,
+          "language": "text",
+          "classification": "preserve-output-or-reference",
+          "preview": "Single flat pass (reference):        Per-rank partial sums, then combined: /  /   (((0+a)+b)+c)+d)+e)+f)+g)+h           ((0+a)+b)+c)+d)  +  ((0+"
+        },
+        {
+          "line": 388,
+          "language": "unlabeled",
+          "classification": "preserve-output-or-reference",
+          "preview": "g++ -O2 85_allreduce_check_frequency_cost_model.cpp -o 85_allreduce_check_frequency_cost_model / ./85_allreduce_check_frequency_cost_model / "
+        },
+        {
+          "line": 393,
+          "language": "text",
+          "classification": "preserve-output-or-reference",
+          "preview": "--- Per-ITERATION cost: halo exchange (Section 29.1's update step) --- / Chapter 16's own real finding still holds here unchanged: each rank t"
+        },
+        {
+          "line": 423,
+          "language": "text",
+          "classification": "review-graphic",
+          "preview": "Halo exchange cost (per iteration):        Allreduce cost (per CHECK): /  /   fixed, 2 neighbors                         grows with P (ring: lin"
+        },
+        {
+          "line": 537,
+          "language": "unlabeled",
+          "classification": "preserve-output-or-reference",
+          "preview": "g++ -O2 86_jacobi_convergence_rate_model.cpp -o 86_jacobi_convergence_rate_model / ./86_jacobi_convergence_rate_model / "
+        },
+        {
+          "line": 542,
+          "language": "text",
+          "classification": "preserve-output-or-reference",
+          "preview": "--- Jacobi iterations to HALVE the error, n x n grid --- / rho_Jacobi = cos(pi/(n+1)) ~ 1 - pi^2/(2(n+1)^2)  (Demmel, CS267) / m_half ~ 2*ln(2)*"
+        },
+        {
+          "line": 568,
+          "language": "text",
+          "classification": "review-graphic",
+          "preview": "Jacobi's own real slowness (Demmel):        What production solvers actually do: /  /   n=10,000 grid                                same halo e"
+        }
+      ]
+    },
+    {
+      "page": "docs/part6/30-multi-gpu-ray-tracing-and-rendering.md",
+      "fences": [
+        {
+          "line": 9,
+          "language": "text",
+          "classification": "review-graphic",
+          "preview": "Every prior Part 6 chapter:              This chapter's clean case: /  /   rank 0 ---per-step comm--- rank 1        rank 0   (no comm at all)   "
+        },
+        {
+          "line": 163,
+          "language": "unlabeled",
+          "classification": "preserve-output-or-reference",
+          "preview": "g++ -O2 87_independent_tile_rendering_correctness_simulation.cpp -o 87_independent_tile_rendering_correctness_simulation / ./87_independent_ti"
+        },
+        {
+          "line": 168,
+          "language": "text",
+          "classification": "preserve-output-or-reference",
+          "preview": "Reference (single-process) 16x12 render, 2-circle scene ('.'=background, '1'/'2'=circle color, nearest hit wins): /  / ................ / ........"
+        },
+        {
+          "line": 195,
+          "language": "text",
+          "classification": "preserve-output-or-reference",
+          "preview": "Chapter 16 / Chapter 29's tiles:            This chapter's tiles: /  /   MUST be contiguous strips                  can be ANY assignment of row"
+        },
+        {
+          "line": 335,
+          "language": "unlabeled",
+          "classification": "preserve-output-or-reference",
+          "preview": "g++ -O2 88_rendering_comm_and_load_balance_model.cpp -o 88_rendering_comm_and_load_balance_model / ./88_rendering_comm_and_load_balance_model / "
+        },
+        {
+          "line": 340,
+          "language": "text",
+          "classification": "preserve-output-or-reference",
+          "preview": "--- Total communication volume vs. earlier Part 6 chapters --- / Every case study since Ch24 pays a communication cost that GROWS with the num"
+        },
+        {
+          "line": 390,
+          "language": "text",
+          "classification": "preserve-output-or-reference",
+          "preview": "Naive equal split (contiguous, unbalanced):    Rebalanced (non-contiguous, balanced): /  /   rank 0: rows 0-2   (light)                     rank"
+        },
+        {
+          "line": 498,
+          "language": "unlabeled",
+          "classification": "preserve-output-or-reference",
+          "preview": "g++ -O2 89_out_of_core_scene_scale_model.cpp -o 89_out_of_core_scene_scale_model / ./89_out_of_core_scene_scale_model / "
+        },
+        {
+          "line": 503,
+          "language": "text",
+          "classification": "preserve-output-or-reference",
+          "preview": "--- R2E2's own real scale problem --- / Real cited fact: \"scenes with up to a terabyte of geometry and texture data (where as little as 1/250t"
+        },
+        {
+          "line": 521,
+          "language": "text",
+          "classification": "review-graphic",
+          "preview": "Section 30.1's assumption:                  R2E2's own real production reality: /  /   whole scene fits in                        whole scene do"
+        }
+      ]
+    },
+    {
+      "page": "docs/part6/31-multi-gpu-monte-carlo-risk-simulation.md",
+      "fences": [
+        {
+          "line": 11,
+          "language": "text",
+          "classification": "review-graphic",
+          "preview": "Chapter 30's rendering case:              This chapter's Monte Carlo case: /  /   rank 0   (no comm)   rank 1              rank 0   (no comm)   "
+        },
+        {
+          "line": 175,
+          "language": "unlabeled",
+          "classification": "preserve-output-or-reference",
+          "preview": "g++ -O2 -ffp-contract=off 90_independent_path_correctness_simulation.cpp -o 90_independent_path_correctness_simulation / ./90_independent_path"
+        },
+        {
+          "line": 180,
+          "language": "text",
+          "classification": "preserve-output-or-reference",
+          "preview": "Reference (single-process): count=24  mean=10.541666666666666  M2=3837.9583333333348 /  / P      count      combined mean  combined M2          "
+        },
+        {
+          "line": 198,
+          "language": "text",
+          "classification": "review-graphic",
+          "preview": "Integer sums (count, raw payoff totals):     Floating-point mean and M2: /  /   associative regardless of grouping           NOT associative -- / "
+        },
+        {
+          "line": 356,
+          "language": "unlabeled",
+          "classification": "preserve-output-or-reference",
+          "preview": "g++ -O2 -ffp-contract=off 91_rng_independence_and_reduction_topology_model.cpp -o 91_rng_independence_and_reduction_topology_model / ./91_rng_"
+        },
+        {
+          "line": 361,
+          "language": "text",
+          "classification": "preserve-output-or-reference",
+          "preview": "--- Real production RNG independence: cuRAND's own real Philox family --- / NVIDIA's own real cuRAND documentation: \"CURAND_RNG_PSEUDO_PHILOX4"
+        },
+        {
+          "line": 379,
+          "language": "text",
+          "classification": "preserve-output-or-reference",
+          "preview": "Same 8 partial results: /  /   Sequential fold:  ((((((( a+b )+c )+d )+e )+f )+g )+h )   -- 7 rounds /   Tree fold:         (( (a+b)+(c+d) ) + ( ("
+        },
+        {
+          "line": 507,
+          "language": "unlabeled",
+          "classification": "preserve-output-or-reference",
+          "preview": "g++ -O2 92_var_percentile_and_allgather_cost_model.cpp -o 92_var_percentile_and_allgather_cost_model / ./92_var_percentile_and_allgather_cost_"
+        },
+        {
+          "line": 512,
+          "language": "text",
+          "classification": "preserve-output-or-reference",
+          "preview": "Reference (single-process), 100 simulated paths. / Basel's own real quantitative standard: \"'value-at-risk' be computed daily, using a 99th pe"
+        },
+        {
+          "line": 533,
+          "language": "text",
+          "classification": "review-graphic",
+          "preview": "Chan et al. (mean, variance):              Exact percentile (VaR): /  /   O(1) values per rank                       O(N/P) values per rank /   --"
+        }
+      ]
+    },
+    {
+      "page": "docs/part7/32-mixture-of-experts-at-scale.md",
+      "fences": [
+        {
+          "line": 9,
+          "language": "text",
+          "classification": "review-graphic",
+          "preview": "+------------------------------------------------------------------+ / |  Chapters 8-31 (every collective in this book so far):           | / | "
+        },
+        {
+          "line": 41,
+          "language": "text",
+          "classification": "review-graphic",
+          "preview": "+-------------------------------------------------------------+ / | gate(token) -> pick top-2 experts by score                  | / |   |       "
+        },
+        {
+          "line": 309,
+          "language": "unlabeled",
+          "classification": "preserve-output-or-reference",
+          "preview": "Part A -- GShard-style per-group capacity, 24 tokens, 6 experts, top-2, capacity factor 1.25 / Reference (P=1, whole batch is one group): 19 o"
+        },
+        {
+          "line": 349,
+          "language": "text",
+          "classification": "review-graphic",
+          "preview": "+---------------------------------------------------------------+ / |  Normal kernels: large batch (thousands of tokens)             | / |  band"
+        },
+        {
+          "line": 461,
+          "language": "unlabeled",
+          "classification": "preserve-output-or-reference",
+          "preview": "DeepEP V1 -- Normal kernels (real cited data, docs/legacy.md): / Type       EP     Dispatch BW (GB/s)   Combine BW (GB/s)    / Intranode  8     "
+        },
+        {
+          "line": 494,
+          "language": "text",
+          "classification": "review-graphic",
+          "preview": "+-------------------------------------------------------------+ / | Host-mediated all-to-all (Chapter 10 / Chapter 20):          | / |   CPU iss"
+        },
+        {
+          "line": 625,
+          "language": "unlabeled",
+          "classification": "preserve-output-or-reference",
+          "preview": "cudaGetDeviceCount: err=100 (no CUDA-capable device is detected) count=0 / no device to bind (local rank 0) -- skipping cudaSetDevice / nvshmemx"
+        }
+      ]
+    },
+    {
+      "page": "docs/part7/33-disaggregated-llm-inference.md",
+      "fences": [
+        {
+          "line": 9,
+          "language": "text",
+          "classification": "review-graphic",
+          "preview": "+------------------------------------------------------------------+ / | Chapter 26 (this book's earlier LLM inference chapter):          | / | "
+        },
+        {
+          "line": 35,
+          "language": "text",
+          "classification": "review-graphic",
+          "preview": "+----------------------------------------------------------+ / | PREFILL: N tokens, all at once                             | / |   FLOPs  ~ N *"
+        },
+        {
+          "line": 121,
+          "language": "unlabeled",
+          "classification": "preserve-output-or-reference",
+          "preview": "Illustrative model (Chapter 1's arithmetic-intensity framing applied to one transformer layer of hidden dimension d): / Prompt N     Prefill F"
+        },
+        {
+          "line": 148,
+          "language": "text",
+          "classification": "review-graphic",
+          "preview": "+----------------------------------------------------------+ / | PREFILL phase: Tp-way head split, integer sum-reduce      | / |   (any Tp) -> k"
+        },
+        {
+          "line": 291,
+          "language": "unlabeled",
+          "classification": "preserve-output-or-reference",
+          "preview": "Reference (Tp=1, Td=1): kv[0..3]=304,722,532,532  decode tokens: 24624 215460 738720 2954880 27578880 126074880  /  / Tp     Td     match      n"
+        },
+        {
+          "line": 326,
+          "language": "text",
+          "classification": "review-graphic",
+          "preview": "+----------------------------------------------------------+ / | Prefill instance (VRAM)  --- KV cache, point-to-point --> Decode instance (VR"
+        },
+        {
+          "line": 415,
+          "language": "unlabeled",
+          "classification": "preserve-output-or-reference",
+          "preview": "DistServe's own real cited KV cache example: a single 512-token OPT-66B request's KV cache is approximately 1.13 GB. /  / Link                  "
+        }
+      ]
+    },
+    {
+      "page": "docs/part7/34-gpu-recommendation-systems.md",
+      "fences": [
+        {
+          "line": 9,
+          "language": "text",
+          "classification": "review-graphic",
+          "preview": "+------------------------------------------------------------------+ / | Every earlier chapter: ONE strategy for the WHOLE model            | / "
+        },
+        {
+          "line": 35,
+          "language": "text",
+          "classification": "review-graphic",
+          "preview": "+----------------------------------------------------------+ / | Embedding tables: can reach TBs -> must be SHARDED (MP)    | / |   per GPU: 80 "
+        },
+        {
+          "line": 139,
+          "language": "unlabeled",
+          "classification": "preserve-output-or-reference",
+          "preview": "Per-GPU HBM: 80 GB (A100 80GB); one 8-GPU node in aggregate: 640 GB -- the 640 GB figure in HugeCTR's ETC documentation is this NODE aggrega"
+        },
+        {
+          "line": 163,
+          "language": "text",
+          "classification": "review-graphic",
+          "preview": "+----------------------------------------------------------+ / | BEFORE all-to-all: sharded by FEATURE, full batch per rank | / |   rank r owns "
+        },
+        {
+          "line": 356,
+          "language": "unlabeled",
+          "classification": "preserve-output-or-reference",
+          "preview": "Reference (single-process): sample 0's full feature vector: 0 72 83 9 70 91 47 15 70 58 85 85  /  / P      values sent off-rank   cyclic unpack:"
+        },
+        {
+          "line": 383,
+          "language": "text",
+          "classification": "review-graphic",
+          "preview": "+----------------------------------------------------------+ / | P grows -> per-GPU embedding shard shrinks LINEARLY        | / |            (un"
+        },
+        {
+          "line": 475,
+          "language": "unlabeled",
+          "classification": "preserve-output-or-reference",
+          "preview": "Per-step embedding payload: batch=65536 x slots=26 x dim=128 x 2 bytes = 436207616 bytes (0.436 GB) that must be FULLY reassembled into batc"
+        }
+      ]
+    },
+    {
+      "page": "docs/part7/35-ai-weather-forecasting-at-scale.md",
+      "fences": [
+        {
+          "line": 9,
+          "language": "text",
+          "classification": "review-graphic",
+          "preview": "+------------------------------------------------------------------+ / | What Chapter 16 and last chapter's own preview both expected:     | / |"
+        },
+        {
+          "line": 40,
+          "language": "text",
+          "classification": "review-graphic",
+          "preview": "+----------------------------------------------------------+ / | Real anchor: 16 hours wall-clock on 64 real A100 GPUs      | / | Real grid: 720"
+        },
+        {
+          "line": 123,
+          "language": "unlabeled",
+          "classification": "preserve-output-or-reference",
+          "preview": "Real cited anchor point (Pathak et al. 2022): 16 hours wall-clock on 64 real A100 GPUs. /  / Illustrative near-linear data-parallel scaling mode"
+        },
+        {
+          "line": 153,
+          "language": "text",
+          "classification": "review-graphic",
+          "preview": "+----------------------------------------------------------+ / | Halo exchange (Chapter 16): LOCAL dependency only           | / |   [ rank r ] "
+        },
+        {
+          "line": 340,
+          "language": "unlabeled",
+          "classification": "preserve-output-or-reference",
+          "preview": "Reference (single-process): |grid[0][0]|=317.000000  |grid[3][5]|=30.673242 /  / P      max |diff| vs reference  / 1      0                       "
+        },
+        {
+          "line": 363,
+          "language": "text",
+          "classification": "review-graphic",
+          "preview": "+----------------------------------------------------------+ / | cuFFTMp's own real 2048^3 FFT benchmark:                    | / |   8 GPUs: 78 "
+        },
+        {
+          "line": 465,
+          "language": "unlabeled",
+          "classification": "preserve-output-or-reference",
+          "preview": "cuFFTMp's own real cited benchmark, a single large 2048^3 complex FFT (NVIDIA cuFFTMp documentation): / GPU count      Time               Note"
+        }
+      ]
+    },
+    {
+      "page": "docs/part7/36-multi-gpu-xva-and-portfolio-risk.md",
+      "fences": [
+        {
+          "line": 9,
+          "language": "text",
+          "classification": "review-graphic",
+          "preview": "+------------------------------------------------------------------+ / | Chapter 31: ONE terminal payoff -> ONE reduction (mean/var/VaR)   | / |"
+        },
+        {
+          "line": 34,
+          "language": "text",
+          "classification": "review-graphic",
+          "preview": "+----------------------------------------------------------+ / | Ch31: T=1 observation point -> 1 reduction, cost paid once  | / +--------------"
+        },
+        {
+          "line": 127,
+          "language": "unlabeled",
+          "classification": "preserve-output-or-reference",
+          "preview": "Real cited exposure-profile structure (Oracle Financial Services Analytics documentation): \"30Y:1M\" -> one observation date per month for 30"
+        },
+        {
+          "line": 150,
+          "language": "text",
+          "classification": "review-graphic",
+          "preview": "+----------------------------------------------------------+ / | Gross (floor-then-sum): max(0,t1)+max(0,t2)+...+max(0,t5)  | / |   each trade f"
+        },
+        {
+          "line": 286,
+          "language": "unlabeled",
+          "classification": "preserve-output-or-reference",
+          "preview": "Real cited rule (Oracle FSA docs): \"Positive Netted\" exposure = sum of trades WITHIN a netting set, THEN floored at zero -- not each trade f"
+        },
+        {
+          "line": 321,
+          "language": "text",
+          "classification": "review-graphic",
+          "preview": "+----------------------------------------------------------+ / | Per rank (Ch12's own path-split, unchanged): own paths      | / |   net own tra"
+        },
+        {
+          "line": 503,
+          "language": "unlabeled",
+          "classification": "preserve-output-or-reference",
+          "preview": "Reference EPE profile (P=1: one rank folds all 24 paths, in order, via Chapter 31's own real Chan/Golub/LeVeque combination formula): / Date  "
+        }
+      ]
+    },
+    {
+      "page": "docs/part7/37-gpudirect-rdma-in-capital-markets.md",
+      "fences": [
+        {
+          "line": 9,
+          "language": "text",
+          "classification": "review-graphic",
+          "preview": "+------------------------------------------------------------------+ / | Ch21: GPU-to-GPU and NIC-to-GPU GPUDirect RDMA (the general case) | / +"
+        },
+        {
+          "line": 35,
+          "language": "text",
+          "classification": "review-graphic",
+          "preview": "+----------------------------------------------------------+ / | Wire -> kernel-bypass NIC (DPDK) -> HOST memory             | / |   real cited:"
+        },
+        {
+          "line": 136,
+          "language": "unlabeled",
+          "classification": "preserve-output-or-reference",
+          "preview": "Real cited Databento production figures (NVIDIA case study): / - Sustained throughput: over 80 Gbps (\"exceeds 80 Gbps\") / - Daily volume: over 2"
+        },
+        {
+          "line": 163,
+          "language": "text",
+          "classification": "review-graphic",
+          "preview": "+----------------------------------------------------------+ / | Real cited baseline (37.1): NIC -> HOST, sub-60us          | / +---------------"
+        },
+        {
+          "line": 274,
+          "language": "unlabeled",
+          "classification": "preserve-output-or-reference",
+          "preview": "Real quotes from NVIDIA's own Rivermax/NEIO FastSocket blog post, under its own \"What's next\" heading (not a deployed-today claim): / - \"GPUDi"
+        },
+        {
+          "line": 299,
+          "language": "text",
+          "classification": "review-graphic",
+          "preview": "+----------------------------------------------------------+ / | Real total P99 budget (capital-markets inference): about   | / | 4.3-4.6 micros"
+        },
+        {
+          "line": 411,
+          "language": "unlabeled",
+          "classification": "preserve-output-or-reference",
+          "preview": "Real cited fixed per-call overhead (NVIDIA/gdrcopy README): / - Ordinary cudaMemcpy round trip: 6.0-7.0 microseconds / - GDRCopy (CPU-mapped dir"
+        }
+      ]
+    },
+    {
+      "page": "docs/part7/38-real-time-fraud-detection-at-payment-scale.md",
+      "fences": [
+        {
+          "line": 9,
+          "language": "text",
+          "classification": "review-graphic",
+          "preview": "+------------------------------------------------------------------+ / | 38.1 Why a GRAPH: fraud rings hide in account/merchant/txn links  | / |"
+        },
+        {
+          "line": 33,
+          "language": "text",
+          "classification": "review-graphic",
+          "preview": "+----------------------------------------------------------+ / | Isolated per-transaction scoring: misses fraud RINGS       | / | GNN over accou"
+        },
+        {
+          "line": 141,
+          "language": "unlabeled",
+          "classification": "preserve-output-or-reference",
+          "preview": "Real cited American Express / NVIDIA production context: / - \"generating a fraud decision in milliseconds for every card transaction worldwide"
+        },
+        {
+          "line": 171,
+          "language": "text",
+          "classification": "review-graphic",
+          "preview": "+----------------------------------------------------------+ / | Node feature tensors sharded across P GPUs (Ch16-style,    | / |   but by GRAPH"
+        },
+        {
+          "line": 344,
+          "language": "unlabeled",
+          "classification": "preserve-output-or-reference",
+          "preview": "Reference (single-process): node 0's own neighbor-feature sum, dim 0..3: 117.00 62.20 46.90 106.60  /  / P      all match  remote fetches (of to"
+        },
+        {
+          "line": 371,
+          "language": "text",
+          "classification": "review-graphic",
+          "preview": "+----------------------------------------------------------+ / | Ch36: T=360 independent reductions (any order, overlappable)| / +--------------"
+        },
+        {
+          "line": 482,
+          "language": "unlabeled",
+          "classification": "preserve-output-or-reference",
+          "preview": "Real cited XGBoost default: max_depth=6 (xgboost.readthedocs.io official parameter reference). / Illustrative production-scale ensemble size ("
+        }
+      ]
+    },
+    {
+      "page": "docs/part7/39-real-time-genomics-at-scale.md",
+      "fences": [
+        {
+          "line": 9,
+          "language": "text",
+          "classification": "review-graphic",
+          "preview": "+------------------------------------------------------------------+ / | 39.1 Real cited WGS speedup: >100x vs CPU-only, cross-checked     | / |"
+        },
+        {
+          "line": 34,
+          "language": "text",
+          "classification": "review-graphic",
+          "preview": "+----------------------------------------------------------+ / | Real cited CPU-only baseline: ~16 hours = 960 minutes       | / | Real cited GP"
+        },
+        {
+          "line": 132,
+          "language": "unlabeled",
+          "classification": "preserve-output-or-reference",
+          "preview": "Real cited NVIDIA Clara Parabricks headline result: / - \"over 100x faster analysis of whole-genome sequencing (WGS) compared to CPU-only solut"
+        },
+        {
+          "line": 160,
+          "language": "text",
+          "classification": "review-graphic",
+          "preview": "+----------------------------------------------------------+ / | Ch16's stencil: cell (i,j) NEEDS its own neighbors' data --  | / |   halo excha"
+        },
+        {
+          "line": 312,
+          "language": "unlabeled",
+          "classification": "preserve-output-or-reference",
+          "preview": "Reference (single-process): 10007 independent units processed, first 3 results: 655503 892643 662023 /  / P      all match  max slice size (load"
+        },
+        {
+          "line": 341,
+          "language": "text",
+          "classification": "review-graphic",
+          "preview": "+----------------------------------------------------------+ / | Real published RTX PRO 6000 benchmarks, 2 GPUs -> 4 GPUs:    | / |   FQ2BAM:   "
+        },
+        {
+          "line": 471,
+          "language": "unlabeled",
+          "classification": "preserve-output-or-reference",
+          "preview": "Real cited NVIDIA Clara Parabricks v4.7.0 benchmark table (RTX PRO 6000 Server Edition, minutes, lower=faster): / Tool                        "
+        }
+      ]
+    },
+    {
+      "page": "docs/part7/40-medical-imaging-reconstruction-at-scale.md",
+      "fences": [
+        {
+          "line": 9,
+          "language": "text",
+          "classification": "review-graphic",
+          "preview": "+------------------------------------------------------------------+ / | 40.1 Real z-axis slabs + \"ghost cells\" -- Ch16's halo exchange,   | / |"
+        },
+        {
+          "line": 33,
+          "language": "text",
+          "classification": "review-graphic",
+          "preview": "+----------------------------------------------------------+ / | Ch16 (2D grid): row-strip decomposition + halo exchange     | / | Ch40 (3D volu"
+        },
+        {
+          "line": 190,
+          "language": "unlabeled",
+          "classification": "preserve-output-or-reference",
+          "preview": "Reference (single-process): volume 6x6x60, smoothed value at (0,0,0)=4.3500, (2,3,30)=54.8333, (5,5,59)=36.7000 /  / P      all match  min slab "
+        },
+        {
+          "line": 221,
+          "language": "text",
+          "classification": "review-graphic",
+          "preview": "+----------------------------------------------------------+ / | Real cited BP: \"performed locally and independently\" --    | / |   detector dat"
+        },
+        {
+          "line": 370,
+          "language": "unlabeled",
+          "classification": "preserve-output-or-reference",
+          "preview": "Reference (single-process) BP: volume 6x6x60, value at (0,0,0)=0.0000 /  / P      all match (zero cross-slab reads) / 1      YES / 2      YES / 4     "
+        },
+        {
+          "line": 404,
+          "language": "text",
+          "classification": "review-graphic",
+          "preview": "+----------------------------------------------------------+ / | FP: compute time shrinks like 1/P (more GPUs, thinner slab) | / |     comm time"
+        },
+        {
+          "line": 552,
+          "language": "unlabeled",
+          "classification": "preserve-output-or-reference",
+          "preview": "Illustrative, clearly-labeled model (reproducing the real cone-beam FP scaling SHAPE the paper describes, not real exact timings, which the "
+        }
+      ]
+    }
+  ]
+}

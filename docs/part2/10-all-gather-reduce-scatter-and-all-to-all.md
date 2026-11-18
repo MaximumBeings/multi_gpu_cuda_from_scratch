@@ -1,5 +1,15 @@
 # Chapter 10: All-Gather, Reduce-Scatter, and All-to-All
 
+<!-- execution:provenance -->
+!!! info "Execution provenance"
+
+    Current execution blocks identify the tested source hash, hardware dataset, commands and captured output. References elsewhere on this page to a device-less environment describe the original authoring context. Historical output is superseded by the current record. Displayed output omits the runner command header and trims trailing line whitespace; raw logs remain exact. A host simulation or API validation has its stated scope; neither alone establishes a numerical multi-GPU workload or measured performance.
+
+
+<!-- mgpu:opener:start -->
+[![Chapter 10: All-Gather, Reduce-Scatter, and All-to-All](../images/chapter-openers/10.svg)](../images/chapter-openers/10.svg)
+<!-- mgpu:opener:end -->
+
 **What you will understand by the end of this chapter:**
 
 - Why all-gather (every device ends up holding *all* the original data, unmodified) and reduce-scatter (every device ends up holding exactly *one* reduced chunk) are, respectively, Chapter 9's all-gather phase and scatter-reduce phase, run alone instead of chained together -- and the one detail (which device owns which reduced chunk) where reduce-scatter's contract differs from what Chapter 9's ring phase happened to produce.
@@ -45,6 +55,10 @@ ALL-TO-ALL (10.3): every device sends a DIFFERENT chunk to every other
 
 ## 10.1 All-Gather: Collecting Without Reducing
 
+<!-- mgpu:figure-1:start -->
+[![All-gather concatenates rank contributions](../images/technical/ch10/1-gather.svg)](../images/technical/ch10/1-gather.svg)
+<!-- mgpu:figure-1:end -->
+
 ### Intuition
 
 Picture N people, each holding one page of a report they wrote independently. All-gather is everyone photocopying their own page and handing a copy to everyone else, until every person is holding the complete, N-page report -- every page exactly as its author wrote it, nothing edited, nothing combined. Contrast that with Chapter 8's broadcast, where only ONE person's page gets copied out to everyone: all-gather is what happens when *every* device is the broadcaster of its *own* one chunk, all at the same time.
@@ -65,65 +79,88 @@ All-gather as N simultaneous single-chunk broadcasts:
 Because nothing here is combined, all-gather never needs the host at all -- every transfer is a direct, real `cudaMemcpyPeer()` between two devices, exactly like Chapter 8's broadcast. The direct (non-ring) way to implement it is the simplest possible reading of the diagram above: for every ordered pair of distinct devices `(src, dst)`, copy `src`'s own chunk into the slot reserved for it on `dst`. A device's own chunk needs no transfer at all -- it's already there.
 
 ```cpp
-// Chapter 10: All-Gather, Reduce-Scatter, and All-to-All
 // 26_allgather_by_hand.cu
-//
-// All-gather, done directly: every device sends its OWN chunk to
-// every other device (N*(N-1) point-to-point transfers, no root, no
-// reduction). This is the same all-gather PHASE Chapter 9 used inside
-// its ring all-reduce (Section 9.2-9.3) -- shown here running alone,
-// with the straightforward direct pattern instead of the ring
-// pattern, so the operation itself can be seen in isolation. Each
-// buffer is allocated with its own device made current first
-// (Chapter 3's rule). Genuinely compiled with a real nvcc and
-// genuinely run.
+// Checked teaching implementation; serial host scheduling favors clarity, not speed.
 #include <cstdio>
+#include <vector>
+#include <algorithm>
 #include <cuda_runtime.h>
-
+#define CUDA(call) do { cudaError_t status = (call); if (status != cudaSuccess) { \
+ fprintf(stderr,"%s: %s\n",#call,cudaGetErrorString(status)); \
+ return status==cudaErrorNoDevice || status==cudaErrorInsufficientDriver ? 2 : 1; } } while(0)
+static int pattern(int rank, int i) { return rank*1000+i*3+i%7; }
 int main() {
-    int deviceCount = 0;
-    cudaGetDeviceCount(&deviceCount);
-    printf("cudaGetDeviceCount(): %d device(s).\n", deviceCount);
-
-    const size_t CHUNK_BYTES = sizeof(int);
-
-    // Every device holds one recvBuffer with room for deviceCount
-    // chunks -- slot i will hold device i's original chunk once
-    // all-gather completes.
-    int transfersAttempted = 0;
-    int transfersCompleted = 0;
-    for (int src = 0; src < deviceCount; ++src) {
-        void* sendPtr = nullptr;
-        cudaSetDevice(src);  // src's own chunk lives on device src
-        cudaError_t eAllocSend = cudaMalloc(&sendPtr, CHUNK_BYTES);
-        for (int dst = 0; dst < deviceCount; ++dst) {
-            if (dst == src) continue; // a device's own chunk needs no transfer
-            void* recvPtr = nullptr;
-            cudaSetDevice(dst);  // dst's receive slot lives on device dst
-            cudaError_t eAllocRecv = cudaMalloc(&recvPtr, CHUNK_BYTES);
-            cudaError_t eCopy = cudaMemcpyPeer(recvPtr, dst, sendPtr, src, CHUNK_BYTES);
-            ++transfersAttempted;
-            printf("All-gather, cudaMemcpyPeer(dst=dev%d's slot[%d], src=dev%d): %s (code %d)\n",
-                   dst, src, src, cudaGetErrorString(eCopy), (int)eCopy);
-            if (eCopy == cudaSuccess) ++transfersCompleted;
-            if (eAllocRecv == cudaSuccess) cudaFree(recvPtr);
-        }
-        cudaSetDevice(src);
-        if (eAllocSend == cudaSuccess) cudaFree(sendPtr);
-    }
-
-    printf("\n%d of %d attempted point-to-point transfers completed. On real\n"
-           "hardware, every device ends up holding all %d devices' original\n"
-           "chunks, side by side, completely UNCHANGED -- all-gather never\n"
-           "reduces or modifies anything, it only collects. Section 10.2\n"
-           "shows the mirror-image operation, reduce-scatter.\n",
-           transfersCompleted, transfersAttempted, deviceCount);
-
-    return 0;
+ int count=0; CUDA(cudaGetDeviceCount(&count));
+ if(count<2){printf("BLOCKED: requires 2 GPUs; found %d.\n",count);return 2;}
+ const int world=std::min(count,4), CHUNK=33;
+ const int n=CHUNK, out_n=world*CHUNK;
+ const size_t bytes=n*sizeof(int), out_bytes=out_n*sizeof(int);
+ std::vector<int*> send(world,nullptr),receive(world,nullptr);
+ for(int rank=0;rank<world;++rank){
+  CUDA(cudaSetDevice(rank));CUDA(cudaMalloc(&send[rank],bytes));CUDA(cudaMalloc(&receive[rank],out_bytes));
+  std::vector<int> input(n);for(int i=0;i<n;++i)input[i]=pattern(rank,i);
+  CUDA(cudaMemcpy(send[rank],input.data(),bytes,cudaMemcpyHostToDevice));CUDA(cudaMemset(receive[rank],0xff,out_bytes));
+ }
+ for(int dst=0;dst<world;++dst)for(int src=0;src<world;++src){CUDA(cudaSetDevice(dst));
+ if(src==dst)CUDA(cudaMemcpy(receive[dst]+src*CHUNK,send[src],bytes,cudaMemcpyDeviceToDevice));
+ else CUDA(cudaMemcpyPeer(receive[dst]+src*CHUNK,dst,send[src],src,bytes));}
+ for(int rank=0;rank<world;++rank){CUDA(cudaSetDevice(rank));CUDA(cudaDeviceSynchronize());}
+ for(int rank=0;rank<world;++rank){std::vector<int> output(out_n);CUDA(cudaSetDevice(rank));CUDA(cudaMemcpy(output.data(),receive[rank],out_bytes,cudaMemcpyDeviceToHost));for(int i=0;i<out_n;++i){int expected=pattern(i/CHUNK,i%CHUNK);if(output[i]!=expected){fprintf(stderr,"FAIL rank %d output[%d]: %d expected %d\n",rank,i,output[i],expected);return 1;}}}
+ for(int rank=0;rank<world;++rank){CUDA(cudaSetDevice(rank));CUDA(cudaFree(send[rank]));CUDA(cudaFree(receive[rank]));}
+ printf("PASS: rank-ordered all-gather on %d GPUs, all nonuniform output values checked.\n",world);
+ return 0;
 }
 ```
 
-Genuinely compiled with a real `nvcc` and genuinely run. Locked output, deterministic across repeated runs:
+<!-- execution:start:a100:26_allgather_by_hand.cu -->
+> **Current execution — 2026-11-17-a100: Numerical/transport validation (recorded scope).** UTC (program start): `2026-11-18T00:01:31.465743+00:00`. Source SHA-256: `7aebce9afa5c1fae9a892659b95242e60185232d2a90cab7df1f6bb6fc159d90`.
+
+[Exact tested source](../validation/2026-11-17-a100/26_allgather_by_hand/26_allgather_by_hand.cu) · [Compiler log](../validation/2026-11-17-a100/26_allgather_by_hand/compile.log) · [Execution log](../validation/2026-11-17-a100/26_allgather_by_hand/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+nvcc -std=c++17 -O2 -arch=sm_80 26_allgather_by_hand.cu -o ./example
+./example
+```
+
+<details markdown="1"><summary>Captured current-source output</summary>
+
+```text
+PASS: rank-ordered all-gather on 4 GPUs, all nonuniform output values checked.
+```
+
+</details>
+<!-- execution:end:a100:26_allgather_by_hand.cu -->
+
+
+<!-- execution:start:h100:26_allgather_by_hand.cu -->
+> **Current execution — 2026-11-17-h100: Numerical/transport validation (recorded scope).** UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`. Source SHA-256: `7aebce9afa5c1fae9a892659b95242e60185232d2a90cab7df1f6bb6fc159d90`.
+
+[Exact tested source](../validation/2026-11-17-h100/26_allgather_by_hand/26_allgather_by_hand.cu) · [Compiler log](../validation/2026-11-17-h100/26_allgather_by_hand/compile.log) · [Execution log](../validation/2026-11-17-h100/26_allgather_by_hand/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+nvcc -std=c++17 -O2 -arch=sm_90 26_allgather_by_hand.cu -o ./example
+./example
+```
+
+<details markdown="1"><summary>Captured current-source output</summary>
+
+```text
+PASS: rank-ordered all-gather on 2 GPUs, all nonuniform output values checked.
+```
+
+</details>
+<!-- execution:end:h100:26_allgather_by_hand.cu -->
+
+
+**Current-source scope:** Real device buffers implement rank-ordered all-gather; integer reference checks every output. Host-staged reductions deliberately use CPU arithmetic and are not GPU reduction kernels. The current source was compiled and executed in the dated H100 suite; use the linked record for its numerical, API-probe or other-execution scope. The output below is retained from the earlier authoring diagnostic and is not evidence for this replacement source.
+
+The [2026-11-17 H100 execution record](../validation-h100.md) covers two GPUs connected by local NV18. It distinguishes numerical checks, API probes and other executions; a successful exit alone does not establish GPU algorithm correctness.
+
+<details markdown="1"><summary>Historical authoring output — superseded by the current execution above</summary>
 
 ```
 cudaGetDeviceCount(): 0 device(s).
@@ -135,12 +172,20 @@ reduces or modifies anything, it only collects. Section 10.2
 shows the mirror-image operation, reduce-scatter.
 ```
 
-With zero devices, the outer loop never runs, so zero transfers are attempted and zero complete -- the honest degradation this book has shown for every device-count-driven loop since Chapter 4. What this section verifies genuinely is the real call pattern -- `cudaMemcpyPeer()` for every ordered pair, nothing else -- and Section 10.3's simulation is where this book can check the actual resulting data.
+</details>
+
+File 26 checks the delivered all-gather values over actual two-H100 transport. The simulation below independently checks additional modeled layouts; its rank counts are not additional hardware runs.
+
+The [2026-11-17 H100 execution record](../validation-h100.md) covers two GPUs connected by local NV18. It distinguishes numerical checks, API probes and other executions; a successful exit alone does not establish GPU algorithm correctness.
 
 !!! warning "[COMMON TRAP] Thinking all-gather's N*(N-1) transfers make it as expensive, per device, as a broadcast to everyone"
     A single Chapter-8-style broadcast has one device sending to `N-1` others -- that device's outbound traffic is `N-1` chunks, and everyone else's is just one chunk received. All-gather runs `N` of those broadcasts *simultaneously*, one per device, so **every** device is simultaneously a sender (to `N-1` others) and a receiver (from `N-1` others) -- their traffic is symmetric, not concentrated on one device the way Chapter 9's naive root was. It's easy to see the total `N*(N-1)` transfer count and assume some device is doing `N-1` times the "normal" chunk-worth of broadcast work; in fact every device does exactly the same `N-1`-transfers-out, `N-1`-transfers-in amount of work as every other device.
 
 ## 10.2 Reduce-Scatter: Reducing Without Gathering Everywhere
+
+<!-- mgpu:figure-2:start -->
+[![Reduce-scatter partitions a reduced result](../images/technical/ch10/2-scatter.svg)](../images/technical/ch10/2-scatter.svg)
+<!-- mgpu:figure-2:end -->
 
 ### Intuition
 
@@ -165,79 +210,88 @@ Summing values is arithmetic, and neither `cudaMemcpy()` nor `cudaMemcpyPeer()` 
 One precise point about "owner." Reduce-scatter's contract is that device `i` ends up holding reduced chunk `i` -- NCCL's own collective documentation states that after `ncclReduceScatter`, the "recvbuff on rank i contains the i-th block" of the result, and the diagram above and this section's code both follow that convention. Chapter 9's ring scatter-reduce phase, run unchanged, does *not* land chunks that way: with its `sendChunk = (deviceIndex - step) mod N` formula, the first `N-1` steps leave device 0 holding the full sum of chunk 1, device 1 chunk 2, device 2 chunk 3, and device 3 chunk 0 (Chapter 9's own Question 4: device 3 owns chunk 0) -- a rotation of the ownership reduce-scatter requires. A ring reduce-scatter fixes this by shifting its starting chunk by one, `sendChunk = (deviceIndex - step - 1) mod N`, which (checked for N = 3, 4, 5, and 8) leaves device `i` holding chunk `i`. So reduce-scatter is Chapter 9's scatter-reduce phase run alone, up to a one-position rotation of which chunk each device owns -- not *exactly* that phase.
 
 ```cpp
-// Chapter 10: All-Gather, Reduce-Scatter, and All-to-All
 // 27_reducescatter_by_hand.cu
-//
-// Reduce-scatter, done directly: for each chunk index c, gather that
-// ONE chunk from every device to the host, sum it, and write the sum
-// back ONLY onto device c -- the device "assigned" to that chunk.
-// It computes the same thing as the SCATTER-REDUCE phase Chapter 9
-// used inside its ring all-reduce (Section 9.2-9.3), stopped there
-// instead of continuing on into an all-gather -- except for WHICH
-// device owns WHICH chunk: Chapter 9's ring leaves device i holding
-// chunk (i+1) mod N, while the reduce-scatter collective (and NCCL's
-// ncclReduceScatter) puts chunk i on device i, as here. cudaSetDevice()
-// is called before every per-device operation (Chapter 3's rule).
-// Genuinely compiled with a real nvcc and genuinely run.
+// Checked teaching implementation; serial host scheduling favors clarity, not speed.
 #include <cstdio>
+#include <vector>
+#include <algorithm>
 #include <cuda_runtime.h>
-
+#define CUDA(call) do { cudaError_t status = (call); if (status != cudaSuccess) { \
+ fprintf(stderr,"%s: %s\n",#call,cudaGetErrorString(status)); \
+ return status==cudaErrorNoDevice || status==cudaErrorInsufficientDriver ? 2 : 1; } } while(0)
+static int pattern(int rank, int i) { return rank*1000+i*3+i%7; }
 int main() {
-    int deviceCount = 0;
-    cudaGetDeviceCount(&deviceCount);
-    printf("cudaGetDeviceCount(): %d device(s).\n", deviceCount);
-
-    const size_t CHUNK_BYTES = sizeof(int);
-
-    int chunksReduced = 0;
-    int chunksScattered = 0;
-    for (int owner = 0; owner < deviceCount; ++owner) {
-        // Gather chunk `owner` from every device and reduce on the host --
-        // exactly Chapter 8's reduce loop, but for a single chunk index.
-        long long accumulator = 0;
-        int hostStaging = 0;
-        int devicesGathered = 0;
-        for (int src = 0; src < deviceCount; ++src) {
-            void* devPtr = nullptr;
-            cudaSetDevice(src);  // read src's contribution ON device src
-            cudaError_t eAlloc = cudaMalloc(&devPtr, CHUNK_BYTES);
-            cudaError_t eCopy = cudaMemcpy(&hostStaging, devPtr, CHUNK_BYTES, cudaMemcpyDeviceToHost);
-            printf("Reduce-scatter, chunk %d: cudaMemcpy(device %d -> host): %s (code %d)\n",
-                   owner, src, cudaGetErrorString(eCopy), (int)eCopy);
-            if (eCopy == cudaSuccess) {
-                accumulator += hostStaging;
-                ++devicesGathered;
-            }
-            if (eAlloc == cudaSuccess) cudaFree(devPtr);
-        }
-        if (devicesGathered == deviceCount && deviceCount > 0) ++chunksReduced;
-
-        // Scatter: write the reduced chunk back ONLY to device `owner`.
-        // Every other device never receives this chunk at all -- that is
-        // the entire point of reduce-scatter.
-        int hostResult = (int)accumulator;
-        void* ownerPtr = nullptr;
-        cudaSetDevice(owner);  // the reduced chunk lives on its owner
-        cudaError_t eAllocOwner = cudaMalloc(&ownerPtr, CHUNK_BYTES);
-        cudaError_t eWrite = cudaMemcpy(ownerPtr, &hostResult, CHUNK_BYTES, cudaMemcpyHostToDevice);
-        printf("Reduce-scatter, chunk %d: cudaMemcpy(host reduced chunk -> owner dev%d): %s (code %d)\n\n",
-               owner, owner, cudaGetErrorString(eWrite), (int)eWrite);
-        if (eWrite == cudaSuccess) ++chunksScattered;
-        if (eAllocOwner == cudaSuccess) cudaFree(ownerPtr);
-    }
-
-    printf("%d of %d chunk(s) fully reduced, %d of %d chunk(s) scattered to\n"
-           "their owner. On real hardware, EVERY device ends up holding\n"
-           "exactly ONE reduced chunk -- never all %d, and never the SAME\n"
-           "chunk as any other device. Section 10.3 covers all-to-all, the\n"
-           "one collective in this chapter with no reduction step at all.\n",
-           chunksReduced, deviceCount, chunksScattered, deviceCount, deviceCount);
-
-    return 0;
+ int count=0; CUDA(cudaGetDeviceCount(&count));
+ if(count<2){printf("BLOCKED: requires 2 GPUs; found %d.\n",count);return 2;}
+ const int world=std::min(count,4), CHUNK=33;
+ const int n=world*CHUNK, out_n=CHUNK;
+ const size_t bytes=n*sizeof(int), out_bytes=out_n*sizeof(int);
+ std::vector<int*> send(world,nullptr),receive(world,nullptr);
+ for(int rank=0;rank<world;++rank){
+  CUDA(cudaSetDevice(rank));CUDA(cudaMalloc(&send[rank],bytes));CUDA(cudaMalloc(&receive[rank],out_bytes));
+  std::vector<int> input(n);for(int i=0;i<n;++i)input[i]=pattern(rank,i);
+  CUDA(cudaMemcpy(send[rank],input.data(),bytes,cudaMemcpyHostToDevice));CUDA(cudaMemset(receive[rank],0xff,out_bytes));
+ }
+ std::vector<int> total(n,0),staging(n);
+ for(int src=0;src<world;++src){CUDA(cudaSetDevice(src));CUDA(cudaMemcpy(staging.data(),send[src],bytes,cudaMemcpyDeviceToHost));for(int i=0;i<n;++i)total[i]+=staging[i];}
+ for(int owner=0;owner<world;++owner){CUDA(cudaSetDevice(owner));CUDA(cudaMemcpy(receive[owner],total.data()+owner*CHUNK,out_bytes,cudaMemcpyHostToDevice));}
+ for(int rank=0;rank<world;++rank){CUDA(cudaSetDevice(rank));CUDA(cudaDeviceSynchronize());}
+ for(int rank=0;rank<world;++rank){std::vector<int> output(out_n);CUDA(cudaSetDevice(rank));CUDA(cudaMemcpy(output.data(),receive[rank],out_bytes,cudaMemcpyDeviceToHost));for(int i=0;i<out_n;++i){int expected=1000*world*(world-1)/2+world*((rank*CHUNK+i)*3+(rank*CHUNK+i)%7);if(output[i]!=expected){fprintf(stderr,"FAIL rank %d output[%d]: %d expected %d\n",rank,i,output[i],expected);return 1;}}}
+ for(int rank=0;rank<world;++rank){CUDA(cudaSetDevice(rank));CUDA(cudaFree(send[rank]));CUDA(cudaFree(receive[rank]));}
+ printf("PASS: host-staged rank-ordered reduce-scatter on %d GPUs, all nonuniform output values checked.\n",world);
+ return 0;
 }
 ```
 
-Genuinely compiled with a real `nvcc` and genuinely run. Locked output, deterministic across repeated runs:
+<!-- execution:start:a100:27_reducescatter_by_hand.cu -->
+> **Current execution — 2026-11-17-a100: Numerical/transport validation (recorded scope).** UTC (program start): `2026-11-18T00:01:36.896409+00:00`. Source SHA-256: `1e06d82c07020b03e80788e5723e95642c58c6af4343d7e81413c0f0262c7f4a`.
+
+[Exact tested source](../validation/2026-11-17-a100/27_reducescatter_by_hand/27_reducescatter_by_hand.cu) · [Compiler log](../validation/2026-11-17-a100/27_reducescatter_by_hand/compile.log) · [Execution log](../validation/2026-11-17-a100/27_reducescatter_by_hand/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+nvcc -std=c++17 -O2 -arch=sm_80 27_reducescatter_by_hand.cu -o ./example
+./example
+```
+
+<details markdown="1"><summary>Captured current-source output</summary>
+
+```text
+PASS: host-staged rank-ordered reduce-scatter on 4 GPUs, all nonuniform output values checked.
+```
+
+</details>
+<!-- execution:end:a100:27_reducescatter_by_hand.cu -->
+
+
+<!-- execution:start:h100:27_reducescatter_by_hand.cu -->
+> **Current execution — 2026-11-17-h100: Numerical/transport validation (recorded scope).** UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`. Source SHA-256: `1e06d82c07020b03e80788e5723e95642c58c6af4343d7e81413c0f0262c7f4a`.
+
+[Exact tested source](../validation/2026-11-17-h100/27_reducescatter_by_hand/27_reducescatter_by_hand.cu) · [Compiler log](../validation/2026-11-17-h100/27_reducescatter_by_hand/compile.log) · [Execution log](../validation/2026-11-17-h100/27_reducescatter_by_hand/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+nvcc -std=c++17 -O2 -arch=sm_90 27_reducescatter_by_hand.cu -o ./example
+./example
+```
+
+<details markdown="1"><summary>Captured current-source output</summary>
+
+```text
+PASS: host-staged rank-ordered reduce-scatter on 2 GPUs, all nonuniform output values checked.
+```
+
+</details>
+<!-- execution:end:h100:27_reducescatter_by_hand.cu -->
+
+
+**Current-source scope:** Real device buffers implement host-staged rank-ordered reduce-scatter; integer reference checks every output. Host-staged reductions deliberately use CPU arithmetic and are not GPU reduction kernels. The current source was compiled and executed in the dated H100 suite; use the linked record for its numerical, API-probe or other-execution scope. The output below is retained from the earlier authoring diagnostic and is not evidence for this replacement source.
+
+The [2026-11-17 H100 execution record](../validation-h100.md) covers two GPUs connected by local NV18. It distinguishes numerical checks, API probes and other executions; a successful exit alone does not establish GPU algorithm correctness.
+
+<details markdown="1"><summary>Historical authoring output — superseded by the current execution above</summary>
 
 ```
 cudaGetDeviceCount(): 0 device(s).
@@ -248,12 +302,20 @@ chunk as any other device. Section 10.3 covers all-to-all, the
 one collective in this chapter with no reduction step at all.
 ```
 
-With zero devices, the outer `owner` loop never runs, so no `cudaMemcpy` calls are attempted at all -- not even the honest `cudaErrorNoDevice` this book usually reports, since there's no loop iteration left to make the attempt from. Section 10.3's simulation checks the actual arithmetic this section's real code structure performs.
+</details>
+
+File 27 checks transported data and host reduce-scatter arithmetic against a reference on two H100 GPUs. The simulation below separately checks the modeled chunk assignment.
+
+The [2026-11-17 H100 execution record](../validation-h100.md) covers two GPUs connected by local NV18. It distinguishes numerical checks, API probes and other executions; a successful exit alone does not establish GPU algorithm correctness.
 
 !!! warning "[COMMON TRAP] Assuming reduce-scatter is simply 'half the cost' of an all-reduce"
     It's tempting to reason that since all-reduce is (per Chapter 9) a reduce-scatter followed by an all-gather, reduce-scatter alone must be "half the work, so half the cost" -- and for total data volume, that's roughly right. But reduce-scatter is a complete, independently useful operation, not merely an incomplete all-reduce: whenever a device genuinely only ever needs *its own* shard of a combined result -- for instance, an optimizer that shards its state across devices, each device owning only the update for the parameters it's responsible for (a direct echo of Chapter 1's ZeRO-style memory-wall discussion) -- reduce-scatter alone is the right, final operation to use, with no all-gather needed or wanted afterward.
 
 ## 10.3 All-to-All: Personalized Exchange, No Reduction, No Shortcut
+
+<!-- mgpu:figure-3:start -->
+[![All-to-all personalizes the destination](../images/technical/ch10/3-alltoall.svg)](../images/technical/ch10/3-alltoall.svg)
+<!-- mgpu:figure-3:end -->
 
 ### Intuition
 
@@ -279,67 +341,88 @@ All-to-all as a full transpose (N=4, chunk "ij" = from device i, for device j):
 Nothing about this pattern can be built from Chapter 9's ring phases: a ring hop can forward an all-reduce chunk unchanged because every device, by the end, wants that *same* value -- but all-to-all's chunk "02" and chunk "03" are both currently sitting on device 0, both need to leave device 0, and they need to go to two *different* places. There's no way to combine them into one relay, and no way for a chunk addressed to device 2 to also happen to satisfy device 3 along the way. All-to-all needs exactly `N*(N-1)` distinct point-to-point transfers -- the direct, real `cudaMemcpyPeer()` loop below, covering every ordered pair of distinct devices exactly once, each one carrying data no other transfer could have carried:
 
 ```cpp
-// Chapter 10: All-Gather, Reduce-Scatter, and All-to-All
 // 28_alltoall_by_hand.cu
-//
-// All-to-all: every device sends a DIFFERENT chunk to every other
-// device, and receives a DIFFERENT chunk from every other device.
-// Unlike all-gather (every device sends the SAME chunk to everyone)
-// or reduce-scatter (chunks are combined, not just relayed), every
-// one of the N*(N-1) transfers below carries genuinely distinct data
-// -- there is no way to build this out of Chapter 9's ring phases,
-// because nothing here is identical across destinations for a ring
-// hop to forward along unchanged. Each slot is allocated with its
-// own device made current first (Chapter 3's rule). Genuinely
-// compiled with a real nvcc and genuinely run.
+// Checked teaching implementation; serial host scheduling favors clarity, not speed.
 #include <cstdio>
+#include <vector>
+#include <algorithm>
 #include <cuda_runtime.h>
-
+#define CUDA(call) do { cudaError_t status = (call); if (status != cudaSuccess) { \
+ fprintf(stderr,"%s: %s\n",#call,cudaGetErrorString(status)); \
+ return status==cudaErrorNoDevice || status==cudaErrorInsufficientDriver ? 2 : 1; } } while(0)
+static int pattern(int rank, int i) { return rank*1000+i*3+i%7; }
 int main() {
-    int deviceCount = 0;
-    cudaGetDeviceCount(&deviceCount);
-    printf("cudaGetDeviceCount(): %d device(s).\n", deviceCount);
-
-    const size_t CHUNK_BYTES = sizeof(int);
-
-    // Device `src` holds deviceCount send-slots; send-slot[dst] is the
-    // chunk destined ONLY for device `dst`, and is different from every
-    // other send-slot on device `src`.
-    int transfersAttempted = 0;
-    int transfersCompleted = 0;
-    for (int src = 0; src < deviceCount; ++src) {
-        for (int dst = 0; dst < deviceCount; ++dst) {
-            if (dst == src) continue; // a device's own reserved slot needs no transfer
-            void* sendSlotPtr = nullptr;
-            void* recvSlotPtr = nullptr;
-            cudaSetDevice(src);  // send-slot lives on device src
-            cudaError_t eAllocSend = cudaMalloc(&sendSlotPtr, CHUNK_BYTES);
-            cudaSetDevice(dst);  // recv-slot lives on device dst
-            cudaError_t eAllocRecv = cudaMalloc(&recvSlotPtr, CHUNK_BYTES);
-            cudaError_t eCopy = cudaMemcpyPeer(recvSlotPtr, dst, sendSlotPtr, src, CHUNK_BYTES);
-            ++transfersAttempted;
-            printf("All-to-all, cudaMemcpyPeer(dev%d's slot[from=%d] <- dev%d's slot[to=%d]): %s (code %d)\n",
-                   dst, src, src, dst, cudaGetErrorString(eCopy), (int)eCopy);
-            if (eCopy == cudaSuccess) ++transfersCompleted;
-            if (eAllocRecv == cudaSuccess) cudaFree(recvSlotPtr);  // dst current
-            cudaSetDevice(src);
-            if (eAllocSend == cudaSuccess) cudaFree(sendSlotPtr);
-        }
-    }
-
-    printf("\n%d of %d attempted point-to-point transfers completed --\n"
-           "exactly %d * (%d - 1) of them, one per ordered (src, dst) pair\n"
-           "with src != dst. No reduction, no forwarding, no shortcut: every\n"
-           "one of these transfers carries data no other transfer could have\n"
-           "carried. Section 10.3's simulation verifies every device ends up\n"
-           "with exactly the chunks addressed to it, and nothing else.\n",
-           transfersCompleted, transfersAttempted, deviceCount, deviceCount);
-
-    return 0;
+ int count=0; CUDA(cudaGetDeviceCount(&count));
+ if(count<2){printf("BLOCKED: requires 2 GPUs; found %d.\n",count);return 2;}
+ const int world=std::min(count,4), CHUNK=33;
+ const int n=world*CHUNK, out_n=world*CHUNK;
+ const size_t bytes=n*sizeof(int), out_bytes=out_n*sizeof(int);
+ std::vector<int*> send(world,nullptr),receive(world,nullptr);
+ for(int rank=0;rank<world;++rank){
+  CUDA(cudaSetDevice(rank));CUDA(cudaMalloc(&send[rank],bytes));CUDA(cudaMalloc(&receive[rank],out_bytes));
+  std::vector<int> input(n);for(int i=0;i<n;++i)input[i]=pattern(rank,i);
+  CUDA(cudaMemcpy(send[rank],input.data(),bytes,cudaMemcpyHostToDevice));CUDA(cudaMemset(receive[rank],0xff,out_bytes));
+ }
+ for(int src=0;src<world;++src)for(int dst=0;dst<world;++dst){CUDA(cudaSetDevice(dst));
+ if(src==dst)CUDA(cudaMemcpy(receive[dst]+src*CHUNK,send[src]+dst*CHUNK,CHUNK*sizeof(int),cudaMemcpyDeviceToDevice));
+ else CUDA(cudaMemcpyPeer(receive[dst]+src*CHUNK,dst,send[src]+dst*CHUNK,src,CHUNK*sizeof(int)));}
+ for(int rank=0;rank<world;++rank){CUDA(cudaSetDevice(rank));CUDA(cudaDeviceSynchronize());}
+ for(int rank=0;rank<world;++rank){std::vector<int> output(out_n);CUDA(cudaSetDevice(rank));CUDA(cudaMemcpy(output.data(),receive[rank],out_bytes,cudaMemcpyDeviceToHost));for(int i=0;i<out_n;++i){int expected=pattern(i/CHUNK,rank*CHUNK+i%CHUNK);if(output[i]!=expected){fprintf(stderr,"FAIL rank %d output[%d]: %d expected %d\n",rank,i,output[i],expected);return 1;}}}
+ for(int rank=0;rank<world;++rank){CUDA(cudaSetDevice(rank));CUDA(cudaFree(send[rank]));CUDA(cudaFree(receive[rank]));}
+ printf("PASS: destination-specific all-to-all on %d GPUs, all nonuniform output values checked.\n",world);
+ return 0;
 }
 ```
 
-Genuinely compiled with a real `nvcc` and genuinely run. Locked output, deterministic across repeated runs:
+<!-- execution:start:a100:28_alltoall_by_hand.cu -->
+> **Current execution — 2026-11-17-a100: Numerical/transport validation (recorded scope).** UTC (program start): `2026-11-18T00:01:42.240026+00:00`. Source SHA-256: `4e9ca7b00c130e7c5f97b17cc7e43960421ce609cb3df7e1d40281608601a2c4`.
+
+[Exact tested source](../validation/2026-11-17-a100/28_alltoall_by_hand/28_alltoall_by_hand.cu) · [Compiler log](../validation/2026-11-17-a100/28_alltoall_by_hand/compile.log) · [Execution log](../validation/2026-11-17-a100/28_alltoall_by_hand/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+nvcc -std=c++17 -O2 -arch=sm_80 28_alltoall_by_hand.cu -o ./example
+./example
+```
+
+<details markdown="1"><summary>Captured current-source output</summary>
+
+```text
+PASS: destination-specific all-to-all on 4 GPUs, all nonuniform output values checked.
+```
+
+</details>
+<!-- execution:end:a100:28_alltoall_by_hand.cu -->
+
+
+<!-- execution:start:h100:28_alltoall_by_hand.cu -->
+> **Current execution — 2026-11-17-h100: Numerical/transport validation (recorded scope).** UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`. Source SHA-256: `4e9ca7b00c130e7c5f97b17cc7e43960421ce609cb3df7e1d40281608601a2c4`.
+
+[Exact tested source](../validation/2026-11-17-h100/28_alltoall_by_hand/28_alltoall_by_hand.cu) · [Compiler log](../validation/2026-11-17-h100/28_alltoall_by_hand/compile.log) · [Execution log](../validation/2026-11-17-h100/28_alltoall_by_hand/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+nvcc -std=c++17 -O2 -arch=sm_90 28_alltoall_by_hand.cu -o ./example
+./example
+```
+
+<details markdown="1"><summary>Captured current-source output</summary>
+
+```text
+PASS: destination-specific all-to-all on 2 GPUs, all nonuniform output values checked.
+```
+
+</details>
+<!-- execution:end:h100:28_alltoall_by_hand.cu -->
+
+
+**Current-source scope:** Real device buffers implement destination-specific all-to-all; integer reference checks every output. Host-staged reductions deliberately use CPU arithmetic and are not GPU reduction kernels. The current source was compiled and executed in the dated H100 suite; use the linked record for its numerical, API-probe or other-execution scope. The output below is retained from the earlier authoring diagnostic and is not evidence for this replacement source.
+
+The [2026-11-17 H100 execution record](../validation-h100.md) covers two GPUs connected by local NV18. It distinguishes numerical checks, API probes and other executions; a successful exit alone does not establish GPU algorithm correctness.
+
+<details markdown="1"><summary>Historical authoring output — superseded by the current execution above</summary>
 
 ```
 cudaGetDeviceCount(): 0 device(s).
@@ -352,7 +435,11 @@ carried. Section 10.3's simulation verifies every device ends up
 with exactly the chunks addressed to it, and nothing else.
 ```
 
-With zero devices, both loops never run and the `0 * (0 - 1)` in the summary is exactly what the honest arithmetic produces for `deviceCount = 0` -- the same pattern this book has reported since Chapter 1 rather than special-casing the degenerate count. What this section verifies genuinely is the real all-pairs call structure; the simulation below is where the actual chunk-delivery correctness gets checked, alongside Section 10.1's all-gather and Section 10.2's reduce-scatter, against three independent references:
+</details>
+
+File 28 checks all-to-all delivery over actual two-H100 transport. The host simulation separately checks chunk delivery and independent references for its modeled configurations:
+
+The [2026-11-17 H100 execution record](../validation-h100.md) covers two GPUs connected by local NV18. It distinguishes numerical checks, API probes and other executions; a successful exit alone does not establish GPU algorithm correctness.
 
 ```cpp
 // Chapter 10: All-Gather, Reduce-Scatter, and All-to-All
@@ -484,7 +571,73 @@ int main() {
 }
 ```
 
+<!-- execution:start:a100:29_collectives_simulation.cpp -->
+> **Current execution — 2026-11-17-a100: Host program/model (exit-only).** UTC (program start): `2026-11-18T00:01:47.633662+00:00`. Source SHA-256: `a36e2130a654c06143f478e1fb9a5786106b962893e68851b494ebaba7502203`.
+
+[Exact tested source](../validation/2026-11-17-a100/29_collectives_simulation/29_collectives_simulation.cpp) · [Compiler log](../validation/2026-11-17-a100/29_collectives_simulation/compile.log) · [Execution log](../validation/2026-11-17-a100/29_collectives_simulation/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+g++ -std=c++17 -O2 29_collectives_simulation.cpp -o ./example
+./example
+```
+
+<details markdown="1"><summary>Captured current-source output</summary>
+
+```text
+All-gather (N=4): independent reference chunks: 10 20 30 40
+  Every device's gathered array matches the reference: PASS
+
+Reduce-scatter (N=4): independent reference sums: 100 104 108 112
+  Device c's scattered chunk matches reference[c] for every c: PASS
+
+All-to-all (N=4): every device's 4 received chunks match the
+  chunk their sender addressed to them (a full transpose): PASS
+
+Direct all-gather/reduce-scatter: 3 message(s) per device, each to/from a DIFFERENT remote device.
+All-to-all: 3 message(s) per device too -- but unlike all-gather/reduce-scatter, none of them can be replaced by a cheaper ring relay, because every message is unique.
+```
+
+</details>
+<!-- execution:end:a100:29_collectives_simulation.cpp -->
+
+
+<!-- execution:start:h100:29_collectives_simulation.cpp -->
+> **Current execution — 2026-11-17-h100: Host program/model (exit-only).** UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`. Source SHA-256: `a36e2130a654c06143f478e1fb9a5786106b962893e68851b494ebaba7502203`.
+
+[Exact tested source](../validation/2026-11-17-h100/29_collectives_simulation/29_collectives_simulation.cpp) · [Compiler log](../validation/2026-11-17-h100/29_collectives_simulation/compile.log) · [Execution log](../validation/2026-11-17-h100/29_collectives_simulation/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+g++ -std=c++17 -O2 29_collectives_simulation.cpp -o ./example
+./example
+```
+
+<details markdown="1"><summary>Captured current-source output</summary>
+
+```text
+All-gather (N=4): independent reference chunks: 10 20 30 40
+  Every device's gathered array matches the reference: PASS
+
+Reduce-scatter (N=4): independent reference sums: 100 104 108 112
+  Device c's scattered chunk matches reference[c] for every c: PASS
+
+All-to-all (N=4): every device's 4 received chunks match the
+  chunk their sender addressed to them (a full transpose): PASS
+
+Direct all-gather/reduce-scatter: 3 message(s) per device, each to/from a DIFFERENT remote device.
+All-to-all: 3 message(s) per device too -- but unlike all-gather/reduce-scatter, none of them can be replaced by a cheaper ring relay, because every message is unique.
+```
+
+</details>
+<!-- execution:end:h100:29_collectives_simulation.cpp -->
+
+
 Genuinely compiled with `g++` and genuinely run. Locked output, deterministic across repeated runs:
+
+<details markdown="1"><summary>Historical authoring output — superseded by the current execution above</summary>
 
 ```
 All-gather (N=4): independent reference chunks: 10 20 30 40 
@@ -499,6 +652,8 @@ All-to-all (N=4): every device's 4 received chunks match the
 Direct all-gather/reduce-scatter: 3 message(s) per device, each to/from a DIFFERENT remote device.
 All-to-all: 3 message(s) per device too -- but unlike all-gather/reduce-scatter, none of them can be replaced by a cheaper ring relay, because every message is unique.
 ```
+
+</details>
 
 All three collectives check out against references computed completely independently of any of this section's own transfer logic -- reusing exactly the same numbers Chapter 8 (10/20/30/40) and Chapter 9 (100/104/108/112) already established, so the continuity between chapters is checkable, not just claimed. The final two lines make the real structural point concrete: all-gather and reduce-scatter, run directly, need the same `N-1`-messages-per-device as all-to-all does -- but only the first two have a cheaper ring alternative (Chapter 9 already built it) waiting to be swapped in.
 
@@ -547,4 +702,4 @@ Chapter 11 turns to NCCL, the standard library that implements broadcast, reduce
 **Sources cited in this chapter:**
 
 - [Collective Operations — NCCL User Guide](https://docs.nvidia.com/deeplearning/nccl/user-guide/docs/usage/collectives.html) -- the exact AllGather ("gathers N values from k ranks into an output buffer of size k*N, and distributes that result to all ranks," and NCCL's `ncclAllGather` leaving "identical copies of the result in each recvbuff") and ReduceScatter ("the result is scattered in equal-sized blocks between ranks, each rank getting a chunk of data based on its rank index") definitions, and reduce-scatter's ownership contract (`ncclReduceScatter`'s "recvbuff on rank i contains the i-th block"), which Section 10.2 uses to pin down which device owns which reduced chunk.
-- [Optimization of Collective Communication Operations in MPICH — Thakur, Rabenseifner, Gropp](https://web.cels.anl.gov/~thakur/papers/ijhpca-coll.pdf) -- the nearest-neighbor-vs-farther-apart comparison between ring and recursive-doubling algorithms for allgather/reduce-scatter (the authors offer this explanation as a hedged belief, not a proven cause: "for long messages, the ring algorithm performs better than recursive doubling... We believe this is because it uses a nearest-neighbor communication pattern, whereas in recursive doubling, processes that are much farther apart communicate"); the reduce-scatter-then-allgather decomposition of allreduce; and the Bruck algorithm for short-message all-to-all.
+- [Optimization of Collective Communication Operations in MPICH — Thakur, Rabenseifner, Gropp](https://www.mpich.org/2012/10/24/optimization-of-collective-communication-operations-in-mpich/) -- the nearest-neighbor-vs-farther-apart comparison between ring and recursive-doubling algorithms for allgather/reduce-scatter (the authors offer this explanation as a hedged belief, not a proven cause: "for long messages, the ring algorithm performs better than recursive doubling... We believe this is because it uses a nearest-neighbor communication pattern, whereas in recursive doubling, processes that are much farther apart communicate"); the reduce-scatter-then-allgather decomposition of allreduce; and the Bruck algorithm for short-message all-to-all.

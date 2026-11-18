@@ -1,58 +1,60 @@
-// Chapter 22: NVSHMEM and GPU-Initiated Communication
 // 64_nvshmem_mpi_bootstrap.cu
-//
-// File 63's own single-PE fallback is what happens when NVSHMEM has no
-// way to discover other processes. Chapter 20/21 already solved
-// exactly this discovery problem once, for MPI and for NCCL's own
-// bootstrap -- NVSHMEM ships the SAME real answer as a first-class
-// option: NVSHMEMX_INIT_WITH_MPI_COMM, set via
-// nvshmemx_set_attr_mpi_comm_args(), reuses a real MPI_Comm this book
-// has already built real multi-process programs on top of since
-// Chapter 20. (NVSHMEM also ships NVSHMEMX_INIT_WITH_UNIQUEID, a
-// second bootstrap path structurally identical to Chapter 21's own
-// ncclUniqueId + MPI_Bcast pattern -- not used here, since the MPI
-// path is simpler when MPI is already present.)
-// Genuinely compiled with a real mpicxx (linked against the real
-// installed NVSHMEM 3.8.0, real Open MPI, and real CUDA runtime) and
-// genuinely run with a real mpirun.
+// Checked two-PE example. Compile and execution evidence are captured separately.
 #define OMPI_SKIP_MPICXX
 #include <mpi.h>
 #include <cstdio>
+#include <cstdlib>
+#include <vector>
+#include <cuda_runtime.h>
 #include <nvshmem.h>
 #include <nvshmemx.h>
 
-int main(int argc, char** argv) {
-    MPI_Init(&argc, &argv);
-    MPI_Comm mpiComm = MPI_COMM_WORLD;
+#define CUDA_OK(call) do { cudaError_t e = (call); if (e != cudaSuccess) { \
+    fprintf(stderr, "%s: %s\n", #call, cudaGetErrorString(e)); \
+    MPI_Abort(MPI_COMM_WORLD, 1); } } while (0)
 
-    // Start from the header's own initializer (version fields and
-    // every argument set to a known value) -- never an uninitialized
-    // struct -- then let NVSHMEM's own setter record the MPI_Comm.
-    nvshmemx_init_attr_t attr = NVSHMEMX_INIT_ATTR_INITIALIZER;
-    nvshmemx_set_attr_mpi_comm_args(&mpiComm, &attr);
-    int rc = nvshmemx_init_attr(NVSHMEMX_INIT_WITH_MPI_COMM, &attr);
-
-    int myPe = nvshmem_my_pe();
-    int nPes = nvshmem_n_pes();
-    printf("PE %d of %d: nvshmemx_init_attr(NVSHMEMX_INIT_WITH_MPI_COMM) rc=%d\n",
-           myPe, nPes, rc);
-
-    if (myPe == 0) {
-        printf("\nCompare this n_pes=%d to file 63's own n_pes=1: the ONLY "
-               "difference between these two files is which bootstrap path "
-               "was requested. Real MPI (Chapter 20's own MPI_Comm_rank()/"
-               "MPI_Comm_size() underneath this call) genuinely discovered "
-               "%d real processes and handed that world to NVSHMEM -- the "
-               "exact same discovery problem Chapter 21's own hybrid "
-               "bootstrap solved for NCCL, now solved for NVSHMEM instead.\n",
-               nPes, nPes);
+static void bind_device(int rank) {
+    MPI_Comm node;
+    MPI_Comm_split_type(MPI_COMM_WORLD, MPI_COMM_TYPE_SHARED, rank, MPI_INFO_NULL, &node);
+    int localRank, count;
+    MPI_Comm_rank(node, &localRank);
+    MPI_Comm_free(&node);
+    CUDA_OK(cudaGetDeviceCount(&count));
+    if (localRank >= count) {
+        fprintf(stderr, "Insufficient GPUs: local rank %d, visible devices %d\n", localRank, count);
+        MPI_Abort(MPI_COMM_WORLD, 2);
     }
+    CUDA_OK(cudaSetDevice(localRank));
+}
 
-    void *sym = nvshmem_malloc(sizeof(int));
-    printf("PE %d: nvshmem_malloc(sizeof(int)) = %p (honestly NULL -- no "
-           "real device to host a symmetric heap on)\n", myPe, sym);
-
+int main(int argc, char **argv) {
+    MPI_Init(&argc, &argv);
+    int rank;
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    bind_device(rank); // one local PE per GPU, before NVSHMEM initialization
+    MPI_Comm world = MPI_COMM_WORLD;
+    nvshmemx_init_attr_t attr = NVSHMEMX_INIT_ATTR_INITIALIZER;
+    nvshmemx_set_attr_mpi_comm_args(&world, &attr);
+    int rc = nvshmemx_init_attr(NVSHMEMX_INIT_WITH_MPI_COMM, &attr);
+    if (rc != 0) MPI_Abort(MPI_COMM_WORLD, 3);
+    int pe = nvshmem_my_pe(), nPes = nvshmem_n_pes();
+    int errors = 0;
+    int *sym = static_cast<int *>(nvshmem_malloc(sizeof(int)));
+    if (!sym) MPI_Abort(MPI_COMM_WORLD, 4);
+    int sent = 100 + pe, received = -1;
+    CUDA_OK(cudaMemcpy(sym, &sent, sizeof(int), cudaMemcpyHostToDevice));
+    CUDA_OK(cudaMemcpy(&received, sym, sizeof(int), cudaMemcpyDeviceToHost));
+    if (received != sent) ++errors;
+    int worldSize;
+    MPI_Comm_size(MPI_COMM_WORLD, &worldSize);
+    if (nPes != worldSize || pe != rank) ++errors;
+    printf("PE %d of %d: MPI bootstrap, allocation and CUDA copy checked\n", pe, nPes);
+    nvshmem_free(sym);
+    int totalErrors = 0;
+    MPI_Allreduce(&errors, &totalErrors, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
+    if (pe == 0) printf("VALIDATION %s: %d PEs, errors=%d\n",
+                        totalErrors ? "FAIL" : "PASS", nPes, totalErrors);
     nvshmem_finalize();
     MPI_Finalize();
-    return 0;
+    return totalErrors ? 1 : 0;
 }

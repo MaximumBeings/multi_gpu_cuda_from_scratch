@@ -1,0 +1,3 @@
+$ /home/ubuntu/codex-eight-gpu-audit-20261117/multi-gpu-audit/artifacts/a100-eight-20261117/127_nccl_point_to_point/example
+Same-peer message results: 100 101. This two-GPU test does not test scheduling among different remote peers.
+VALIDATION PASS: errors=0

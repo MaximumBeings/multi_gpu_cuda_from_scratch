@@ -1,3 +1,15 @@
+# Chapter 32: Mixture-of-Experts at Scale: Expert Parallelism and GPU-Initiated All-to-All (DeepEP)
+
+<!-- execution:provenance -->
+!!! info "Execution provenance"
+
+    Current execution blocks identify the tested source hash, hardware dataset, commands and captured output. References elsewhere on this page to a device-less environment describe the original authoring context. Historical output is superseded by the current record. Displayed output omits the runner command header and trims trailing line whitespace; raw logs remain exact. A host simulation or API validation has its stated scope; neither alone establishes a numerical multi-GPU workload or measured performance.
+
+
+<!-- mgpu:opener:start -->
+[![Chapter 32: Mixture-of-Experts at Scale: Expert Parallelism and GPU-Initiated All-to-All (DeepEP)](../images/chapter-openers/32.svg)](../images/chapter-openers/32.svg)
+<!-- mgpu:opener:end -->
+
 **What you will understand after this chapter:** why a Mixture-of-Experts (MoE) layer needs a genuinely different communication pattern than anything Part 2 through Part 6 built -- a per-TOKEN dispatch/combine all-to-all, not a per-RANK reduction -- and why MoE outputs are nevertheless NOT independent of how many ranks the batch is split across: GShard-style per-group expert capacity makes which tokens overflow depend on the partition, and once a token is routed to three or more experts, the grouping of its combine sum matters too; what DeepSeek-AI's own real, open-source DeepEP library actually is, why it ships two entirely separate all-to-all kernel families (one tuned for training throughput, one for inference latency) rather than a single "best" kernel, and how its own real V1 design used NVIDIA's NVSHMEM (this book's own Chapter 22) with GPU-initiated RDMA to let the GPU drive the network directly, bypassing the CPU per dispatch -- plus a candid look at DeepEP's later releases, which moved away from that NVSHMEM foundation and have since removed V1 from the repository entirely, a reminder that even a cutting-edge production library's transport layer keeps changing.
 
 **What you need to know first:** Chapter 10 (all-to-all, this chapter's direct ancestor), Chapter 14 (tensor parallelism -- MoE is a different way of sharding work within a layer), and Chapter 22 (NVSHMEM and GPU-initiated communication, which this chapter's real GPU-initiated all-to-all API calls build on directly).
@@ -26,6 +38,10 @@ Part 6 closed with eight case studies that each fit into one of three communicat
 ```
 
 ## 32.1 Expert Parallelism and the Dispatch/Combine All-to-All
+
+<!-- mgpu:figure-1:start -->
+[![Dispatch to experts, then combine by token](../images/technical/ch32/1-experts.svg)](../images/technical/ch32/1-experts.svg)
+<!-- mgpu:figure-1:end -->
 
 ### Intuition
 
@@ -296,6 +312,92 @@ int main() {
 }
 ```
 
+<!-- execution:start:a100:93_moe_dispatch_combine_correctness_simulation.cpp -->
+> **Current execution — 2026-11-17-a100: Host program/model (exit-only).** UTC (program start): `2026-11-18T00:05:33.944011+00:00`. Source SHA-256: `0716eaa8aa725282e651da3a00418941f9d494352c04f917ea717a60237a12b0`.
+
+[Exact tested source](../validation/2026-11-17-a100/93_moe_dispatch_combine_correctness_simulation/93_moe_dispatch_combine_correctness_simulation.cpp) · [Compiler log](../validation/2026-11-17-a100/93_moe_dispatch_combine_correctness_simulation/compile.log) · [Execution log](../validation/2026-11-17-a100/93_moe_dispatch_combine_correctness_simulation/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+g++ -std=c++17 -O2 93_moe_dispatch_combine_correctness_simulation.cpp -o ./example
+./example
+```
+
+<details markdown="1"><summary>Captured current-source output</summary>
+
+```text
+Part A -- GShard-style per-group capacity, 24 tokens, 6 experts, top-2, capacity factor 1.25
+Reference (P=1, whole batch is one group): 19 overflowed (token,expert) slots of 48, 7 tokens fully overflowed.
+
+P    cap/group  overflow slots   fully overflowed  tokens changed  max |y - reference.y|
+1    10         19               7                 0               0
+2    5          19               6                 4               36
+3    4          15               4                 5               42.3
+4    3          16               5                 6               42.3
+6    2          16               5                 4               30
+8    2          9                2                 4               42.3
+12   1          16               5                 8               42.3
+24   1          0                0                 4               42.3
+
+Part B -- hierarchical combine (per-rank partial sums, then a sum of partials), 4096 tokens, 32 experts sharded contiguously across P ranks.
+Tokens whose combined output differs from the P=1 left-to-right sum:
+top-k   P=2       P=4       P=8       P=16      P=32
+2       0         0         0         0         0
+3       429       295       142       58        0
+4       696       553       290       109       0
+8       1332      1232      867       364       0
+
+Part A: once capacity is enforced per group (per rank), the SAME tokens and the SAME gate give different outputs for different P -- which tokens overflow depends on which tokens share a capacity budget. Part B: with top-2 routing a token's combine is a 2-term sum, and IEEE 754 addition is commutative, so no grouping can change it; at top-3 and beyond the grouping of the terms matters and the result depends on how experts are spread across ranks.
+```
+
+</details>
+<!-- execution:end:a100:93_moe_dispatch_combine_correctness_simulation.cpp -->
+
+
+<!-- execution:start:h100:93_moe_dispatch_combine_correctness_simulation.cpp -->
+> **Current execution — 2026-11-17-h100: Host program/model (exit-only).** UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`. Source SHA-256: `0716eaa8aa725282e651da3a00418941f9d494352c04f917ea717a60237a12b0`.
+
+[Exact tested source](../validation/2026-11-17-h100/93_moe_dispatch_combine_correctness_simulation/93_moe_dispatch_combine_correctness_simulation.cpp) · [Compiler log](../validation/2026-11-17-h100/93_moe_dispatch_combine_correctness_simulation/compile.log) · [Execution log](../validation/2026-11-17-h100/93_moe_dispatch_combine_correctness_simulation/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+g++ -std=c++17 -O2 93_moe_dispatch_combine_correctness_simulation.cpp -o ./example
+./example
+```
+
+<details markdown="1"><summary>Captured current-source output</summary>
+
+```text
+Part A -- GShard-style per-group capacity, 24 tokens, 6 experts, top-2, capacity factor 1.25
+Reference (P=1, whole batch is one group): 19 overflowed (token,expert) slots of 48, 7 tokens fully overflowed.
+
+P    cap/group  overflow slots   fully overflowed  tokens changed  max |y - reference.y|
+1    10         19               7                 0               0
+2    5          19               6                 4               36
+3    4          15               4                 5               42.3
+4    3          16               5                 6               42.3
+6    2          16               5                 4               30
+8    2          9                2                 4               42.3
+12   1          16               5                 8               42.3
+24   1          0                0                 4               42.3
+
+Part B -- hierarchical combine (per-rank partial sums, then a sum of partials), 4096 tokens, 32 experts sharded contiguously across P ranks.
+Tokens whose combined output differs from the P=1 left-to-right sum:
+top-k   P=2       P=4       P=8       P=16      P=32
+2       0         0         0         0         0
+3       429       295       142       58        0
+4       696       553       290       109       0
+8       1332      1232      867       364       0
+
+Part A: once capacity is enforced per group (per rank), the SAME tokens and the SAME gate give different outputs for different P -- which tokens overflow depends on which tokens share a capacity budget. Part B: with top-2 routing a token's combine is a 2-term sum, and IEEE 754 addition is commutative, so no grouping can change it; at top-3 and beyond the grouping of the terms matters and the result depends on how experts are spread across ranks.
+```
+
+</details>
+<!-- execution:end:h100:93_moe_dispatch_combine_correctness_simulation.cpp -->
+
+
 Compile and run (a plain host `.cpp` file, no CUDA/NCCL/MPI/NVSHMEM linkage, so this was cross-verified on both the cloud sandbox and the device):
 
 ```bash
@@ -305,6 +407,8 @@ g++ -O2 -ffp-contract=off -o 93_moe_dispatch_combine_correctness_simulation \
 ```
 
 Locked output:
+
+<details markdown="1"><summary>Historical authoring output — superseded by the current execution above</summary>
 
 ```
 Part A -- GShard-style per-group capacity, 24 tokens, 6 experts, top-2, capacity factor 1.25
@@ -330,6 +434,8 @@ top-k   P=2       P=4       P=8       P=16      P=32
 
 Part A: once capacity is enforced per group (per rank), the SAME tokens and the SAME gate give different outputs for different P -- which tokens overflow depends on which tokens share a capacity budget. Part B: with top-2 routing a token's combine is a 2-term sum, and IEEE 754 addition is commutative, so no grouping can change it; at top-3 and beyond the grouping of the terms matters and the result depends on how experts are spread across ranks.
 ```
+
+</details>
 
 Read Part A first. At P = 1 (one group), 19 of the 48 (token, expert) slots overflow and 7 of the 24 tokens overflow on BOTH of their chosen experts, hitting GShard's residual-passthrough branch. Split the same batch into groups and the picture moves: between 4 and 8 of the 24 tokens produce a different output at every P > 1, and the fully-overflowed count wanders between 0 and 6. Nothing about the tokens or the gate changed -- only which tokens share a capacity budget. At P = 24 every group holds one token, its capacity rounds up to 1, and nothing overflows at all; at P = 8 the capacity rounds to 2 for a group of 3 tokens, which is relatively generous, so overflow drops to 9 slots; at P = 12 two tokens share a capacity of 1, and overflow climbs back to 16. The rounding in `ceil()` and the skewed gate interact in a way no single "overflow rate" captures. MoE layer outputs are partition-dependent -- not by a last-bit rounding difference, but by whole tokens being processed or skipped. (GShard's per-group capacity is a deliberate design choice -- it keeps the capacity check local, with no cross-rank count to synchronize -- and the price is exactly this dependence.)
 
@@ -448,6 +554,86 @@ int main() {
 }
 ```
 
+<!-- execution:start:a100:94_normal_vs_lowlatency_kernel_cost_model.cpp -->
+> **Current execution — 2026-11-17-a100: Host program/model (exit-only).** UTC (program start): `2026-11-18T00:05:34.728979+00:00`. Source SHA-256: `34335d753cb7c58850cc4203491ecaf9656d3da978b285ebd9a05d2051efc098`.
+
+[Exact tested source](../validation/2026-11-17-a100/94_normal_vs_lowlatency_kernel_cost_model/94_normal_vs_lowlatency_kernel_cost_model.cpp) · [Compiler log](../validation/2026-11-17-a100/94_normal_vs_lowlatency_kernel_cost_model/compile.log) · [Execution log](../validation/2026-11-17-a100/94_normal_vs_lowlatency_kernel_cost_model/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+g++ -std=c++17 -O2 94_normal_vs_lowlatency_kernel_cost_model.cpp -o ./example
+./example
+```
+
+<details markdown="1"><summary>Captured current-source output</summary>
+
+```text
+DeepEP V1 -- Normal kernels (real cited data, docs/legacy.md):
+Type       EP     Dispatch BW (GB/s)   Combine BW (GB/s)
+Intranode  8      153.0                158.0
+Internode  16     43.0                 43.0
+Internode  32     58.0                 57.0
+Internode  64     51.0                 50.0
+
+DeepEP V1 -- Low-latency kernels (real cited data, 128 tokens/batch):
+EP     Dispatch us    Dispatch GB/s    Combine us     Combine GB/s     us/token (dispatch)
+8      77.0           98.0             114.0          127.0            0.602
+16     118.0          63.0             195.0          74.0             0.922
+32     155.0          48.0             273.0          53.0             1.211
+64     173.0          43.0             314.0          46.0             1.352
+128    192.0          39.0             369.0          39.0             1.500
+256    194.0          39.0             360.0          40.0             1.516
+
+Low-latency dispatch bandwidth falls from 98 GB/s at EP=8 to 39 GB/s at EP=256 -- a 2.51x drop -- as latency simultaneously RISES from 77 us to 194 us, a 2.52x increase. Both real numbers move in the same direction as EP grows: more experts to reach means more small, separate RDMA operations per token, not one bigger one.
+
+Notice what DeepEP's own real documentation does NOT publish: no latency number at all for the normal kernels, at any EP degree. That omission is itself informative -- normal kernels are benchmarked and tuned purely as a throughput number because they are meant to move whole TRAINING batches (thousands of tokens) where per-call fixed overhead is amortized away; low-latency kernels report latency because at INFERENCE-DECODE batch sizes (the 128-token, 8-to-256-expert range above) that fixed overhead is exactly what a user waiting on a response feels. This mirrors Chapter 18's own finding that no single load-balancing strategy dominates across every workload shape: here, no single ALL-TO-ALL KERNEL dominates across every batch size either, which is exactly why DeepEP ships both.
+```
+
+</details>
+<!-- execution:end:a100:94_normal_vs_lowlatency_kernel_cost_model.cpp -->
+
+
+<!-- execution:start:h100:94_normal_vs_lowlatency_kernel_cost_model.cpp -->
+> **Current execution — 2026-11-17-h100: Host program/model (exit-only).** UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`. Source SHA-256: `34335d753cb7c58850cc4203491ecaf9656d3da978b285ebd9a05d2051efc098`.
+
+[Exact tested source](../validation/2026-11-17-h100/94_normal_vs_lowlatency_kernel_cost_model/94_normal_vs_lowlatency_kernel_cost_model.cpp) · [Compiler log](../validation/2026-11-17-h100/94_normal_vs_lowlatency_kernel_cost_model/compile.log) · [Execution log](../validation/2026-11-17-h100/94_normal_vs_lowlatency_kernel_cost_model/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+g++ -std=c++17 -O2 94_normal_vs_lowlatency_kernel_cost_model.cpp -o ./example
+./example
+```
+
+<details markdown="1"><summary>Captured current-source output</summary>
+
+```text
+DeepEP V1 -- Normal kernels (real cited data, docs/legacy.md):
+Type       EP     Dispatch BW (GB/s)   Combine BW (GB/s)
+Intranode  8      153.0                158.0
+Internode  16     43.0                 43.0
+Internode  32     58.0                 57.0
+Internode  64     51.0                 50.0
+
+DeepEP V1 -- Low-latency kernels (real cited data, 128 tokens/batch):
+EP     Dispatch us    Dispatch GB/s    Combine us     Combine GB/s     us/token (dispatch)
+8      77.0           98.0             114.0          127.0            0.602
+16     118.0          63.0             195.0          74.0             0.922
+32     155.0          48.0             273.0          53.0             1.211
+64     173.0          43.0             314.0          46.0             1.352
+128    192.0          39.0             369.0          39.0             1.500
+256    194.0          39.0             360.0          40.0             1.516
+
+Low-latency dispatch bandwidth falls from 98 GB/s at EP=8 to 39 GB/s at EP=256 -- a 2.51x drop -- as latency simultaneously RISES from 77 us to 194 us, a 2.52x increase. Both real numbers move in the same direction as EP grows: more experts to reach means more small, separate RDMA operations per token, not one bigger one.
+
+Notice what DeepEP's own real documentation does NOT publish: no latency number at all for the normal kernels, at any EP degree. That omission is itself informative -- normal kernels are benchmarked and tuned purely as a throughput number because they are meant to move whole TRAINING batches (thousands of tokens) where per-call fixed overhead is amortized away; low-latency kernels report latency because at INFERENCE-DECODE batch sizes (the 128-token, 8-to-256-expert range above) that fixed overhead is exactly what a user waiting on a response feels. This mirrors Chapter 18's own finding that no single load-balancing strategy dominates across every workload shape: here, no single ALL-TO-ALL KERNEL dominates across every batch size either, which is exactly why DeepEP ships both.
+```
+
+</details>
+<!-- execution:end:h100:94_normal_vs_lowlatency_kernel_cost_model.cpp -->
+
+
 Compile and run (again a plain host `.cpp` file with no CUDA/NCCL/MPI/NVSHMEM linkage, cross-verified on both the cloud sandbox and the device):
 
 ```bash
@@ -457,6 +643,8 @@ g++ -O2 -ffp-contract=off -o 94_normal_vs_lowlatency_kernel_cost_model \
 ```
 
 Locked output:
+
+<details markdown="1"><summary>Historical authoring output — superseded by the current execution above</summary>
 
 ```
 DeepEP V1 -- Normal kernels (real cited data, docs/legacy.md):
@@ -480,7 +668,13 @@ Low-latency dispatch bandwidth falls from 98 GB/s at EP=8 to 39 GB/s at EP=256 -
 Notice what DeepEP's own real documentation does NOT publish: no latency number at all for the normal kernels, at any EP degree. That omission is itself informative -- normal kernels are benchmarked and tuned purely as a throughput number because they are meant to move whole TRAINING batches (thousands of tokens) where per-call fixed overhead is amortized away; low-latency kernels report latency because at INFERENCE-DECODE batch sizes (the 128-token, 8-to-256-expert range above) that fixed overhead is exactly what a user waiting on a response feels. This mirrors Chapter 18's own finding that no single load-balancing strategy dominates across every workload shape: here, no single ALL-TO-ALL KERNEL dominates across every batch size either, which is exactly why DeepEP ships both.
 ```
 
+</details>
+
 ## 32.3 GPU-Initiated All-to-All: NVSHMEM/IBGDA vs. the Host-Mediated All-to-All
+
+<!-- mgpu:figure-3:start -->
+[![A device-initiated path still needs completion](../images/technical/ch32/3-put.svg)](../images/technical/ch32/3-put.svg)
+<!-- mgpu:figure-3:end -->
 
 ### Intuition
 
@@ -503,130 +697,231 @@ Chapter 10's all-to-all, and every MPI-based collective since Chapter 20, follow
 +-------------------------------------------------------------+
 ```
 
-File 95 compiles and runs the two real NVSHMEM APIs this section is built on: the host-callable `nvshmem_int_alltoall()` collective -- the exact real primitive GShard's own paper names for MoE dispatch/combine ("MoE dispatch and combine represents cross-partition communication with AllToAll") -- and the kernel-level `nvshmem_int_p()` GPU-initiated put via `nvshmemx_collective_launch()`, the identical real Chapter 22 pattern. It also binds each PE to its own GPU BEFORE `nvshmemx_init_attr()`: NVSHMEM attaches to whichever device is current at initialization, so without a `cudaSetDevice()` keyed on the node-local rank (here from `MPI_Comm_split_type(..., MPI_COMM_TYPE_SHARED, ...)`), two PEs on a multi-GPU node would both bind to device 0. Compiling it needs an explicit `-arch` (`-arch=sm_90` below): without one, `nvcc` 12.0 targets its default architecture, which is below what the NVSHMEM device headers' CUDA atomics require, and compilation stops with "CUDA atomics are only supported for sm_60 and up." (An earlier toolchain produced a different, `half`-type ambiguous-conversion error at the same step; the fix is the same.) This sandbox's own real device query, confirmed fresh below, still reports zero CUDA-capable devices -- so exactly as in Chapter 22 and Chapter 23, this file's honest result is a real, reproducible limitation at the point actual device memory is needed, handled gracefully rather than crashing.
+File 95 demonstrates a host-callable NVSHMEM all-to-all and a kernel-initiated ring put. Each process selects its node-local GPU before NVSHMEM initialization. The all-to-all buffers contain one element per PE; host initialization and inspection use CUDA copies, and every received source element is checked. The ring put targets the next PE and checks the previous PE's value after completion and synchronization. A single-node NVLink execution demonstrates peer communication; it does not establish that traffic used InfiniBand or IBGDA. The current source passed its two-PE numerical check on the H100 pair. Earlier zero-GPU transcripts below describe the preceding source, not a successful GPU workload.
+
+The [2026-11-17 H100 execution record](../validation-h100.md) covers two GPUs connected by local NV18. It distinguishes numerical checks, API probes and other executions; a successful exit alone does not establish GPU algorithm correctness.
+
+
+> **Validation update:** File 95 passed its two-PE all-to-all and ring-put numerical checks on 2026-11-17. Each PE binds its local GPU, allocates one all-to-all element per peer and uses CUDA copies for host inspection. Local NV18 communication does not establish RDMA or IBGDA transport.
+
+The [2026-11-17 H100 execution record](../validation-h100.md) covers two GPUs connected by local NV18. It distinguishes numerical checks, API probes and other executions; a successful exit alone does not establish GPU algorithm correctness.
 
 ```cpp
-// Chapter 32: Mixture-of-Experts at Scale
 // 95_gpu_initiated_alltoall_and_put_demo.cu
-//
-// Chapter 10 built all-to-all as a HOST-ORCHESTRATED collective: the CPU
-// issues one call (an MPI_Alltoall or a hand-rolled loop of MPI_Sendrecv),
-// and the network library moves the bytes. NVIDIA's own real NVSHMEM
-// library, and DeepSeek-AI's own real DeepEP library (V1, the version
-// documented at deepseek-ai/DeepEP's docs/legacy.md) build MoE dispatch
-// and combine a different way: the GPU itself issues the network
-// operation, from INSIDE a kernel, using NVSHMEM's real GPU-initiated RDMA
-// (InfiniBand GPUDirect Async, "IBGDA" -- confirmed installed in this
-// exact sandbox below, not just claimed by a vendor blog post) so the CPU
-// is never in the critical path of a single dispatch. This file compiles
-// and runs the SAME two real NVSHMEM APIs Chapter 22 already established
-// exist and link (`nvshmem_int_p()` for a GPU-initiated single-element
-// put, and `nvshmemx_collective_launch()` to launch a kernel that calls
-// it), plus one Chapter 22 did NOT yet exercise: NVSHMEM's own real
-// host-callable `nvshmem_int_alltoall()` collective -- the same shape
-// GShard's own real paper calls "cross-partition communication with
-// AllToAll" for MoE dispatch/combine. This sandbox still has no real GPU
-// (confirmed again below), so exactly as in Chapter 22/23, the honest
-// result is a real, reproducible failure at the point real device memory
-// or a real kernel launch is required -- not a fabricated success.
+// Checked two-PE example. Compile and execution evidence are captured separately.
+#define OMPI_SKIP_MPICXX
+#include <mpi.h>
 #include <cstdio>
 #include <cstdlib>
-#include <mpi.h>
+#include <vector>
 #include <cuda_runtime.h>
 #include <nvshmem.h>
 #include <nvshmemx.h>
 
-__global__ void gpuInitiatedPutKernel(int *dest, int value, int targetPe) {
-    // The exact real Chapter 22 pattern: a kernel calling nvshmem_int_p()
-    // itself -- the GPU, not the CPU, issues this single-element put.
-    nvshmem_int_p(dest, value, targetPe);
+#define CUDA_OK(call) do { cudaError_t e = (call); if (e != cudaSuccess) { \
+    fprintf(stderr, "%s: %s\n", #call, cudaGetErrorString(e)); \
+    MPI_Abort(MPI_COMM_WORLD, 1); } } while (0)
+
+static void bind_device(int rank) {
+    MPI_Comm node;
+    MPI_Comm_split_type(MPI_COMM_WORLD, MPI_COMM_TYPE_SHARED, rank, MPI_INFO_NULL, &node);
+    int localRank, count;
+    MPI_Comm_rank(node, &localRank);
+    MPI_Comm_free(&node);
+    CUDA_OK(cudaGetDeviceCount(&count));
+    if (localRank >= count) {
+        fprintf(stderr, "Insufficient GPUs: local rank %d, visible devices %d\n", localRank, count);
+        MPI_Abort(MPI_COMM_WORLD, 2);
+    }
+    CUDA_OK(cudaSetDevice(localRank));
+}
+
+__global__ void putKernel(int *destination, int value, int peer) {
+    nvshmem_int_p(destination, value, peer);
+    nvshmem_quiet(); // complete this issuing thread's remote operation
 }
 
 int main(int argc, char **argv) {
     MPI_Init(&argc, &argv);
-    int mpiRank = 0, mpiSize = 0;
-    MPI_Comm_rank(MPI_COMM_WORLD, &mpiRank);
-    MPI_Comm_size(MPI_COMM_WORLD, &mpiSize);
-
-    // Real device-count check, same as Chapter 22/23 -- this sandbox is
-    // confirmed to have zero real CUDA-capable devices.
-    int deviceCount = 0;
-    cudaError_t devErr = cudaGetDeviceCount(&deviceCount);
-    if (mpiRank == 0) {
-        printf("cudaGetDeviceCount: err=%d (%s) count=%d\n",
-               devErr, cudaGetErrorString(devErr), deviceCount);
+    int rank;
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    bind_device(rank); // one local PE per GPU, before NVSHMEM initialization
+    MPI_Comm world = MPI_COMM_WORLD;
+    nvshmemx_init_attr_t attr = NVSHMEMX_INIT_ATTR_INITIALIZER;
+    nvshmemx_set_attr_mpi_comm_args(&world, &attr);
+    int rc = nvshmemx_init_attr(NVSHMEMX_INIT_WITH_MPI_COMM, &attr);
+    if (rc != 0) MPI_Abort(MPI_COMM_WORLD, 3);
+    int pe = nvshmem_my_pe(), nPes = nvshmem_n_pes();
+    int errors = 0;
+    // One element per destination, hence nPes elements per symmetric buffer.
+    size_t bytes = static_cast<size_t>(nPes) * sizeof(int);
+    int *send = static_cast<int *>(nvshmem_malloc(bytes));
+    int *recv = static_cast<int *>(nvshmem_malloc(bytes));
+    if (!send || !recv) MPI_Abort(MPI_COMM_WORLD, 4);
+    std::vector<int> hostSend(nPes), hostRecv(nPes, -1);
+    for (int destination = 0; destination < nPes; ++destination)
+        hostSend[destination] = 10000 * pe + destination;
+    CUDA_OK(cudaMemcpy(send, hostSend.data(), bytes, cudaMemcpyHostToDevice));
+    CUDA_OK(cudaMemset(recv, 0xff, bytes));
+    nvshmem_barrier_all();
+    nvshmem_int_alltoall(NVSHMEM_TEAM_WORLD, recv, send, 1);
+    CUDA_OK(cudaDeviceSynchronize());
+    CUDA_OK(cudaMemcpy(hostRecv.data(), recv, bytes, cudaMemcpyDeviceToHost));
+    for (int source = 0; source < nPes; ++source) {
+        int expectedValue = 10000 * source + pe;
+        if (hostRecv[source] != expectedValue) ++errors;
     }
-
-    // Bind each PE to its OWN GPU before NVSHMEM initializes: NVSHMEM
-    // attaches to whatever device is current at init time, so without
-    // this every PE on a multi-GPU node would land on device 0. The
-    // node-local rank comes from an MPI shared-memory split.
-    MPI_Comm nodeComm;
-    MPI_Comm_split_type(MPI_COMM_WORLD, MPI_COMM_TYPE_SHARED, mpiRank,
-                        MPI_INFO_NULL, &nodeComm);
-    int localRank = 0;
-    MPI_Comm_rank(nodeComm, &localRank);
-    MPI_Comm_free(&nodeComm);
-    if (deviceCount > 0) {
-        cudaSetDevice(localRank % deviceCount);
-    } else if (mpiRank == 0) {
-        printf("no device to bind (local rank %d) -- skipping cudaSetDevice\n",
-               localRank);
-    }
-
-    MPI_Comm worldComm = MPI_COMM_WORLD;
-    nvshmemx_init_attr_t attr;
-    attr.mpi_comm = &worldComm;
-    int initStatus = nvshmemx_init_attr(NVSHMEMX_INIT_WITH_MPI_COMM, &attr);
-    int myPe = nvshmem_my_pe();
-    int nPes = nvshmem_n_pes();
-    if (mpiRank == 0) {
-        printf("nvshmemx_init_attr: status=%d  my_pe=%d  n_pes=%d "
-               "(MPI reports rank=%d size=%d)\n",
-               initStatus, myPe, nPes, mpiRank, mpiSize);
-    }
-
-    // Step A: the real host-callable NVSHMEM all-to-all collective --
-    // the same primitive GShard's own paper names for MoE dispatch.
-    // A symmetric heap allocation is a real device allocation, so this is
-    // exactly where we expect the sandbox's real "no CUDA-capable device"
-    // limitation to surface, just as it did for Chapter 22's own
-    // symmetric-heap allocations.
-    int *sendBuf = (int *)nvshmem_malloc(sizeof(int));
-    int *recvBuf = (int *)nvshmem_malloc(sizeof(int));
-    if (sendBuf == nullptr || recvBuf == nullptr) {
-        printf("PE %d: nvshmem_malloc returned NULL (expected on a "
-               "sandbox with zero real CUDA devices) -- skipping the "
-               "alltoall call and the kernel-level put call below.\n",
-               myPe);
-    } else {
-        *sendBuf = 100 + myPe;
-        nvshmem_int_alltoall(NVSHMEM_TEAM_WORLD, recvBuf, sendBuf, 1);
-        printf("PE %d: nvshmem_int_alltoall completed, recvBuf=%d\n",
-               myPe, *recvBuf);
-
-        // Step B: the real Chapter 22 kernel-level GPU-initiated put,
-        // launched via the real nvshmemx_collective_launch().
-        int *target = (int *)nvshmem_malloc(sizeof(int));
-        void *kernelArgs[] = {&target, nullptr, nullptr};
-        int putValue = 777;
-        int destPe = myPe;
-        kernelArgs[1] = &putValue;
-        kernelArgs[2] = &destPe;
-        int launchStatus = nvshmemx_collective_launch(
-            (const void *)gpuInitiatedPutKernel, dim3(1), dim3(1),
-            kernelArgs, 0, 0);
-        printf("PE %d: nvshmemx_collective_launch returned %d\n",
-               myPe, launchStatus);
-    }
-
+    printf("PE %d all-to-all: checked %d source elements, errors=%d\n", pe, nPes, errors);
+    nvshmem_free(recv);
+    nvshmem_free(send);
+    int *target = static_cast<int *>(nvshmem_malloc(sizeof(int)));
+    if (!target) MPI_Abort(MPI_COMM_WORLD, 4);
+    CUDA_OK(cudaMemset(target, 0xff, sizeof(int)));
+    nvshmem_barrier_all(); // all destination allocations are initialized
+    int value = 777 + pe, peer = (pe + 1) % nPes;
+    void *args[] = {&target, &value, &peer};
+    rc = nvshmemx_collective_launch(reinterpret_cast<const void *>(putKernel),
+                                  dim3(1), dim3(1), args, 0, 0);
+    if (rc != 0) MPI_Abort(MPI_COMM_WORLD, 5);
+    CUDA_OK(cudaDeviceSynchronize());
+    nvshmem_barrier_all(); // every issuing PE has completed its put and quiet
+    int received = -1;
+    CUDA_OK(cudaMemcpy(&received, target, sizeof(int), cudaMemcpyDeviceToHost));
+    int expected = 777 + (pe + nPes - 1) % nPes;
+    if (received != expected) ++errors;
+    printf("PE %d ring put: received=%d expected=%d\n", pe, received, expected);
+    nvshmem_free(target);
+    int totalErrors = 0;
+    MPI_Allreduce(&errors, &totalErrors, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
+    if (pe == 0) printf("VALIDATION %s: %d PEs, errors=%d\n",
+                        totalErrors ? "FAIL" : "PASS", nPes, totalErrors);
     nvshmem_finalize();
     MPI_Finalize();
-    return 0;
+    return totalErrors ? 1 : 0;
 }
 ```
 
-Compile and run (real `nvcc` + real NVSHMEM + real Open MPI linkage -- verified ONLY in the cloud sandbox, per this book's own standing toolchain rule that the device has no CUDA/NVSHMEM installed):
+<!-- execution:start:a100:95_gpu_initiated_alltoall_and_put_demo.cu -->
+> **Current execution — 2026-11-17-a100: Numerical/transport validation (recorded scope).** UTC (program start): `2026-11-18T00:05:34.851429+00:00`. Source SHA-256: `4b3e85ccf3af9bdd91b9c33e0903bb67ca67521af886b6b82732f1d0ad6e371d`.
+
+[Exact tested source](../validation/2026-11-17-a100/95_gpu_initiated_alltoall_and_put_demo/95_gpu_initiated_alltoall_and_put_demo.cu) · [Compiler log](../validation/2026-11-17-a100/95_gpu_initiated_alltoall_and_put_demo/compile.log) · [Execution log](../validation/2026-11-17-a100/95_gpu_initiated_alltoall_and_put_demo/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+nvcc -std=c++17 -O2 -arch=sm_80 -ccbin mpicxx -rdc=true -I/home/ubuntu/book2-deps/lib/python3.12/site-packages/nvidia/nvshmem/include -L/home/ubuntu/book2-deps/lib/python3.12/site-packages/nvidia/nvshmem/lib -Xlinker=-rpath=/home/ubuntu/book2-deps/lib/python3.12/site-packages/nvidia/nvshmem/lib 95_gpu_initiated_alltoall_and_put_demo.cu -o ./example -lnvshmem_host -lnvshmem_device -lcuda
+/usr/mpi/gcc/openmpi-4.1.7rc1/bin/mpirun --oversubscribe -np 8 ./example
+```
+
+<details markdown="1"><summary>Captured current-source output</summary>
+
+```text
+[LOG_CAT_SBGP] libnuma.so: cannot open shared object file: No such file or directory
+[LOG_CAT_SBGP] Failed to dlopen libnuma.so. Fallback to GROUP_BY_SOCKET manual.
+[LOG_CAT_SBGP] libnuma.so: cannot open shared object file: No such file or directory
+[LOG_CAT_SBGP] Failed to dlopen libnuma.so. Fallback to GROUP_BY_SOCKET manual.
+[LOG_CAT_SBGP] libnuma.so: cannot open shared object file: No such file or directory
+[LOG_CAT_SBGP] Failed to dlopen libnuma.so. Fallback to GROUP_BY_SOCKET manual.
+[LOG_CAT_SBGP] libnuma.so: cannot open shared object file: No such file or directory
+[LOG_CAT_SBGP] Failed to dlopen libnuma.so. Fallback to GROUP_BY_SOCKET manual.
+[LOG_CAT_SBGP] libnuma.so: cannot open shared object file: No such file or directory
+[LOG_CAT_SBGP] Failed to dlopen libnuma.so. Fallback to GROUP_BY_SOCKET manual.
+[LOG_CAT_SBGP] libnuma.so: cannot open shared object file: No such file or directory
+[LOG_CAT_SBGP] Failed to dlopen libnuma.so. Fallback to GROUP_BY_SOCKET manual.
+[LOG_CAT_SBGP] libnuma.so: cannot open shared object file: No such file or directory
+[LOG_CAT_SBGP] Failed to dlopen libnuma.so. Fallback to GROUP_BY_SOCKET manual.
+[LOG_CAT_SBGP] libnuma.so: cannot open shared object file: No such file or directory
+[LOG_CAT_SBGP] Failed to dlopen libnuma.so. Fallback to GROUP_BY_SOCKET manual.
+PE 5 all-to-all: checked 8 source elements, errors=0
+PE 1 all-to-all: checked 8 source elements, errors=0
+PE 4 all-to-all: checked 8 source elements, errors=0
+PE 6 all-to-all: checked 8 source elements, errors=0
+PE 0 all-to-all: checked 8 source elements, errors=0
+PE 7 all-to-all: checked 8 source elements, errors=0
+PE 3 all-to-all: checked 8 source elements, errors=0
+PE 2 all-to-all: checked 8 source elements, errors=0
+PE 2 ring put: received=778 expected=778
+PE 7 ring put: received=783 expected=783
+PE 4 ring put: received=780 expected=780
+PE 0 ring put: received=784 expected=784
+PE 6 ring put: received=782 expected=782
+PE 3 ring put: received=779 expected=779
+PE 5 ring put: received=781 expected=781
+PE 1 ring put: received=777 expected=777
+VALIDATION PASS: 8 PEs, errors=0
+```
+
+</details>
+<!-- execution:end:a100:95_gpu_initiated_alltoall_and_put_demo.cu -->
+
+
+<!-- execution:start:h100:95_gpu_initiated_alltoall_and_put_demo.cu -->
+> **Current execution — 2026-11-17-h100: Numerical/transport validation (recorded scope).** UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`. Source SHA-256: `4b3e85ccf3af9bdd91b9c33e0903bb67ca67521af886b6b82732f1d0ad6e371d`.
+
+[Exact tested source](../validation/2026-11-17-h100/95_gpu_initiated_alltoall_and_put_demo/95_gpu_initiated_alltoall_and_put_demo.cu) · [Compiler log](../validation/2026-11-17-h100/95_gpu_initiated_alltoall_and_put_demo/compile.log) · [Execution log](../validation/2026-11-17-h100/95_gpu_initiated_alltoall_and_put_demo/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+nvcc -std=c++17 -O2 -arch=sm_90 -ccbin mpicxx -rdc=true -I/home/ubuntu/book2-deps/lib/python3.12/site-packages/nvidia/nvshmem/include -L/home/ubuntu/book2-deps/lib/python3.12/site-packages/nvidia/nvshmem/lib -Xlinker=-rpath=/home/ubuntu/book2-deps/lib/python3.12/site-packages/nvidia/nvshmem/lib 95_gpu_initiated_alltoall_and_put_demo.cu -o ./example -lnvshmem_host -lnvshmem_device -lcuda
+/home/ubuntu/book2-bin/mpirun --oversubscribe -np 2 ./example
+```
+
+<details markdown="1"><summary>Captured current-source output</summary>
+
+```text
+--------------------------------------------------------------------------
+Sorry!  You were supposed to get help about:
+    unavailable
+But I couldn't open the help file:
+    /usr/lib/x86_64-linux-gnu/pmix2/share/pmix/help-pcompress.txt: No such file or directory.  Sorry!
+--------------------------------------------------------------------------
+libibverbs: Warning: couldn't load driver 'libvmw_pvrdma-rdmav34.so': libvmw_pvrdma-rdmav34.so: cannot open shared object file: No such file or directory
+libibverbs: Warning: couldn't load driver 'libvmw_pvrdma-rdmav34.so': libvmw_pvrdma-rdmav34.so: cannot open shared object file: No such file or directory
+--------------------------------------------------------------------------
+WARNING: No preset parameters were found for the device that Open MPI
+detected:
+
+  Local host:            192-222-53-210
+  Device name:           mlx5_0
+  Device vendor ID:      0x02c9
+  Device vendor part ID: 4124
+
+Default device parameters will be used, which may result in lower
+performance.  You can edit any of the files specified by the
+btl_openib_device_param_files MCA parameter to set values for your
+device.
+
+NOTE: You can turn off this warning by setting the MCA parameter
+      btl_openib_warn_no_device_params_found to 0.
+--------------------------------------------------------------------------
+--------------------------------------------------------------------------
+No OpenFabrics connection schemes reported that they were able to be
+used on a specific port.  As such, the openib BTL (OpenFabrics
+support) will be disabled for this port.
+
+  Local host:           192-222-53-210
+  Local device:         mlx5_0
+  Local port:           1
+  CPCs attempted:       udcm
+--------------------------------------------------------------------------
+PE 0 all-to-all: checked 2 source elements, errors=0
+PE 1 all-to-all: checked 2 source elements, errors=0
+PE 0 ring put: received=778 expected=778
+PE 1 ring put: received=777 expected=777
+VALIDATION PASS: 2 PEs, errors=0
+[192-222-53-210:14062] 1 more process has sent help message help-mpi-btl-openib.txt / no device params found
+[192-222-53-210:14062] Set MCA parameter "orte_base_help_aggregate" to 0 to see all help / error messages
+[192-222-53-210:14062] 1 more process has sent help message help-mpi-btl-openib-cpc-base.txt / no cpcs for port
+```
+
+</details>
+<!-- execution:end:h100:95_gpu_initiated_alltoall_and_put_demo.cu -->
+
+
+Compile and run with CUDA, NVSHMEM and MPI installed on the execution host. The dated H100 record captures the actual commands and dependency versions used:
+
+The [2026-11-17 H100 execution record](../validation-h100.md) covers two GPUs connected by local NV18. It distinguishes numerical checks, API probes and other executions; a successful exit alone does not establish GPU algorithm correctness.
 
 ```bash
 # nvidia.nvshmem is a namespace package (__file__ is None), so use __path__
@@ -643,7 +938,11 @@ nvcc -rdc=true -ccbin mpicxx -arch=sm_90 \
 mpirun --allow-run-as-root -np 2 ./95_gpu_initiated_alltoall_and_put_demo
 ```
 
-Locked output (stdout of both ranks, shown in a stable order; exit code 0 on every run). NVSHMEM also writes `Cuda failure ... CUDA_ERROR_NO_DEVICE` diagnostics to stderr from inside `init.cu`, interleaved nondeterministically between the two ranks; their file paths and line numbers change between NVSHMEM releases (3.7.2 and 3.8.0 both tested), so they are not part of the locked output:
+Historical output from the earlier device-less source follows. It does not describe the current File 95 or its successful two-PE H100 run; nondeterministic library stderr paths are not a correctness oracle:
+
+The [2026-11-17 H100 execution record](../validation-h100.md) covers two GPUs connected by local NV18. It distinguishes numerical checks, API probes and other executions; a successful exit alone does not establish GPU algorithm correctness.
+
+<details markdown="1"><summary>Historical authoring output — superseded by the current execution above</summary>
 
 ```
 cudaGetDeviceCount: err=100 (no CUDA-capable device is detected) count=0
@@ -653,11 +952,17 @@ PE 0: nvshmem_malloc returned NULL (expected on a sandbox with zero real CUDA de
 PE 1: nvshmem_malloc returned NULL (expected on a sandbox with zero real CUDA devices) -- skipping the alltoall call and the kernel-level put call below.
 ```
 
-Every real API in this file -- `nvshmemx_init_attr()`, `nvshmem_my_pe()`/`nvshmem_n_pes()`, `nvshmem_malloc()`, `nvshmem_int_alltoall()`, and `nvshmemx_collective_launch()` calling `nvshmem_int_p()` -- genuinely compiles and links against this sandbox's real installed NVSHMEM (3.7.2 when first written, re-run on 3.8.0). The MPI bootstrap genuinely succeeds (`my_pe=0`/`my_pe=1`, `n_pes=2`, matching MPI's own real rank/size exactly, echoing Chapter 22's own successful 22.2 result). The one real, expected, and gracefully-handled limitation is the same this whole book has stated plainly since its own introduction: `nvshmem_malloc()` needs a real CUDA-capable device, this sandbox reports zero, and every real MoE system's actual multi-GPU execution -- correctly -- cannot be produced here.
+</details>
+
+The current File 95 passed its two-PE numerical check: initialized host-callable all-to-all buffers and a kernel-initiated ring put were verified by explicit CUDA readback. This establishes the selected local NVLink case, not InfiniBand, IBGDA transport selection, DeepEP execution or production MoE performance.
+
+The [2026-11-17 H100 execution record](../validation-h100.md) covers two GPUs connected by local NV18. It distinguishes numerical checks, API probes and other executions; a successful exit alone does not establish GPU algorithm correctness.
 
 ## Chapter Summary
 
-Mixture-of-Experts routing needs a communication shape this book had not yet built: a per-token dispatch/combine all-to-all, driven by a gating network's own choices rather than a fixed topology. Google's GShard paper gave this pattern its standard vocabulary -- dispatch, combine, expert capacity, and the silent residual-passthrough that real systems use for overflow -- and File 93 showed that MoE outputs are partition-dependent in two separate ways. First, GShard enforces capacity per group (per rank), so the same tokens and the same gate overflow differently at different P: 4 to 8 of 24 tokens changed output at every P > 1. Second, a token's combine is a sum of its top-k weighted expert outputs; at top-2 that two-term sum is bit-exact under any grouping because IEEE 754 addition is commutative, but at top-3 and beyond the grouping matters, and DeepSeek-V3-style top-8 routing changed about a third of tokens' last bits under a hierarchical combine. DeepSeek-AI's own real, open-source DeepEP library exists specifically to make that dispatch/combine step fast at production scale, and its own real published V1 numbers (File 94) show it ships two entirely separate kernel families -- a high-throughput "normal" kernel for training-sized batches and a pure-RDMA "low-latency" kernel for inference decoding -- because each is tuned for a different operating point. DeepEP's own real V1 design built its low-latency kernels on NVSHMEM's GPU-initiated RDMA (IBGDA), the same real Chapter 22 foundation this book already established, letting a GPU kernel issue a network operation without any CPU round-trip; File 95 compiled and ran that exact real API pair, with each PE bound to its own GPU before NVSHMEM initialization, confirmed the real MPI bootstrap succeeds, and hit the same honest "zero real CUDA devices" limitation this sandbox has always had. Finally, re-checking DeepEP's own repository found something this book's own Chapter 21 and Chapter 23 already warned about: DeepEP's V2 moved away from NVSHMEM to a "NCCL Gin backend," and a later release removed V1 and its documentation altogether, a reminder that even a cutting-edge production library's transport layer keeps evolving, and that any citation to "how a real system works" needs re-verifying against the current source, not memory of an earlier version.
+Mixture-of-Experts routing needs a communication shape this book had not yet built: a per-token dispatch/combine all-to-all, driven by a gating network's own choices rather than a fixed topology. Google's GShard paper gave this pattern its standard vocabulary -- dispatch, combine, expert capacity, and the silent residual-passthrough that real systems use for overflow -- and File 93 showed that MoE outputs are partition-dependent in two separate ways. First, GShard enforces capacity per group (per rank), so the same tokens and the same gate overflow differently at different P: 4 to 8 of 24 tokens changed output at every P > 1. Second, a token's combine is a sum of its top-k weighted expert outputs; at top-2 that two-term sum is bit-exact under any grouping because IEEE 754 addition is commutative, but at top-3 and beyond the grouping matters, and DeepSeek-V3-style top-8 routing changed about a third of tokens' last bits under a hierarchical combine. DeepSeek-AI's own real, open-source DeepEP library exists specifically to make that dispatch/combine step fast at production scale, and its own real published V1 numbers (File 94) show it ships two entirely separate kernel families -- a high-throughput "normal" kernel for training-sized batches and a pure-RDMA "low-latency" kernel for inference decoding -- because each is tuned for a different operating point. DeepEP's own real V1 design built its low-latency kernels on NVSHMEM's GPU-initiated RDMA (IBGDA), the same real Chapter 22 foundation this book already established, letting a GPU kernel issue a network operation without any CPU round-trip; File 95 passed initialized all-to-all and kernel-initiated ring-put checks with two PEs on the H100 pair. That local NV18 result validates neither IBGDA nor DeepEP itself. Finally, re-checking DeepEP's own repository found something this book's own Chapter 21 and Chapter 23 already warned about: DeepEP's V2 moved away from NVSHMEM to a "NCCL Gin backend," and a later release removed V1 and its documentation altogether, a reminder that even a cutting-edge production library's transport layer keeps evolving, and that any citation to "how a real system works" needs re-verifying against the current source, not memory of an earlier version.
+
+The [2026-11-17 H100 execution record](../validation-h100.md) covers two GPUs connected by local NV18. It distinguishes numerical checks, API probes and other executions; a successful exit alone does not establish GPU algorithm correctness.
 
 ## Self-Check Questions
 
@@ -667,9 +972,11 @@ Mixture-of-Experts routing needs a communication shape this book had not yet bui
 4. DeepEP's normal-kernel table lists 153-158 GB/s and its low-latency table peaks at 98 GB/s. Why is concluding "the low-latency kernel has lower bandwidth" from those two numbers a mistake, and what is the like-for-like comparison?
 5. Why does DeepEP's own documentation publish a latency number (in microseconds) for the low-latency kernels but not for the normal kernels? What does that omission itself reveal about how each kernel is meant to be used?
 6. What real NVSHMEM feature lets a GPU issue a network put without any CPU involvement in that specific operation, and what does it depend on? Does finding its transport library installed tell you the hardware is there?
-7. This chapter's own File 95 hit the identical "zero real CUDA devices" limitation Chapter 22 and Chapter 23 already documented. Why is encountering the SAME limitation again, in a new chapter, still worth locking as real output rather than skipping the file entirely?
+7. What do File 95’s two-PE all-to-all and ring-put checks establish, and why do they not establish IBGDA or a DeepEP benchmark?
 8. What changed across DeepEP's releases regarding NVSHMEM, and why does this matter for how this book cites "how a real production system works"?
 9. Chapter 30's rendering had no reduction at all and was genuinely partition-independent. File 93 found MoE outputs partition-dependent even at top-2, where the combine sum itself is bit-exact. Where does that dependence come from, if not from floating-point summation?
+
+The [2026-11-17 H100 execution record](../validation-h100.md) covers two GPUs connected by local NV18. It distinguishes numerical checks, API probes and other executions; a successful exit alone does not establish GPU algorithm correctness.
 
 ## Where We Go Next
 
@@ -682,10 +989,12 @@ Chapter 33 stays inside the same real, cutting-edge deployment landscape but tur
 3. The gating scores were raw hash-derived values in the hundreds (further skewed by +500 for the two popular experts), and `std::exp()` of a value that large overflows `double` to `+inf`; dividing `+inf` by `(+inf + +inf)` produces NaN, not an error. The standard fix is a numerically-stable softmax: subtract the larger of the two scores before exponentiating (`1.0 / (1.0 + exp(s2 - s1))`), which never overflows since the exponent argument is always <= 0. The confusing part is that IEEE 754 defines `NaN != NaN`, so comparing two runs that BOTH independently produced NaN (identically, since both ran the identical broken arithmetic) still reports "not equal" -- making an overflow bug look, at the comparison step, exactly like a real cross-run mismatch.
 4. The 153-158 GB/s figure is the normal kernel's INTRANODE (NVLink) bandwidth, while the low-latency kernel is pure RDMA, so the two numbers measure different links. The like-for-like comparison is against the normal kernel's INTERNODE (RDMA) figures of 43-58 GB/s, and on that comparison the low-latency kernel's 98 GB/s at EP=8 is higher. Its bandwidth does fall steeply as EP grows (to 39 GB/s at EP=128-256), and the two tables were measured at different batch sizes, so neither table names a universal winner: benchmark at your own batch size and EP degree.
 5. Normal kernels are designed to move large training batches, where a fixed per-call setup cost is amortized across thousands of tokens and effectively disappears from the user-relevant number -- so DeepEP's own documentation only needs to publish bandwidth for them. Low-latency kernels exist specifically for small inference-decode batches, where that same fixed cost is NOT amortized away and instead becomes exactly what a waiting user experiences end to end -- so latency, not just bandwidth, is the number that matters and the one DeepEP publishes.
-6. InfiniBand GPUDirect Async (IBGDA) is the real NVSHMEM feature: it lets the GPU hand a network operation directly to the NIC's own queue, without asking the CPU to issue that step. It depends on a real RDMA-capable NIC (with driver support for GPU-initiated access) and NVSHMEM's own IBGDA transport module, which this chapter's sandbox ships as `nvshmem_transport_ibgda.so.7` in NVSHMEM 3.8.0 (`.so.6` in the 3.7.2 package it was first checked against). The library file's presence proves only that the software transport is installed -- this sandbox has no GPU and no RDMA NIC, so nothing here can exercise it.
-7. Because "the same real limitation recurs" is itself a genuine, useful, honest finding -- it confirms the constraint is a structural property of this specific sandbox (no real GPU hardware), not a one-off fluke or a bug specific to Chapter 22's own code. Locking it again, with a NEW real API (`nvshmem_int_alltoall()`), the per-PE device binding, and the explicit `-arch` requirement, still adds new, verified information even though the ultimate outcome (no real device) is unchanged.
-8. DeepEP's own V1 release built its dispatch/combine kernels on NVSHMEM, including the GPU-initiated, IBGDA-backed low-latency path this chapter's File 95 exercises; DeepEP's V2 release "switched from the NVSHMEM backend to the more lightweight NCCL Gin backend," moving NVSHMEM support to a separate "legacy" document, and the current V2.5 README says V1, its NVSHMEM backend and those legacy docs have now been removed entirely. This matters because a book (or any technical writing) that cites "how DeepEP works" without checking the CURRENT source risks describing an architecture the real project has already moved past -- exactly the discipline Chapter 21's fabricated-quote catch and Chapter 23's real NCCL segfault already taught: verify against the live, current source every time, not memory of an earlier version.
+6. IBGDA permits GPU-initiated network operations with a compatible RDMA NIC, drivers and transport configuration. Finding its shared library proves installation only. File 95’s local two-H100 NV18 pass does not establish that NIC path.
+7. The current File 95 checks initialized all-to-all values and a kernel-initiated ring put on two PEs. This replaces the earlier no-device limitation with a local numerical check; it does not benchmark MoE or cross-node networking.
+8. DeepEP's own V1 release built its dispatch/combine kernels on NVSHMEM, including an IBGDA-backed low-latency path; File 95 exercises local NVSHMEM communication rather than that RDMA path; DeepEP's V2 release "switched from the NVSHMEM backend to the more lightweight NCCL Gin backend," moving NVSHMEM support to a separate "legacy" document, and the current V2.5 README says V1, its NVSHMEM backend and those legacy docs have now been removed entirely. This matters because a book (or any technical writing) that cites "how DeepEP works" without checking the CURRENT source risks describing an architecture the real project has already moved past -- exactly the discipline Chapter 21's fabricated-quote catch and Chapter 23's real NCCL segfault already taught: verify against the live, current source every time, not memory of an earlier version.
 9. From capacity. Chapter 30's pixels were computed by a pure function of the pixel alone, so no partition could change them. An MoE token's output is NOT a pure function of the token: whether its chosen experts accept it depends on how many earlier tokens in the same group already claimed those experts' capacity. GShard sizes and enforces capacity per group, so changing P changes which tokens share a budget, and therefore which tokens overflow -- whole tokens switch between "processed by an expert" and "passed through on the residual," a far larger change than any last-bit rounding difference. At top-2 the combine arithmetic is bit-exact under any grouping (two-term commutativity), so in File 93 every Part A difference comes from capacity alone.
+
+The [2026-11-17 H100 execution record](../validation-h100.md) covers two GPUs connected by local NV18. It distinguishes numerical checks, API probes and other executions; a successful exit alone does not establish GPU algorithm correctness.
 
 ---
 

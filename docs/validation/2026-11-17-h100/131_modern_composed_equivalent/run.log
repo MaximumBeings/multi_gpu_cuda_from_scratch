@@ -1,0 +1,3 @@
+$ /home/ubuntu/codex-multigpu-audit-20261117/multi-gpu-audit/artifacts/h100-reviewed-20261117/131_modern_composed_equivalent/example
+Two cooperative blocks on GPU0; whole-kernel event dependency to GPU1. Separate buffers, no data transfer.
+VALIDATION PASS: errors=0

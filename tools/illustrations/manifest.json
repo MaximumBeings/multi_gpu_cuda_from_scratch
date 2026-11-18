@@ -1,0 +1,897 @@
+{
+  "version": 1,
+  "canvas_width": 760,
+  "minimum_body_type": 20,
+  "font": "Inter / SIL OFL",
+  "policy": "Original conceptual diagrams; code and captured-output fences preserved.",
+  "pages": [
+    {
+      "page": "docs/part0/01-why-one-gpu-is-not-enough.md",
+      "opener": "chapter-openers/01.svg",
+      "figures": [
+        {
+          "key": "figure-1",
+          "file": "technical/ch01/1-capacity.svg",
+          "alt": "One working set, several memories",
+          "section": "1.1"
+        },
+        {
+          "key": "figure-2",
+          "file": "technical/ch01/2-balance.svg",
+          "alt": "Parallel work still has a critical path",
+          "section": "1.2"
+        }
+      ]
+    },
+    {
+      "page": "docs/part0/02-multi-gpu-hardware-topology.md",
+      "opener": "chapter-openers/02.svg",
+      "figures": [
+        {
+          "key": "figure-1",
+          "file": "technical/ch02/1-topology.svg",
+          "alt": "A route belongs to a device pair",
+          "section": "2.1"
+        },
+        {
+          "key": "figure-2",
+          "file": "technical/ch02/2-numa.svg",
+          "alt": "PCIe placement changes the path",
+          "section": "2.2"
+        },
+        {
+          "key": "figure-3",
+          "file": "technical/ch02/3-switch.svg",
+          "alt": "A fabric connects endpoints",
+          "section": "2.3"
+        }
+      ]
+    },
+    {
+      "page": "docs/part0/03-the-cuda-multi-gpu-programming-model.md",
+      "opener": "chapter-openers/03.svg",
+      "figures": [
+        {
+          "key": "figure-1",
+          "file": "technical/ch03/1-threads.svg",
+          "alt": "Current device is thread-local",
+          "section": "3.1"
+        },
+        {
+          "key": "figure-2",
+          "file": "technical/ch03/2-events.svg",
+          "alt": "Resources retain their device owner",
+          "section": "3.2"
+        }
+      ]
+    },
+    {
+      "page": "docs/part1/04-peer-to-peer-memory-access-and-uva.md",
+      "opener": "chapter-openers/04.svg",
+      "figures": [
+        {
+          "key": "figure-1",
+          "file": "technical/ch04/1-ownership.svg",
+          "alt": "One address space, separate allocations",
+          "section": "4.1"
+        },
+        {
+          "key": "figure-2",
+          "file": "technical/ch04/2-flow.svg",
+          "alt": "Capability precedes enabled access",
+          "section": "4.2"
+        }
+      ]
+    },
+    {
+      "page": "docs/part1/05-explicit-transfers-cudamemcpypeer-staged-host-transfers.md",
+      "opener": "chapter-openers/05.svg",
+      "figures": [
+        {
+          "key": "figure-1",
+          "file": "technical/ch05/1-transfer.svg",
+          "alt": "Peer copy names both endpoints",
+          "section": "5.1"
+        },
+        {
+          "key": "figure-2",
+          "file": "technical/ch05/2-staging.svg",
+          "alt": "Host staging has two transfer legs",
+          "section": "5.2"
+        }
+      ]
+    },
+    {
+      "page": "docs/part1/06-streams-events-and-cross-device-synchronization.md",
+      "opener": "chapter-openers/06.svg",
+      "figures": [
+        {
+          "key": "figure-1",
+          "file": "technical/ch06/1-events.svg",
+          "alt": "An event marks preceding stream work",
+          "section": "6.1"
+        },
+        {
+          "key": "figure-2",
+          "file": "technical/ch06/2-handoff.svg",
+          "alt": "Record, wait, then consume",
+          "section": "6.2"
+        }
+      ]
+    },
+    {
+      "page": "docs/part1/07-cuda-inter-process-communication.md",
+      "opener": "chapter-openers/07.svg",
+      "figures": [
+        {
+          "key": "figure-1",
+          "file": "technical/ch07/1-ipc.svg",
+          "alt": "Export a handle, not a pointer",
+          "section": "7.1"
+        },
+        {
+          "key": "figure-2",
+          "file": "technical/ch07/2-handoff.svg",
+          "alt": "Memory sharing needs a readiness handoff",
+          "section": "7.2"
+        }
+      ]
+    },
+    {
+      "page": "docs/part2/08-broadcast-and-reduce-the-first-two-collectives-by-hand.md",
+      "opener": "chapter-openers/08.svg",
+      "figures": [
+        {
+          "key": "figure-1",
+          "file": "technical/ch08/1-broadcast.svg",
+          "alt": "Broadcast preserves one root value",
+          "section": "8.1"
+        },
+        {
+          "key": "figure-2",
+          "file": "technical/ch08/2-reduce.svg",
+          "alt": "Reduce combines at one root",
+          "section": "8.2"
+        }
+      ]
+    },
+    {
+      "page": "docs/part2/09-ring-all-reduce-the-algorithm-behind-every-multi-gpu-training-job.md",
+      "opener": "chapter-openers/09.svg",
+      "figures": [
+        {
+          "key": "figure-1",
+          "file": "technical/ch09/1-hub.svg",
+          "alt": "The baseline concentrates communication",
+          "section": "9.1"
+        },
+        {
+          "key": "figure-2",
+          "file": "technical/ch09/2-ring.svg",
+          "alt": "Two phases complete a ring all-reduce",
+          "section": "9.2"
+        },
+        {
+          "key": "figure-3",
+          "file": "technical/ch09/3-chunks.svg",
+          "alt": "Chunk ownership changes between phases",
+          "section": "9.3"
+        }
+      ]
+    },
+    {
+      "page": "docs/part2/10-all-gather-reduce-scatter-and-all-to-all.md",
+      "opener": "chapter-openers/10.svg",
+      "figures": [
+        {
+          "key": "figure-1",
+          "file": "technical/ch10/1-gather.svg",
+          "alt": "All-gather concatenates rank contributions",
+          "section": "10.1"
+        },
+        {
+          "key": "figure-2",
+          "file": "technical/ch10/2-scatter.svg",
+          "alt": "Reduce-scatter partitions a reduced result",
+          "section": "10.2"
+        },
+        {
+          "key": "figure-3",
+          "file": "technical/ch10/3-alltoall.svg",
+          "alt": "All-to-all personalizes the destination",
+          "section": "10.3"
+        }
+      ]
+    },
+    {
+      "page": "docs/part2/11-nccl-what-it-actually-does-differently.md",
+      "opener": "chapter-openers/11.svg",
+      "figures": [
+        {
+          "key": "figure-1",
+          "file": "technical/ch11/1-flow.svg",
+          "alt": "A communicator establishes membership",
+          "section": "11.1"
+        },
+        {
+          "key": "figure-2",
+          "file": "technical/ch11/2-mapping.svg",
+          "alt": "Match the mathematical operation to the call",
+          "section": "11.2"
+        }
+      ]
+    },
+    {
+      "page": "docs/part3/12-data-parallelism-replicated-model-sharded-data.md",
+      "opener": "chapter-openers/12.svg",
+      "figures": [
+        {
+          "key": "figure-1",
+          "file": "technical/ch12/1-replicas.svg",
+          "alt": "Replicate the model; partition samples",
+          "section": "12.1"
+        },
+        {
+          "key": "figure-2",
+          "file": "technical/ch12/2-reduce.svg",
+          "alt": "Combine gradients before updating",
+          "section": "12.2"
+        }
+      ]
+    },
+    {
+      "page": "docs/part3/13-model-parallelism-when-one-gpu-cant-hold-the-weights.md",
+      "opener": "chapter-openers/13.svg",
+      "figures": [
+        {
+          "key": "figure-1",
+          "file": "technical/ch13/1-capacity.svg",
+          "alt": "Partitioning changes memory ownership",
+          "section": "13.1"
+        },
+        {
+          "key": "figure-2",
+          "file": "technical/ch13/2-layers.svg",
+          "alt": "Activations cross layer boundaries",
+          "section": "13.2"
+        }
+      ]
+    },
+    {
+      "page": "docs/part3/14-tensor-parallelism-splitting-a-single-matrix-multiply-across-devices.md",
+      "opener": "chapter-openers/14.svg",
+      "figures": [
+        {
+          "key": "figure-1",
+          "file": "technical/ch14/1-column.svg",
+          "alt": "Column parallelism partitions output features",
+          "section": "14.1"
+        },
+        {
+          "key": "figure-2",
+          "file": "technical/ch14/2-row.svg",
+          "alt": "Row parallelism produces partial sums",
+          "section": "14.2"
+        }
+      ]
+    },
+    {
+      "page": "docs/part3/15-pipeline-parallelism-splitting-layers-across-devices-and-the-bubble-that-costs-you.md",
+      "opener": "chapter-openers/15.svg",
+      "figures": [
+        {
+          "key": "figure-1",
+          "file": "technical/ch15/1-pipeline.svg",
+          "alt": "Microbatches fill successive stages",
+          "section": "15.1"
+        },
+        {
+          "key": "figure-2",
+          "file": "technical/ch15/2-handoff.svg",
+          "alt": "The schedule is an ownership protocol",
+          "section": "15.2"
+        }
+      ]
+    },
+    {
+      "page": "docs/part3/16-domain-decomposition-for-scientific-computing-halo-exchange-and-distributed-stencils.md",
+      "opener": "chapter-openers/16.svg",
+      "figures": [
+        {
+          "key": "figure-1",
+          "file": "technical/ch16/1-halo.svg",
+          "alt": "Interiors belong to ranks; halos mirror neighbors",
+          "section": "16.1"
+        },
+        {
+          "key": "figure-2",
+          "file": "technical/ch16/2-handoff.svg",
+          "alt": "Boundary readiness gates the next update",
+          "section": "16.2"
+        }
+      ]
+    },
+    {
+      "page": "docs/part4/17-barriers-and-global-synchronization-across-devices.md",
+      "opener": "chapter-openers/17.svg",
+      "figures": [
+        {
+          "key": "figure-1",
+          "file": "technical/ch17/1-events.svg",
+          "alt": "Two local waits are not one global barrier",
+          "section": "17.1"
+        },
+        {
+          "key": "figure-2",
+          "file": "technical/ch17/2-reduce.svg",
+          "alt": "A collective can establish a rendezvous",
+          "section": "17.2"
+        }
+      ]
+    },
+    {
+      "page": "docs/part4/18-load-balancing-across-heterogeneous-gpus.md",
+      "opener": "chapter-openers/18.svg",
+      "figures": [
+        {
+          "key": "figure-1",
+          "file": "technical/ch18/1-balance.svg",
+          "alt": "Equal work can finish at different times",
+          "section": "18.1"
+        },
+        {
+          "key": "figure-2",
+          "file": "technical/ch18/2-weighted.svg",
+          "alt": "Allocate work in proportion to capacity",
+          "section": "18.2"
+        }
+      ]
+    },
+    {
+      "page": "docs/part4/19-stragglers-failures-and-fault-tolerant-collectives.md",
+      "opener": "chapter-openers/19.svg",
+      "figures": [
+        {
+          "key": "figure-1",
+          "file": "technical/ch19/1-failure.svg",
+          "alt": "A missing participant blocks dependencies",
+          "section": "19.1"
+        },
+        {
+          "key": "figure-2",
+          "file": "technical/ch19/2-flow.svg",
+          "alt": "Escape is not automatic recovery",
+          "section": "19.2"
+        }
+      ]
+    },
+    {
+      "page": "docs/part5/20-mpi-from-scratch-then-cuda-aware-mpi-scaling-beyond-one-node.md",
+      "opener": "chapter-openers/20.svg",
+      "figures": [
+        {
+          "key": "figure-1",
+          "file": "technical/ch20/1-ring.svg",
+          "alt": "Ranks communicate beyond one node",
+          "section": "20.1"
+        },
+        {
+          "key": "figure-2",
+          "file": "technical/ch20/2-rdma.svg",
+          "alt": "CUDA-aware MPI accepts device buffers",
+          "section": "20.2"
+        }
+      ]
+    },
+    {
+      "page": "docs/part5/21-gpudirect-rdma-bypassing-the-host-entirely.md",
+      "opener": "chapter-openers/21.svg",
+      "figures": [
+        {
+          "key": "figure-1",
+          "file": "technical/ch21/1-flow.svg",
+          "alt": "Bootstrap and payload use different roles",
+          "section": "21.1"
+        },
+        {
+          "key": "figure-2",
+          "file": "technical/ch21/2-rdma.svg",
+          "alt": "RDMA bypasses host staging when supported",
+          "section": "21.2"
+        }
+      ]
+    },
+    {
+      "page": "docs/part5/22-nvshmem-and-gpu-initiated-communication.md",
+      "opener": "chapter-openers/22.svg",
+      "figures": [
+        {
+          "key": "figure-1",
+          "file": "technical/ch22/1-symmetric.svg",
+          "alt": "Symmetric objects have a common logical identity",
+          "section": "22.1"
+        },
+        {
+          "key": "figure-3",
+          "file": "technical/ch22/3-put.svg",
+          "alt": "A GPU can initiate a remote operation",
+          "section": "22.3"
+        }
+      ]
+    },
+    {
+      "page": "docs/part5/23-cuda-graphs-across-multiple-gpus-and-multiple-nodes.md",
+      "opener": "chapter-openers/23.svg",
+      "figures": [
+        {
+          "key": "figure-1",
+          "file": "technical/ch23/1-handoff.svg",
+          "alt": "An event joins device work into a graph",
+          "section": "23.1"
+        },
+        {
+          "key": "figure-2",
+          "file": "technical/ch23/2-graph.svg",
+          "alt": "Capture preserves operation dependencies",
+          "section": "23.2"
+        }
+      ]
+    },
+    {
+      "page": "docs/part6/24-multi-gpu-dense-matrix-multiplication-at-scale.md",
+      "opener": "chapter-openers/24.svg",
+      "figures": [
+        {
+          "key": "figure-1",
+          "file": "technical/ch24/1-capacity.svg",
+          "alt": "A GEMM working set includes three operands",
+          "section": "24.1"
+        },
+        {
+          "key": "figure-2",
+          "file": "technical/ch24/2-summa.svg",
+          "alt": "SUMMA broadcasts panels to output owners",
+          "section": "24.2"
+        }
+      ]
+    },
+    {
+      "page": "docs/part6/25-distributed-training-of-a-neural-network-data-parallelism-and-ring-all-reduce.md",
+      "opener": "chapter-openers/25.svg",
+      "figures": [
+        {
+          "key": "figure-1",
+          "file": "technical/ch25/1-buckets.svg",
+          "alt": "Ready gradient buckets can communicate early",
+          "section": "25.1"
+        },
+        {
+          "key": "figure-2",
+          "file": "technical/ch25/2-replicas.svg",
+          "alt": "Every step restores replica consistency",
+          "section": "25.2"
+        }
+      ]
+    },
+    {
+      "page": "docs/part6/26-multi-gpu-llm-inference-tensor-and-pipeline-parallelism-in-practice.md",
+      "opener": "chapter-openers/26.svg",
+      "figures": [
+        {
+          "key": "figure-1",
+          "file": "technical/ch26/1-tpgrid.svg",
+          "alt": "Tensor parallelism inside pipeline stages",
+          "section": "26.1"
+        },
+        {
+          "key": "figure-3",
+          "file": "technical/ch26/3-capacity.svg",
+          "alt": "KV cache competes with weights and workspace",
+          "section": "26.3"
+        }
+      ]
+    },
+    {
+      "page": "docs/part6/27-n-body-simulation-at-scale.md",
+      "opener": "chapter-openers/27.svg",
+      "figures": [
+        {
+          "key": "figure-1",
+          "file": "technical/ch27/1-gather.svg",
+          "alt": "Each local body needs the global source set",
+          "section": "27.1"
+        },
+        {
+          "key": "figure-3",
+          "file": "technical/ch27/3-tree.svg",
+          "alt": "A hierarchy replaces distant detail",
+          "section": "27.3"
+        }
+      ]
+    },
+    {
+      "page": "docs/part6/28-distributed-breadth-first-search.md",
+      "opener": "chapter-openers/28.svg",
+      "figures": [
+        {
+          "key": "figure-1",
+          "file": "technical/ch28/1-frontier.svg",
+          "alt": "The active frontier chooses remote owners",
+          "section": "28.1"
+        },
+        {
+          "key": "figure-3",
+          "file": "technical/ch28/3-matrixgrid.svg",
+          "alt": "Two-dimensional partitioning reshapes exchange",
+          "section": "28.3"
+        }
+      ]
+    },
+    {
+      "page": "docs/part6/29-distributed-jacobi-solver.md",
+      "opener": "chapter-openers/29.svg",
+      "figures": [
+        {
+          "key": "figure-1",
+          "file": "technical/ch29/1-halo.svg",
+          "alt": "Local Jacobi updates consume neighbor values",
+          "section": "29.1"
+        },
+        {
+          "key": "figure-2",
+          "file": "technical/ch29/2-reduce.svg",
+          "alt": "A stopping test combines local residuals",
+          "section": "29.2"
+        }
+      ]
+    },
+    {
+      "page": "docs/part6/30-multi-gpu-ray-tracing-and-rendering.md",
+      "opener": "chapter-openers/30.svg",
+      "figures": [
+        {
+          "key": "figure-1",
+          "file": "technical/ch30/1-tiles.svg",
+          "alt": "Independent image tiles need no per-ray collective",
+          "section": "30.1"
+        },
+        {
+          "key": "figure-2",
+          "file": "technical/ch30/2-weighted.svg",
+          "alt": "Tile cost is not proportional to tile count",
+          "section": "30.2"
+        }
+      ]
+    },
+    {
+      "page": "docs/part6/31-multi-gpu-monte-carlo-risk-simulation.md",
+      "opener": "chapter-openers/31.svg",
+      "figures": [
+        {
+          "key": "figure-1",
+          "file": "technical/ch31/1-reduce.svg",
+          "alt": "Independent paths combine summary statistics",
+          "section": "31.1"
+        },
+        {
+          "key": "figure-3",
+          "file": "technical/ch31/3-gather.svg",
+          "alt": "A percentile needs distribution information",
+          "section": "31.3"
+        }
+      ]
+    },
+    {
+      "page": "docs/part7/32-mixture-of-experts-at-scale.md",
+      "opener": "chapter-openers/32.svg",
+      "figures": [
+        {
+          "key": "figure-1",
+          "file": "technical/ch32/1-experts.svg",
+          "alt": "Dispatch to experts, then combine by token",
+          "section": "32.1"
+        },
+        {
+          "key": "figure-3",
+          "file": "technical/ch32/3-put.svg",
+          "alt": "A device-initiated path still needs completion",
+          "section": "32.3"
+        }
+      ]
+    },
+    {
+      "page": "docs/part7/33-disaggregated-llm-inference.md",
+      "opener": "chapter-openers/33.svg",
+      "figures": [
+        {
+          "key": "figure-1",
+          "file": "technical/ch33/1-layers.svg",
+          "alt": "Separate pools serve different phases",
+          "section": "33.1"
+        },
+        {
+          "key": "figure-3",
+          "file": "technical/ch33/3-transfer.svg",
+          "alt": "The request changes owner with its KV state",
+          "section": "33.3"
+        }
+      ]
+    },
+    {
+      "page": "docs/part7/34-gpu-recommendation-systems.md",
+      "opener": "chapter-openers/34.svg",
+      "figures": [
+        {
+          "key": "figure-1",
+          "file": "technical/ch34/1-hybrid.svg",
+          "alt": "Embedding shards and dense replicas coexist",
+          "section": "34.1"
+        },
+        {
+          "key": "figure-2",
+          "file": "technical/ch34/2-alltoall.svg",
+          "alt": "Embedding results are reshuffled by sample",
+          "section": "34.2"
+        }
+      ]
+    },
+    {
+      "page": "docs/part7/35-ai-weather-forecasting-at-scale.md",
+      "opener": "chapter-openers/35.svg",
+      "figures": [
+        {
+          "key": "figure-1",
+          "file": "technical/ch35/1-replicas.svg",
+          "alt": "Training replicas each own a global sample",
+          "section": "35.1"
+        },
+        {
+          "key": "figure-3",
+          "file": "technical/ch35/3-alltoall.svg",
+          "alt": "A distributed FFT changes data orientation",
+          "section": "35.3"
+        }
+      ]
+    },
+    {
+      "page": "docs/part7/36-multi-gpu-xva-and-portfolio-risk.md",
+      "opener": "chapter-openers/36.svg",
+      "figures": [
+        {
+          "key": "figure-1",
+          "file": "technical/ch36/1-profile.svg",
+          "alt": "Exposure is a time-indexed result",
+          "section": "36.1"
+        },
+        {
+          "key": "figure-2",
+          "file": "technical/ch36/2-netting.svg",
+          "alt": "Net positions before applying positive exposure",
+          "section": "36.2"
+        }
+      ]
+    },
+    {
+      "page": "docs/part7/37-gpudirect-rdma-in-capital-markets.md",
+      "opener": "chapter-openers/37.svg",
+      "figures": [
+        {
+          "key": "figure-1",
+          "file": "technical/ch37/1-staging.svg",
+          "alt": "A deployed host-memory path is a distinct baseline",
+          "section": "37.1"
+        },
+        {
+          "key": "figure-2",
+          "file": "technical/ch37/2-rdma.svg",
+          "alt": "An RDMA path needs end-to-end support",
+          "section": "37.2"
+        }
+      ]
+    },
+    {
+      "page": "docs/part7/38-real-time-fraud-detection-at-payment-scale.md",
+      "opener": "chapter-openers/38.svg",
+      "figures": [
+        {
+          "key": "figure-1",
+          "file": "technical/ch38/1-fraud.svg",
+          "alt": "A transaction connects several entities",
+          "section": "38.1"
+        },
+        {
+          "key": "figure-3",
+          "file": "technical/ch38/3-tree.svg",
+          "alt": "A tree level depends on a global statistic",
+          "section": "38.3"
+        }
+      ]
+    },
+    {
+      "page": "docs/part7/39-real-time-genomics-at-scale.md",
+      "opener": "chapter-openers/39.svg",
+      "figures": [
+        {
+          "key": "figure-2",
+          "file": "technical/ch39/2-tiles.svg",
+          "alt": "Independent reads or regions form work shards",
+          "section": "39.2"
+        },
+        {
+          "key": "figure-3",
+          "file": "technical/ch39/3-flow.svg",
+          "alt": "Compare equivalent end-to-end workloads",
+          "section": "39.3"
+        }
+      ]
+    },
+    {
+      "page": "docs/part7/40-medical-imaging-reconstruction-at-scale.md",
+      "opener": "chapter-openers/40.svg",
+      "figures": [
+        {
+          "key": "figure-1",
+          "file": "technical/ch40/1-halo.svg",
+          "alt": "Three-dimensional slabs exchange ghost cells",
+          "section": "40.1"
+        },
+        {
+          "key": "figure-3",
+          "file": "technical/ch40/3-reduce.svg",
+          "alt": "Forward projection combines overlapping contributions",
+          "section": "40.3"
+        }
+      ]
+    },
+    {
+      "page": "docs/appendix/a-installation-and-setup.md",
+      "opener": "chapter-openers/appendix-a.svg",
+      "figures": [
+        {
+          "key": "figure-1",
+          "file": "technical/appendix-a/1-flow.svg",
+          "alt": "A toolkit and a device are separate prerequisites",
+          "section": "A.1"
+        },
+        {
+          "key": "figure-2",
+          "file": "technical/appendix-a/2-layers.svg",
+          "alt": "Libraries form a communication stack",
+          "section": "A.2"
+        }
+      ]
+    },
+    {
+      "page": "docs/appendix/b-practice-quiz.md",
+      "opener": "chapter-openers/appendix-b.svg",
+      "figures": [
+        {
+          "key": "figure-1",
+          "file": "technical/appendix-b/1-flow.svg",
+          "alt": "Predict, trace, then compare",
+          "section": "B.1"
+        },
+        {
+          "key": "figure-4",
+          "file": "technical/appendix-b/4-chunks.svg",
+          "alt": "Track values and chunk ownership separately",
+          "section": "B.4"
+        }
+      ]
+    },
+    {
+      "page": "docs/appendix/c-nccl-and-nvshmem.md",
+      "opener": "chapter-openers/appendix-c.svg",
+      "figures": [
+        {
+          "key": "figure-1",
+          "file": "technical/appendix-c/1-mapping.svg",
+          "alt": "Select an operation by its output",
+          "section": "C.1"
+        },
+        {
+          "key": "figure-3",
+          "file": "technical/appendix-c/3-symmetric.svg",
+          "alt": "A symmetric heap supports remote addressing",
+          "section": "C.3"
+        }
+      ]
+    },
+    {
+      "page": "docs/appendix/d-cuda-graphs-and-cooperative-multi-device-kernels.md",
+      "opener": "chapter-openers/appendix-d.svg",
+      "figures": [
+        {
+          "key": "figure-1",
+          "file": "technical/appendix-d/1-graph.svg",
+          "alt": "Reuse an executable dependency graph",
+          "section": "D.1"
+        },
+        {
+          "key": "figure-3",
+          "file": "technical/appendix-d/3-handoff.svg",
+          "alt": "Device graphs preserve explicit handoffs",
+          "section": "D.3"
+        }
+      ]
+    },
+    {
+      "page": "docs/appendix/e-profiling-and-benchmarking-multi-gpu-communication.md",
+      "opener": "chapter-openers/appendix-e.svg",
+      "figures": [
+        {
+          "key": "figure-2",
+          "file": "technical/appendix-e/2-timing.svg",
+          "alt": "Local elapsed time and host makespan differ",
+          "section": "E.2"
+        },
+        {
+          "key": "figure-4",
+          "file": "technical/appendix-e/4-flow.svg",
+          "alt": "Keep an experiment record",
+          "section": "E.4"
+        }
+      ]
+    },
+    {
+      "page": "docs/appendix/f-pytorch-distributed-and-deepspeed-to-cpp-rosetta-stone.md",
+      "opener": "chapter-openers/appendix-f.svg",
+      "figures": [
+        {
+          "key": "figure-1",
+          "file": "technical/appendix-f/1-mapping.svg",
+          "alt": "Python wrappers preserve collective semantics",
+          "section": "F.1"
+        },
+        {
+          "key": "figure-3",
+          "file": "technical/appendix-f/3-capacity.svg",
+          "alt": "ZeRO stages shard different state",
+          "section": "F.3"
+        }
+      ]
+    },
+    {
+      "page": "docs/appendix/g-common-failure-modes-deadlocks-silent-corruption-topology-mismatches.md",
+      "opener": "chapter-openers/appendix-g.svg",
+      "figures": [
+        {
+          "key": "figure-1",
+          "file": "technical/appendix-g/1-failure.svg",
+          "alt": "A cycle of waits prevents progress",
+          "section": "G.1"
+        },
+        {
+          "key": "figure-2",
+          "file": "technical/appendix-g/2-handoff.svg",
+          "alt": "A readiness event must follow the writes",
+          "section": "G.2"
+        }
+      ]
+    },
+    {
+      "page": "docs/index.md",
+      "opener": "chapter-openers/index.svg",
+      "figures": [
+        {
+          "key": "figure-overview",
+          "file": "technical/index.svg",
+          "alt": "From one device to a coordinated system",
+          "section": null
+        }
+      ]
+    },
+    {
+      "page": "docs/getting-started.md",
+      "opener": "chapter-openers/getting-started.svg",
+      "figures": [
+        {
+          "key": "figure-overview",
+          "file": "technical/getting-started.svg",
+          "alt": "Separate build checks from hardware execution",
+          "section": null
+        }
+      ]
+    }
+  ]
+}

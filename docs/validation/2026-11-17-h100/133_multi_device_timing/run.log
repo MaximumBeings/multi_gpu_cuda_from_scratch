@@ -1,0 +1,7 @@
+$ /home/ubuntu/codex-multigpu-audit-20261117/multi-gpu-audit/artifacts/h100-reviewed-20261117/133_multi_device_timing/example
+GPU 0 local stream duration: 0.085856 ms
+GPU 1 local stream duration: 0.029056 ms
+Maximum local duration: 0.085856 ms (GPU clocks are not a shared timeline)
+Host launch-to-all-complete: 0.138782 ms (includes submission and completion waits)
+Independent kernels only; this is not a collective bandwidth benchmark.
+VALIDATION PASS: errors=0

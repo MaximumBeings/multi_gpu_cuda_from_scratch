@@ -1,5 +1,15 @@
 # Chapter 5: Explicit Transfers -- cudaMemcpyPeer, Staged Host Transfers, and When Each Wins
 
+<!-- execution:provenance -->
+!!! info "Execution provenance"
+
+    Current execution blocks identify the tested source hash, hardware dataset, commands and captured output. References elsewhere on this page to a device-less environment describe the original authoring context. Historical output is superseded by the current record. Displayed output omits the runner command header and trims trailing line whitespace; raw logs remain exact. A host simulation or API validation has its stated scope; neither alone establishes a numerical multi-GPU workload or measured performance.
+
+
+<!-- mgpu:opener:start -->
+[![Chapter 5: Explicit Transfers -- cudaMemcpyPeer, Staged Host Transfers, and When Each Wins](../images/chapter-openers/05.svg)](../images/chapter-openers/05.svg)
+<!-- mgpu:opener:end -->
+
 **What you will understand by the end of this chapter:**
 
 - The two ways to copy between devices: the dedicated Runtime API call `cudaMemcpyPeer()`, which names both devices explicitly, and the ordinary `cudaMemcpy()` with `cudaMemcpyDeviceToDevice` or `cudaMemcpyDefault`, which works for peer copies too under Unified Virtual Addressing.
@@ -18,6 +28,10 @@ Chapter 4 established *whether* two devices are allowed to touch each other's me
 
 ## 5.1 cudaMemcpyPeer: The Dedicated Cross-Device Copy Call
 
+<!-- mgpu:figure-1:start -->
+[![Peer copy names both endpoints](../images/technical/ch05/1-transfer.svg)](../images/technical/ch05/1-transfer.svg)
+<!-- mgpu:figure-1:end -->
+
 ### Intuition
 
 `cudaMemcpy()` with `cudaMemcpyDefault` (Chapter 4) can infer a copy's direction because UVA makes every pointer's owner identifiable, and that includes a copy whose source and destination live on two different devices. The CUDA Programming Guide says so directly: on systems with unified addressing, a peer copy can be done with the ordinary `cudaMemcpy()` using `cudaMemcpyDeviceToDevice` or `cudaMemcpyDefault`, not only with the dedicated peer functions. CUDA also provides an explicit call, `cudaMemcpyPeer()`, that names both devices directly instead of leaving the runtime to work them out from the pointers. This chapter uses `cudaMemcpyPeer()` because naming the two devices keeps the cross-device nature of the copy visible in the code, but either way the route the bytes take depends on Chapter 4's peer-access state, which is per-pair, queryable, and can change at runtime. One copy, two very different execution paths underneath, chosen automatically based on whether Chapter 4's setup sequence has already run for that specific ordered pair.
@@ -27,48 +41,107 @@ Chapter 4 established *whether* two devices are allowed to touch each other's me
 `cudaMemcpyPeer(dst, dstDevice, src, srcDevice, count)` copies `count` bytes from `src` on `srcDevice` to `dst` on `dstDevice`. Per the CUDA Runtime API documentation, this call "is asynchronous with respect to the host, but serialized with respect [to] all pending and future asynchronous work in the current device, `srcDevice`, and `dstDevice`" -- meaning it returns to the host immediately, but the copy itself still waits its turn against other work already queued on any of the three devices involved. `cudaMemcpyPeerAsync()` adds an explicit stream argument for finer-grained ordering against other stream-issued work, the same stream-ordering model Chapter 3 introduced. Crucially, the CUDA Programming Guide's multi-GPU chapter states plainly what determines the actual route taken: "If peer-to-peer access is enabled between two devices, ... peer-to-peer memory copies between these two devices no longer need to be staged through the host and are therefore faster." The function signature and its performance are two separate questions -- the call always works the same way from the caller's side; only its internal routing depends on Chapter 4's state.
 
 ```cpp
-// Chapter 5: Explicit Transfers -- cudaMemcpyPeer, Staged Host Transfers,
-// and When Each Wins
+// Chapter 5: checked synchronous and asynchronous peer transfers.
 // 11_memcpy_peer.cu
-//
-// The real, dedicated cross-device copy calls: cudaMemcpyPeer() and its
-// asynchronous, stream-ordered counterpart cudaMemcpyPeerAsync(). Both
-// genuinely compiled with a real nvcc and genuinely run; on this
-// driver-less machine every call fails at the same first step this
-// book has reported since Chapter 1.
 #include <cstdio>
+#include <vector>
 #include <cuda_runtime.h>
-
+#define CUDA(call) do { cudaError_t status = (call); if (status != cudaSuccess) { \
+    fprintf(stderr, "%s: %s\n", #call, cudaGetErrorString(status)); \
+    return status == cudaErrorNoDevice || status == cudaErrorInsufficientDriver ? 2 : 1; } } while (0)
 int main() {
-    void* devPtr0 = nullptr;
-    void* devPtr1 = nullptr;
-
-    cudaError_t eAlloc0 = cudaMalloc(&devPtr0, 64);
-    printf("cudaMalloc(device 0 buffer): %s (code %d)\n", cudaGetErrorString(eAlloc0), (int)eAlloc0);
-
-    cudaError_t eAlloc1 = cudaMalloc(&devPtr1, 64);
-    printf("cudaMalloc(device 1 buffer): %s (code %d)\n", cudaGetErrorString(eAlloc1), (int)eAlloc1);
-
-    cudaError_t e1 = cudaMemcpyPeer(devPtr1, 1, devPtr0, 0, 64);
-    printf("cudaMemcpyPeer(dst=dev1, src=dev0, 64 bytes): %s (code %d)\n",
-           cudaGetErrorString(e1), (int)e1);
-
-    cudaStream_t stream;
-    cudaError_t eStream = cudaStreamCreate(&stream);
-    printf("cudaStreamCreate: %s (code %d)\n", cudaGetErrorString(eStream), (int)eStream);
-
-    cudaError_t e2 = cudaMemcpyPeerAsync(devPtr0, 0, devPtr1, 1, 64, stream);
-    printf("cudaMemcpyPeerAsync(dst=dev0, src=dev1, 64 bytes, on stream): %s (code %d)\n",
-           cudaGetErrorString(e2), (int)e2);
-
-    if (eAlloc0 == cudaSuccess) cudaFree(devPtr0);
-    if (eAlloc1 == cudaSuccess) cudaFree(devPtr1);
-    if (eStream == cudaSuccess) cudaStreamDestroy(stream);
+    int count = 0;
+    CUDA(cudaGetDeviceCount(&count));
+    if (count < 2) { printf("BLOCKED: requires 2 GPUs; found %d.\n", count); return 2; }
+    const int n = 4096;
+    const size_t bytes = n * sizeof(float);
+    std::vector<float> input(n), output(n);
+    for (int i = 0; i < n; ++i) input[i] = float((i * 17) % 4093 - 2046) / 8.0f;
+    float *source = nullptr, *destination = nullptr;
+    CUDA(cudaSetDevice(0));
+    CUDA(cudaMalloc(&source, bytes));
+    CUDA(cudaMemcpy(source, input.data(), bytes, cudaMemcpyHostToDevice));
+    CUDA(cudaSetDevice(1));
+    CUDA(cudaMalloc(&destination, bytes));
+    CUDA(cudaMemset(destination, 0, bytes));
+    CUDA(cudaMemcpyPeer(destination, 1, source, 0, bytes));
+    CUDA(cudaDeviceSynchronize());
+    CUDA(cudaMemcpy(output.data(), destination, bytes, cudaMemcpyDeviceToHost));
+    for (int i = 0; i < n; ++i) if (output[i] != input[i]) {
+        fprintf(stderr, "FAIL: synchronous payload[%d]\n", i); return 1;
+    }
+    // Reverse direction, after poisoning the original buffer, exercises Async.
+    CUDA(cudaSetDevice(0));
+    CUDA(cudaMemset(source, 0, bytes));
+    cudaStream_t stream = nullptr;
+    CUDA(cudaStreamCreate(&stream));
+    CUDA(cudaMemcpyPeerAsync(source, 0, destination, 1, bytes, stream));
+    CUDA(cudaStreamSynchronize(stream));
+    CUDA(cudaMemcpy(output.data(), source, bytes, cudaMemcpyDeviceToHost));
+    for (int i = 0; i < n; ++i) if (output[i] != input[i]) {
+        fprintf(stderr, "FAIL: asynchronous payload[%d]\n", i); return 1;
+    }
+    CUDA(cudaStreamDestroy(stream));
+    CUDA(cudaFree(source));
+    CUDA(cudaSetDevice(1));
+    CUDA(cudaFree(destination));
+    printf("PASS: 4096 nonuniform values verified in both peer-copy directions.\n");
+    printf("Copy success does not identify the physical transfer route or bandwidth.\n");
     return 0;
 }
 ```
 
-Genuinely compiled with a real `nvcc` and genuinely run. Locked output, deterministic across repeated runs:
+<!-- execution:start:a100:11_memcpy_peer.cu -->
+> **Current execution — 2026-11-17-a100: Numerical/transport validation (recorded scope).** UTC (program start): `2026-11-18T00:00:36.659156+00:00`. Source SHA-256: `f8151f3549665a26fc20ba93fea9ba286120e625b4991dc8342e8c3ee030a299`.
+
+[Exact tested source](../validation/2026-11-17-a100/11_memcpy_peer/11_memcpy_peer.cu) · [Compiler log](../validation/2026-11-17-a100/11_memcpy_peer/compile.log) · [Execution log](../validation/2026-11-17-a100/11_memcpy_peer/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+nvcc -std=c++17 -O2 -arch=sm_80 11_memcpy_peer.cu -o ./example
+./example
+```
+
+<details markdown="1"><summary>Captured current-source output</summary>
+
+```text
+PASS: 4096 nonuniform values verified in both peer-copy directions.
+Copy success does not identify the physical transfer route or bandwidth.
+```
+
+</details>
+<!-- execution:end:a100:11_memcpy_peer.cu -->
+
+
+<!-- execution:start:h100:11_memcpy_peer.cu -->
+> **Current execution — 2026-11-17-h100: Numerical/transport validation (recorded scope).** UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`. Source SHA-256: `f8151f3549665a26fc20ba93fea9ba286120e625b4991dc8342e8c3ee030a299`.
+
+[Exact tested source](../validation/2026-11-17-h100/11_memcpy_peer/11_memcpy_peer.cu) · [Compiler log](../validation/2026-11-17-h100/11_memcpy_peer/compile.log) · [Execution log](../validation/2026-11-17-h100/11_memcpy_peer/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+nvcc -std=c++17 -O2 -arch=sm_90 11_memcpy_peer.cu -o ./example
+./example
+```
+
+<details markdown="1"><summary>Captured current-source output</summary>
+
+```text
+PASS: 4096 nonuniform values verified in both peer-copy directions.
+Copy success does not identify the physical transfer route or bandwidth.
+```
+
+</details>
+<!-- execution:end:h100:11_memcpy_peer.cu -->
+
+
+**Historical authoring transcript (earlier source).** The current listing fixes device ownership and failed-handle sequencing. The current source was compiled and executed in the dated H100 suite; use the linked record for its numerical, API-probe or other-execution scope.
+
+The [2026-11-17 H100 execution record](../validation-h100.md) covers two GPUs connected by local NV18. It distinguishes numerical checks, API probes and other executions; a successful exit alone does not establish GPU algorithm correctness.
+
+<details markdown="1"><summary>Historical authoring output — superseded by the current execution above</summary>
 
 ```
 cudaMalloc(device 0 buffer): no CUDA-capable device is detected (code 100)
@@ -78,12 +151,20 @@ cudaStreamCreate: no CUDA-capable device is detected (code 100)
 cudaMemcpyPeerAsync(dst=dev0, src=dev1, 64 bytes, on stream): no CUDA-capable device is detected (code 100)
 ```
 
-Every call fails with the same `cudaErrorNoDevice` this book has reported consistently since Chapter 1 -- there is no context to allocate the buffers into, let alone copy between them. What this section can verify honestly is narrower but still real: the exact calls, arguments, and compiled binary that a real multi-GPU program would use for this operation, genuinely built by a genuine `nvcc`.
+</details>
+
+The current File 11 initializes data, checks actual peer copies and validates the destination on H100. Earlier no-device diagnostics established neither allocation nor data movement.
+
+The [2026-11-17 H100 execution record](../validation-h100.md) covers two GPUs connected by local NV18. It distinguishes numerical checks, API probes and other executions; a successful exit alone does not establish GPU algorithm correctness.
 
 !!! warning "[COMMON TRAP] Assuming cudaMemcpyPeer() itself tells you whether the fast path was used"
     `cudaMemcpyPeer()` returns `cudaSuccess` whether it took the direct peer route or silently fell back to staging through the host -- the function's return value reports *correctness*, not *which mechanism ran*. There is no flag in its signature that reports back which path was taken. The only way to know is to have already checked `cudaDeviceCanAccessPeer()` (Chapter 4, Section 4.2) for that exact ordered pair *before* calling it -- the copy's success tells you the data arrived; it says nothing about how.
 
 ## 5.2 Staged Host Transfers: The Fallback, Made Explicit
+
+<!-- mgpu:figure-2:start -->
+[![Host staging has two transfer legs](../images/technical/ch05/2-staging.svg)](../images/technical/ch05/2-staging.svg)
+<!-- mgpu:figure-2:end -->
 
 ### Intuition
 
@@ -94,55 +175,78 @@ Section 5.1 quoted the documentation's own description of what happens when peer
 The staged pattern is two ordinary `cudaMemcpy()` calls with a host buffer as the waypoint: `cudaMemcpy(hostBuffer, srcDevicePtr, bytes, cudaMemcpyDeviceToHost)` followed by `cudaMemcpy(dstDevicePtr, hostBuffer, bytes, cudaMemcpyHostToDevice)`. This is the book's model of what the documentation calls being "staged through the host": the same two hops, device to host and host to device, made visible instead of hidden inside one function call. It is a model, not a copy of the driver's internals, which are not documented; a driver is free to pipeline the two hops in smaller chunks so they overlap, so treat the full two-transfer cost as an upper bound on what the hidden fallback costs. Using a pinned (`cudaMallocHost()`-allocated) host buffer as the waypoint matters here because a pinned allocation is a fixed, DMA-eligible physical address the driver can transfer to and from directly, rather than a page the OS might need to fault in or relocate mid-copy.
 
 ```cpp
-// Chapter 5: Explicit Transfers -- cudaMemcpyPeer, Staged Host Transfers,
-// and When Each Wins
 // 12_staged_host_transfer.cu
-//
-// The staged fallback made explicit: two ordinary cudaMemcpy() calls,
-// device 0 -> host, then host -> device 1, using a pinned host buffer
-// as the waypoint. This is the two-hop route the documentation
-// describes as "staged through the host" when peer access between the
-// two devices has not been enabled. The driver's internal staging is not
-// documented and may pipeline in smaller chunks, so treat this as the
-// book's model of that fallback, not a copy of the driver's code.
-// Genuinely compiled with a real nvcc and genuinely run.
+// Checked teaching implementation; serial host scheduling favors clarity, not speed.
 #include <cstdio>
+#include <vector>
+#include <algorithm>
 #include <cuda_runtime.h>
-
-int main() {
-    void* devPtr0 = nullptr;
-    void* devPtr1 = nullptr;
-    void* hostStaging = nullptr;
-    const size_t BYTES = 64;
-
-    cudaError_t eAlloc0 = cudaMalloc(&devPtr0, BYTES);
-    printf("cudaMalloc(device 0 buffer): %s (code %d)\n", cudaGetErrorString(eAlloc0), (int)eAlloc0);
-
-    cudaError_t eAlloc1 = cudaMalloc(&devPtr1, BYTES);
-    printf("cudaMalloc(device 1 buffer): %s (code %d)\n", cudaGetErrorString(eAlloc1), (int)eAlloc1);
-
-    cudaError_t eHost = cudaMallocHost(&hostStaging, BYTES);
-    printf("cudaMallocHost(staging buffer): %s (code %d)\n", cudaGetErrorString(eHost), (int)eHost);
-
-    // Step 1: device 0 -> host.
-    cudaError_t e1 = cudaMemcpy(hostStaging, devPtr0, BYTES, cudaMemcpyDeviceToHost);
-    printf("Step 1, cudaMemcpy(device 0 -> host staging): %s (code %d)\n",
-           cudaGetErrorString(e1), (int)e1);
-
-    // Step 2: host -> device 1. Two PCIe (or equivalent) transfers where
-    // a single peer-direct copy would have used one link once.
-    cudaError_t e2 = cudaMemcpy(devPtr1, hostStaging, BYTES, cudaMemcpyHostToDevice);
-    printf("Step 2, cudaMemcpy(host staging -> device 1): %s (code %d)\n",
-           cudaGetErrorString(e2), (int)e2);
-
-    if (eAlloc0 == cudaSuccess) cudaFree(devPtr0);
-    if (eAlloc1 == cudaSuccess) cudaFree(devPtr1);
-    if (eHost == cudaSuccess) cudaFreeHost(hostStaging);
-    return 0;
+#define CUDA(call) do { cudaError_t status = (call); if (status != cudaSuccess) { \
+ fprintf(stderr,"%s: %s\n",#call,cudaGetErrorString(status)); \
+ return status==cudaErrorNoDevice || status==cudaErrorInsufficientDriver ? 2 : 1; } } while(0)
+int main(){
+ int count=0;CUDA(cudaGetDeviceCount(&count));if(count<2){printf("BLOCKED: requires 2 GPUs; found %d.\n",count);return 2;}
+ const int n=4096;const size_t bytes=n*sizeof(float);std::vector<float> input(n),output(n);
+ for(int i=0;i<n;++i)input[i]=float((i*17)%4093-2046)/8.0f;
+ float *source=nullptr,*destination=nullptr,*staging=nullptr;
+ CUDA(cudaSetDevice(0));CUDA(cudaMalloc(&source,bytes));CUDA(cudaMemcpy(source,input.data(),bytes,cudaMemcpyHostToDevice));CUDA(cudaMallocHost(&staging,bytes));
+ CUDA(cudaMemcpy(staging,source,bytes,cudaMemcpyDeviceToHost));
+ CUDA(cudaSetDevice(1));CUDA(cudaMalloc(&destination,bytes));CUDA(cudaMemset(destination,0,bytes));CUDA(cudaMemcpy(destination,staging,bytes,cudaMemcpyHostToDevice));CUDA(cudaMemcpy(output.data(),destination,bytes,cudaMemcpyDeviceToHost));
+ for(int i=0;i<n;++i)if(output[i]!=input[i]){fprintf(stderr,"FAIL staged transfer[%d]\n",i);return 1;}
+ CUDA(cudaFree(destination));CUDA(cudaSetDevice(0));CUDA(cudaFree(source));CUDA(cudaFreeHost(staging));
+ printf("PASS: 4096 nonuniform values verified through explicit pinned-host staging.\n");return 0;
 }
 ```
 
-Genuinely compiled with a real `nvcc` and genuinely run. Locked output, deterministic across repeated runs:
+<!-- execution:start:a100:12_staged_host_transfer.cu -->
+> **Current execution — 2026-11-17-a100: Numerical/transport validation (recorded scope).** UTC (program start): `2026-11-18T00:00:41.399876+00:00`. Source SHA-256: `e3d7e938f375c28fbb2bffba8013cb7347447bbca26ea1bac4f61207be4683de`.
+
+[Exact tested source](../validation/2026-11-17-a100/12_staged_host_transfer/12_staged_host_transfer.cu) · [Compiler log](../validation/2026-11-17-a100/12_staged_host_transfer/compile.log) · [Execution log](../validation/2026-11-17-a100/12_staged_host_transfer/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+nvcc -std=c++17 -O2 -arch=sm_80 12_staged_host_transfer.cu -o ./example
+./example
+```
+
+<details markdown="1"><summary>Captured current-source output</summary>
+
+```text
+PASS: 4096 nonuniform values verified through explicit pinned-host staging.
+```
+
+</details>
+<!-- execution:end:a100:12_staged_host_transfer.cu -->
+
+
+<!-- execution:start:h100:12_staged_host_transfer.cu -->
+> **Current execution — 2026-11-17-h100: Numerical/transport validation (recorded scope).** UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`. Source SHA-256: `e3d7e938f375c28fbb2bffba8013cb7347447bbca26ea1bac4f61207be4683de`.
+
+[Exact tested source](../validation/2026-11-17-h100/12_staged_host_transfer/12_staged_host_transfer.cu) · [Compiler log](../validation/2026-11-17-h100/12_staged_host_transfer/compile.log) · [Execution log](../validation/2026-11-17-h100/12_staged_host_transfer/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+nvcc -std=c++17 -O2 -arch=sm_90 12_staged_host_transfer.cu -o ./example
+./example
+```
+
+<details markdown="1"><summary>Captured current-source output</summary>
+
+```text
+PASS: 4096 nonuniform values verified through explicit pinned-host staging.
+```
+
+</details>
+<!-- execution:end:h100:12_staged_host_transfer.cu -->
+
+
+**Current-source scope:** A checked two-device transfer uses a pinned host staging buffer and validates all 4,096 destination values. The current source was compiled and executed in the dated H100 suite; use the linked record for its numerical, API-probe or other-execution scope. The output below is retained from the earlier authoring diagnostic and is not evidence for this replacement source.
+
+The [2026-11-17 H100 execution record](../validation-h100.md) covers two GPUs connected by local NV18. It distinguishes numerical checks, API probes and other executions; a successful exit alone does not establish GPU algorithm correctness.
+
+<details markdown="1"><summary>Historical authoring output — superseded by the current execution above</summary>
 
 ```
 cudaMalloc(device 0 buffer): no CUDA-capable device is detected (code 100)
@@ -152,7 +256,9 @@ Step 1, cudaMemcpy(device 0 -> host staging): no CUDA-capable device is detected
 Step 2, cudaMemcpy(host staging -> device 1): no CUDA-capable device is detected (code 100)
 ```
 
-The same honest `cudaErrorNoDevice` at every step, for the same reason as Section 5.1. What this section fixes in place is the *shape* of the fallback: two calls, two full-payload transfers, one intermediate buffer -- the concrete cost Section 5.3 now puts a number on.
+</details>
+
+File 12 initializes and checks both stages of the actual host-staged H100 transfer. The route requires two full-payload copies and an intermediate host buffer; the cost model below remains distinct from a measured bandwidth benchmark.
 
 !!! warning "[COMMON TRAP] Believing the staged fallback moves half the data each hop"
     Both steps in this section's code copy the *entire* `BYTES`-sized payload -- step 1 moves all of it device-to-host, and step 2 moves all of it again host-to-device. There is no sense in which the two hops split the work; the staged path pays the *full* transfer cost twice, once per hop, which is exactly why Section 5.3's cost model below counts it as `2 * (size / bandwidth)` rather than a single transfer split across two links.
@@ -227,7 +333,79 @@ int main() {
 }
 ```
 
+<!-- execution:start:a100:13_when_each_wins_model.cpp -->
+> **Current execution — 2026-11-17-a100: Host program/model (exit-only).** UTC (program start): `2026-11-18T00:00:46.260513+00:00`. Source SHA-256: `7cc3ed42964e58119cd17db7fe9a35602c88ab0b87905dba6216d6bdb86f6c46`.
+
+[Exact tested source](../validation/2026-11-17-a100/13_when_each_wins_model/13_when_each_wins_model.cpp) · [Compiler log](../validation/2026-11-17-a100/13_when_each_wins_model/compile.log) · [Execution log](../validation/2026-11-17-a100/13_when_each_wins_model/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+g++ -std=c++17 -O2 13_when_each_wins_model.cpp -o ./example
+./example
+```
+
+<details markdown="1"><summary>Captured current-source output</summary>
+
+```text
+Transfer size: 1.0 GB
+
+Peer-direct route, NVLink-wired pair:   0.020000 s (50.0 GB/s, one hop)
+Peer-direct route, PCIe-only direct pair: 0.031746 s (31.5 GB/s, one hop)
+Staged host route (any pair):            0.063492 s (31.5 GB/s, two hops)
+
+Peer-direct over NVLink is 3.1746x faster than staging, for a wired pair.
+Peer-direct over a direct PCIe link is 2.0000x faster than staging,
+for a pair with a direct PCIe route but no NVLink wire.
+
+When the pair has NO direct link at all (per Chapter 2's partial-mesh
+topology), peer access cannot be enabled between them in the first
+place (Chapter 4, Section 4.2) -- staging is then not merely faster
+or slower, it is the ONLY route that exists.
+```
+
+</details>
+<!-- execution:end:a100:13_when_each_wins_model.cpp -->
+
+
+<!-- execution:start:h100:13_when_each_wins_model.cpp -->
+> **Current execution — 2026-11-17-h100: Host program/model (exit-only).** UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`. Source SHA-256: `7cc3ed42964e58119cd17db7fe9a35602c88ab0b87905dba6216d6bdb86f6c46`.
+
+[Exact tested source](../validation/2026-11-17-h100/13_when_each_wins_model/13_when_each_wins_model.cpp) · [Compiler log](../validation/2026-11-17-h100/13_when_each_wins_model/compile.log) · [Execution log](../validation/2026-11-17-h100/13_when_each_wins_model/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+g++ -std=c++17 -O2 13_when_each_wins_model.cpp -o ./example
+./example
+```
+
+<details markdown="1"><summary>Captured current-source output</summary>
+
+```text
+Transfer size: 1.0 GB
+
+Peer-direct route, NVLink-wired pair:   0.020000 s (50.0 GB/s, one hop)
+Peer-direct route, PCIe-only direct pair: 0.031746 s (31.5 GB/s, one hop)
+Staged host route (any pair):            0.063492 s (31.5 GB/s, two hops)
+
+Peer-direct over NVLink is 3.1746x faster than staging, for a wired pair.
+Peer-direct over a direct PCIe link is 2.0000x faster than staging,
+for a pair with a direct PCIe route but no NVLink wire.
+
+When the pair has NO direct link at all (per Chapter 2's partial-mesh
+topology), peer access cannot be enabled between them in the first
+place (Chapter 4, Section 4.2) -- staging is then not merely faster
+or slower, it is the ONLY route that exists.
+```
+
+</details>
+<!-- execution:end:h100:13_when_each_wins_model.cpp -->
+
+
 Genuinely compiled with `g++` and genuinely run. Locked output, deterministic across repeated runs:
+
+<details markdown="1"><summary>Historical authoring output — superseded by the current execution above</summary>
 
 ```
 Transfer size: 1.0 GB
@@ -246,6 +424,8 @@ place (Chapter 4, Section 4.2) -- staging is then not merely faster
 or slower, it is the ONLY route that exists.
 ```
 
+</details>
+
 In this model, peer-direct wins whenever it's *available* -- by a factor of 2x when the direct link is itself PCIe (the model's staging pays that same rate twice, an upper bound since real staging may overlap the two hops), and by a larger 3.17x when the direct link is a faster NVLink wire. But "when each wins" has a sharper answer than a speed comparison alone: peer-direct is only ever a *choice* to make when Chapter 4's `cudaDeviceCanAccessPeer()` already says the pair has a direct link at all. When it doesn't, there is no decision to make -- staging isn't the slower option, it's the only one.
 
 !!! warning "[COMMON TRAP] Treating this cost model's numbers as real, measured transfer times"
@@ -253,7 +433,7 @@ In this model, peer-direct wins whenever it's *available* -- by a factor of 2x w
 
 ## Chapter Summary
 
-`cudaMemcpyPeer()` is CUDA's dedicated cross-device copy call, and per the CUDA Programming Guide's own words, its routing -- direct or staged through the host -- depends entirely on whether Chapter 4's peer-access permission has already been granted for that specific ordered pair, with the function's return value reporting only correctness, never which path ran (Section 5.1). The staged fallback, written out explicitly in Section 5.2 as two ordinary `cudaMemcpy()` calls through a pinned host buffer, makes concrete the book's cost model for staging: the full transfer cost paid twice, once per hop, an upper bound since the driver's undocumented internal staging may overlap the hops. Putting real, already-cited numbers into that shape (Section 5.3) shows peer-direct winning by up to 2x to 3.17x in that model whenever it's available, but also reframes the real question: peer-direct is a choice only when a direct link exists between the two specific devices at all; when it doesn't, staging is not the slower option but the only one. Chapter 6 builds directly on this by bringing streams and events into the picture -- overlapping a transfer like this chapter's with concurrent kernel execution, and synchronizing correctly across devices when that overlap is in play.
+`cudaMemcpyPeer()` is CUDA's dedicated cross-device copy call, and per the CUDA Programming Guide's own words, its routing -- direct or staged through the host -- depends entirely on whether Chapter 4's peer-access permission has already been granted for that specific ordered pair, with the function's return value reporting only correctness, never which path ran (Section 5.1). The staged fallback, written out explicitly in Section 5.2 as two ordinary `cudaMemcpy()` calls through a pinned host buffer, makes concrete the book's cost model for staging: the full transfer cost paid twice, once per hop, an upper bound since the driver's undocumented internal staging may overlap the hops. Putting real, already-cited numbers into that shape (Section 5.3) shows peer-direct winning by up to 2x to 3.17x in that model whenever it's available, but also reframes the real question: peer-direct is a choice only when the specific pair supports peer access; when it doesn't, staging is not the slower option but the only one. Chapter 6 builds directly on this by bringing streams and events into the picture -- overlapping a transfer like this chapter's with concurrent kernel execution, and synchronizing correctly across devices when that overlap is in play.
 
 ## Self-Check Questions
 
@@ -272,7 +452,7 @@ Chapter 6 introduces streams and events as the mechanism for overlapping a trans
 
 ## Worked Solutions
 
-**1.** Nothing. `cudaMemcpyPeer()`'s return value (a `cudaError_t`) reports whether the copy completed successfully, not which internal route it took. The only way to know in advance which path will run is to have already called `cudaDeviceCanAccessPeer()` for that exact ordered pair before making the copy call at all.
+**1.** Nothing. `cudaMemcpyPeer()`'s return value (a `cudaError_t`) reports API success or failure, not the internal route or device-side completion. `cudaDeviceCanAccessPeer()` establishes eligibility, not an achieved-bandwidth measurement. Synchronize the relevant work before validating the destination, and profile when route attribution matters.
 
 **2.** A DMA (direct memory access) transfer engine reads or writes host memory using physical addresses, programmed once at the start of the transfer. If the underlying page could be moved or swapped out mid-transfer -- which an ordinary, non-pinned allocation permits, since the OS is free to relocate it -- the DMA engine's already-programmed physical address would become invalid partway through. A pinned (page-locked) allocation is guaranteed by the OS not to move or be paged out for as long as it's pinned, so its physical address stays valid for the DMA engine's entire operation.
 
@@ -280,7 +460,7 @@ Chapter 6 introduces streams and events as the mechanism for overlapping a trans
 
 **4.** In Chapter 2's partial-mesh topology, a specific ordered pair of devices either has a direct wired NVLink connection between them or it doesn't -- there is no partial, intermediate wiring state for one specific pair. The pair's peer-direct bandwidth is therefore always exactly one of the two discrete figures (NVLink if wired, PCIe if the only direct route is PCIe), never an average or blend of the two, because a "half-wired" link isn't a real hardware configuration.
 
-**5.** Chapter 4's Section 4.2 established that `cudaDeviceEnablePeerAccess()` only succeeds (or is even meaningful to call) between pairs where `cudaDeviceCanAccessPeer()` already returns true -- meaning a direct physical link exists. Calling it "for every pair" doesn't create a link that doesn't exist; between pairs with no direct wiring, the enable call itself does nothing useful, and the program still has to use the staged route for those pairs regardless of intent. Peer-direct access isn't a setting to always turn on -- it's a fact about specific pairs' physical topology that either holds or doesn't.
+**5.** Chapter 4's Section 4.2 established that `cudaDeviceEnablePeerAccess()` only succeeds (or is even meaningful to call) between pairs where `cudaDeviceCanAccessPeer()` already returns true -- meaning a supported peer-memory route exists. Calling it "for every pair" doesn't create a link that doesn't exist; between pairs without supported peer access, the enable call itself does nothing useful, and the program still has to use the staged route for those pairs regardless of intent. Peer access can traverse supported PCIe switches or NVSwitch; it does not require a dedicated point-to-point cable. Capability queries determine eligibility, while profiling determines the achieved route and bandwidth.
 
 **6.** No -- this chapter's term "staged" specifically means routed *through host memory*, which is what `cudaMemcpy(..., cudaMemcpyDeviceToHost)` followed by `cudaMemcpy(..., cudaMemcpyHostToDevice)` does. A transfer from device 0 to device 2 that goes by way of device 1's memory (rather than the host's) would be a different thing entirely -- a multi-hop device-to-device relay, which Chapter 2's ring-bottleneck model already discussed in a different context (Section 2.4) and which this chapter's two functions don't perform on their own.
 
@@ -293,6 +473,6 @@ Chapter 6 introduces streams and events as the mechanism for overlapping a trans
 **Sources cited in this chapter:**
 
 - [CUDA Programming Guide — Multi-GPU Systems](https://docs.nvidia.com/cuda/cuda-programming-guide/03-advanced/multi-gpu-systems.html) -- peer-to-peer copies no longer needing to be staged through the host once peer access is enabled; the four dedicated peer-copy functions (`cudaMemcpyPeer`, `cudaMemcpyPeerAsync`, `cudaMemcpy3DPeer`, `cudaMemcpy3DPeerAsync`), and that peer copies can equally use plain `cudaMemcpy()` with `cudaMemcpyDeviceToDevice` or `cudaMemcpyDefault`.
-- [CUDA Runtime API Reference — Memory Management (`cudaMemcpyPeer`)](https://developer.download.nvidia.com/compute/DevZone/docs/html/C/doc/html/group__CUDART__MEMORY_g046702971bc5a66d9bc6000682a6d844.html) -- `cudaMemcpyPeer()` signature and its "asynchronous with respect to the host, but serialized" behavior.
+- [CUDA Runtime API Reference — Memory Management (`cudaMemcpyPeer`)](https://docs.nvidia.com/cuda/archive/12.8.0/cuda-runtime-api/group__CUDART__MEMORY.html) -- `cudaMemcpyPeer()` signature and its "asynchronous with respect to the host, but serialized" behavior.
 - [CUDA Programming Guide — Asynchronous Execution](https://docs.nvidia.com/cuda/cuda-programming-guide/02-basics/asynchronous-execution.html) -- pinned/page-locked host memory as the requirement for genuinely asynchronous transfers.
 - Chapter 2 of this book ("Multi-GPU Hardware Topology: PCIe, NVLink, and NVSwitch") -- the PCIe 4.0 x16 (31.5 GB/s) and direct wired NVLink (50 GB/s) figures this chapter's cost model reuses, themselves cited to real vendor sources in that chapter.

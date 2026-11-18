@@ -1,0 +1,10 @@
+$ /home/ubuntu/codex-multigpu-audit-20261117/multi-gpu-audit/artifacts/h100-reviewed-20261117/103_distributed_fft_transpose_correctness_simulation/example
+Reference (single-process): |grid[0][0]|=317.000000  |grid[3][5]|=30.673242
+
+P      max |diff| vs reference 
+1      0                       
+2      0                       
+4      0                       
+8      0                       
+
+Every P reproduces the exact same 2D DFT as the single-process reference, to the last bit. Like Chapter 34's embedding all-to-all, this transpose is pure RESHARDING (each output element is computed by exactly one rank, from data that arrived via relocation, never combined with another rank's own partial value) -- the real reason a distributed FFT's transpose step, despite moving just as much data as any reduction this book built, never raises the floating-point associativity question Chapter 8/25/29/31/32 investigated. The real cost here is not correctness risk -- it is the sheer COMMUNICATION VOLUME of the transpose itself, which Section 35.3 quantifies next using cuFFTMp's own real cited numbers.

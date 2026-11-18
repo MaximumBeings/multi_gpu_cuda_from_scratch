@@ -1,5 +1,15 @@
 # Chapter 15: Pipeline Parallelism: Splitting Layers Across Devices, and the Bubble That Costs You
 
+<!-- execution:provenance -->
+!!! info "Execution provenance"
+
+    Current execution blocks identify the tested source hash, hardware dataset, commands and captured output. References elsewhere on this page to a device-less environment describe the original authoring context. Historical output is superseded by the current record. Displayed output omits the runner command header and trims trailing line whitespace; raw logs remain exact. A host simulation or API validation has its stated scope; neither alone establishes a numerical multi-GPU workload or measured performance.
+
+
+<!-- mgpu:opener:start -->
+[![Chapter 15: Pipeline Parallelism: Splitting Layers Across Devices, and the Bubble That Costs You](../images/chapter-openers/15.svg)](../images/chapter-openers/15.svg)
+<!-- mgpu:opener:end -->
+
 **What you will understand by the end of this chapter:**
 
 - Why Chapter 13's own layer-wise split leaves every device idle most of the time, and how splitting the *batch* into micro-batches -- not the model any further -- fills that idle time by pipelining several micro-batches through the same device partition at once.
@@ -31,6 +41,10 @@ Chapter 13 (ONE micro-batch, K=4 devices):     This chapter (M micro-batches, PI
 ```
 
 ## 15.1 Micro-Batching: Filling the Bubble Chapter 13 Left Empty
+
+<!-- mgpu:figure-1:start -->
+[![Microbatches fill successive stages](../images/technical/ch15/1-pipeline.svg)](../images/technical/ch15/1-pipeline.svg)
+<!-- mgpu:figure-1:end -->
 
 ### Intuition
 
@@ -127,7 +141,81 @@ int main() {
 }
 ```
 
+<!-- execution:start:a100:42_pipeline_schedule.cpp -->
+> **Current execution — 2026-11-17-a100: Host program/model (exit-only).** UTC (program start): `2026-11-18T00:02:31.863017+00:00`. Source SHA-256: `b6ebe70007adc7b7eea44a90cdf48c24744a894b71d5f387b6d02b02e879a5f5`.
+
+[Exact tested source](../validation/2026-11-17-a100/42_pipeline_schedule/42_pipeline_schedule.cpp) · [Compiler log](../validation/2026-11-17-a100/42_pipeline_schedule/compile.log) · [Execution log](../validation/2026-11-17-a100/42_pipeline_schedule/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+g++ -std=c++17 -O2 42_pipeline_schedule.cpp -o ./example
+./example
+```
+
+<details markdown="1"><summary>Captured current-source output</summary>
+
+```text
+Pipeline schedule, K=4 devices, M=6 micro-batches (totalTimeSteps = M+K-1 = 9):
+
+device \ t   0  1  2  3  4  5  6  7  8
+dev 0        0  1  2  3  4  5  .  .  .
+dev 1        .  0  1  2  3  4  5  .  .
+dev 2        .  .  0  1  2  3  4  5  .
+dev 3        .  .  .  0  1  2  3  4  5
+
+Counted directly from the schedule above:
+  total device-time slots (K x totalTimeSteps): 36
+  busy slots (every device's M real micro-batches):  24
+  idle slots ('.' above):                             12
+
+Self-check: busySlots == K*M (24): PASS
+Self-check: idleSlots == K*(K-1) (12): PASS
+```
+
+</details>
+<!-- execution:end:a100:42_pipeline_schedule.cpp -->
+
+
+<!-- execution:start:h100:42_pipeline_schedule.cpp -->
+> **Current execution — 2026-11-17-h100: Host program/model (exit-only).** UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`. Source SHA-256: `b6ebe70007adc7b7eea44a90cdf48c24744a894b71d5f387b6d02b02e879a5f5`.
+
+[Exact tested source](../validation/2026-11-17-h100/42_pipeline_schedule/42_pipeline_schedule.cpp) · [Compiler log](../validation/2026-11-17-h100/42_pipeline_schedule/compile.log) · [Execution log](../validation/2026-11-17-h100/42_pipeline_schedule/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+g++ -std=c++17 -O2 42_pipeline_schedule.cpp -o ./example
+./example
+```
+
+<details markdown="1"><summary>Captured current-source output</summary>
+
+```text
+Pipeline schedule, K=4 devices, M=6 micro-batches (totalTimeSteps = M+K-1 = 9):
+
+device \ t   0  1  2  3  4  5  6  7  8
+dev 0        0  1  2  3  4  5  .  .  .
+dev 1        .  0  1  2  3  4  5  .  .
+dev 2        .  .  0  1  2  3  4  5  .
+dev 3        .  .  .  0  1  2  3  4  5
+
+Counted directly from the schedule above:
+  total device-time slots (K x totalTimeSteps): 36
+  busy slots (every device's M real micro-batches):  24
+  idle slots ('.' above):                             12
+
+Self-check: busySlots == K*M (24): PASS
+Self-check: idleSlots == K*(K-1) (12): PASS
+```
+
+</details>
+<!-- execution:end:h100:42_pipeline_schedule.cpp -->
+
+
 Genuinely compiled with `g++` and genuinely run. Locked output, deterministic across repeated runs:
+
+<details markdown="1"><summary>Historical authoring output — superseded by the current execution above</summary>
 
 ```
 Pipeline schedule, K=4 devices, M=6 micro-batches (totalTimeSteps = M+K-1 = 9):
@@ -147,12 +235,18 @@ Self-check: busySlots == K*M (24): PASS
 Self-check: idleSlots == K*(K-1) (12): PASS
 ```
 
+</details>
+
 The schedule's own shape makes the cost visible without any formula at all: each device's row is a block of `M` consecutive numbers, staggered one time step later than the device before it, with dots everywhere else. Counting those dots directly gives 12 idle slots out of 36 total -- a third of all device-time in this particular small example, all of it concentrated at the pipeline's fill (the staircase of dots in the upper-left) and drain (the staircase in the lower-right). Both self-checks confirm the schedule behaves exactly the way the underlying arithmetic requires: every device does the same `M` units of work, and the total idle time is exactly `K*(K-1)` slots, no more and no less. Section 15.3 takes this counted result and checks it against GPipe's own cited closed-form formula for the general case.
 
 !!! warning "[COMMON TRAP] Assuming micro-batching eliminates the bubble instead of just amortizing it"
     The schedule above still has real idle cells in it -- 12 of them, even with staggered execution. Micro-batching doesn't make the fill-and-drain cost disappear; Section 15.1's own self-check shows that cost is a fixed `K*(K-1)` slots no matter how many micro-batches run through the pipeline. What micro-batching does is spread that fixed cost over more total work: with `M=6`, it's 12 idle slots out of 36 (a third); with a much larger `M`, the same 12-slot fill-and-drain cost would be a much smaller fraction of a much larger total. The bubble is amortized, not eliminated -- and GPipe's own paper is explicit that its overhead is "negligible," not zero, once `M` is large enough relative to `K`.
 
 ## 15.2 Enforcing the Schedule: Chapter 6's Real Event Mechanism, Reused
+
+<!-- mgpu:figure-2:start -->
+[![The schedule is an ownership protocol](../images/technical/ch15/2-handoff.svg)](../images/technical/ch15/2-handoff.svg)
+<!-- mgpu:figure-2:end -->
 
 ### Intuition
 
@@ -176,85 +270,120 @@ Section 15.1's schedule says:              Chapter 6's real mechanism enforces i
 The code below enacts exactly one cell of Section 15.1's own schedule -- the boundary between device 0 finishing micro-batch 0 and device 1 starting it -- using the identical real API Chapter 6 introduced: `cudaEventRecord()` to mark a producing device's completion point, and `cudaStreamWaitEvent()` to make a different device's stream depend on it. Every other `(device, micro-batch)` boundary in Section 15.1's schedule needs this same pattern, called once per boundary; it's shown here for one rather than repeated mechanically for all of them.
 
 ```cpp
-// Chapter 15: Pipeline Parallelism -- Splitting Layers Across Devices, and the Bubble That Costs You
+// Chapter 15: one checked pipeline-stage readiness boundary
 // 43_pipeline_stage_sync.cu
-//
-// Section 14.1's own schedule showed WHEN each device is supposed to
-// start each micro-batch -- but nothing in host arithmetic actually
-// ENFORCES that device d+1 waits for device d's own output before
-// starting. That enforcement is a real cross-device dependency, and
-// this book already built the exact mechanism for it in Chapter 6:
-// an event recorded on one device's stream, handed to
-// cudaStreamWaitEvent() on the NEXT device's stream, with no host
-// blocking and no cudaDeviceSynchronize() anywhere. Pipeline
-// parallelism doesn't need a new primitive here either -- it needs
-// Chapter 6's real API called once per (device, micro-batch)
-// boundary in Section 14.1's own schedule. Genuinely compiled with a
-// real nvcc and genuinely run.
+// Two real devices, guarded handles, and a checked cross-device dependency.
 #include <cstdio>
 #include <cuda_runtime.h>
 
+#define CHECK(call) do { cudaError_t status = (call); \
+    printf("%s: %s (code %d)\n", #call, cudaGetErrorString(status), (int)status); \
+    if (status != cudaSuccess) return status == cudaErrorNoDevice || \
+        status == cudaErrorInsufficientDriver ? 2 : 1; } while (0)
+
 int main() {
-    // One cell of Section 15.1's own schedule: device 0 finishes
-    // micro-batch 0 and device 1 must wait for it before starting its
-    // OWN work on micro-batch 0. Every other (device, micro-batch)
-    // boundary in that schedule needs this identical pattern, called
-    // once per cell -- shown here for one, not repeated K*M times.
-    const int PRODUCER_DEVICE = 0, CONSUMER_DEVICE = 1, MICROBATCH = 0;
-
-    cudaError_t eSetProducer = cudaSetDevice(PRODUCER_DEVICE);
-    printf("cudaSetDevice(%d) [producer]: %s (code %d)\n", PRODUCER_DEVICE,
-           cudaGetErrorString(eSetProducer), (int)eSetProducer);
-
-    cudaStream_t producerStream;
-    cudaError_t eProducerStream = cudaStreamCreate(&producerStream);
-    printf("cudaStreamCreate(producerStream, on device %d): %s (code %d)\n",
-           PRODUCER_DEVICE, cudaGetErrorString(eProducerStream), (int)eProducerStream);
-
-    cudaEvent_t microbatchReady;
-    cudaError_t eEvent = cudaEventCreate(&microbatchReady);
-    printf("cudaEventCreate(microbatchReady, on device %d): %s (code %d)\n",
-           PRODUCER_DEVICE, cudaGetErrorString(eEvent), (int)eEvent);
-
-    // In real use, this call would come AFTER device 0's layer-range
-    // kernels for micro-batch 0 have been queued on producerStream --
-    // the event only fires once everything queued before it on that
-    // stream has actually finished.
-    cudaError_t eRecord = cudaEventRecord(microbatchReady, producerStream);
-    printf("cudaEventRecord(microbatchReady, producerStream) "
-           "[marks 'micro-batch %d done on device %d']: %s (code %d)\n",
-           MICROBATCH, PRODUCER_DEVICE, cudaGetErrorString(eRecord), (int)eRecord);
-
-    cudaError_t eSetConsumer = cudaSetDevice(CONSUMER_DEVICE);
-    printf("\ncudaSetDevice(%d) [consumer]: %s (code %d)\n", CONSUMER_DEVICE,
-           cudaGetErrorString(eSetConsumer), (int)eSetConsumer);
-
-    cudaStream_t consumerStream;
-    cudaError_t eConsumerStream = cudaStreamCreate(&consumerStream);
-    printf("cudaStreamCreate(consumerStream, on device %d): %s (code %d)\n",
-           CONSUMER_DEVICE, cudaGetErrorString(eConsumerStream), (int)eConsumerStream);
-
-    cudaError_t eWait = cudaStreamWaitEvent(consumerStream, microbatchReady, 0);
-    printf("cudaStreamWaitEvent(consumerStream waits on microbatchReady): "
-           "%s (code %d)\n", cudaGetErrorString(eWait), (int)eWait);
-
-    printf("\nEvery future kernel queued on consumerStream after this call\n"
-           "-- device %d's own layer-range kernels for micro-batch %d -- will\n"
-           "wait for device %d's event before it runs, with no host blocking\n"
-           "and no cudaDeviceSynchronize() anywhere, exactly as Chapter 6\n"
-           "established. Section 15.1's schedule is what decides WHICH\n"
-           "(device, micro-batch) pairs need this call; this section is what\n"
-           "actually enforces the dependency the schedule assumes.\n",
-           CONSUMER_DEVICE, MICROBATCH, PRODUCER_DEVICE);
-
-    if (eEvent == cudaSuccess) cudaEventDestroy(microbatchReady);
-    if (eProducerStream == cudaSuccess) cudaStreamDestroy(producerStream);
-    if (eConsumerStream == cudaSuccess) cudaStreamDestroy(consumerStream);
+    int count = 0;
+    CHECK(cudaGetDeviceCount(&count));
+    if (count < 2) { printf("BLOCKED: requires 2 visible GPUs; found %d.\n", count); return 2; }
+    cudaStream_t stream0 = nullptr, stream1 = nullptr;
+    cudaEvent_t event0 = nullptr;
+    CHECK(cudaSetDevice(0));
+    CHECK(cudaStreamCreate(&stream0));
+    CHECK(cudaEventCreateWithFlags(&event0, cudaEventDisableTiming));
+    CHECK(cudaEventRecord(event0, stream0));
+    CHECK(cudaSetDevice(1));
+    CHECK(cudaStreamCreate(&stream1));
+    CHECK(cudaStreamWaitEvent(stream1, event0, 0));
+    printf("Cross-device wait enqueued; host did not wait for event completion.\n");
+    // Drain the waiter before releasing resources. This demo checks API success;
+    // it does not validate a producer/consumer payload or measure overlap.
+    CHECK(cudaStreamSynchronize(stream1));
+    CHECK(cudaStreamDestroy(stream1));
+    CHECK(cudaSetDevice(0));
+    CHECK(cudaEventDestroy(event0));
+    CHECK(cudaStreamDestroy(stream0));
+    printf("PASS: checked pipeline-stage event dependency lifecycle.\n");
     return 0;
 }
 ```
 
-Genuinely compiled with a real `nvcc` and genuinely run. Locked output, deterministic across repeated runs:
+<!-- execution:start:a100:43_pipeline_stage_sync.cu -->
+> **Current execution — 2026-11-17-a100: API validation (recorded scope).** UTC (program start): `2026-11-18T00:02:31.983487+00:00`. Source SHA-256: `e3d44151b74bd3c1534f9ab075292a9372a7389fa3d42ed29c50a71a0dd25f19`.
+
+[Exact tested source](../validation/2026-11-17-a100/43_pipeline_stage_sync/43_pipeline_stage_sync.cu) · [Compiler log](../validation/2026-11-17-a100/43_pipeline_stage_sync/compile.log) · [Execution log](../validation/2026-11-17-a100/43_pipeline_stage_sync/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+nvcc -std=c++17 -O2 -arch=sm_80 43_pipeline_stage_sync.cu -o ./example
+./example
+```
+
+<details markdown="1"><summary>Captured current-source output</summary>
+
+```text
+cudaGetDeviceCount(&count): no error (code 0)
+cudaSetDevice(0): no error (code 0)
+cudaStreamCreate(&stream0): no error (code 0)
+cudaEventCreateWithFlags(&event0, cudaEventDisableTiming): no error (code 0)
+cudaEventRecord(event0, stream0): no error (code 0)
+cudaSetDevice(1): no error (code 0)
+cudaStreamCreate(&stream1): no error (code 0)
+cudaStreamWaitEvent(stream1, event0, 0): no error (code 0)
+Cross-device wait enqueued; host did not wait for event completion.
+cudaStreamSynchronize(stream1): no error (code 0)
+cudaStreamDestroy(stream1): no error (code 0)
+cudaSetDevice(0): no error (code 0)
+cudaEventDestroy(event0): no error (code 0)
+cudaStreamDestroy(stream0): no error (code 0)
+PASS: checked pipeline-stage event dependency lifecycle.
+```
+
+</details>
+<!-- execution:end:a100:43_pipeline_stage_sync.cu -->
+
+
+<!-- execution:start:h100:43_pipeline_stage_sync.cu -->
+> **Current execution — 2026-11-17-h100: API validation (recorded scope).** UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`. Source SHA-256: `e3d44151b74bd3c1534f9ab075292a9372a7389fa3d42ed29c50a71a0dd25f19`.
+
+[Exact tested source](../validation/2026-11-17-h100/43_pipeline_stage_sync/43_pipeline_stage_sync.cu) · [Compiler log](../validation/2026-11-17-h100/43_pipeline_stage_sync/compile.log) · [Execution log](../validation/2026-11-17-h100/43_pipeline_stage_sync/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+nvcc -std=c++17 -O2 -arch=sm_90 43_pipeline_stage_sync.cu -o ./example
+./example
+```
+
+<details markdown="1"><summary>Captured current-source output</summary>
+
+```text
+cudaGetDeviceCount(&count): no error (code 0)
+cudaSetDevice(0): no error (code 0)
+cudaStreamCreate(&stream0): no error (code 0)
+cudaEventCreateWithFlags(&event0, cudaEventDisableTiming): no error (code 0)
+cudaEventRecord(event0, stream0): no error (code 0)
+cudaSetDevice(1): no error (code 0)
+cudaStreamCreate(&stream1): no error (code 0)
+cudaStreamWaitEvent(stream1, event0, 0): no error (code 0)
+Cross-device wait enqueued; host did not wait for event completion.
+cudaStreamSynchronize(stream1): no error (code 0)
+cudaStreamDestroy(stream1): no error (code 0)
+cudaSetDevice(0): no error (code 0)
+cudaEventDestroy(event0): no error (code 0)
+cudaStreamDestroy(stream0): no error (code 0)
+PASS: checked pipeline-stage event dependency lifecycle.
+```
+
+</details>
+<!-- execution:end:h100:43_pipeline_stage_sync.cu -->
+
+
+**Historical authoring transcript (earlier source).** The current listing fixes device ownership and failed-handle sequencing. The current source was compiled and executed in the dated H100 suite; use the linked record for its numerical, API-probe or other-execution scope.
+
+The [2026-11-17 H100 execution record](../validation-h100.md) covers two GPUs connected by local NV18. It distinguishes numerical checks, API probes and other executions; a successful exit alone does not establish GPU algorithm correctness.
+
+<details markdown="1"><summary>Historical authoring output — superseded by the current execution above</summary>
 
 ```
 cudaSetDevice(0) [producer]: no CUDA-capable device is detected (code 100)
@@ -275,7 +404,9 @@ established. Section 15.1's schedule is what decides WHICH
 actually enforces the dependency the schedule assumes.
 ```
 
-Every call reports the same honest `cudaErrorNoDevice` (code 100) this book's every real device-touching call has reported since Chapter 3 -- there is no new failure mode here, because there is no new API here. What matters is which chapter's API this section reached for: not a pipeline-specific primitive, but Chapter 6's own event mechanism, called at the exact schedule boundary Section 15.1 computed. Pipeline parallelism's real engineering content, once the schedule and the model split both already exist, is almost entirely "call Chapter 6's function here, at these specific times" -- not a new synchronization concept.
+</details>
+
+File 43 is a checked stream/event pipeline API probe on the H100 host. It checks submission and synchronization behavior, not a numerical neural-network pipeline or achieved pipeline overlap.
 
 !!! warning "[COMMON TRAP] Synchronizing on a schedule with cudaDeviceSynchronize() instead of per-boundary events"
     It's tempting to reach for `cudaDeviceSynchronize()` at the end of every time step, forcing every device to fully catch up before anyone proceeds -- it's simpler to reason about, and Chapter 6 already warned against exactly this pattern for a different reason. Doing that here would silently destroy the entire point of Section 15.1's schedule: if every device has to fully synchronize at every time step, no device can ever race ahead to start a later micro-batch while an earlier one is still finishing elsewhere, which is precisely the overlap that fills the bubble in the first place. The whole benefit measured in Section 15.1 depends on each `(device, micro-batch)` boundary being an *independent*, narrowly-scoped dependency -- exactly what `cudaStreamWaitEvent()` provides and a blanket `cudaDeviceSynchronize()` does not.
@@ -439,7 +570,115 @@ int main() {
 }
 ```
 
+<!-- execution:start:a100:44_bubble_and_pipelined_correctness.cpp -->
+> **Current execution — 2026-11-17-a100: Host program/model (exit-only).** UTC (program start): `2026-11-18T00:02:36.485096+00:00`. Source SHA-256: `d44dc2c57da8948d74c5a45c483d4eb59c4fb7bf8848527038db7c74fe7a8636`.
+
+[Exact tested source](../validation/2026-11-17-a100/44_bubble_and_pipelined_correctness/44_bubble_and_pipelined_correctness.cpp) · [Compiler log](../validation/2026-11-17-a100/44_bubble_and_pipelined_correctness/compile.log) · [Execution log](../validation/2026-11-17-a100/44_bubble_and_pipelined_correctness/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+g++ -std=c++17 -O2 44_bubble_and_pipelined_correctness.cpp -o ./example
+./example
+```
+
+<details markdown="1"><summary>Captured current-source output</summary>
+
+```text
+Part A: bubble fraction (K-1)/(M+K-1), for real K values this
+book has already used, checked at GPipe's own empirical
+threshold M = 4xK:
+
+K (source)                        K      M=4xK   bubble frac.
+7B-class model (Ch13)             2          8         11.11%
+typical pipeline depth            4         16         15.79%
+typical pipeline depth            8         32         17.95%
+GPT-3 175B (Ch13)                35        140         19.54%
+
+Part B: running Chapter 13's own 8-layer network for 3 micro-batches
+through Section 15.1's interleaved K=4 pipeline schedule (totalTimeSteps=6):
+
+  t=0: device 0 processes micro-batch 0 (layers [0,2))
+  t=1: device 0 processes micro-batch 1 (layers [0,2))
+  t=1: device 1 processes micro-batch 0 (layers [2,4))
+  t=2: device 0 processes micro-batch 2 (layers [0,2))
+  t=2: device 1 processes micro-batch 1 (layers [2,4))
+  t=2: device 2 processes micro-batch 0 (layers [4,6))
+  t=3: device 1 processes micro-batch 2 (layers [2,4))
+  t=3: device 2 processes micro-batch 1 (layers [4,6))
+  t=3: device 3 processes micro-batch 0 (layers [6,8))
+  t=4: device 2 processes micro-batch 2 (layers [4,6))
+  t=4: device 3 processes micro-batch 1 (layers [6,8))
+  t=5: device 3 processes micro-batch 2 (layers [6,8))
+
+Comparing each micro-batch's PIPELINED result against Chapter 13's own UN-PIPELINED reference for the same input:
+  micro-batch 0, input (1.00, 1.00): reference = (0.3285223992, 0.2628870847), pipelined = (0.3285223992, 0.2628870847) -- PASS (bit-identical)
+  micro-batch 1, input (2.00, -1.00): reference = (0.3181013191, 0.2436102732), pipelined = (0.3181013191, 0.2436102732) -- PASS (bit-identical)
+  micro-batch 2, input (0.50, 3.00): reference = (0.3560831617, 0.3077149331), pipelined = (0.3560831617, 0.3077149331) -- PASS (bit-identical)
+
+All 3 micro-batch(es) bit-identical between the pipelined schedule and Chapter 13's own un-pipelined reference: PASS
+```
+
+</details>
+<!-- execution:end:a100:44_bubble_and_pipelined_correctness.cpp -->
+
+
+<!-- execution:start:h100:44_bubble_and_pipelined_correctness.cpp -->
+> **Current execution — 2026-11-17-h100: Host program/model (exit-only).** UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`. Source SHA-256: `d44dc2c57da8948d74c5a45c483d4eb59c4fb7bf8848527038db7c74fe7a8636`.
+
+[Exact tested source](../validation/2026-11-17-h100/44_bubble_and_pipelined_correctness/44_bubble_and_pipelined_correctness.cpp) · [Compiler log](../validation/2026-11-17-h100/44_bubble_and_pipelined_correctness/compile.log) · [Execution log](../validation/2026-11-17-h100/44_bubble_and_pipelined_correctness/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+g++ -std=c++17 -O2 44_bubble_and_pipelined_correctness.cpp -o ./example
+./example
+```
+
+<details markdown="1"><summary>Captured current-source output</summary>
+
+```text
+Part A: bubble fraction (K-1)/(M+K-1), for real K values this
+book has already used, checked at GPipe's own empirical
+threshold M = 4xK:
+
+K (source)                        K      M=4xK   bubble frac.
+7B-class model (Ch13)             2          8         11.11%
+typical pipeline depth            4         16         15.79%
+typical pipeline depth            8         32         17.95%
+GPT-3 175B (Ch13)                35        140         19.54%
+
+Part B: running Chapter 13's own 8-layer network for 3 micro-batches
+through Section 15.1's interleaved K=4 pipeline schedule (totalTimeSteps=6):
+
+  t=0: device 0 processes micro-batch 0 (layers [0,2))
+  t=1: device 0 processes micro-batch 1 (layers [0,2))
+  t=1: device 1 processes micro-batch 0 (layers [2,4))
+  t=2: device 0 processes micro-batch 2 (layers [0,2))
+  t=2: device 1 processes micro-batch 1 (layers [2,4))
+  t=2: device 2 processes micro-batch 0 (layers [4,6))
+  t=3: device 1 processes micro-batch 2 (layers [2,4))
+  t=3: device 2 processes micro-batch 1 (layers [4,6))
+  t=3: device 3 processes micro-batch 0 (layers [6,8))
+  t=4: device 2 processes micro-batch 2 (layers [4,6))
+  t=4: device 3 processes micro-batch 1 (layers [6,8))
+  t=5: device 3 processes micro-batch 2 (layers [6,8))
+
+Comparing each micro-batch's PIPELINED result against Chapter 13's own UN-PIPELINED reference for the same input:
+  micro-batch 0, input (1.00, 1.00): reference = (0.3285223992, 0.2628870847), pipelined = (0.3285223992, 0.2628870847) -- PASS (bit-identical)
+  micro-batch 1, input (2.00, -1.00): reference = (0.3181013191, 0.2436102732), pipelined = (0.3181013191, 0.2436102732) -- PASS (bit-identical)
+  micro-batch 2, input (0.50, 3.00): reference = (0.3560831617, 0.3077149331), pipelined = (0.3560831617, 0.3077149331) -- PASS (bit-identical)
+
+All 3 micro-batch(es) bit-identical between the pipelined schedule and Chapter 13's own un-pipelined reference: PASS
+```
+
+</details>
+<!-- execution:end:h100:44_bubble_and_pipelined_correctness.cpp -->
+
+
 Genuinely compiled with `g++` and genuinely run. Locked output, deterministic across repeated runs:
+
+<details markdown="1"><summary>Historical authoring output — superseded by the current execution above</summary>
 
 ```
 Part A: bubble fraction (K-1)/(M+K-1), for real K values this
@@ -475,6 +714,8 @@ Comparing each micro-batch's PIPELINED result against Chapter 13's own UN-PIPELI
 
 All 3 micro-batch(es) bit-identical between the pipelined schedule and Chapter 13's own un-pipelined reference: PASS
 ```
+
+</details>
 
 Part A confirms Section 15.1's own counted fraction generalizes exactly: plugging `K=4, M=6` into `(K-1)/(M+K-1)` gives `3/9 = 0.3333...`, matching Section 15.1's directly-counted `12/36` exactly, not approximately. At GPipe's own cited threshold, every real `K` this book has used lands under 20% -- including the 35-way split Chapter 13's own GPT-3 example required -- which is squarely consistent with GPipe's own characterization of that overhead as negligible rather than zero. Part B is this chapter's real correctness verification: even though device 0 raced ahead to start micro-batch 2 while device 3 was still working on micro-batch 0 -- visibly, in the interleaved trace above -- every micro-batch's own final result matches Chapter 13's un-pipelined reference exactly. Interleaving changed *when* each device did its work; it never touched *what* any individual micro-batch's own chain of layers computed.
 
@@ -512,7 +753,7 @@ Chapter 16 leaves neural-network-specific parallelism strategies behind for the 
 
 **5.** Micro-batch 0's own dependency chain only requires that each device processing it does so *after* the previous device in the chain finished micro-batch 0 specifically -- device 1 needs device 0's micro-batch-0 output, device 2 needs device 1's micro-batch-0 output, and so on. Section 15.1's schedule guarantees exactly this: device `d` processes micro-batch 0 at time `t=d`, strictly increasing with `d`. Device 0 starting on a completely different micro-batch (micro-batch 2) at a later time step has no bearing on micro-batch 0's own chain, because different micro-batches use entirely separate data with no arithmetic connection between them.
 
-**6.** This chapter's guarantee is closer to Chapter 13's unconditional one. Chapter 14's row-parallel combine step is a genuine floating-point summation across ranks, inheriting Chapter 8's reduce non-associativity caveat -- correct only to within rounding, not bit-identical in general. This chapter's pipelining never combines anything across micro-batches at all; each micro-batch's chain of operations is executed in the exact same order Chapter 13 already proved bit-identical, just interleaved in time with other, independent micro-batches' own chains. Since interleaving in time never reorders any single micro-batch's own operations, Section 15.3's own Part B result is unconditionally bit-identical, exactly like Chapter 13.
+**6.** This chapter's guarantee is closer to Chapter 13's unconditional one. Chapter 14's row-parallel combine step is a genuine floating-point summation across ranks, inheriting Chapter 8's reduce non-associativity caveat -- correct only to within rounding, not bit-identical in general. This chapter's pipelining never combines anything across micro-batches at all; each micro-batch's chain of operations is executed in the exact same order Chapter 13 already proved bit-identical, just interleaved in time with other, independent micro-batches' own chains. Since interleaving in time never reorders any single micro-batch's own operations, Section 15.3’s Part B result is bit-identical for its unchanged scalar host implementation. GPU pipelines can select different kernels or precision modes, and training schedules that change optimizer-update timing are not automatically equivalent.
 
 **7.** Section 15.3's own Common Trap explains that very large `M` isn't free: each micro-batch becomes a smaller slice of the original batch, which can leave individual kernels without enough work to run efficiently, and the activation memory Section 13.2 already measured has to be held for every micro-batch still in flight simultaneously -- more in-flight micro-batches means more simultaneous activation memory, not less. The bubble-fraction formula only models idle *time*; it says nothing about kernel efficiency or memory, so minimizing it alone is not the same as minimizing total real cost.
 

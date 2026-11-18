@@ -1,0 +1,13 @@
+$ /home/ubuntu/codex-eight-gpu-audit-20261117/multi-gpu-audit/artifacts/a100-eight-20261117/19_ipc_handoff_simulation/example
+Exporter allocated data and exported handle 0.
+Importer opened handle 0.
+Immediately after opening, importer's view matches exporter's data: PASS
+After exporter mutates index 2 with NO further transfer call,
+importer's view reflects it immediately: PASS
+
+[Documented, NOT executed here -- this would be real undefined
+behavior on real hardware, so this simulation only prints the
+warning rather than reproducing it]: calling cudaFree() on the
+exporter's allocation before the importer calls
+cudaIpcCloseMemHandle() is undefined behavior, per the CUDA
+Runtime API documentation.

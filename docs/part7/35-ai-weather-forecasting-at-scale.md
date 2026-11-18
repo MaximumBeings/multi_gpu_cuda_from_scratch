@@ -1,3 +1,15 @@
+# Chapter 35: AI Weather Forecasting at Scale (NVIDIA Earth-2 / FourCastNet)
+
+<!-- execution:provenance -->
+!!! info "Execution provenance"
+
+    Current execution blocks identify the tested source hash, hardware dataset, commands and captured output. References elsewhere on this page to a device-less environment describe the original authoring context. Historical output is superseded by the current record. Displayed output omits the runner command header and trims trailing line whitespace; raw logs remain exact. A host simulation or API validation has its stated scope; neither alone establishes a numerical multi-GPU workload or measured performance.
+
+
+<!-- mgpu:opener:start -->
+[![Chapter 35: AI Weather Forecasting at Scale (NVIDIA Earth-2 / FourCastNet)](../images/chapter-openers/35.svg)](../images/chapter-openers/35.svg)
+<!-- mgpu:opener:end -->
+
 **What you will understand after this chapter:** why NVIDIA Earth-2's real FourCastNet weather model -- despite operating on a giant global spatial grid, the exact shape Chapter 16 trained you to expect needs domain decomposition -- is actually trained with ordinary Chapter 12 data parallelism, because the real grid comfortably fits one GPU's memory; why FourCastNet's Adaptive Fourier Neural Operator (AFNO) architecture uses a computation (the Fourier transform) that is fundamentally GLOBAL rather than local, so that IF a future grid ever did outgrow one GPU, Chapter 16's own halo exchange could not supply what it needs; and what NVIDIA's own real cuFFTMp library uses instead -- a slab decomposition plus a global all-to-all transpose -- including the real point at which that technique's communication cost, not correctness, becomes the dominant concern.
 
 **What you need to know first:** Chapter 10 (all-to-all, resharding a tensor from one split dimension to another), Chapter 12 (data parallelism), Chapter 16 (domain decomposition and halo exchange, this chapter's main point of contrast), and Chapter 34 (this book's most recent use of an all-to-all for a pure-resharding, non-reduction purpose).
@@ -27,6 +39,10 @@ The previous chapter's own closing preview, and this book's own table of content
 ```
 
 ## 35.1 FourCastNet's Real Training Is Data Parallelism, Not Domain Decomposition
+
+<!-- mgpu:figure-1:start -->
+[![Training replicas each own a global sample](../images/technical/ch35/1-replicas.svg)](../images/technical/ch35/1-replicas.svg)
+<!-- mgpu:figure-1:end -->
 
 ### Intuition
 
@@ -110,6 +126,80 @@ int main() {
 }
 ```
 
+<!-- execution:start:a100:102_fourcastnet_data_parallel_training_model.cpp -->
+> **Current execution — 2026-11-17-a100: Host program/model (exit-only).** UTC (program start): `2026-11-18T00:05:30.151774+00:00`. Source SHA-256: `c704ca60cece363ccb43491c73d57d6ee7aa456ef656466c8963f4a70b1b5480`.
+
+[Exact tested source](../validation/2026-11-17-a100/102_fourcastnet_data_parallel_training_model/102_fourcastnet_data_parallel_training_model.cpp) · [Compiler log](../validation/2026-11-17-a100/102_fourcastnet_data_parallel_training_model/compile.log) · [Execution log](../validation/2026-11-17-a100/102_fourcastnet_data_parallel_training_model/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+g++ -std=c++17 -O2 102_fourcastnet_data_parallel_training_model.cpp -o ./example
+./example
+```
+
+<details markdown="1"><summary>Captured current-source output</summary>
+
+```text
+Real cited anchor point (Pathak et al. 2022): 16 hours wall-clock on 64 real A100 GPUs.
+
+Illustrative near-linear data-parallel scaling model (Chapter 12's own technique: whole-model replicas, gradient all-reduce each step) anchored to that real point -- NOT a claim about measured scaling efficiency, which this sandbox cannot measure:
+GPU count    Illustrative hours
+8            128.00
+16           64.00
+32           32.00
+64           16.00
+128          8.00
+256          4.00
+
+FourCastNet's own real cited results (not derived by this book):
+- "FourCastNet generates a week-long forecast in less than 2 seconds, orders of magnitude faster than IFS."
+- "FourCastNet is about 45,000 times faster than traditional NWP models on a node-hour basis."
+- "Once trained, however, FourCastNet uses about 12,000 times less energy to generate a forecast than the IFS model."
+- Real global grid: "a resolution of 0.25 degree... a global grid size of 720x1440 pixels" -- comfortably fits one real A100's memory, which is exactly why the real 64-GPU/16-hour training run above is ordinary data parallelism, not spatial domain decomposition.
+```
+
+</details>
+<!-- execution:end:a100:102_fourcastnet_data_parallel_training_model.cpp -->
+
+
+<!-- execution:start:h100:102_fourcastnet_data_parallel_training_model.cpp -->
+> **Current execution — 2026-11-17-h100: Host program/model (exit-only).** UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`. Source SHA-256: `c704ca60cece363ccb43491c73d57d6ee7aa456ef656466c8963f4a70b1b5480`.
+
+[Exact tested source](../validation/2026-11-17-h100/102_fourcastnet_data_parallel_training_model/102_fourcastnet_data_parallel_training_model.cpp) · [Compiler log](../validation/2026-11-17-h100/102_fourcastnet_data_parallel_training_model/compile.log) · [Execution log](../validation/2026-11-17-h100/102_fourcastnet_data_parallel_training_model/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+g++ -std=c++17 -O2 102_fourcastnet_data_parallel_training_model.cpp -o ./example
+./example
+```
+
+<details markdown="1"><summary>Captured current-source output</summary>
+
+```text
+Real cited anchor point (Pathak et al. 2022): 16 hours wall-clock on 64 real A100 GPUs.
+
+Illustrative near-linear data-parallel scaling model (Chapter 12's own technique: whole-model replicas, gradient all-reduce each step) anchored to that real point -- NOT a claim about measured scaling efficiency, which this sandbox cannot measure:
+GPU count    Illustrative hours
+8            128.00
+16           64.00
+32           32.00
+64           16.00
+128          8.00
+256          4.00
+
+FourCastNet's own real cited results (not derived by this book):
+- "FourCastNet generates a week-long forecast in less than 2 seconds, orders of magnitude faster than IFS."
+- "FourCastNet is about 45,000 times faster than traditional NWP models on a node-hour basis."
+- "Once trained, however, FourCastNet uses about 12,000 times less energy to generate a forecast than the IFS model."
+- Real global grid: "a resolution of 0.25 degree... a global grid size of 720x1440 pixels" -- comfortably fits one real A100's memory, which is exactly why the real 64-GPU/16-hour training run above is ordinary data parallelism, not spatial domain decomposition.
+```
+
+</details>
+<!-- execution:end:h100:102_fourcastnet_data_parallel_training_model.cpp -->
+
+
 Compile and run (a plain host `.cpp` file with no CUDA/NCCL/MPI/NVSHMEM linkage, cross-verified on both the cloud sandbox and the device):
 
 ```bash
@@ -119,6 +209,8 @@ g++ -O2 -ffp-contract=off -o 102_fourcastnet_data_parallel_training_model \
 ```
 
 Locked output:
+
+<details markdown="1"><summary>Historical authoring output — superseded by the current execution above</summary>
 
 ```
 Real cited anchor point (Pathak et al. 2022): 16 hours wall-clock on 64 real A100 GPUs.
@@ -138,6 +230,8 @@ FourCastNet's own real cited results (not derived by this book):
 - "Once trained, however, FourCastNet uses about 12,000 times less energy to generate a forecast than the IFS model."
 - Real global grid: "a resolution of 0.25 degree... a global grid size of 720x1440 pixels" -- comfortably fits one real A100's memory, which is exactly why the real 64-GPU/16-hour training run above is ordinary data parallelism, not spatial domain decomposition.
 ```
+
+</details>
 
 ## 35.2 Why AFNO's Global Fourier Mixing Would Break Halo Exchange
 
@@ -327,6 +421,66 @@ int main() {
 }
 ```
 
+<!-- execution:start:a100:103_distributed_fft_transpose_correctness_simulation.cpp -->
+> **Current execution — 2026-11-17-a100: Host program/model (exit-only).** UTC (program start): `2026-11-18T00:05:30.273704+00:00`. Source SHA-256: `146f67b6b0bd26812db89c1a966b4ffb828c4d366695965f74bf94ea438b2b6e`.
+
+[Exact tested source](../validation/2026-11-17-a100/103_distributed_fft_transpose_correctness_simulation/103_distributed_fft_transpose_correctness_simulation.cpp) · [Compiler log](../validation/2026-11-17-a100/103_distributed_fft_transpose_correctness_simulation/compile.log) · [Execution log](../validation/2026-11-17-a100/103_distributed_fft_transpose_correctness_simulation/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+g++ -std=c++17 -O2 103_distributed_fft_transpose_correctness_simulation.cpp -o ./example
+./example
+```
+
+<details markdown="1"><summary>Captured current-source output</summary>
+
+```text
+Reference (single-process): |grid[0][0]|=317.000000  |grid[3][5]|=30.673242
+
+P      max |diff| vs reference
+1      0
+2      0
+4      0
+8      0
+
+Every P reproduces the exact same 2D DFT as the single-process reference, to the last bit. Like Chapter 34's embedding all-to-all, this transpose is pure RESHARDING (each output element is computed by exactly one rank, from data that arrived via relocation, never combined with another rank's own partial value) -- the real reason a distributed FFT's transpose step, despite moving just as much data as any reduction this book built, never raises the floating-point associativity question Chapter 8/25/29/31/32 investigated. The real cost here is not correctness risk -- it is the sheer COMMUNICATION VOLUME of the transpose itself, which Section 35.3 quantifies next using cuFFTMp's own real cited numbers.
+```
+
+</details>
+<!-- execution:end:a100:103_distributed_fft_transpose_correctness_simulation.cpp -->
+
+
+<!-- execution:start:h100:103_distributed_fft_transpose_correctness_simulation.cpp -->
+> **Current execution — 2026-11-17-h100: Host program/model (exit-only).** UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`. Source SHA-256: `146f67b6b0bd26812db89c1a966b4ffb828c4d366695965f74bf94ea438b2b6e`.
+
+[Exact tested source](../validation/2026-11-17-h100/103_distributed_fft_transpose_correctness_simulation/103_distributed_fft_transpose_correctness_simulation.cpp) · [Compiler log](../validation/2026-11-17-h100/103_distributed_fft_transpose_correctness_simulation/compile.log) · [Execution log](../validation/2026-11-17-h100/103_distributed_fft_transpose_correctness_simulation/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+g++ -std=c++17 -O2 103_distributed_fft_transpose_correctness_simulation.cpp -o ./example
+./example
+```
+
+<details markdown="1"><summary>Captured current-source output</summary>
+
+```text
+Reference (single-process): |grid[0][0]|=317.000000  |grid[3][5]|=30.673242
+
+P      max |diff| vs reference
+1      0
+2      0
+4      0
+8      0
+
+Every P reproduces the exact same 2D DFT as the single-process reference, to the last bit. Like Chapter 34's embedding all-to-all, this transpose is pure RESHARDING (each output element is computed by exactly one rank, from data that arrived via relocation, never combined with another rank's own partial value) -- the real reason a distributed FFT's transpose step, despite moving just as much data as any reduction this book built, never raises the floating-point associativity question Chapter 8/25/29/31/32 investigated. The real cost here is not correctness risk -- it is the sheer COMMUNICATION VOLUME of the transpose itself, which Section 35.3 quantifies next using cuFFTMp's own real cited numbers.
+```
+
+</details>
+<!-- execution:end:h100:103_distributed_fft_transpose_correctness_simulation.cpp -->
+
+
 Compile and run (plain host `.cpp`, cross-verified on both the cloud sandbox and the device):
 
 ```bash
@@ -336,6 +490,8 @@ g++ -O2 -ffp-contract=off -o 103_distributed_fft_transpose_correctness_simulatio
 ```
 
 Locked output:
+
+<details markdown="1"><summary>Historical authoring output — superseded by the current execution above</summary>
 
 ```
 Reference (single-process): |grid[0][0]|=317.000000  |grid[3][5]|=30.673242
@@ -349,7 +505,13 @@ P      max |diff| vs reference
 Every P reproduces the exact same 2D DFT as the single-process reference, to the last bit. Like Chapter 34's embedding all-to-all, this transpose is pure RESHARDING (each output element is computed by exactly one rank, from data that arrived via relocation, never combined with another rank's own partial value) -- the real reason a distributed FFT's transpose step, despite moving just as much data as any reduction this book built, never raises the floating-point associativity question Chapter 8/25/29/31/32 investigated. The real cost here is not correctness risk -- it is the sheer COMMUNICATION VOLUME of the transpose itself, which Section 35.3 quantifies next using cuFFTMp's own real cited numbers.
 ```
 
+</details>
+
 ## 35.3 The Real Communication Cost of a Distributed FFT
+
+<!-- mgpu:figure-3:start -->
+[![A distributed FFT changes data orientation](../images/technical/ch35/3-alltoall.svg)](../images/technical/ch35/3-alltoall.svg)
+<!-- mgpu:figure-3:end -->
 
 ### Intuition
 
@@ -452,6 +614,76 @@ int main() {
 }
 ```
 
+<!-- execution:start:a100:104_distributed_fft_communication_cost_model.cpp -->
+> **Current execution — 2026-11-17-a100: Host program/model (exit-only).** UTC (program start): `2026-11-18T00:05:30.947769+00:00`. Source SHA-256: `7fc3718010c42bb256449aad16f61cb52754d86f84cc2c1189e449d0ccb36a73`.
+
+[Exact tested source](../validation/2026-11-17-a100/104_distributed_fft_communication_cost_model/104_distributed_fft_communication_cost_model.cpp) · [Compiler log](../validation/2026-11-17-a100/104_distributed_fft_communication_cost_model/compile.log) · [Execution log](../validation/2026-11-17-a100/104_distributed_fft_communication_cost_model/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+g++ -std=c++17 -O2 104_distributed_fft_communication_cost_model.cpp -o ./example
+./example
+```
+
+<details markdown="1"><summary>Captured current-source output</summary>
+
+```text
+cuFFTMp's own real cited benchmark, a single large 2048^3 complex FFT (NVIDIA cuFFTMp documentation):
+GPU count      Time               Note
+8              78 ms              real cited measurement
+2048           4 ms               real cited measurement
+Also real and cited: "more than 70% of peak effective bandwidth" sustained, and "1.8 PFlop/s" achieved throughput, at a real cited 4096-A100 configuration.
+
+Why this matters directly quotes cuFFTMp's own documentation: "distributed 3D FFTs are well-known to be communication-bound because of global collective communications of the MPI_Alltoallv type" -- the exact all-to-all transpose Section 35.2 proved correct, now identified as the real bottleneck, not a correctness risk.
+
+Grid size comparison (real, cited figures on both sides):
+FourCastNet's real global grid (Section 35.1): 720 x 1440 = 1036800 points.
+cuFFTMp's own real cited benchmark problem: 2048^3 = 8589934592 points.
+Ratio: the cuFFTMp benchmark grid holds about 8285x as many points as FourCastNet's real global grid.
+
+This is the honest resolution of the tension this chapter opened with: AFNO's own real global Fourier-domain mixing (Section 35.2) is, in principle, exactly the kind of operation that eventually needs cuFFTMp's own real slab-decomposition-plus-transpose machinery once a grid outgrows one GPU. FourCastNet's own real 720x1440 grid never reaches that point -- it fits one A100 comfortably, which is exactly why Section 35.1's real 64-GPU training run is ordinary data parallelism. But a future global model at, say, 1-2km resolution instead of today's 0.25 degree -- pushing toward grids the size of cuFFTMp's own real cited 2048^3 benchmark -- is precisely where this chapter's own real distributed-FFT technique stops being optional.
+```
+
+</details>
+<!-- execution:end:a100:104_distributed_fft_communication_cost_model.cpp -->
+
+
+<!-- execution:start:h100:104_distributed_fft_communication_cost_model.cpp -->
+> **Current execution — 2026-11-17-h100: Host program/model (exit-only).** UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`. Source SHA-256: `7fc3718010c42bb256449aad16f61cb52754d86f84cc2c1189e449d0ccb36a73`.
+
+[Exact tested source](../validation/2026-11-17-h100/104_distributed_fft_communication_cost_model/104_distributed_fft_communication_cost_model.cpp) · [Compiler log](../validation/2026-11-17-h100/104_distributed_fft_communication_cost_model/compile.log) · [Execution log](../validation/2026-11-17-h100/104_distributed_fft_communication_cost_model/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+g++ -std=c++17 -O2 104_distributed_fft_communication_cost_model.cpp -o ./example
+./example
+```
+
+<details markdown="1"><summary>Captured current-source output</summary>
+
+```text
+cuFFTMp's own real cited benchmark, a single large 2048^3 complex FFT (NVIDIA cuFFTMp documentation):
+GPU count      Time               Note
+8              78 ms              real cited measurement
+2048           4 ms               real cited measurement
+Also real and cited: "more than 70% of peak effective bandwidth" sustained, and "1.8 PFlop/s" achieved throughput, at a real cited 4096-A100 configuration.
+
+Why this matters directly quotes cuFFTMp's own documentation: "distributed 3D FFTs are well-known to be communication-bound because of global collective communications of the MPI_Alltoallv type" -- the exact all-to-all transpose Section 35.2 proved correct, now identified as the real bottleneck, not a correctness risk.
+
+Grid size comparison (real, cited figures on both sides):
+FourCastNet's real global grid (Section 35.1): 720 x 1440 = 1036800 points.
+cuFFTMp's own real cited benchmark problem: 2048^3 = 8589934592 points.
+Ratio: the cuFFTMp benchmark grid holds about 8285x as many points as FourCastNet's real global grid.
+
+This is the honest resolution of the tension this chapter opened with: AFNO's own real global Fourier-domain mixing (Section 35.2) is, in principle, exactly the kind of operation that eventually needs cuFFTMp's own real slab-decomposition-plus-transpose machinery once a grid outgrows one GPU. FourCastNet's own real 720x1440 grid never reaches that point -- it fits one A100 comfortably, which is exactly why Section 35.1's real 64-GPU training run is ordinary data parallelism. But a future global model at, say, 1-2km resolution instead of today's 0.25 degree -- pushing toward grids the size of cuFFTMp's own real cited 2048^3 benchmark -- is precisely where this chapter's own real distributed-FFT technique stops being optional.
+```
+
+</details>
+<!-- execution:end:h100:104_distributed_fft_communication_cost_model.cpp -->
+
+
 Compile and run (plain host `.cpp`, cross-verified on both the cloud sandbox and the device):
 
 ```bash
@@ -461,6 +693,8 @@ g++ -O2 -ffp-contract=off -o 104_distributed_fft_communication_cost_model \
 ```
 
 Locked output:
+
+<details markdown="1"><summary>Historical authoring output — superseded by the current execution above</summary>
 
 ```
 cuFFTMp's own real cited benchmark, a single large 2048^3 complex FFT (NVIDIA cuFFTMp documentation):
@@ -478,6 +712,8 @@ Ratio: the cuFFTMp benchmark grid holds about 8285x as many points as FourCastNe
 
 This is the honest resolution of the tension this chapter opened with: AFNO's own real global Fourier-domain mixing (Section 35.2) is, in principle, exactly the kind of operation that eventually needs cuFFTMp's own real slab-decomposition-plus-transpose machinery once a grid outgrows one GPU. FourCastNet's own real 720x1440 grid never reaches that point -- it fits one A100 comfortably, which is exactly why Section 35.1's real 64-GPU training run is ordinary data parallelism. But a future global model at, say, 1-2km resolution instead of today's 0.25 degree -- pushing toward grids the size of cuFFTMp's own real cited 2048^3 benchmark -- is precisely where this chapter's own real distributed-FFT technique stops being optional.
 ```
+
+</details>
 
 ## Chapter Summary
 

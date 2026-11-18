@@ -1,0 +1,10 @@
+$ /home/ubuntu/codex-multigpu-audit-20261117/multi-gpu-audit/artifacts/h100-reviewed-20261117/10_p2p_simulation/example
+Device 0 initialized. Attempting device 0 -> device 1 (peer-accessible per the simulated topology) and device 0 -> device 2 (NOT peer-accessible).
+
+Transfer 0->1: direct P2P write (peer access exists)
+Transfer 0->2: direct P2P refused (no peer access, correctly) -- falling back to host-staged copy.
+
+Correctness check, device 1 contents vs. independent reference: PASS
+Correctness check, device 2 contents vs. independent reference: PASS
+
+Both destinations hold identical, correct data despite using two different transfer mechanisms -- exactly the property real P2P code depends on: the *method* changes with topology, the *result* must not.

@@ -22,6 +22,8 @@
 // Compile: nvcc -arch=sm_80 136_ddp_bucketed_allreduce.cu -o 136_ddp_bucketed_allreduce -lnccl
 // Run:     ./136_ddp_bucketed_allreduce
 #include <cstdio>
+#include <cstdlib>
+#include <cmath>
 #include <vector>
 #include <algorithm>
 #include <nccl.h>
@@ -101,32 +103,23 @@ int main() {
     for (size_t i = 0; i < issueOrder.size(); ++i) printf("%sbucket %d", i ? " -> " : "", issueOrder[i]);
     printf("\n\n");
 
-    printf("=== one real ncclAllReduce(..., ncclAvg, ...) per bucket, index order ===\n\n");
-    ncclComm_t comm = nullptr; // never successfully created, as in Chapter 11 and Chapter 12
-    cudaStream_t stream = nullptr;
-    float* bucketBuffer = nullptr;
-    bool allInvalidArg = true;
-    for (int b : issueOrder) {
-        size_t bucketElems = 0;
-        for (auto& p : params) if (p.bucketIndex == b) bucketElems++;
-        ncclResult_t e = ncclAllReduce(bucketBuffer, bucketBuffer, bucketElems, ncclFloat, ncclAvg, comm, stream);
-        printf("bucket %d (%zu params): ncclAllReduce(..., ncclAvg, ...) -> %s\n",
-               b, bucketElems, ncclGetErrorString(e));
-        if (e != ncclInvalidArgument) allInvalidArg = false;
+
+    int count=0;if(cudaGetDeviceCount(&count)!=cudaSuccess||count<2){fprintf(stderr,"Requires 2 GPUs\n");return 2;}
+    auto cuda_ok=[](cudaError_t e){if(e!=cudaSuccess){fprintf(stderr,"CUDA: %s\n",cudaGetErrorString(e));exit(1);}};
+    auto nccl_ok=[](ncclResult_t e){if(e!=ncclSuccess){fprintf(stderr,"NCCL: %s\n",ncclGetErrorString(e));exit(1);}};
+    int devices[2]={0,1};ncclComm_t comm[2]={};cudaStream_t streams[2]={};float* buffers[2]={};
+    nccl_ok(ncclCommInitAll(comm,2,devices));
+    for(int r=0;r<2;++r){cuda_ok(cudaSetDevice(r));cuda_ok(cudaMalloc(&buffers[r],2*sizeof(float)));cuda_ok(cudaStreamCreate(&streams[r]));}
+    int errors=0;
+    for(int b:issueOrder){
+        for(int r=0;r<2;++r){cuda_ok(cudaSetDevice(r));float input[2]={(float)(10*b+r+1),(float)(10*b+r+2)};cuda_ok(cudaMemcpy(buffers[r],input,sizeof(input),cudaMemcpyHostToDevice));}
+        nccl_ok(ncclGroupStart());for(int r=0;r<2;++r){cuda_ok(cudaSetDevice(r));nccl_ok(ncclAllReduce(buffers[r],buffers[r],2,ncclFloat,ncclAvg,comm[r],streams[r]));}nccl_ok(ncclGroupEnd());
+        for(int r=0;r<2;++r){cuda_ok(cudaSetDevice(r));cuda_ok(cudaStreamSynchronize(streams[r]));float got[2];cuda_ok(cudaMemcpy(got,buffers[r],sizeof(got),cudaMemcpyDeviceToHost));
+            for(int j=0;j<2;++j)if(!std::isfinite(got[j])||got[j]!=(float)(10*b+j)+1.5f)++errors;}
+        printf("Bucket %d: two-GPU average checked, cumulative errors=%d\n",b,errors);
     }
-    printf("\n(the same honest ncclInvalidArgument Chapter 12's own File 34 already\n");
-    printf("reported for its single flat call -- a never-created communicator fails the\n");
-    printf("identical way whether it's asked to reduce one buffer or three)\n");
-
-    bool orderCorrect = (issueOrder[0] == 0 && issueOrder[1] == 1 && issueOrder[2] == 2);
-    bool readyOrderWasScrambled = (readyOrder[0] != 0 || readyOrder[1] != 1 || readyOrder[2] != 2);
-    printf("\nself-check: the simulated ready order was genuinely scrambled relative to\n");
-    printf("bucket-index order (%s), yet the real issue order sent to ncclAllReduce\n",
-           readyOrderWasScrambled ? "confirmed scrambled" : "MISMATCH -- not actually scrambled");
-    printf("stayed strictly ascending bucket-index order (%s), AND every real NCCL call\n",
-           orderCorrect ? "confirmed" : "MISMATCH");
-    printf("reports the same honest failure (%s): %s\n", allInvalidArg ? "confirmed" : "MISMATCH",
-           (orderCorrect && readyOrderWasScrambled && allInvalidArg) ? "confirmed" : "MISMATCH");
-
-    return (orderCorrect && readyOrderWasScrambled && allInvalidArg) ? 0 : 1;
+    bool orderCorrect=issueOrder==std::vector<int>({0,1,2});if(!orderCorrect)++errors;
+    for(int r=0;r<2;++r){cuda_ok(cudaSetDevice(r));cuda_ok(cudaFree(buffers[r]));cuda_ok(cudaStreamDestroy(streams[r]));nccl_ok(ncclCommDestroy(comm[r]));}
+    printf("Readiness is a host model; actual two-GPU averages follow bucket index order. No autograd/overlap claim.\n");
+    printf("VALIDATION %s: errors=%d\n",errors?"FAIL":"PASS",errors);return errors?1:0;
 }

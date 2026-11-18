@@ -1,0 +1,24 @@
+$ /home/ubuntu/codex-multigpu-audit-20261117/multi-gpu-audit/artifacts/h100-reviewed-20261117/82_1d_partitioning_participant_count_model/example
+P        Ch16 halo partners/rank  Ch27 all-gather partners/rank Ch28 1D-BFS WORST CASE/rank
+--------------------------------------------------------------------------------
+4        2                        3                        3                       
+16       2                        15                       15                      
+64       2                        63                       63                      
+256      2                        255                      255                     
+1024     2                        1023                     1023                    
+4096     2                        4095                     4095                    
+
+Chapter 16's own halo-exchange partner count stays FIXED at 2, regardless of P -- it never depends on problem scale.
+Chapter 27's own all-gather partner count is P-1, EVERY single step, UNAVOIDABLY -- the physics (no cutoff radius) leaves no choice.
+This chapter's own 1D-partitioned BFS partner count can reach the SAME P-1 ceiling Chapter 27 has -- but only in the worst case, only on SOME levels, and only for graphs whose edges happen to spread across every rank -- it is graph-dependent, not physics-mandated.
+
+--- Yoo et al.'s own real fix: 2D partitioning ---
+P        1D worst case: P-1       2D partitioning: sqrt(P) reduction factor
+4        3                        2.0                      1.5             x
+16       15                       4.0                      3.8             x
+64       63                       8.0                      7.9             x
+256      255                      16.0                     15.9            x
+1024     1023                     32.0                     32.0            x
+4096     4095                     64.0                     64.0            x
+
+Yoo et al.'s own real quote: "With the 2D partitioning, the number of processes involved in collective communications is O(sqrt(P)) in contrast to O(P) of 1D partitioning." The reduction factor itself GROWS with P -- exactly the shape that makes 2D partitioning matter more, not less, as a cluster scales up.

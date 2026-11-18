@@ -1,0 +1,16 @@
+$ /home/ubuntu/codex-multigpu-audit-20261117/multi-gpu-audit/artifacts/h100-reviewed-20261117/45_domain_decomposition_row_range/example
+cudaGetDeviceCount(): 2 device(s).
+
+Partitioning a 16 x 8 grid's rows across this book's own real deviceCount (2):
+  rank 0: rows [0, 8)
+  rank 1: rows [8, 16)
+  (2 device(s) -- nothing to print above.)
+
+The same formula, hypothetically, with world size 4:
+  rank 0: rows [0, 4)  above: domain boundary (fixed value)  below: rank below (real halo)
+  rank 1: rows [4, 8)  above: rank above (real halo)         below: rank below (real halo)
+  rank 2: rows [8, 12)  above: rank above (real halo)         below: rank below (real halo)
+  rank 3: rows [12, 16)  above: rank above (real halo)         below: domain boundary (fixed value)
+
+Five-point stencil (interior update): new(i,j) = 0.25 * (old(i-1,j) + old(i+1,j) + old(i,j-1) + old(i,j+1))
+The top row of every rank's own strip needs old(i-1,j) from the rank ABOVE it; the bottom row needs old(i+1,j) from the rank BELOW it. Neither value lives on this rank.

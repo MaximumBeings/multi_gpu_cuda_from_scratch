@@ -1,5 +1,15 @@
 # Chapter 31: Multi-GPU Monte Carlo Risk Simulation
 
+<!-- execution:provenance -->
+!!! info "Execution provenance"
+
+    Current execution blocks identify the tested source hash, hardware dataset, commands and captured output. References elsewhere on this page to a device-less environment describe the original authoring context. Historical output is superseded by the current record. Displayed output omits the runner command header and trims trailing line whitespace; raw logs remain exact. A host simulation or API validation has its stated scope; neither alone establishes a numerical multi-GPU workload or measured performance.
+
+
+<!-- mgpu:opener:start -->
+[![Chapter 31: Multi-GPU Monte Carlo Risk Simulation](../images/chapter-openers/31.svg)](../images/chapter-openers/31.svg)
+<!-- mgpu:opener:end -->
+
 **What you will understand after reading this chapter:** why Monte Carlo risk simulation looks, at first glance, like Chapter 30's embarrassingly parallel rendering case, but is genuinely different in one specific way: it always ends in a real reduction. You will see that reduction built two different ways -- an exact, low-volume combination for a mean and a variance, and a fundamentally different, higher-volume requirement for a percentile-based risk statistic like Value-at-Risk -- and a real, sharp finding about how even the *shape* of a reduction, not just how the work was split, can change a floating-point result.
 
 **What you need to know first:** Chapter 30's independent-unit rendering case (as the point of comparison); Chapter 8's floating-point non-associativity caution; Chapter 11's ring-vs-tree reduction shapes; Chapter 10/27's gather/all-gather patterns.
@@ -21,6 +31,10 @@ Chapter 30's rendering case:              This chapter's Monte Carlo case:
 ```
 
 ## 31.1 Independent Paths, One Real Reduction
+
+<!-- mgpu:figure-1:start -->
+[![Independent paths combine summary statistics](../images/technical/ch31/1-reduce.svg)](../images/technical/ch31/1-reduce.svg)
+<!-- mgpu:figure-1:end -->
 
 ### Intuition
 
@@ -170,12 +184,84 @@ int main() {
 }
 ```
 
+<!-- execution:start:a100:90_independent_path_correctness_simulation.cpp -->
+> **Current execution — 2026-11-17-a100: Host program/model (exit-only).** UTC (program start): `2026-11-18T00:05:28.387055+00:00`. Source SHA-256: `6ae1e1b96c842c49da43d72be12a411fa20e5188b0ea4ad4a659d2ce12d64905`.
+
+[Exact tested source](../validation/2026-11-17-a100/90_independent_path_correctness_simulation/90_independent_path_correctness_simulation.cpp) · [Compiler log](../validation/2026-11-17-a100/90_independent_path_correctness_simulation/compile.log) · [Execution log](../validation/2026-11-17-a100/90_independent_path_correctness_simulation/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+g++ -std=c++17 -O2 90_independent_path_correctness_simulation.cpp -o ./example
+./example
+```
+
+<details markdown="1"><summary>Captured current-source output</summary>
+
+```text
+Reference (single-process): count=24  mean=10.541666666666666  M2=3837.9583333333348
+
+P      count      combined mean  combined M2              mean match   M2 match
+1      24         10.541667      3837.9583333333348       YES          YES
+2      24         10.541667      3837.9583333333335       YES          NO
+3      24         10.541667      3837.9583333333335       YES          NO
+4      24         10.541667      3837.9583333333335       YES          NO
+6      24         10.541667      3837.9583333333335       YES          NO
+8      24         10.541667      3837.9583333333335       YES          NO
+12     24         10.541667      3837.958333333333        YES          NO
+24     24         10.541667      3837.9583333333335       YES          NO
+
+Every combined count matches exactly (integer payoff sums are exactly associative, unlike the floating-point mean and M2). The combined MEAN matches the reference exactly at every P tested here -- Chan et al.'s own pairwise mean formula happens to reproduce this dataset's reference mean bit-for-bit. The combined M2 does NOT match at P > 1: a real, tiny (last-few-digits) floating-point difference. Note which side is off: computed exactly in rational arithmetic, this dataset's true M2 rounds to 3837.9583333333335 -- what the combined result gives at every P > 1 except P = 12 (1 ulp low). It is the single-process two-pass REFERENCE that is 3 ulp high. Pairwise combination is a genuinely different formula from the two-pass one, not a regrouping of the same additions, so a bit-for-bit match was never promised in either direction.
+```
+
+</details>
+<!-- execution:end:a100:90_independent_path_correctness_simulation.cpp -->
+
+
+<!-- execution:start:h100:90_independent_path_correctness_simulation.cpp -->
+> **Current execution — 2026-11-17-h100: Host program/model (exit-only).** UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`. Source SHA-256: `6ae1e1b96c842c49da43d72be12a411fa20e5188b0ea4ad4a659d2ce12d64905`.
+
+[Exact tested source](../validation/2026-11-17-h100/90_independent_path_correctness_simulation/90_independent_path_correctness_simulation.cpp) · [Compiler log](../validation/2026-11-17-h100/90_independent_path_correctness_simulation/compile.log) · [Execution log](../validation/2026-11-17-h100/90_independent_path_correctness_simulation/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+g++ -std=c++17 -O2 90_independent_path_correctness_simulation.cpp -o ./example
+./example
+```
+
+<details markdown="1"><summary>Captured current-source output</summary>
+
+```text
+Reference (single-process): count=24  mean=10.541666666666666  M2=3837.9583333333348
+
+P      count      combined mean  combined M2              mean match   M2 match
+1      24         10.541667      3837.9583333333348       YES          YES
+2      24         10.541667      3837.9583333333335       YES          NO
+3      24         10.541667      3837.9583333333335       YES          NO
+4      24         10.541667      3837.9583333333335       YES          NO
+6      24         10.541667      3837.9583333333335       YES          NO
+8      24         10.541667      3837.9583333333335       YES          NO
+12     24         10.541667      3837.958333333333        YES          NO
+24     24         10.541667      3837.9583333333335       YES          NO
+
+Every combined count matches exactly (integer payoff sums are exactly associative, unlike the floating-point mean and M2). The combined MEAN matches the reference exactly at every P tested here -- Chan et al.'s own pairwise mean formula happens to reproduce this dataset's reference mean bit-for-bit. The combined M2 does NOT match at P > 1: a real, tiny (last-few-digits) floating-point difference. Note which side is off: computed exactly in rational arithmetic, this dataset's true M2 rounds to 3837.9583333333335 -- what the combined result gives at every P > 1 except P = 12 (1 ulp low). It is the single-process two-pass REFERENCE that is 3 ulp high. Pairwise combination is a genuinely different formula from the two-pass one, not a regrouping of the same additions, so a bit-for-bit match was never promised in either direction.
+```
+
+</details>
+<!-- execution:end:h100:90_independent_path_correctness_simulation.cpp -->
+
+
 Compile and run:
+
+<details markdown="1"><summary>Historical authoring output — superseded by the current execution above</summary>
 
 ```
 g++ -O2 -ffp-contract=off 90_independent_path_correctness_simulation.cpp -o 90_independent_path_correctness_simulation
 ./90_independent_path_correctness_simulation
 ```
+
+</details>
 
 ```text
 Reference (single-process): count=24  mean=10.541666666666666  M2=3837.9583333333348
@@ -351,12 +437,84 @@ int main() {
 }
 ```
 
+<!-- execution:start:a100:91_rng_independence_and_reduction_topology_model.cpp -->
+> **Current execution — 2026-11-17-a100: Host program/model (exit-only).** UTC (program start): `2026-11-18T00:05:28.760314+00:00`. Source SHA-256: `761119d16fe9883726cc9a137ac6568585b5294ded96bccbff33540780a0b3b9`.
+
+[Exact tested source](../validation/2026-11-17-a100/91_rng_independence_and_reduction_topology_model/91_rng_independence_and_reduction_topology_model.cpp) · [Compiler log](../validation/2026-11-17-a100/91_rng_independence_and_reduction_topology_model/compile.log) · [Execution log](../validation/2026-11-17-a100/91_rng_independence_and_reduction_topology_model/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+g++ -std=c++17 -O2 91_rng_independence_and_reduction_topology_model.cpp -o ./example
+./example
+```
+
+<details markdown="1"><summary>Captured current-source output</summary>
+
+```text
+--- Real production RNG independence: cuRAND's own real Philox family ---
+NVIDIA's own real cuRAND documentation: "CURAND_RNG_PSEUDO_PHILOX4_32_10 is a member of Philox family, which is one of the three non-cryptographic Counter Based Random Number Generators." Device-API guidance (from its XORWOW/MRG32k3a section, same subsequence mechanism): "each thread of computation should be assigned a unique sequence number" -- that number alone (no message from any other thread or GPU) is enough to generate a provably independent, non-overlapping stream: "Subsequence and offset together define offset in a sequence with period 2^128."
+
+A naive STATEFUL sequential generator cannot do this without coordination: GPU r would need to know the EXACT COUNT of random numbers every earlier GPU (0..r-1) already consumed, just to pick up the stream at the right point without overlap -- a real, avoidable communication requirement this chapter's own Section 31.1 simulation never had to pay, precisely because its own counterBasedHash() function needs only a path INDEX, matching cuRAND's own real counter-based design.
+
+--- Does the REDUCTION TOPOLOGY (not just the partition) matter? ---
+This book's own Chapter 11 already contrasted a SEQUENTIAL, hop-by-hop ring shape against a TREE shape for round-COUNT reasons. This section checks a different question: holding the SAME P=8 partition and the SAME per-rank partial statistics fixed, does combining them SEQUENTIALLY (fold rank 0, then 1, then 2, ...) versus combining them as a TREE (pair up, combine, repeat) change the final M2, even though both use Chan et al.'s own real pairwise formula at every single step?
+
+Sequential fold (7 rounds, chain shape, rank 0,1,2,...): mean=10.541666666666666  M2=3837.9583333333335
+Tree fold       (3 rounds, Chapter 11's tree shape):     mean=10.541666666666666  M2=3837.958333333333
+Mean match: YES   M2 match: NO
+
+The mean matches; the M2 does NOT. Both reductions combine the exact SAME 8 partial statistics, using the exact SAME real Chan et al. formula at every step -- the ONLY difference is the ORDER AND GROUPING in which those 8 partial results are combined. The tree's real round-count advantage (fewer rounds: 3 vs 7 here) is not the only reason production systems care which reduction shape they use -- the reduction shape can also change the LAST FEW BITS of a floating-point risk statistic, independently of how the data was partitioned in the first place.
+```
+
+</details>
+<!-- execution:end:a100:91_rng_independence_and_reduction_topology_model.cpp -->
+
+
+<!-- execution:start:h100:91_rng_independence_and_reduction_topology_model.cpp -->
+> **Current execution — 2026-11-17-h100: Host program/model (exit-only).** UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`. Source SHA-256: `761119d16fe9883726cc9a137ac6568585b5294ded96bccbff33540780a0b3b9`.
+
+[Exact tested source](../validation/2026-11-17-h100/91_rng_independence_and_reduction_topology_model/91_rng_independence_and_reduction_topology_model.cpp) · [Compiler log](../validation/2026-11-17-h100/91_rng_independence_and_reduction_topology_model/compile.log) · [Execution log](../validation/2026-11-17-h100/91_rng_independence_and_reduction_topology_model/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+g++ -std=c++17 -O2 91_rng_independence_and_reduction_topology_model.cpp -o ./example
+./example
+```
+
+<details markdown="1"><summary>Captured current-source output</summary>
+
+```text
+--- Real production RNG independence: cuRAND's own real Philox family ---
+NVIDIA's own real cuRAND documentation: "CURAND_RNG_PSEUDO_PHILOX4_32_10 is a member of Philox family, which is one of the three non-cryptographic Counter Based Random Number Generators." Device-API guidance (from its XORWOW/MRG32k3a section, same subsequence mechanism): "each thread of computation should be assigned a unique sequence number" -- that number alone (no message from any other thread or GPU) is enough to generate a provably independent, non-overlapping stream: "Subsequence and offset together define offset in a sequence with period 2^128."
+
+A naive STATEFUL sequential generator cannot do this without coordination: GPU r would need to know the EXACT COUNT of random numbers every earlier GPU (0..r-1) already consumed, just to pick up the stream at the right point without overlap -- a real, avoidable communication requirement this chapter's own Section 31.1 simulation never had to pay, precisely because its own counterBasedHash() function needs only a path INDEX, matching cuRAND's own real counter-based design.
+
+--- Does the REDUCTION TOPOLOGY (not just the partition) matter? ---
+This book's own Chapter 11 already contrasted a SEQUENTIAL, hop-by-hop ring shape against a TREE shape for round-COUNT reasons. This section checks a different question: holding the SAME P=8 partition and the SAME per-rank partial statistics fixed, does combining them SEQUENTIALLY (fold rank 0, then 1, then 2, ...) versus combining them as a TREE (pair up, combine, repeat) change the final M2, even though both use Chan et al.'s own real pairwise formula at every single step?
+
+Sequential fold (7 rounds, chain shape, rank 0,1,2,...): mean=10.541666666666666  M2=3837.9583333333335
+Tree fold       (3 rounds, Chapter 11's tree shape):     mean=10.541666666666666  M2=3837.958333333333
+Mean match: YES   M2 match: NO
+
+The mean matches; the M2 does NOT. Both reductions combine the exact SAME 8 partial statistics, using the exact SAME real Chan et al. formula at every step -- the ONLY difference is the ORDER AND GROUPING in which those 8 partial results are combined. The tree's real round-count advantage (fewer rounds: 3 vs 7 here) is not the only reason production systems care which reduction shape they use -- the reduction shape can also change the LAST FEW BITS of a floating-point risk statistic, independently of how the data was partitioned in the first place.
+```
+
+</details>
+<!-- execution:end:h100:91_rng_independence_and_reduction_topology_model.cpp -->
+
+
 Compile and run:
+
+<details markdown="1"><summary>Historical authoring output — superseded by the current execution above</summary>
 
 ```
 g++ -O2 -ffp-contract=off 91_rng_independence_and_reduction_topology_model.cpp -o 91_rng_independence_and_reduction_topology_model
 ./91_rng_independence_and_reduction_topology_model
 ```
+
+</details>
 
 ```text
 --- Real production RNG independence: cuRAND's own real Philox family ---
@@ -389,6 +547,10 @@ Same 8 partial results:
     Chapter 11 introduced the tree shape purely to reduce round count -- a performance argument. This section shows the same choice of reduction shape also changes the exact bit pattern of a floating-point result, a *correctness-adjacent* consequence that has nothing to do with speed. Switching a production system's reduction algorithm for performance reasons (say, from a naive fold to a tree, or between two different NCCL algorithm choices) can silently shift a reported risk statistic's last few digits -- worth knowing before treating a small day-to-day fluctuation in a computed VaR or P&L figure as a data problem rather than an artifact of which reduction shape happened to run.
 
 ## 31.3 The Real Limit: A Percentile Needs More Than a Summary
+
+<!-- mgpu:figure-3:start -->
+[![A percentile needs distribution information](../images/technical/ch31/3-gather.svg)](../images/technical/ch31/3-gather.svg)
+<!-- mgpu:figure-3:end -->
 
 ### Intuition
 
@@ -502,12 +664,90 @@ int main() {
 }
 ```
 
+<!-- execution:start:a100:92_var_percentile_and_allgather_cost_model.cpp -->
+> **Current execution — 2026-11-17-a100: Host program/model (exit-only).** UTC (program start): `2026-11-18T00:05:29.183500+00:00`. Source SHA-256: `3724bca7211e8959f6a443999e8bb20f3ce8aec7c11058ba859c20d141973518`.
+
+[Exact tested source](../validation/2026-11-17-a100/92_var_percentile_and_allgather_cost_model/92_var_percentile_and_allgather_cost_model.cpp) · [Compiler log](../validation/2026-11-17-a100/92_var_percentile_and_allgather_cost_model/compile.log) · [Execution log](../validation/2026-11-17-a100/92_var_percentile_and_allgather_cost_model/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+g++ -std=c++17 -O2 92_var_percentile_and_allgather_cost_model.cpp -o ./example
+./example
+```
+
+<details markdown="1"><summary>Captured current-source output</summary>
+
+```text
+Reference (single-process), 100 simulated paths.
+Basel's own real quantitative standard: "'value-at-risk' be computed daily, using a 99th percentile, one-tailed confidence interval."
+Reference VaR_99 (99th percentile of the loss distribution): 40
+
+--- What Section 31.1's Chan-et-al. combination could NOT tell us ---
+Chan et al.'s own real pairwise formula combines (count, mean, M2) into a global mean and variance using exactly 3 numbers per rank, regardless of how many paths that rank ran. A MEAN and a VARIANCE describe the SHAPE of a distribution in summary; a PERCENTILE requires knowing exactly how many individual outcomes fall below a given threshold -- information that 3 summary numbers per rank simply do not contain.
+
+P        Chan et al.: values/rank     exact VaR: values/rank (gather) VaR_99 EXACT match?
+1        3 (count, mean, M2)          100                          YES
+2        3 (count, mean, M2)          50                           YES
+4        3 (count, mean, M2)          25                           YES
+5        3 (count, mean, M2)          20                           YES
+10       3 (count, mean, M2)          10                           YES
+20       3 (count, mean, M2)          5                            YES
+
+Every rank's own message size for the MEAN/VARIANCE path stays at 3 values, always -- but an EXACT VaR needs each rank to contribute its full local share of the dataset (N/P values per rank) to a gather step, because only the full sorted set determines which value sits at the 99th percentile. Real production systems facing this exact tradeoff at genuinely large scale use approximate streaming-percentile techniques (e.g., t-digest-style sketches) specifically to avoid gathering every raw value -- an extension this chapter's own exact gather model does not build, but names honestly as the real next step production systems take.
+```
+
+</details>
+<!-- execution:end:a100:92_var_percentile_and_allgather_cost_model.cpp -->
+
+
+<!-- execution:start:h100:92_var_percentile_and_allgather_cost_model.cpp -->
+> **Current execution — 2026-11-17-h100: Host program/model (exit-only).** UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`. Source SHA-256: `3724bca7211e8959f6a443999e8bb20f3ce8aec7c11058ba859c20d141973518`.
+
+[Exact tested source](../validation/2026-11-17-h100/92_var_percentile_and_allgather_cost_model/92_var_percentile_and_allgather_cost_model.cpp) · [Compiler log](../validation/2026-11-17-h100/92_var_percentile_and_allgather_cost_model/compile.log) · [Execution log](../validation/2026-11-17-h100/92_var_percentile_and_allgather_cost_model/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+g++ -std=c++17 -O2 92_var_percentile_and_allgather_cost_model.cpp -o ./example
+./example
+```
+
+<details markdown="1"><summary>Captured current-source output</summary>
+
+```text
+Reference (single-process), 100 simulated paths.
+Basel's own real quantitative standard: "'value-at-risk' be computed daily, using a 99th percentile, one-tailed confidence interval."
+Reference VaR_99 (99th percentile of the loss distribution): 40
+
+--- What Section 31.1's Chan-et-al. combination could NOT tell us ---
+Chan et al.'s own real pairwise formula combines (count, mean, M2) into a global mean and variance using exactly 3 numbers per rank, regardless of how many paths that rank ran. A MEAN and a VARIANCE describe the SHAPE of a distribution in summary; a PERCENTILE requires knowing exactly how many individual outcomes fall below a given threshold -- information that 3 summary numbers per rank simply do not contain.
+
+P        Chan et al.: values/rank     exact VaR: values/rank (gather) VaR_99 EXACT match?
+1        3 (count, mean, M2)          100                          YES
+2        3 (count, mean, M2)          50                           YES
+4        3 (count, mean, M2)          25                           YES
+5        3 (count, mean, M2)          20                           YES
+10       3 (count, mean, M2)          10                           YES
+20       3 (count, mean, M2)          5                            YES
+
+Every rank's own message size for the MEAN/VARIANCE path stays at 3 values, always -- but an EXACT VaR needs each rank to contribute its full local share of the dataset (N/P values per rank) to a gather step, because only the full sorted set determines which value sits at the 99th percentile. Real production systems facing this exact tradeoff at genuinely large scale use approximate streaming-percentile techniques (e.g., t-digest-style sketches) specifically to avoid gathering every raw value -- an extension this chapter's own exact gather model does not build, but names honestly as the real next step production systems take.
+```
+
+</details>
+<!-- execution:end:h100:92_var_percentile_and_allgather_cost_model.cpp -->
+
+
 Compile and run:
+
+<details markdown="1"><summary>Historical authoring output — superseded by the current execution above</summary>
 
 ```
 g++ -O2 92_var_percentile_and_allgather_cost_model.cpp -o 92_var_percentile_and_allgather_cost_model
 ./92_var_percentile_and_allgather_cost_model
 ```
+
+</details>
 
 ```text
 Reference (single-process), 100 simulated paths.

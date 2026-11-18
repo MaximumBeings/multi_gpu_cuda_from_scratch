@@ -1,0 +1,49 @@
+$ /usr/mpi/gcc/openmpi-4.1.7rc1/bin/mpirun --oversubscribe -np 8 /home/ubuntu/codex-eight-gpu-audit-20261117/multi-gpu-audit/artifacts/a100-eight-20261117/138_collective_order_deadlock/example fixed
+[LOG_CAT_SBGP] libnuma.so: cannot open shared object file: No such file or directory
+[LOG_CAT_SBGP] Failed to dlopen libnuma.so. Fallback to GROUP_BY_SOCKET manual.
+[LOG_CAT_SBGP] libnuma.so: cannot open shared object file: No such file or directory
+[LOG_CAT_SBGP] Failed to dlopen libnuma.so. Fallback to GROUP_BY_SOCKET manual.
+[LOG_CAT_SBGP] libnuma.so: cannot open shared object file: No such file or directory
+[LOG_CAT_SBGP] Failed to dlopen libnuma.so. Fallback to GROUP_BY_SOCKET manual.
+[LOG_CAT_SBGP] libnuma.so: cannot open shared object file: No such file or directory
+[LOG_CAT_SBGP] Failed to dlopen libnuma.so. Fallback to GROUP_BY_SOCKET manual.
+[LOG_CAT_SBGP] libnuma.so: cannot open shared object file: No such file or directory
+[LOG_CAT_SBGP] Failed to dlopen libnuma.so. Fallback to GROUP_BY_SOCKET manual.
+[LOG_CAT_SBGP] libnuma.so: cannot open shared object file: No such file or directory
+[LOG_CAT_SBGP] Failed to dlopen libnuma.so. Fallback to GROUP_BY_SOCKET manual.
+[LOG_CAT_SBGP] libnuma.so: cannot open shared object file: No such file or directory
+[LOG_CAT_SBGP] Failed to dlopen libnuma.so. Fallback to GROUP_BY_SOCKET manual.
+[LOG_CAT_SBGP] libnuma.so: cannot open shared object file: No such file or directory
+[LOG_CAT_SBGP] Failed to dlopen libnuma.so. Fallback to GROUP_BY_SOCKET manual.
+rank 1: about to MPI_Recv from 0 (recv-first order)
+rank 5: about to MPI_Recv from 4 (recv-first order)
+rank 5: MPI_Recv returned; about to MPI_Send to 6
+rank 5: MPI_Send returned
+rank 3: about to MPI_Recv from 2 (recv-first order)
+rank 3: MPI_Recv returned; about to MPI_Send to 4
+rank 3: MPI_Send returned
+rank 2 (even, fixed order): about to MPI_Send to 3
+rank 2: MPI_Send returned; about to MPI_Recv from 1
+rank 6 (even, fixed order): about to MPI_Send to 7
+rank 6: MPI_Send returned; about to MPI_Recv from 5
+rank 6: MPI_Recv returned
+rank 0 (even, fixed order): about to MPI_Send to 1
+rank 0: MPI_Send returned; about to MPI_Recv from 7
+rank 0: MPI_Recv returned
+rank 7: about to MPI_Recv from 6 (recv-first order)
+rank 7: MPI_Recv returned; about to MPI_Send to 0
+rank 7: MPI_Send returned
+rank 4 (even, fixed order): about to MPI_Send to 5
+rank 4: MPI_Send returned; about to MPI_Recv from 3
+rank 4: MPI_Recv returned
+rank 7 done, recvVal=6 (expected 6)
+rank 3 done, recvVal=2 (expected 2)
+rank 6 done, recvVal=5 (expected 5)
+rank 5 done, recvVal=4 (expected 4)
+rank 4 done, recvVal=3 (expected 3)
+rank 0 done, recvVal=7 (expected 7)
+rank 1: MPI_Recv returned; about to MPI_Send to 2
+rank 1: MPI_Send returned
+rank 2: MPI_Recv returned
+rank 2 done, recvVal=1 (expected 1)
+rank 1 done, recvVal=0 (expected 0)

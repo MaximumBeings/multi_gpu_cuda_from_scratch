@@ -1,5 +1,15 @@
 # Chapter 8: Broadcast and Reduce: The First Two Collectives, By Hand
 
+<!-- execution:provenance -->
+!!! info "Execution provenance"
+
+    Current execution blocks identify the tested source hash, hardware dataset, commands and captured output. References elsewhere on this page to a device-less environment describe the original authoring context. Historical output is superseded by the current record. Displayed output omits the runner command header and trims trailing line whitespace; raw logs remain exact. A host simulation or API validation has its stated scope; neither alone establishes a numerical multi-GPU workload or measured performance.
+
+
+<!-- mgpu:opener:start -->
+[![Chapter 8: Broadcast and Reduce: The First Two Collectives, By Hand](../images/chapter-openers/08.svg)](../images/chapter-openers/08.svg)
+<!-- mgpu:opener:end -->
+
 **What you will understand by the end of this chapter:**
 
 - What a "collective" operation actually is -- a communication pattern involving every device in a group at once, rather than one specific pair -- and why broadcast and reduce are the two simplest ones to build from what Part 1 already gave this book.
@@ -17,6 +27,10 @@ Everything in Part 1 was about moving data or coordinating exactly two participa
 
 ## 8.1 Broadcast, By Hand: One-to-Many, Correctly
 
+<!-- mgpu:figure-1:start -->
+[![Broadcast preserves one root value](../images/technical/ch08/1-broadcast.svg)](../images/technical/ch08/1-broadcast.svg)
+<!-- mgpu:figure-1:end -->
+
 ### Intuition
 
 A broadcast has one job: after it runs, every device in the group holds an identical copy of whatever the *root* device started with. The simplest way to guarantee that is also the most obvious one -- have the root send its data to every other device, one at a time, using nothing more exotic than the cross-device copy call Chapter 5 already built. There's no cleverness needed for correctness here; the cleverness real collective libraries add (broadcasting in a tree pattern across `log₂(N)` rounds instead of `N-1` sequential sends) is a *performance* optimization on top of this same one-to-many idea, not a different idea -- and Part 2 builds toward that later. This chapter's job is to get the simple version right first.
@@ -26,58 +40,88 @@ A broadcast has one job: after it runs, every device in the group holds an ident
 The straightforward broadcast is a loop: for every non-root device, call `cudaMemcpyPeer()` with the root's pointer as the source and that device's pointer as the destination. Every call in the loop reads from the *same*, unchanging root buffer -- nothing about the root's data changes as the loop progresses, so the order the non-root devices are visited in doesn't affect the result at all. This is the exact same function Chapter 5 introduced, used here in a loop rather than for a single pair, which is really all a broadcast collective *is* at this level: a specific, repeated pattern of an operation this book already has. One detail from Chapter 3 still applies inside the loop: `cudaMalloc()` allocates on whichever device is *current*, so the code calls `cudaSetDevice(dst)` before allocating each destination buffer -- otherwise every "per-device" buffer would silently land on the root, and passing `dst` as `cudaMemcpyPeer()`'s destination device would not make it so.
 
 ```cpp
-// Chapter 8: Broadcast and Reduce -- The First Two Collectives, By Hand
 // 20_broadcast_by_hand.cu
-//
-// A broadcast, written by hand as the real API calls it actually is:
-// one cudaMemcpyPeer() per non-root device, all sourced from the same
-// unchanging root pointer. Each destination buffer is allocated with
-// cudaSetDevice(dst) called first, so it genuinely lives on device dst
-// (Chapter 3's rule: set the device before every per-device
-// operation). Genuinely compiled with a real nvcc and genuinely run.
+// Checked teaching implementation; serial host scheduling favors clarity, not speed.
 #include <cstdio>
+#include <vector>
+#include <algorithm>
 #include <cuda_runtime.h>
-
+#define CUDA(call) do { cudaError_t status = (call); if (status != cudaSuccess) { \
+ fprintf(stderr,"%s: %s\n",#call,cudaGetErrorString(status)); \
+ return status==cudaErrorNoDevice || status==cudaErrorInsufficientDriver ? 2 : 1; } } while(0)
+static int pattern(int rank, int i) { return rank*1000+i*3+i%7; }
 int main() {
-    int deviceCount = 0;
-    cudaGetDeviceCount(&deviceCount);
-    printf("cudaGetDeviceCount(): %d device(s).\n", deviceCount);
-
-    const int ROOT = 0;
-    const size_t BYTES = 64;
-    void* rootPtr = nullptr;
-
-    cudaError_t eSetRoot = cudaSetDevice(ROOT);
-    printf("cudaSetDevice(root=%d): %s (code %d)\n", ROOT, cudaGetErrorString(eSetRoot), (int)eSetRoot);
-
-    cudaError_t eAllocRoot = cudaMalloc(&rootPtr, BYTES);
-    printf("cudaMalloc(root's data): %s (code %d)\n", cudaGetErrorString(eAllocRoot), (int)eAllocRoot);
-
-    int broadcastCount = 0;
-    for (int dst = 0; dst < deviceCount; ++dst) {
-        if (dst == ROOT) continue;
-        void* dstPtr = nullptr;
-        cudaSetDevice(dst);  // allocate dst's buffer ON device dst
-        cudaError_t eAllocDst = cudaMalloc(&dstPtr, BYTES);
-        cudaError_t eCopy = cudaMemcpyPeer(dstPtr, dst, rootPtr, ROOT, BYTES);
-        printf("cudaMemcpyPeer(dst=dev%d, src=root=dev%d): %s (code %d)\n",
-               dst, ROOT, cudaGetErrorString(eCopy), (int)eCopy);
-        if (eCopy == cudaSuccess) ++broadcastCount;
-        if (eAllocDst == cudaSuccess) cudaFree(dstPtr);
-    }
-
-    printf("Broadcast reached %d of %d non-root device(s). On real hardware\n"
-           "this same loop -- one cudaMemcpyPeer per non-root device, all from\n"
-           "the same unchanging root pointer -- delivers an identical copy of\n"
-           "the root's data to every other device.\n", broadcastCount, deviceCount > 0 ? deviceCount - 1 : 0);
-
-    cudaSetDevice(ROOT);  // free the root's buffer with the root current
-    if (eAllocRoot == cudaSuccess) cudaFree(rootPtr);
-    return 0;
+ int count=0; CUDA(cudaGetDeviceCount(&count));
+ if(count<2){printf("BLOCKED: requires 2 GPUs; found %d.\n",count);return 2;}
+ const int world=std::min(count,4), CHUNK=33;
+ const int n=257, out_n=257;
+ const size_t bytes=n*sizeof(int), out_bytes=out_n*sizeof(int);
+ std::vector<int*> send(world,nullptr),receive(world,nullptr);
+ for(int rank=0;rank<world;++rank){
+  CUDA(cudaSetDevice(rank));CUDA(cudaMalloc(&send[rank],bytes));CUDA(cudaMalloc(&receive[rank],out_bytes));
+  std::vector<int> input(n);for(int i=0;i<n;++i)input[i]=pattern(rank,i);
+  CUDA(cudaMemcpy(send[rank],input.data(),bytes,cudaMemcpyHostToDevice));CUDA(cudaMemset(receive[rank],0xff,out_bytes));
+ }
+ for(int dst=0;dst<world;++dst){CUDA(cudaSetDevice(dst));
+ if(dst==0)CUDA(cudaMemcpy(receive[dst],send[0],bytes,cudaMemcpyDeviceToDevice));
+ else CUDA(cudaMemcpyPeer(receive[dst],dst,send[0],0,bytes));}
+ for(int rank=0;rank<world;++rank){CUDA(cudaSetDevice(rank));CUDA(cudaDeviceSynchronize());}
+ for(int rank=0;rank<world;++rank){std::vector<int> output(out_n);CUDA(cudaSetDevice(rank));CUDA(cudaMemcpy(output.data(),receive[rank],out_bytes,cudaMemcpyDeviceToHost));for(int i=0;i<out_n;++i){int expected=pattern(0,i);if(output[i]!=expected){fprintf(stderr,"FAIL rank %d output[%d]: %d expected %d\n",rank,i,output[i],expected);return 1;}}}
+ for(int rank=0;rank<world;++rank){CUDA(cudaSetDevice(rank));CUDA(cudaFree(send[rank]));CUDA(cudaFree(receive[rank]));}
+ printf("PASS: broadcast on %d GPUs, all nonuniform output values checked.\n",world);
+ return 0;
 }
 ```
 
-Genuinely compiled with a real `nvcc` and genuinely run. Locked output, deterministic across repeated runs:
+<!-- execution:start:a100:20_broadcast_by_hand.cu -->
+> **Current execution — 2026-11-17-a100: Numerical/transport validation (recorded scope).** UTC (program start): `2026-11-18T00:01:09.174909+00:00`. Source SHA-256: `b4f21489e3581a967b24259f6387068c0b98a38ac1ac98ae519b622d4f065433`.
+
+[Exact tested source](../validation/2026-11-17-a100/20_broadcast_by_hand/20_broadcast_by_hand.cu) · [Compiler log](../validation/2026-11-17-a100/20_broadcast_by_hand/compile.log) · [Execution log](../validation/2026-11-17-a100/20_broadcast_by_hand/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+nvcc -std=c++17 -O2 -arch=sm_80 20_broadcast_by_hand.cu -o ./example
+./example
+```
+
+<details markdown="1"><summary>Captured current-source output</summary>
+
+```text
+PASS: broadcast on 4 GPUs, all nonuniform output values checked.
+```
+
+</details>
+<!-- execution:end:a100:20_broadcast_by_hand.cu -->
+
+
+<!-- execution:start:h100:20_broadcast_by_hand.cu -->
+> **Current execution — 2026-11-17-h100: Numerical/transport validation (recorded scope).** UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`. Source SHA-256: `b4f21489e3581a967b24259f6387068c0b98a38ac1ac98ae519b622d4f065433`.
+
+[Exact tested source](../validation/2026-11-17-h100/20_broadcast_by_hand/20_broadcast_by_hand.cu) · [Compiler log](../validation/2026-11-17-h100/20_broadcast_by_hand/compile.log) · [Execution log](../validation/2026-11-17-h100/20_broadcast_by_hand/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+nvcc -std=c++17 -O2 -arch=sm_90 20_broadcast_by_hand.cu -o ./example
+./example
+```
+
+<details markdown="1"><summary>Captured current-source output</summary>
+
+```text
+PASS: broadcast on 2 GPUs, all nonuniform output values checked.
+```
+
+</details>
+<!-- execution:end:h100:20_broadcast_by_hand.cu -->
+
+
+**Current-source scope:** Real device buffers implement broadcast; integer reference checks every output. Host-staged reductions deliberately use CPU arithmetic and are not GPU reduction kernels. The current source was compiled and executed in the dated H100 suite; use the linked record for its numerical, API-probe or other-execution scope. The output below is retained from the earlier authoring diagnostic and is not evidence for this replacement source.
+
+The [2026-11-17 H100 execution record](../validation-h100.md) covers two GPUs connected by local NV18. It distinguishes numerical checks, API probes and other executions; a successful exit alone does not establish GPU algorithm correctness.
+
+<details markdown="1"><summary>Historical authoring output — superseded by the current execution above</summary>
 
 ```
 cudaGetDeviceCount(): 0 device(s).
@@ -89,12 +133,20 @@ the same unchanging root pointer -- delivers an identical copy of
 the root's data to every other device.
 ```
 
-With zero reported devices, the broadcast loop has nothing to iterate over, and the two setup calls fail with the same honest `cudaErrorNoDevice` this book has reported since Chapter 1. What this section verifies genuinely is the real call sequence -- correctly compiled, correctly structured as a loop over every non-root device -- that a real broadcast implementation uses; Section 8.3 is where this book can actually check the *result* is correct, using its simulation technique.
+</details>
+
+File 20 initializes nonuniform data, broadcasts over real GPU transport and checks destination values in the H100 run. The simulation below independently checks the modeled broadcast logic for its stated cases.
+
+The [2026-11-17 H100 execution record](../validation-h100.md) covers two GPUs connected by local NV18. It distinguishes numerical checks, API probes and other executions; a successful exit alone does not establish GPU algorithm correctness.
 
 !!! warning "[COMMON TRAP] Reading the root's data fresh inside the loop, 'just to be safe'"
     Because the root's buffer never changes during a broadcast, re-reading or re-validating it on each loop iteration adds nothing -- every iteration is copying from the exact same source state as every other. The risk runs the other direction: if something *were* allowed to modify the root's buffer partway through the loop (another stream writing to it concurrently, say), different non-root devices could end up with different versions of "the root's data," silently breaking the one guarantee a broadcast exists to provide. The fix isn't re-reading defensively inside the loop -- it's making sure nothing else can write to the root's buffer for the duration of the broadcast in the first place.
 
 ## 8.2 Reduce, By Hand: Many-to-One, Order-Independent by Design
+
+<!-- mgpu:figure-2:start -->
+[![Reduce combines at one root](../images/technical/ch08/2-reduce.svg)](../images/technical/ch08/2-reduce.svg)
+<!-- mgpu:figure-2:end -->
 
 ### Intuition
 
@@ -105,56 +157,88 @@ Reduce is broadcast's mirror image: instead of one device's data reaching everyo
 The loop first makes the source device current with `cudaSetDevice(src)` (Chapter 3's rule -- without it, every iteration would allocate and read on device 0), then stages that device's buffer to the host with an ordinary `cudaMemcpy(..., cudaMemcpyDeviceToHost)`, and adds it, element by element, into a running host-side accumulator. Nothing here needs a device kernel: the accumulation itself is plain host arithmetic, run once per device, and the combining operation -- sum, in this section's code -- is entirely a property of what the accumulator does with each staged buffer, not of the transfer mechanism itself. A different combining operation (max, say, or a bitwise AND) would only change one line of host code; the transfer loop around it stays identical.
 
 ```cpp
-// Chapter 8: Broadcast and Reduce -- The First Two Collectives, By Hand
 // 21_reduce_by_hand.cu
-//
-// A reduce, written by hand: stage each device's buffer to the host
-// and accumulate there, one device at a time. cudaSetDevice(src) is
-// called first in every iteration, so the buffer being staged genuinely
-// lives on device src (Chapter 3's rule: set the device before every
-// per-device operation). Genuinely compiled with a real nvcc and
-// genuinely run.
+// Checked teaching implementation; serial host scheduling favors clarity, not speed.
 #include <cstdio>
+#include <vector>
+#include <algorithm>
 #include <cuda_runtime.h>
-
+#define CUDA(call) do { cudaError_t status = (call); if (status != cudaSuccess) { \
+ fprintf(stderr,"%s: %s\n",#call,cudaGetErrorString(status)); \
+ return status==cudaErrorNoDevice || status==cudaErrorInsufficientDriver ? 2 : 1; } } while(0)
+static int pattern(int rank, int i) { return rank*1000+i*3+i%7; }
 int main() {
-    int deviceCount = 0;
-    cudaGetDeviceCount(&deviceCount);
-    printf("cudaGetDeviceCount(): %d device(s).\n", deviceCount);
-
-    const size_t N_INTS = 4;
-    const size_t BYTES = N_INTS * sizeof(int);
-
-    long long accumulator[N_INTS] = {0, 0, 0, 0};
-    int hostStaging[N_INTS];
-
-    int devicesReduced = 0;
-    for (int src = 0; src < deviceCount; ++src) {
-        void* devPtr = nullptr;
-        cudaSetDevice(src);  // every per-device call below targets src
-        cudaError_t eAlloc = cudaMalloc(&devPtr, BYTES);
-        cudaError_t eCopy = cudaMemcpy(hostStaging, devPtr, BYTES, cudaMemcpyDeviceToHost);
-        printf("cudaMemcpy(device %d -> host staging, for accumulation): %s (code %d)\n",
-               src, cudaGetErrorString(eCopy), (int)eCopy);
-        if (eCopy == cudaSuccess) {
-            for (size_t i = 0; i < N_INTS; ++i) accumulator[i] += hostStaging[i];
-            ++devicesReduced;
-        }
-        if (eAlloc == cudaSuccess) cudaFree(devPtr);
-    }
-
-    printf("Reduced %d of %d device(s) into the host accumulator. On real\n"
-           "hardware this same per-device stage-then-accumulate loop produces\n"
-           "the elementwise sum across every device's buffer -- the reduce\n"
-           "collective's defining result, computed here entirely on the host\n"
-           "since no device kernel is needed for the accumulation step.\n",
-           devicesReduced, deviceCount);
-
-    return 0;
+ int count=0; CUDA(cudaGetDeviceCount(&count));
+ if(count<2){printf("BLOCKED: requires 2 GPUs; found %d.\n",count);return 2;}
+ const int world=std::min(count,4), CHUNK=33;
+ const int n=257, out_n=257;
+ const size_t bytes=n*sizeof(int), out_bytes=out_n*sizeof(int);
+ std::vector<int*> send(world,nullptr),receive(world,nullptr);
+ for(int rank=0;rank<world;++rank){
+  CUDA(cudaSetDevice(rank));CUDA(cudaMalloc(&send[rank],bytes));CUDA(cudaMalloc(&receive[rank],out_bytes));
+  std::vector<int> input(n);for(int i=0;i<n;++i)input[i]=pattern(rank,i);
+  CUDA(cudaMemcpy(send[rank],input.data(),bytes,cudaMemcpyHostToDevice));CUDA(cudaMemset(receive[rank],0xff,out_bytes));
+ }
+ std::vector<int> sum(n,0), staging(n);
+ for(int rank=0;rank<world;++rank){CUDA(cudaSetDevice(rank));CUDA(cudaMemcpy(staging.data(),send[rank],bytes,cudaMemcpyDeviceToHost));for(int i=0;i<n;++i)sum[i]+=staging[i];}
+ CUDA(cudaSetDevice(0));CUDA(cudaMemcpy(receive[0],sum.data(),out_bytes,cudaMemcpyHostToDevice));
+ for(int rank=0;rank<world;++rank){CUDA(cudaSetDevice(rank));CUDA(cudaDeviceSynchronize());}
+ for(int rank=0;rank<1;++rank){std::vector<int> output(out_n);CUDA(cudaSetDevice(rank));CUDA(cudaMemcpy(output.data(),receive[rank],out_bytes,cudaMemcpyDeviceToHost));for(int i=0;i<out_n;++i){int expected=1000*world*(world-1)/2+world*(i*3+i%7);if(output[i]!=expected){fprintf(stderr,"FAIL rank %d output[%d]: %d expected %d\n",rank,i,output[i],expected);return 1;}}}
+ for(int rank=0;rank<world;++rank){CUDA(cudaSetDevice(rank));CUDA(cudaFree(send[rank]));CUDA(cudaFree(receive[rank]));}
+ printf("PASS: host-staged reduce to root on %d GPUs, all nonuniform output values checked.\n",world);
+ return 0;
 }
 ```
 
-Genuinely compiled with a real `nvcc` and genuinely run. Locked output, deterministic across repeated runs:
+<!-- execution:start:a100:21_reduce_by_hand.cu -->
+> **Current execution — 2026-11-17-a100: Numerical/transport validation (recorded scope).** UTC (program start): `2026-11-18T00:01:14.588057+00:00`. Source SHA-256: `31af26d63bb08f04ea9be7f5ff0c894aebeda6eb77b8a8462d4e33ee843fe5a9`.
+
+[Exact tested source](../validation/2026-11-17-a100/21_reduce_by_hand/21_reduce_by_hand.cu) · [Compiler log](../validation/2026-11-17-a100/21_reduce_by_hand/compile.log) · [Execution log](../validation/2026-11-17-a100/21_reduce_by_hand/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+nvcc -std=c++17 -O2 -arch=sm_80 21_reduce_by_hand.cu -o ./example
+./example
+```
+
+<details markdown="1"><summary>Captured current-source output</summary>
+
+```text
+PASS: host-staged reduce to root on 4 GPUs, all nonuniform output values checked.
+```
+
+</details>
+<!-- execution:end:a100:21_reduce_by_hand.cu -->
+
+
+<!-- execution:start:h100:21_reduce_by_hand.cu -->
+> **Current execution — 2026-11-17-h100: Numerical/transport validation (recorded scope).** UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`. Source SHA-256: `31af26d63bb08f04ea9be7f5ff0c894aebeda6eb77b8a8462d4e33ee843fe5a9`.
+
+[Exact tested source](../validation/2026-11-17-h100/21_reduce_by_hand/21_reduce_by_hand.cu) · [Compiler log](../validation/2026-11-17-h100/21_reduce_by_hand/compile.log) · [Execution log](../validation/2026-11-17-h100/21_reduce_by_hand/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+nvcc -std=c++17 -O2 -arch=sm_90 21_reduce_by_hand.cu -o ./example
+./example
+```
+
+<details markdown="1"><summary>Captured current-source output</summary>
+
+```text
+PASS: host-staged reduce to root on 2 GPUs, all nonuniform output values checked.
+```
+
+</details>
+<!-- execution:end:h100:21_reduce_by_hand.cu -->
+
+
+**Current-source scope:** Real device buffers implement host-staged reduce to root; integer reference checks every output. Host-staged reductions deliberately use CPU arithmetic and are not GPU reduction kernels. The current source was compiled and executed in the dated H100 suite; use the linked record for its numerical, API-probe or other-execution scope. The output below is retained from the earlier authoring diagnostic and is not evidence for this replacement source.
+
+The [2026-11-17 H100 execution record](../validation-h100.md) covers two GPUs connected by local NV18. It distinguishes numerical checks, API probes and other executions; a successful exit alone does not establish GPU algorithm correctness.
+
+<details markdown="1"><summary>Historical authoring output — superseded by the current execution above</summary>
 
 ```
 cudaGetDeviceCount(): 0 device(s).
@@ -165,7 +249,11 @@ collective's defining result, computed here entirely on the host
 since no device kernel is needed for the accumulation step.
 ```
 
-With zero devices reported, the loop body never runs, and the accumulator stays at its initial zero -- an honest, correct result for genuinely zero inputs, not a crash or a special case. What this section verifies is the real, compiled call sequence a host-accumulated reduce actually uses; Section 8.3 checks the arithmetic itself, including the one property real floating-point reductions can't rely on that this section's integer accumulator can.
+</details>
+
+File 21 checks GPU transport and host reduction arithmetic against a reference in the H100 run. Its combining arithmetic is on the host; this is not a GPU reduction-kernel benchmark.
+
+The [2026-11-17 H100 execution record](../validation-h100.md) covers two GPUs connected by local NV18. It distinguishes numerical checks, API probes and other executions; a successful exit alone does not establish GPU algorithm correctness.
 
 !!! warning "[COMMON TRAP] Assuming the accumulation order in this loop doesn't matter, for any data type"
     For the `int` (widened to `long long` during accumulation) data this section's code uses, addition is exactly associative and commutative -- summing device 0 then device 1 then device 2 gives the bit-for-bit identical result as summing device 2 then device 0 then device 1. That guarantee is specific to integer arithmetic. It does **not** carry over to floating-point data, where, per NVIDIA's own Floating Point and IEEE 754 documentation, "the results corresponding to the sum `rn(rn(A + B) + C)` and the sum `rn(A + rn(B + C))` are different from each other" -- meaning a real floating-point reduce's *exact* result can depend on the order devices are visited in, even though every individual addition is performed correctly. Section 8.3 verifies this distinction directly rather than asserting it.
@@ -174,7 +262,9 @@ With zero devices reported, the loop body never runs, and the accumulator stays 
 
 ### Intuition
 
-Neither Section 8.1 nor 8.2 could verify a *result* on this machine -- both ran down to zero devices and stopped there honestly. But the actual claims this chapter makes -- "broadcast produces identical copies everywhere," "reduce produces the correct sum regardless of device order, for integers" -- are checkable claims about an algorithm's logic, independent of whether a real GPU is attached. This is exactly the situation Chapter 4's host-side simulation technique was built for, and from this chapter forward it becomes this book's primary tool: N real in-memory buffers standing in for N real device memories, running the real message pattern, checked against a reference computed independently of the algorithm under test.
+The preceding broadcast and reduce examples now have numerical H100 checks. This host simulation supplements them with independent arithmetic checks at modeled rank counts. It does not establish asynchronous visibility, physical transport performance or correctness on untested GPU topologies.
+
+The [2026-11-17 H100 execution record](../validation-h100.md) covers two GPUs connected by local NV18. It distinguishes numerical checks, API probes and other executions; a successful exit alone does not establish GPU algorithm correctness.
 
 ### Background
 
@@ -280,7 +370,59 @@ int main() {
 }
 ```
 
+<!-- execution:start:a100:22_collectives_simulation.cpp -->
+> **Current execution — 2026-11-17-a100: Host program/model (exit-only).** UTC (program start): `2026-11-18T00:01:19.932180+00:00`. Source SHA-256: `d4ae2885d106db3e9db093ebcad90a1438c83d898eb8f87062a7c9dfc0a8acbb`.
+
+[Exact tested source](../validation/2026-11-17-a100/22_collectives_simulation/22_collectives_simulation.cpp) · [Compiler log](../validation/2026-11-17-a100/22_collectives_simulation/compile.log) · [Execution log](../validation/2026-11-17-a100/22_collectives_simulation/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+g++ -std=c++17 -O2 22_collectives_simulation.cpp -o ./example
+./example
+```
+
+<details markdown="1"><summary>Captured current-source output</summary>
+
+```text
+Broadcast: all 4 devices hold an identical copy of the root's data: PASS
+Reduce (device order 0..3): result matches independent reference: PASS
+Reduce (device order 3..0): result matches independent reference: PASS
+Both accumulation orders produce the IDENTICAL result (true for integers; NOT guaranteed for floating point): PASS
+```
+
+</details>
+<!-- execution:end:a100:22_collectives_simulation.cpp -->
+
+
+<!-- execution:start:h100:22_collectives_simulation.cpp -->
+> **Current execution — 2026-11-17-h100: Host program/model (exit-only).** UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`. Source SHA-256: `d4ae2885d106db3e9db093ebcad90a1438c83d898eb8f87062a7c9dfc0a8acbb`.
+
+[Exact tested source](../validation/2026-11-17-h100/22_collectives_simulation/22_collectives_simulation.cpp) · [Compiler log](../validation/2026-11-17-h100/22_collectives_simulation/compile.log) · [Execution log](../validation/2026-11-17-h100/22_collectives_simulation/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+g++ -std=c++17 -O2 22_collectives_simulation.cpp -o ./example
+./example
+```
+
+<details markdown="1"><summary>Captured current-source output</summary>
+
+```text
+Broadcast: all 4 devices hold an identical copy of the root's data: PASS
+Reduce (device order 0..3): result matches independent reference: PASS
+Reduce (device order 3..0): result matches independent reference: PASS
+Both accumulation orders produce the IDENTICAL result (true for integers; NOT guaranteed for floating point): PASS
+```
+
+</details>
+<!-- execution:end:h100:22_collectives_simulation.cpp -->
+
+
 Genuinely compiled with `g++` and genuinely run. Locked output, deterministic across repeated runs:
+
+<details markdown="1"><summary>Historical authoring output — superseded by the current execution above</summary>
 
 ```
 Broadcast: all 4 devices hold an identical copy of the root's data: PASS
@@ -289,6 +431,8 @@ Reduce (device order 3..0): result matches independent reference: PASS
 Both accumulation orders produce the IDENTICAL result (true for integers; NOT guaranteed for floating point): PASS
 ```
 
+</details>
+
 All four checks pass. The broadcast check confirms Section 8.1's algorithm actually produces identical copies at every device, for real, checkable data -- not just a correctly compiled loop with nothing to verify it against. The two reduce checks confirm the sum is correct regardless of device order, and the fourth check confirms both orderings agree with each other exactly -- the specific property Section 8.2's Common Trap named as true for integers and explicitly not guaranteed for floating point.
 
 !!! warning "[COMMON TRAP] Concluding from this section's PASS results that reduce order never matters"
@@ -296,7 +440,9 @@ All four checks pass. The broadcast check confirms Section 8.1's algorithm actua
 
 ## Chapter Summary
 
-Broadcast and reduce are collectives -- communication patterns involving an entire group of devices, not just one pair -- built here directly from Part 1's own primitives: broadcast as a loop of `cudaMemcpyPeer()` calls all reading from the same unchanging root buffer (Section 8.1), and reduce as a loop of staged host transfers accumulated on the host, with the combining operation living entirely in host arithmetic rather than the transfer mechanism (Section 8.2). Neither section could verify a *result* on this machine, since both correctly ran down to zero real devices -- so Section 8.3 used this book's host-side simulation technique, now established as Part 2's primary verification tool, to confirm both algorithms are genuinely correct: broadcast produces byte-identical copies at every simulated device, and reduce produces the correct sum regardless of accumulation order, a guarantee this section traced specifically to integer arithmetic's associativity and explicitly did not extend to floating point, citing NVIDIA's own documentation on IEEE 754 non-associativity. Chapter 9 builds the next, more bandwidth-efficient collective on top of these same ideas: ring all-reduce, the algorithm behind essentially every real multi-GPU training job's gradient synchronization.
+Broadcast replicates root data; reduce combines rank inputs into a root result. Files 20 and 21 check actual two-H100 data transport, with reduction arithmetic on the host. The host simulation separately checks additional modeled cases. Integer equality in these bounded tests does not extend to arbitrary overflowing integers or regrouped floating-point reductions. Chapter 9 develops ring all-reduce.
+
+The [2026-11-17 H100 execution record](../validation-h100.md) covers two GPUs connected by local NV18. It distinguishes numerical checks, API probes and other executions; a successful exit alone does not establish GPU algorithm correctness.
 
 ## Self-Check Questions
 
@@ -329,7 +475,7 @@ Chapter 9 builds ring all-reduce -- the algorithm that combines every device's d
 
 **7.** This widening guards against integer overflow, not accumulation order. Summing several `int`-typed device values could exceed the range a 32-bit `int` can represent, producing a wrapped-around, silently wrong result even though the *order* of accumulation was never in question. Using `long long` for the running accumulator (while the per-device staged values remain `int`, matching what a real device buffer of that type would hold) keeps the intermediate sum correct regardless of how large it grows, which is a separate concern from the order-independence question Section 8.3's simulation focuses on.
 
-**8.** Chapters 1-7's claims were almost entirely about what a *single* real API call honestly does on this machine -- and `cudaErrorNoDevice`, reported correctly and deterministically, was itself a complete, verifiable answer to "what does this call do here." This chapter's claims are different in kind: "broadcast produces identical copies at every device" and "reduce's result doesn't depend on device order" are statements about the *relationship* between multiple devices' data after a multi-step algorithm runs -- a claim no single API call, honestly failing or otherwise, can confirm or deny on its own. Verifying a relationship between several participants' data is exactly what required promoting the simulation technique from an occasional tool (used in Chapter 4 and again in Chapter 7's Section 7.3) to this book's primary verification method going forward.
+**8.** Numerical collective checks must compare the data relationship across participating ranks after completion. A successful API return, capability query or historical no-device diagnostic cannot establish that relationship. The current H100 checks exercise actual two-GPU data; the simulation independently checks additional modeled cases.
 
 ---
 

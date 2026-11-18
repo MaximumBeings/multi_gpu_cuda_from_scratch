@@ -1,0 +1,19 @@
+$ /home/ubuntu/codex-eight-gpu-audit-20261117/multi-gpu-audit/artifacts/a100-eight-20261117/32_ring_vs_tree_model/example
+N          Ring rounds (Ch9)      Tree rounds (up+down)  Ratio     
+-          2*(N-1)                2*ceil(log2(N))        ring/tree 
+4          6                      4                      1.50      x
+8          14                     6                      2.33      x
+16         30                     8                      3.75      x
+64         126                    12                     10.50     x
+256        510                    16                     31.88     x
+1024       2046                   20                     102.30    x
+8192       16382                  26                     630.08    x
+24576      49150                  30                     1638.33   x
+
+Ring's round count grows linearly with N (doubling N roughly
+doubles the rounds needed); the tree's grows logarithmically
+(doubling N adds only one more level in each direction). This
+is a structural count of communication ROUNDS, not a measured
+time -- it makes concrete exactly the shape of the claim this
+chapter cites from NVIDIA's own NCCL 2.4 announcement, without
+fabricating a single timing number of its own.

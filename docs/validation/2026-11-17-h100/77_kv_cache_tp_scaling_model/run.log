@@ -1,0 +1,19 @@
+$ /home/ubuntu/codex-multigpu-audit-20261117/multi-gpu-audit/artifacts/h100-reviewed-20261117/77_kv_cache_tp_scaling_model/example
+--- Real, cited numbers (vLLM blog post) -- NOT computed by this program ---
+Between TP=1 and TP=2: KV cache blocks increase 13.9x; measured token throughput increases 3.9x (vs. a naive 2x expectation from doubling GPU count alone).
+
+--- This chapter's own worked model (illustrative, NOT a reconstruction of vLLM's real internal accounting) ---
+Model: KV-cache-available capacity at TP=1 is (C - W); at TP=2 it is (2C - W), where C = one GPU's capacity, W = full model weight bytes.
+Solving (2 - w)/(1 - w) = 13.9 for w = W/C: w = 0.9225
+-> Under this simplified model, vLLM's own cited 13.9x KV-cache gain is the shape you'd expect if the model's weights alone were already consuming about 92.2% of one GPU's memory at TP=1 -- leaving very little headroom for KV cache until a second GPU's capacity is added.
+
+W/C          (2-w)/(1-w) KV-capacity ratio
+0.5000       3.00                    
+0.7000       4.33                    
+0.8000       6.00                    
+0.9000       11.00                   
+0.9225       13.90                   
+0.9500       21.00                   
+
+--- The honest gap this section does NOT fill ---
+No published source found (vLLM docs, TensorRT-LLM docs, or an academic paper) gives a direct, apples-to-apples throughput or latency comparison of a COMBINED TP+PP configuration against TP-only or PP-only at the same total GPU count. TensorRT-LLM's own public docs describe the two qualitatively instead: TP is "Best for: Small batch sizes, memory-constrained scenarios"; PP is "Best for: Large models that don't fit in single GPU memory." This section cites that real qualitative guidance rather than fabricating a number to fill the gap -- the same discipline this book applied in Chapter 21's own GPUDirect RDMA section and Chapter 25's own communication-cost model.

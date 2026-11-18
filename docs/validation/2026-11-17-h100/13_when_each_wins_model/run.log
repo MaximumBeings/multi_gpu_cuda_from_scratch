@@ -1,0 +1,15 @@
+$ /home/ubuntu/codex-multigpu-audit-20261117/multi-gpu-audit/artifacts/h100-reviewed-20261117/13_when_each_wins_model/example
+Transfer size: 1.0 GB
+
+Peer-direct route, NVLink-wired pair:   0.020000 s (50.0 GB/s, one hop)
+Peer-direct route, PCIe-only direct pair: 0.031746 s (31.5 GB/s, one hop)
+Staged host route (any pair):            0.063492 s (31.5 GB/s, two hops)
+
+Peer-direct over NVLink is 3.1746x faster than staging, for a wired pair.
+Peer-direct over a direct PCIe link is 2.0000x faster than staging,
+for a pair with a direct PCIe route but no NVLink wire.
+
+When the pair has NO direct link at all (per Chapter 2's partial-mesh
+topology), peer access cannot be enabled between them in the first
+place (Chapter 4, Section 4.2) -- staging is then not merely faster
+or slower, it is the ONLY route that exists.

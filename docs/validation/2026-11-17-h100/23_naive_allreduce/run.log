@@ -1,0 +1,2 @@
+$ /home/ubuntu/codex-multigpu-audit-20261117/multi-gpu-audit/artifacts/h100-reviewed-20261117/23_naive_allreduce/example
+PASS: naive host-reduce plus peer-broadcast all-reduce on 2 GPUs, all nonuniform output values checked.

@@ -1,56 +1,31 @@
-// Chapter 10: All-Gather, Reduce-Scatter, and All-to-All
 // 26_allgather_by_hand.cu
-//
-// All-gather, done directly: every device sends its OWN chunk to
-// every other device (N*(N-1) point-to-point transfers, no root, no
-// reduction). This is the same all-gather PHASE Chapter 9 used inside
-// its ring all-reduce (Section 9.2-9.3) -- shown here running alone,
-// with the straightforward direct pattern instead of the ring
-// pattern, so the operation itself can be seen in isolation. Each
-// buffer is allocated with its own device made current first
-// (Chapter 3's rule). Genuinely compiled with a real nvcc and
-// genuinely run.
+// Checked teaching implementation; serial host scheduling favors clarity, not speed.
 #include <cstdio>
+#include <vector>
+#include <algorithm>
 #include <cuda_runtime.h>
-
+#define CUDA(call) do { cudaError_t status = (call); if (status != cudaSuccess) { \
+ fprintf(stderr,"%s: %s\n",#call,cudaGetErrorString(status)); \
+ return status==cudaErrorNoDevice || status==cudaErrorInsufficientDriver ? 2 : 1; } } while(0)
+static int pattern(int rank, int i) { return rank*1000+i*3+i%7; }
 int main() {
-    int deviceCount = 0;
-    cudaGetDeviceCount(&deviceCount);
-    printf("cudaGetDeviceCount(): %d device(s).\n", deviceCount);
-
-    const size_t CHUNK_BYTES = sizeof(int);
-
-    // Every device holds one recvBuffer with room for deviceCount
-    // chunks -- slot i will hold device i's original chunk once
-    // all-gather completes.
-    int transfersAttempted = 0;
-    int transfersCompleted = 0;
-    for (int src = 0; src < deviceCount; ++src) {
-        void* sendPtr = nullptr;
-        cudaSetDevice(src);  // src's own chunk lives on device src
-        cudaError_t eAllocSend = cudaMalloc(&sendPtr, CHUNK_BYTES);
-        for (int dst = 0; dst < deviceCount; ++dst) {
-            if (dst == src) continue; // a device's own chunk needs no transfer
-            void* recvPtr = nullptr;
-            cudaSetDevice(dst);  // dst's receive slot lives on device dst
-            cudaError_t eAllocRecv = cudaMalloc(&recvPtr, CHUNK_BYTES);
-            cudaError_t eCopy = cudaMemcpyPeer(recvPtr, dst, sendPtr, src, CHUNK_BYTES);
-            ++transfersAttempted;
-            printf("All-gather, cudaMemcpyPeer(dst=dev%d's slot[%d], src=dev%d): %s (code %d)\n",
-                   dst, src, src, cudaGetErrorString(eCopy), (int)eCopy);
-            if (eCopy == cudaSuccess) ++transfersCompleted;
-            if (eAllocRecv == cudaSuccess) cudaFree(recvPtr);
-        }
-        cudaSetDevice(src);
-        if (eAllocSend == cudaSuccess) cudaFree(sendPtr);
-    }
-
-    printf("\n%d of %d attempted point-to-point transfers completed. On real\n"
-           "hardware, every device ends up holding all %d devices' original\n"
-           "chunks, side by side, completely UNCHANGED -- all-gather never\n"
-           "reduces or modifies anything, it only collects. Section 10.2\n"
-           "shows the mirror-image operation, reduce-scatter.\n",
-           transfersCompleted, transfersAttempted, deviceCount);
-
-    return 0;
+ int count=0; CUDA(cudaGetDeviceCount(&count));
+ if(count<2){printf("BLOCKED: requires 2 GPUs; found %d.\n",count);return 2;}
+ const int world=std::min(count,4), CHUNK=33;
+ const int n=CHUNK, out_n=world*CHUNK;
+ const size_t bytes=n*sizeof(int), out_bytes=out_n*sizeof(int);
+ std::vector<int*> send(world,nullptr),receive(world,nullptr);
+ for(int rank=0;rank<world;++rank){
+  CUDA(cudaSetDevice(rank));CUDA(cudaMalloc(&send[rank],bytes));CUDA(cudaMalloc(&receive[rank],out_bytes));
+  std::vector<int> input(n);for(int i=0;i<n;++i)input[i]=pattern(rank,i);
+  CUDA(cudaMemcpy(send[rank],input.data(),bytes,cudaMemcpyHostToDevice));CUDA(cudaMemset(receive[rank],0xff,out_bytes));
+ }
+ for(int dst=0;dst<world;++dst)for(int src=0;src<world;++src){CUDA(cudaSetDevice(dst));
+ if(src==dst)CUDA(cudaMemcpy(receive[dst]+src*CHUNK,send[src],bytes,cudaMemcpyDeviceToDevice));
+ else CUDA(cudaMemcpyPeer(receive[dst]+src*CHUNK,dst,send[src],src,bytes));}
+ for(int rank=0;rank<world;++rank){CUDA(cudaSetDevice(rank));CUDA(cudaDeviceSynchronize());}
+ for(int rank=0;rank<world;++rank){std::vector<int> output(out_n);CUDA(cudaSetDevice(rank));CUDA(cudaMemcpy(output.data(),receive[rank],out_bytes,cudaMemcpyDeviceToHost));for(int i=0;i<out_n;++i){int expected=pattern(i/CHUNK,i%CHUNK);if(output[i]!=expected){fprintf(stderr,"FAIL rank %d output[%d]: %d expected %d\n",rank,i,output[i],expected);return 1;}}}
+ for(int rank=0;rank<world;++rank){CUDA(cudaSetDevice(rank));CUDA(cudaFree(send[rank]));CUDA(cudaFree(receive[rank]));}
+ printf("PASS: rank-ordered all-gather on %d GPUs, all nonuniform output values checked.\n",world);
+ return 0;
 }

@@ -1,5 +1,15 @@
 # Chapter 18: Load Balancing Across Heterogeneous GPUs
 
+<!-- execution:provenance -->
+!!! info "Execution provenance"
+
+    Current execution blocks identify the tested source hash, hardware dataset, commands and captured output. References elsewhere on this page to a device-less environment describe the original authoring context. Historical output is superseded by the current record. Displayed output omits the runner command header and trims trailing line whitespace; raw logs remain exact. A host simulation or API validation has its stated scope; neither alone establishes a numerical multi-GPU workload or measured performance.
+
+
+<!-- mgpu:opener:start -->
+[![Chapter 18: Load Balancing Across Heterogeneous GPUs](../images/chapter-openers/18.svg)](../images/chapter-openers/18.svg)
+<!-- mgpu:opener:end -->
+
 **What you will understand by the end of this chapter:**
 
 - Why every equal-split function this book has written since Chapter 12 -- `computeShard()`, `computeLayerRange()`, `computeRowRange()` -- silently assumes every device is equally capable, and why real clusters routinely aren't.
@@ -34,6 +44,10 @@ Equal split (every chapter since Ch12):    Weighted split (this chapter):
 
 ## 18.1 The Problem: Real Clusters Are Not Homogeneous
 
+<!-- mgpu:figure-1:start -->
+[![Equal work can finish at different times](../images/technical/ch18/1-balance.svg)](../images/technical/ch18/1-balance.svg)
+<!-- mgpu:figure-1:end -->
+
 ### Intuition
 
 Look back at every partitioning function this book has written: Chapter 12's `computeShard()` divides a batch by `worldSize`. Chapter 13's `computeLayerRange()` divides a stack of layers by `worldSize`. Chapter 16's `computeRowRange()` divides a grid's rows by `worldSize`. Every single one of them takes exactly two real inputs -- a total, and a device count -- and none of them has ever asked how fast any particular device actually is. That was a reasonable simplification for building the underlying mechanisms Part 2 and Part 3 needed, but it's not how real clusters work. A real, well-known paper on training across heterogeneous GPU clusters, Guo et al.'s "Cephalo" (2024), states the consequence in one sentence: "In clusters with varying GPU capabilities, training is bottlenecked by the slowest GPU, leaving faster GPUs idle." That's exactly Chapter 17's barrier, applied to real, unequal hardware: no matter how fast three of your four devices are, the fourth one sets the pace for all of them.
@@ -52,7 +66,7 @@ A real cluster, growing over time:
 
 ### Background
 
-The one real signal this book hasn't used before is a device's own physical capability, queryable through `cudaGetDeviceProperties()` -- the same `cudaDeviceProp` struct Chapter 6 already used for `asyncEngineCount` and `concurrentKernels`. Two of its other real fields exist for exactly the comparison this chapter needs: `multiProcessorCount` (how many streaming multiprocessors a device physically has) and `clockRate` (its core clock). Real, cited figures for two real GPUs make the gap concrete: NVIDIA's own H100 architecture whitepaper states the H100 SXM5 has "132 SMs," "a 22% SM count increase over A100's 108 SMs."
+The one real signal this book hasn't used before is a device's own physical capability, queryable through `cudaGetDeviceProperties()` -- the same `cudaDeviceProp` struct Chapter 6 already used for `asyncEngineCount` and `concurrentKernels`. Two fields can provide a rough hardware comparison: `multiProcessorCount` (how many streaming multiprocessors a device physically has) and `clockRate` (a reported clock property, not a workload throughput measurement or a live thermal-throttling monitor). Equal SM counts or SM-count-times-clock estimates do not imply equal performance across architectures. Measure the target kernel and include communication, memory capacity and integer partition constraints when setting weights. Real, cited figures for two real GPUs make the gap concrete: NVIDIA's own H100 architecture whitepaper states the H100 SXM5 has "132 SMs," "a 22% SM count increase over A100's 108 SMs."
 
 ```cpp
 // Chapter 18: Load Balancing Across Heterogeneous GPUs
@@ -142,7 +156,91 @@ int main() {
 }
 ```
 
+<!-- execution:start:a100:51_heterogeneous_capability_query.cu -->
+> **Current execution — 2026-11-17-a100: API/host demonstration (exit-only).** UTC (program start): `2026-11-18T00:02:59.235875+00:00`. Source SHA-256: `b8d2f2f7db77a2f07a6dce3bec85e1f063be574d7fb299a9173dea961b31492b`.
+
+[Exact tested source](../validation/2026-11-17-a100/51_heterogeneous_capability_query/51_heterogeneous_capability_query.cu) · [Compiler log](../validation/2026-11-17-a100/51_heterogeneous_capability_query/compile.log) · [Execution log](../validation/2026-11-17-a100/51_heterogeneous_capability_query/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+nvcc -std=c++17 -O2 -arch=sm_80 51_heterogeneous_capability_query.cu -o ./example
+./example
+```
+
+<details markdown="1"><summary>Captured current-source output</summary>
+
+```text
+cudaGetDeviceCount(): 8 device(s).
+
+Querying real per-device capability for every device this book's own real deviceCount (8) reports:
+  rank 0: cudaGetDeviceProperties(): no error (code 0)
+  rank 1: cudaGetDeviceProperties(): no error (code 0)
+  rank 2: cudaGetDeviceProperties(): no error (code 0)
+  rank 3: cudaGetDeviceProperties(): no error (code 0)
+  rank 4: cudaGetDeviceProperties(): no error (code 0)
+  rank 5: cudaGetDeviceProperties(): no error (code 0)
+  rank 6: cudaGetDeviceProperties(): no error (code 0)
+  rank 7: cudaGetDeviceProperties(): no error (code 0)
+  (8 device(s) -- nothing to print above.)
+
+cudaGetDeviceProperties(&prop, 0): no error (code 0)
+Two of the real fields cudaDeviceProp exposes for exactly this purpose -- comparing one device's real capability against another's -- are multiProcessorCount (how many streaming multiprocessors the device physically has) and clockRate (the device's core clock, in kHz). Neither field can be read here, since the call above never succeeded.
+
+A hypothetical 4-device cluster mixing GPU generations (real multiProcessorCount figures from NVIDIA's own architecture whitepapers):
+  A100 (rank 0)                          multiProcessorCount = 108
+  A100 (rank 1)                          multiProcessorCount = 108
+  H100 SXM (rank 2)                      multiProcessorCount = 132
+  A100, thermally throttled (rank 3)     multiProcessorCount = 108
+
+Every computeShard()-style function this book has written would still hand all four of these devices an IDENTICAL share of the work -- the SM count difference above, and rank 3's real thermal throttling (which multiProcessorCount can't even see, since the SMs are still physically there, just running slower), are both invisible to pure host arithmetic that only ever divides by worldSize.
+```
+
+</details>
+<!-- execution:end:a100:51_heterogeneous_capability_query.cu -->
+
+
+<!-- execution:start:h100:51_heterogeneous_capability_query.cu -->
+> **Current execution — 2026-11-17-h100: API/host demonstration (exit-only).** UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`. Source SHA-256: `b8d2f2f7db77a2f07a6dce3bec85e1f063be574d7fb299a9173dea961b31492b`.
+
+[Exact tested source](../validation/2026-11-17-h100/51_heterogeneous_capability_query/51_heterogeneous_capability_query.cu) · [Compiler log](../validation/2026-11-17-h100/51_heterogeneous_capability_query/compile.log) · [Execution log](../validation/2026-11-17-h100/51_heterogeneous_capability_query/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+nvcc -std=c++17 -O2 -arch=sm_90 51_heterogeneous_capability_query.cu -o ./example
+./example
+```
+
+<details markdown="1"><summary>Captured current-source output</summary>
+
+```text
+cudaGetDeviceCount(): 2 device(s).
+
+Querying real per-device capability for every device this book's own real deviceCount (2) reports:
+  rank 0: cudaGetDeviceProperties(): no error (code 0)
+  rank 1: cudaGetDeviceProperties(): no error (code 0)
+  (2 device(s) -- nothing to print above.)
+
+cudaGetDeviceProperties(&prop, 0): no error (code 0)
+Two of the real fields cudaDeviceProp exposes for exactly this purpose -- comparing one device's real capability against another's -- are multiProcessorCount (how many streaming multiprocessors the device physically has) and clockRate (the device's core clock, in kHz). Neither field can be read here, since the call above never succeeded.
+
+A hypothetical 4-device cluster mixing GPU generations (real multiProcessorCount figures from NVIDIA's own architecture whitepapers):
+  A100 (rank 0)                          multiProcessorCount = 108
+  A100 (rank 1)                          multiProcessorCount = 108
+  H100 SXM (rank 2)                      multiProcessorCount = 132
+  A100, thermally throttled (rank 3)     multiProcessorCount = 108
+
+Every computeShard()-style function this book has written would still hand all four of these devices an IDENTICAL share of the work -- the SM count difference above, and rank 3's real thermal throttling (which multiProcessorCount can't even see, since the SMs are still physically there, just running slower), are both invisible to pure host arithmetic that only ever divides by worldSize.
+```
+
+</details>
+<!-- execution:end:h100:51_heterogeneous_capability_query.cu -->
+
+
 Genuinely compiled with a real `nvcc` and genuinely run. Locked output, deterministic across repeated runs:
+
+<details markdown="1"><summary>Historical authoring output — superseded by the current execution above</summary>
 
 ```
 cudaGetDeviceCount(): 0 device(s).
@@ -162,12 +260,18 @@ A hypothetical 4-device cluster mixing GPU generations (real multiProcessorCount
 Every computeShard()-style function this book has written would still hand all four of these devices an IDENTICAL share of the work -- the SM count difference above, and rank 3's real thermal throttling (which multiProcessorCount can't even see, since the SMs are still physically there, just running slower), are both invisible to pure host arithmetic that only ever divides by worldSize.
 ```
 
-`cudaGetDeviceProperties()` reports the same honest `cudaErrorNoDevice` this book's every real device-touching call has reported since Chapter 3 -- but the hypothetical table beneath it makes the real point: even a rough, purely structural signal like SM count already shows a 22% capability gap between an A100 and an H100 in the same cluster, and a genuinely important failure mode -- thermal throttling -- doesn't show up in `multiProcessorCount` at all, since the hardware itself hasn't changed, only how fast it's currently allowed to run. Querying real capability is necessary, but Section 18.1's own table already shows it isn't sufficient on its own; Section 18.2 uses an already-measured relative-speed number instead of trying to derive one purely from static properties.
+</details>
+
+Read the current log for the actual H100 properties returned by `cudaGetDeviceProperties()`. The A100/H100 comparison table is illustrative and does not describe a heterogeneous machine tested here. Static SM counts cannot establish relative workload speed or thermal throttling; use workload measurements when assigning performance weights.
 
 !!! warning "[COMMON TRAP] Assuming every rank in a `for (rank = 0; rank < worldSize; ++rank)` loop is equally capable"
     Every device loop this book has written since Chapter 3's own multi-device loop pattern iterates over `worldSize` ranks and, implicitly, treats them as interchangeable -- rank 0 gets the same code path, the same share size, and the same expectations as rank 3. That's exactly right for the mechanisms Part 1 and Part 2 built (a peer transfer or a collective doesn't care how fast either endpoint is), but it silently carries over into Part 3's own partitioning functions, where it stops being harmless. `computeShard()`, `computeLayerRange()`, and `computeRowRange()` all divide by `worldSize` and never once ask "but how fast is rank i, really?" On a homogeneous cluster that's not a bug. On a real, growing, heterogeneous one, it quietly hands the slowest device in the room the same amount of work as the fastest, and Chapter 17's barrier turns that mismatch into wasted time for everyone else.
 
 ## 18.2 Weighted Partitioning: Splitting Work Proportional to Speed
+
+<!-- mgpu:figure-2:start -->
+[![Allocate work in proportion to capacity](../images/technical/ch18/2-weighted.svg)](../images/technical/ch18/2-weighted.svg)
+<!-- mgpu:figure-2:end -->
 
 ### Intuition
 
@@ -289,7 +393,71 @@ int main() {
 }
 ```
 
+<!-- execution:start:a100:52_weighted_shard_partition.cpp -->
+> **Current execution — 2026-11-17-a100: Host program/model (exit-only).** UTC (program start): `2026-11-18T00:03:03.377485+00:00`. Source SHA-256: `b5c9d0ffd17e2f185f5875faae84d570d290beb29343aa915fdf5a46f4565bf2`.
+
+[Exact tested source](../validation/2026-11-17-a100/52_weighted_shard_partition/52_weighted_shard_partition.cpp) · [Compiler log](../validation/2026-11-17-a100/52_weighted_shard_partition/compile.log) · [Execution log](../validation/2026-11-17-a100/52_weighted_shard_partition/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+g++ -std=c++17 -O2 52_weighted_shard_partition.cpp -o ./example
+./example
+```
+
+<details markdown="1"><summary>Captured current-source output</summary>
+
+```text
+4-device cluster, relative measured speeds: rank0=1.0x, rank1=1.0x, rank2=1.5x (faster H100), rank3=0.5x (throttled A100). Total work to split: 900 units.
+
+rank   speed      equal      weighted       weighted/speed
+0      1.0        225        225            225.00
+1      1.0        225        225            225.00
+2      1.5        225        337            224.67
+3      0.5        225        113            226.00
+total: equal split sums to 900, weighted split sums to 900 (both must equal 900): PASS
+
+Every rank's equal share is identical (225 units each) regardless of speed -- exactly what every computeShard()-style function in this book has done since Chapter 12. The weighted share instead scales with each rank's own speed: rank 2 (the faster H100) gets the largest share, rank 3 (throttled) gets the smallest. Section 18.3 checks what this buys, concretely: whether it actually equalizes how long each rank takes to finish its own share.
+```
+
+</details>
+<!-- execution:end:a100:52_weighted_shard_partition.cpp -->
+
+
+<!-- execution:start:h100:52_weighted_shard_partition.cpp -->
+> **Current execution — 2026-11-17-h100: Host program/model (exit-only).** UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`. Source SHA-256: `b5c9d0ffd17e2f185f5875faae84d570d290beb29343aa915fdf5a46f4565bf2`.
+
+[Exact tested source](../validation/2026-11-17-h100/52_weighted_shard_partition/52_weighted_shard_partition.cpp) · [Compiler log](../validation/2026-11-17-h100/52_weighted_shard_partition/compile.log) · [Execution log](../validation/2026-11-17-h100/52_weighted_shard_partition/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+g++ -std=c++17 -O2 52_weighted_shard_partition.cpp -o ./example
+./example
+```
+
+<details markdown="1"><summary>Captured current-source output</summary>
+
+```text
+4-device cluster, relative measured speeds: rank0=1.0x, rank1=1.0x, rank2=1.5x (faster H100), rank3=0.5x (throttled A100). Total work to split: 900 units.
+
+rank   speed      equal      weighted       weighted/speed
+0      1.0        225        225            225.00
+1      1.0        225        225            225.00
+2      1.5        225        337            224.67
+3      0.5        225        113            226.00
+total: equal split sums to 900, weighted split sums to 900 (both must equal 900): PASS
+
+Every rank's equal share is identical (225 units each) regardless of speed -- exactly what every computeShard()-style function in this book has done since Chapter 12. The weighted share instead scales with each rank's own speed: rank 2 (the faster H100) gets the largest share, rank 3 (throttled) gets the smallest. Section 18.3 checks what this buys, concretely: whether it actually equalizes how long each rank takes to finish its own share.
+```
+
+</details>
+<!-- execution:end:h100:52_weighted_shard_partition.cpp -->
+
+
 Genuinely compiled with a real `g++` and genuinely run, re-verified identical on both this book's real toolchains. Locked output, deterministic across repeated runs:
+
+<details markdown="1"><summary>Historical authoring output — superseded by the current execution above</summary>
 
 ```
 4-device cluster, relative measured speeds: rank0=1.0x, rank1=1.0x, rank2=1.5x (faster H100), rank3=0.5x (throttled A100). Total work to split: 900 units.
@@ -303,6 +471,8 @@ total: equal split sums to 900, weighted split sums to 900 (both must equal 900)
 
 Every rank's equal share is identical (225 units each) regardless of speed -- exactly what every computeShard()-style function in this book has done since Chapter 12. The weighted share instead scales with each rank's own speed: rank 2 (the faster H100) gets the largest share, rank 3 (throttled) gets the smallest. Section 18.3 checks what this buys, concretely: whether it actually equalizes how long each rank takes to finish its own share.
 ```
+
+</details>
 
 Both splits genuinely sum back to the full 900 work units -- that's the easy check. The interesting column is the last one, `weighted/speed`, which is each rank's weighted share divided by its own speed: 225.00, 225.00, 224.67, 226.00. Those four numbers are almost, but not quite, identical, and that "almost" is worth sitting with rather than rounding away -- Section 18.3 checks exactly how close it really is, and why.
 
@@ -491,7 +661,95 @@ int main() {
 }
 ```
 
+<!-- execution:start:a100:53_makespan_simulation.cpp -->
+> **Current execution — 2026-11-17-a100: Host program/model (exit-only).** UTC (program start): `2026-11-18T00:03:03.650764+00:00`. Source SHA-256: `951c524c044ef8ec8272333d8c1cdeca8f69ef9b48b8f4efb84d9214efeb0ed6`.
+
+[Exact tested source](../validation/2026-11-17-a100/53_makespan_simulation/53_makespan_simulation.cpp) · [Compiler log](../validation/2026-11-17-a100/53_makespan_simulation/compile.log) · [Execution log](../validation/2026-11-17-a100/53_makespan_simulation/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+g++ -std=c++17 -O2 53_makespan_simulation.cpp -o ./example
+./example
+```
+
+<details markdown="1"><summary>Captured current-source output</summary>
+
+```text
+Part A: continuous (infinitely divisible) ideal, 4 ranks, speeds 1.0x/1.0x/1.5x/0.5x, 900 total work units.
+
+  equal split:    every rank gets 225.0000 units; slowest rank (speed 0.5x) finishes at t=450.0000 -- every OTHER rank sits idle at Chapter 17's barrier until then.
+  weighted split: EVERY rank finishes at t=225.0000 -- the algebra says this is exact, for any speeds, in the continuous case.
+  ideal speedup: 2.00x
+
+Part B: the same comparison using REAL integer-quantized shares from Section 18.2's own computeWeightedShard().
+
+rank   speed    equal share    equal finish   weighted share weighted finish
+0      1.0      225            225.000        225            225.000
+1      1.0      225            225.000        225            225.000
+2      1.5      225            150.000        337            224.667
+3      0.5      225            450.000        113            226.000
+
+  equal split makespan (real bottleneck rank's finish time): 450.000
+  weighted split makespan:                                    226.000
+  real speedup from weighted partitioning:                    1.99x
+  weighted split's own finish-time spread (max - min):        1.333 (the continuous ideal predicts exactly 0.0)
+
+  weighted split's spread (1.333) is below the worst-case rounding bound (N-1)/speed_last + 1/min(other speeds) = 7.000 time units: PASS
+
+The continuous ideal's EXACT equality doesn't survive rounding to whole work units -- the fastest- and slowest-finishing ranks under the weighted split finish 1.333 apart, not identically -- but the gap is small relative to every rank's own share, because computeWeightedShard() rounds every rank but the last DOWN (each loses less than one whole unit) and hands the last rank the leftover remainder (less than N-1 = 3 whole units). This is the same honest distinction this book drew in Chapter 13 vs. Chapter 14: an exact algebraic guarantee (Chapter 13's relocation, this section's continuous ideal) is a different, stronger claim than an empirically-checked, epsilon-bounded one (Chapter 14's reduce, this section's real integer-quantized shares) -- and this section's own result belongs to the second kind, checked, not assumed.
+```
+
+</details>
+<!-- execution:end:a100:53_makespan_simulation.cpp -->
+
+
+<!-- execution:start:h100:53_makespan_simulation.cpp -->
+> **Current execution — 2026-11-17-h100: Host program/model (exit-only).** UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`. Source SHA-256: `951c524c044ef8ec8272333d8c1cdeca8f69ef9b48b8f4efb84d9214efeb0ed6`.
+
+[Exact tested source](../validation/2026-11-17-h100/53_makespan_simulation/53_makespan_simulation.cpp) · [Compiler log](../validation/2026-11-17-h100/53_makespan_simulation/compile.log) · [Execution log](../validation/2026-11-17-h100/53_makespan_simulation/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+g++ -std=c++17 -O2 53_makespan_simulation.cpp -o ./example
+./example
+```
+
+<details markdown="1"><summary>Captured current-source output</summary>
+
+```text
+Part A: continuous (infinitely divisible) ideal, 4 ranks, speeds 1.0x/1.0x/1.5x/0.5x, 900 total work units.
+
+  equal split:    every rank gets 225.0000 units; slowest rank (speed 0.5x) finishes at t=450.0000 -- every OTHER rank sits idle at Chapter 17's barrier until then.
+  weighted split: EVERY rank finishes at t=225.0000 -- the algebra says this is exact, for any speeds, in the continuous case.
+  ideal speedup: 2.00x
+
+Part B: the same comparison using REAL integer-quantized shares from Section 18.2's own computeWeightedShard().
+
+rank   speed    equal share    equal finish   weighted share weighted finish
+0      1.0      225            225.000        225            225.000
+1      1.0      225            225.000        225            225.000
+2      1.5      225            150.000        337            224.667
+3      0.5      225            450.000        113            226.000
+
+  equal split makespan (real bottleneck rank's finish time): 450.000
+  weighted split makespan:                                    226.000
+  real speedup from weighted partitioning:                    1.99x
+  weighted split's own finish-time spread (max - min):        1.333 (the continuous ideal predicts exactly 0.0)
+
+  weighted split's spread (1.333) is below the worst-case rounding bound (N-1)/speed_last + 1/min(other speeds) = 7.000 time units: PASS
+
+The continuous ideal's EXACT equality doesn't survive rounding to whole work units -- the fastest- and slowest-finishing ranks under the weighted split finish 1.333 apart, not identically -- but the gap is small relative to every rank's own share, because computeWeightedShard() rounds every rank but the last DOWN (each loses less than one whole unit) and hands the last rank the leftover remainder (less than N-1 = 3 whole units). This is the same honest distinction this book drew in Chapter 13 vs. Chapter 14: an exact algebraic guarantee (Chapter 13's relocation, this section's continuous ideal) is a different, stronger claim than an empirically-checked, epsilon-bounded one (Chapter 14's reduce, this section's real integer-quantized shares) -- and this section's own result belongs to the second kind, checked, not assumed.
+```
+
+</details>
+<!-- execution:end:h100:53_makespan_simulation.cpp -->
+
+
 Genuinely compiled with a real `g++` and genuinely run, re-verified identical on both this book's real toolchains. Locked output, deterministic across repeated runs:
+
+<details markdown="1"><summary>Historical authoring output — superseded by the current execution above</summary>
 
 ```
 Part A: continuous (infinitely divisible) ideal, 4 ranks, speeds 1.0x/1.0x/1.5x/0.5x, 900 total work units.
@@ -517,6 +775,8 @@ rank   speed    equal share    equal finish   weighted share weighted finish
 
 The continuous ideal's EXACT equality doesn't survive rounding to whole work units -- the fastest- and slowest-finishing ranks under the weighted split finish 1.333 apart, not identically -- but the gap is small relative to every rank's own share, because computeWeightedShard() rounds every rank but the last DOWN (each loses less than one whole unit) and hands the last rank the leftover remainder (less than N-1 = 3 whole units). This is the same honest distinction this book drew in Chapter 13 vs. Chapter 14: an exact algebraic guarantee (Chapter 13's relocation, this section's continuous ideal) is a different, stronger claim than an empirically-checked, epsilon-bounded one (Chapter 14's reduce, this section's real integer-quantized shares) -- and this section's own result belongs to the second kind, checked, not assumed.
 ```
+
+</details>
 
 The continuous ideal's own algebra checks out exactly: every rank finishes at `t=225.0000` under a weighted split, a 2.00x improvement over the equal split's `t=450.0000` makespan. The real, integer-quantized version doesn't quite hit that exact number -- rank 2 and rank 3 finish 1.333 apart, not zero apart -- but the real makespan still drops from 450.000 to 226.000, a 1.99x speedup that's nearly identical to the continuous ideal's promise. The gap between "exactly equal" and "equal to within 1.333 units" is rounding, not a flaw in the technique: `computeWeightedShard()` rounds every rank but the last *down* (each loses less than one whole unit) and hands the last rank the accumulated remainder (here, fewer than N-1 = 3 extra units), and with hundreds of units per rank, being off by a few units barely moves the needle. The PASS check is now an honest one: it compares the spread, a *time*, against a worst-case rounding bound in time units, (N-1)/speed_last + 1/min(other speeds) = 3/0.5 + 1/1.0 = 7.000, which holds for any speeds in any order. (An earlier version of this check compared the spread against a fixed 2.0 "work units" and would have failed on the same four speeds simply reordered to 0.5/1.0/1.5/1.0, whose spread is exactly 2.000; under the derived bound of 3/1.0 + 1/0.5 = 5.000 that ordering passes too.) That's the honest, checked version of this section's claim -- not the algebra's idealized promise taken on faith.
 
@@ -565,6 +825,6 @@ Chapter 19 asks the question this chapter's own barrier-and-makespan framing doe
 **Sources cited in this chapter:**
 
 - Guo, R. B., Anand, U., Chen, A., and Daudjee, K. (University of Waterloo), ["Cephalo: Harnessing Heterogeneous GPU Clusters for Training Transformer Models"](https://arxiv.org/abs/2411.01075) (arXiv 2024; ICS 2025) -- the exact quotes "In homogeneous clusters, distributed strategies allocate resources evenly, but this approach is inefficient for heterogeneous clusters, where GPUs differ in power and memory," "In clusters with varying GPU capabilities, training is bottlenecked by the slowest GPU, leaving faster GPUs idle," "the batch of inputs is distributed unevenly across GPUs according to their relative computational speeds," "Cephalo partitions the global batch of training inputs unevenly across GPUs to control the computational workload assigned to each GPU," and the memory/compute decoupling point (a GPU's memory capacity "does not always scale with its compute speed").
-- ["NVIDIA H100 Tensor Core GPU Architecture" whitepaper](https://www.advancedclustering.com/wp-content/uploads/2022/03/gtc22-whitepaper-hopper.pdf) -- the real, cited SM counts: "132 SMs per GPU" for the H100 SXM5, and "132 SMs providing a 22% SM count increase over A100's 108 SMs."
+- [NVIDIA Hopper Architecture In-Depth](https://developer.nvidia.com/blog/nvidia-hopper-architecture-in-depth/) -- the real, cited SM counts: "132 SMs per GPU" for the H100 SXM5, and "132 SMs providing a 22% SM count increase over A100's 108 SMs."
 - [How to Query Device Properties and Handle Errors in CUDA C/C++ (NVIDIA Technical Blog)](https://developer.nvidia.com/blog/how-query-device-properties-and-handle-errors-cuda-cc/) -- `cudaGetDeviceProperties()` and the `cudaDeviceProp` struct, already cited in Chapter 6 for `asyncEngineCount`/`concurrentKernels`, extended here to `multiProcessorCount` and `clockRate`.
 - This book's own Chapter 2 (the closed-form cost-model technique of reusing an already-measured real figure rather than re-deriving one), Chapter 3 (the per-device loop pattern this chapter's own COMMON TRAP examines), Chapter 6 (`cudaDeviceProp`), Chapter 12/13/16 (`computeShard()`, `computeLayerRange()`, `computeRowRange()`, the equal-split pattern this chapter generalizes), Chapter 13 (the exact-vs-epsilon distinction Section 18.3 reuses), Chapter 14 (the epsilon-checked reduce this section's own rounding result is compared against), and Chapter 17 (the real barrier whose cost this chapter's makespan model is built on).

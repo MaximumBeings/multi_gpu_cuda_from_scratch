@@ -4,3 +4,7 @@ __pycache__/
 _stale_site_to_delete*/
 _to_delete/
 _verify_*_bin
+
+/artifacts/
+/build/
+/tools/upload-snapshot.json

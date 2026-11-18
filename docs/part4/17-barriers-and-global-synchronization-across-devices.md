@@ -1,5 +1,15 @@
 # Chapter 17: Barriers and Global Synchronization Across Devices
 
+<!-- execution:provenance -->
+!!! info "Execution provenance"
+
+    Current execution blocks identify the tested source hash, hardware dataset, commands and captured output. References elsewhere on this page to a device-less environment describe the original authoring context. Historical output is superseded by the current record. Displayed output omits the runner command header and trims trailing line whitespace; raw logs remain exact. A host simulation or API validation has its stated scope; neither alone establishes a numerical multi-GPU workload or measured performance.
+
+
+<!-- mgpu:opener:start -->
+[![Chapter 17: Barriers and Global Synchronization Across Devices](../images/chapter-openers/17.svg)](../images/chapter-openers/17.svg)
+<!-- mgpu:opener:end -->
+
 **What you will understand by the end of this chapter:**
 
 - Why Chapter 6's `cudaDeviceSynchronize()` -- which blocks the calling CPU thread until *one* device's own queued work finishes -- does not give you what every Part 3 parallelization strategy eventually needs: a guarantee that *every* device has reached the same point before *any* of them continues past it.
@@ -16,7 +26,7 @@
 
 ---
 
-This chapter opens Part 4, and it's a different kind of chapter than any in Part 3. Chapters 12 through 16 each introduced a *new way to split work* across devices -- a batch, a model, a matrix, a pipeline, a physical grid. This chapter introduces no new way to split anything. Instead, it addresses a concern that applies to *every one* of those strategies once they're running for real: at some point, every one of them needs every device to agree that a particular point in the computation has been reached by all of them, before any of them is allowed to proceed past it. Chapter 6 already gave this book a synchronization primitive, `cudaDeviceSynchronize()`, and it's tempting to assume that primitive, called once per device, already solves this. It doesn't -- and understanding exactly why it doesn't is where this chapter starts.
+This chapter opens Part 4, and it's a different kind of chapter than any in Part 3. Chapters 12 through 16 each introduced a *new way to split work* across devices -- a batch, a model, a matrix, a pipeline, a physical grid. This chapter introduces no new way to split anything. Instead, it addresses a concern that applies to *every one* of those strategies once they're running for real: some algorithms require a phase boundary spanning all participating ranks; others need only local neighbor or producer/consumer dependencies. Chapter 6 already gave this book a synchronization primitive, `cudaDeviceSynchronize()`, and it's tempting to assume that primitive, called once per device, already solves this. It doesn't -- and understanding exactly why it doesn't is where this chapter starts.
 
 ```text
 Per-device sync (Chapter 6):              A global barrier (this chapter):
@@ -34,9 +44,15 @@ Per-device sync (Chapter 6):              A global barrier (this chapter):
 
 ## 17.1 The Problem: Per-Device Synchronization Doesn't Cross Devices
 
+<!-- mgpu:figure-1:start -->
+[![Two local waits are not one global barrier](../images/technical/ch17/1-events.svg)](../images/technical/ch17/1-events.svg)
+<!-- mgpu:figure-1:end -->
+
 ### Intuition
 
-`cudaDeviceSynchronize()`, since Chapter 6, does exactly one thing: it blocks the calling CPU thread until the *current* device's own command queue is empty -- every kernel and memory operation already launched on it has finished. That's a real, useful guarantee, and this book has used it since Chapter 3's own multi-device loop pattern, calling it once per device in turn. But look closely at what a loop like that actually promises. It promises that, by the time the loop finishes, this one CPU thread has personally confirmed each device's queue was empty *at the moment it checked that device*. It says nothing at all about whether device 0 and device 3 were at the *same point* in their own work relative to each other. Device 0 could finish its first ten iterations, get checked and confirmed idle, and start its eleventh iteration -- all before device 3 has even launched its first kernel. A device loop that synchronizes devices one at a time, sequentially, on one thread, never once makes any device wait for any *other* device. That is precisely the gap a global barrier has to close.
+`cudaDeviceSynchronize()` waits for preceding work on the current device. A single host controller can establish a phase boundary by enqueueing the phase on every device, synchronizing each device, and only then enqueueing the next phase. The calls are sequential, but the phase’s device work may run concurrently before the waits.
+
+The limitation appears when independent host threads or processes can enqueue later work before all participants have arrived. A loop in one controller does not coordinate those other submitters; that case needs an explicit shared phase protocol or collective. See [CUDA’s multi-device execution management](https://docs.nvidia.com/cuda/cuda-programming-guide/03-advanced/multi-gpu-systems.html) and [device synchronization API](https://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__DEVICE.html).
 
 ```text
 What the loop from Chapter 3 actually checks, one device at a time:
@@ -46,9 +62,9 @@ What the loop from Chapter 3 actually checks, one device at a time:
   t=2: cudaSetDevice(2); cudaDeviceSynchronize();  --> dev2's queue confirmed empty NOW
   t=3: cudaSetDevice(3); cudaDeviceSynchronize();  --> dev3's queue confirmed empty NOW
 
-  By t=1, dev0 could ALREADY be running its next kernel -- nothing here
-  stopped it, and nothing here checks it again. Each check is a snapshot
-  of ONE device, not a joint checkpoint every device waits at together.
+  With independent submitters, dev0 could advance while this host waits.
+  With one controlling host, no next-phase launch occurs until all waits
+  return, so this loop can enforce a valid phase boundary.
 ```
 
 ### Background
@@ -106,7 +122,89 @@ int main() {
 }
 ```
 
+<!-- execution:start:a100:48_per_device_sync_is_not_a_barrier.cu -->
+> **Current execution — 2026-11-17-a100: API/host demonstration (exit-only).** UTC (program start): `2026-11-18T00:02:46.421425+00:00`. Source SHA-256: `e8c4c448dfbe5d9af39364bbe4232aec22cdb020b218ac67464d8fa894f74aaf`.
+
+[Exact tested source](../validation/2026-11-17-a100/48_per_device_sync_is_not_a_barrier/48_per_device_sync_is_not_a_barrier.cu) · [Compiler log](../validation/2026-11-17-a100/48_per_device_sync_is_not_a_barrier/compile.log) · [Execution log](../validation/2026-11-17-a100/48_per_device_sync_is_not_a_barrier/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+nvcc -std=c++17 -O2 -arch=sm_80 48_per_device_sync_is_not_a_barrier.cu -o ./example
+./example
+```
+
+<details markdown="1"><summary>Captured current-source output</summary>
+
+```text
+cudaGetDeviceCount(): 8 device(s).
+
+Synchronizing 4 devices the way every device loop since Chapter 3 has -- one at a time, on this one CPU thread:
+  rank 0: cudaSetDevice(): no error (code 0)   cudaDeviceSynchronize(): no error (code 0)
+  rank 1: cudaSetDevice(): no error (code 0)   cudaDeviceSynchronize(): no error (code 0)
+  rank 2: cudaSetDevice(): no error (code 0)   cudaDeviceSynchronize(): no error (code 0)
+  rank 3: cudaSetDevice(): no error (code 0)   cudaDeviceSynchronize(): no error (code 0)
+
+Notice what this loop actually guarantees, and what it does
+NOT: by the time it returns, this CPU thread knows every
+device's queue, AS OF THE MOMENT EACH ONE WAS CHECKED, was
+empty. It says nothing about whether rank 0 and rank 3 were
+AT THE SAME POINT in their own work relative to each other.
+Rank 0 could have already raced ten iterations ahead of rank
+3 by the time rank 3's own kernels are even launched -- this
+loop only checks each device's queue in turn, sequentially,
+on one CPU thread; it never makes any device wait for any
+OTHER device. A real global barrier needs every rank to wait
+for every OTHER rank, not just for its own queue to drain.
+```
+
+</details>
+<!-- execution:end:a100:48_per_device_sync_is_not_a_barrier.cu -->
+
+
+<!-- execution:start:h100:48_per_device_sync_is_not_a_barrier.cu -->
+> **Current execution — 2026-11-17-h100: API/host demonstration (exit-only).** UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`. Source SHA-256: `e8c4c448dfbe5d9af39364bbe4232aec22cdb020b218ac67464d8fa894f74aaf`.
+
+[Exact tested source](../validation/2026-11-17-h100/48_per_device_sync_is_not_a_barrier/48_per_device_sync_is_not_a_barrier.cu) · [Compiler log](../validation/2026-11-17-h100/48_per_device_sync_is_not_a_barrier/compile.log) · [Execution log](../validation/2026-11-17-h100/48_per_device_sync_is_not_a_barrier/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+nvcc -std=c++17 -O2 -arch=sm_90 48_per_device_sync_is_not_a_barrier.cu -o ./example
+./example
+```
+
+<details markdown="1"><summary>Captured current-source output</summary>
+
+```text
+cudaGetDeviceCount(): 2 device(s).
+
+Synchronizing 4 devices the way every device loop since Chapter 3 has -- one at a time, on this one CPU thread:
+  rank 0: cudaSetDevice(): no error (code 0)   cudaDeviceSynchronize(): no error (code 0)
+  rank 1: cudaSetDevice(): no error (code 0)   cudaDeviceSynchronize(): no error (code 0)
+  rank 2: cudaSetDevice(): invalid device ordinal (code 101)   cudaDeviceSynchronize(): no error (code 0)
+  rank 3: cudaSetDevice(): invalid device ordinal (code 101)   cudaDeviceSynchronize(): no error (code 0)
+
+Notice what this loop actually guarantees, and what it does
+NOT: by the time it returns, this CPU thread knows every
+device's queue, AS OF THE MOMENT EACH ONE WAS CHECKED, was
+empty. It says nothing about whether rank 0 and rank 3 were
+AT THE SAME POINT in their own work relative to each other.
+Rank 0 could have already raced ten iterations ahead of rank
+3 by the time rank 3's own kernels are even launched -- this
+loop only checks each device's queue in turn, sequentially,
+on one CPU thread; it never makes any device wait for any
+OTHER device. A real global barrier needs every rank to wait
+for every OTHER rank, not just for its own queue to drain.
+```
+
+</details>
+<!-- execution:end:h100:48_per_device_sync_is_not_a_barrier.cu -->
+
+
 Genuinely compiled with a real `nvcc` and genuinely run. Locked output, deterministic across repeated runs:
+
+<details markdown="1"><summary>Historical authoring output — superseded by the current execution above</summary>
 
 ```
 cudaGetDeviceCount(): 0 device(s).
@@ -130,12 +228,18 @@ OTHER device. A real global barrier needs every rank to wait
 for every OTHER rank, not just for its own queue to drain.
 ```
 
-Every one of the four `cudaSetDevice()`/`cudaDeviceSynchronize()` pairs reports the same honest `cudaErrorNoDevice` this book has reported since Chapter 3, and that's beside the point this section makes: even with four genuinely working devices, this exact loop would still only ever check one device's queue at a time, in sequence, and would still never make any device's own execution wait on any other device's progress. The gap isn't a bug in `cudaDeviceSynchronize()` -- it's doing exactly what it was designed to do, which is a strictly per-device guarantee. What's missing is a mechanism that spans devices, not one that checks them one at a time.
+</details>
 
-!!! warning "[COMMON TRAP] Assuming a loop of cudaDeviceSynchronize() calls is a barrier"
-    It's an easy mistake to make, because the loop above *looks* like it's synchronizing "everything." It reads every device's status, in order, and doesn't return until it's checked all of them. But "checked all of them, one at a time" is not the same claim as "made all of them wait for each other." Nothing about this loop prevents device 0 from launching new work the instant its own queue is empty -- there is no mechanism here that could hold it back until device 3 catches up, because `cudaDeviceSynchronize()`'s entire contract is about *one* device's own queue, never about any other device's state. A real cross-device barrier has to be built from a primitive that every device's own runtime participates in together -- which is exactly what Section 17.2 introduces.
+A host-controlled loop can wait for work on each selected device, provided it coordinates all relevant submitters. Each `cudaDeviceSynchronize()` has a per-device scope; independent host submitters need an additional coordination protocol. This is not a device-side cross-GPU barrier.
+
+!!! warning "[COMMON TRAP] Confusing a single controller’s phase boundary with independently progressing ranks"
+    Enqueue all devices’ phase work, wait for each device, then enqueue the next phase: this is a valid host-controlled barrier when that host controls all relevant submissions. It fails to coordinate independent submitters unless they participate in a protocol. The diagnostic output above illustrates the independent-progress case; it is not proof that a sequential synchronization loop can never enforce a phase boundary.
 
 ## 17.2 A Real Barrier: A Throwaway AllReduce, Then a Real Wait
+
+<!-- mgpu:figure-2:start -->
+[![A collective can establish a rendezvous](../images/technical/ch17/2-reduce.svg)](../images/technical/ch17/2-reduce.svg)
+<!-- mgpu:figure-2:end -->
 
 ### Intuition
 
@@ -164,87 +268,85 @@ NCCL's documented collectives (2.31.2):     MPI's real barrier:
 Faking a barrier this way takes two real calls, not one, and the order matters. First, a real `ncclAllReduce()` call on a one-element buffer -- this is the call every rank has to issue before any of them can move past it, exactly the property Section 17.2's intuition described. But that call, like every kernel launch since Chapter 3 and every collective since Chapter 8, only *enqueues* work; it returns to the CPU immediately, whether or not the enqueued operation has actually finished. Actually blocking this CPU thread until the collective is done needs the second call: the same real `cudaStreamSynchronize()` mechanism Chapter 6 introduced. A barrier, honestly, is both calls together -- not the collective alone.
 
 ```cpp
-// Chapter 17: Barriers and Global Synchronization Across Devices
 // 49_nccl_allreduce_as_barrier.cu
-//
-// NCCL's current Collective Operations documentation (2.31.2) lists
-// AllReduce, Broadcast, Reduce, AllGather, ReduceScatter, AlltoAll,
-// Gather, and Scatter -- no Barrier. (AlltoAll, Gather and Scatter
-// only arrived in NCCL 2.28.3; the NCCL 2.18.3 installed here, whose
-// nccl.h this file compiles against, has none of those three -- the
-// all-to-all gap Chapter 11 found.) No NCCL version, old or new, has
-// a Barrier. MPI has a real, dedicated MPI_Barrier() -- Open MPI's own docs describe
-// it plainly: "synchronization between MPI processes in a group,"
-// completing "after all group members have entered the barrier."
-// NCCL has no equivalent, so real distributed training code fakes one
-// the same way a real, publicly filed NCCL GitHub issue (#808,
-// "Understanding Barriers") describes discovering by observation: a
-// barrier action, under the hood, "show[s] up as a ringreduce kernel"
-// -- i.e. a throwaway AllReduce call, issued purely for the property
-// that it cannot complete on any rank until every rank has called it.
-// Genuinely compiled with a real nvcc against the real installed
-// libnccl.
+// Real 2--4 GPU teaching workload with independent nonuniform reference checks.
 #include <cstdio>
+#include <vector>
+#include <algorithm>
+#include <cmath>
 #include <cuda_runtime.h>
 #include <nccl.h>
+#define CUDA(call) do {cudaError_t e=(call);if(e!=cudaSuccess){fprintf(stderr,"%s: %s\n",#call,cudaGetErrorString(e));return e==cudaErrorNoDevice||e==cudaErrorInsufficientDriver?2:1;}}while(0)
+#define NCCL(call) do {ncclResult_t e=(call);if(e!=ncclSuccess){fprintf(stderr,"%s: %s\n",#call,ncclGetErrorString(e));return 1;}}while(0)
 
-int main() {
-    int deviceCount = 0;
-    cudaGetDeviceCount(&deviceCount);
-    printf("cudaGetDeviceCount(): %d device(s).\n", deviceCount);
+int main(){
+ int count=0;CUDA(cudaGetDeviceCount(&count));if(count<2){printf("BLOCKED: requires 2 GPUs; found %d.\n",count);return 2;}
+ const int world=std::min(count,4), n=1;
+ std::vector<ncclComm_t> comm(world,nullptr);NCCL(ncclCommInitAll(comm.data(),world,nullptr));
+ std::vector<cudaStream_t> stream(world,nullptr);std::vector<float*> input(world,nullptr),output(world,nullptr);
+ for(int rank=0;rank<world;++rank){CUDA(cudaSetDevice(rank));CUDA(cudaStreamCreate(&stream[rank]));CUDA(cudaMalloc(&input[rank],n*sizeof(float)));CUDA(cudaMalloc(&output[rank],n*sizeof(float)));std::vector<float> values(n);
+ values[0]=float(rank+1);
+ CUDA(cudaMemcpy(input[rank],values.data(),n*sizeof(float),cudaMemcpyHostToDevice));CUDA(cudaMemset(output[rank],0xff,n*sizeof(float)));}
+ NCCL(ncclGroupStart());for(int rank=0;rank<world;++rank){CUDA(cudaSetDevice(rank));NCCL(ncclAllReduce(input[rank],output[rank],n,ncclFloat,ncclSum,comm[rank],stream[rank]));}NCCL(ncclGroupEnd());
+ for(int rank=0;rank<world;++rank){CUDA(cudaSetDevice(rank));CUDA(cudaStreamSynchronize(stream[rank]));std::vector<float> got(n);CUDA(cudaMemcpy(got.data(),output[rank],n*sizeof(float),cudaMemcpyDeviceToHost));
+ for(int i=0;i<n;++i){float expected=float(world*(world+1)/2);if(!std::isfinite(got[i])||std::fabs(got[i]-expected)>1e-5f){fprintf(stderr,"FAIL rank %d output[%d] got %.9g expected %.9g\n",rank,i,got[i],expected);return 1;}}}
 
-    const int WORLD_SIZE = 4;
-    ncclComm_t comms[WORLD_SIZE];
-    ncclResult_t eInit = ncclCommInitAll(comms, WORLD_SIZE, nullptr);
-    printf("\nncclCommInitAll(worldSize=%d): %s (code %d)\n",
-           WORLD_SIZE, ncclGetErrorString(eInit), (int)eInit);
-
-    // ncclCommInitAll() reported failure above WITHOUT populating
-    // comms[] -- exactly like every real communicator this book has
-    // created since Chapter 11, it was never successfully built. The
-    // rest of this section uses an explicit nullptr communicator, the
-    // same safe convention every chapter since Chapter 12 has used,
-    // rather than dereferencing whatever comms[0] happens to still
-    // hold after a failed init.
-    ncclComm_t comm = nullptr;
-    cudaStream_t stream = nullptr;
-
-    // The "barrier" payload: a single throwaway element, never a real
-    // tensor. What matters isn't what value comes back -- it's that
-    // ncclAllReduce() cannot report completion on ANY rank until every
-    // rank in the communicator has issued this exact call.
-    float dummy = 0.0f;
-    ncclResult_t eBarrier = ncclAllReduce(&dummy, &dummy, 1, ncclFloat, ncclSum, comm, stream);
-    printf("ncclAllReduce(1-element dummy buffer, ncclSum) as a barrier: "
-           "%s (code %d)\n", ncclGetErrorString(eBarrier), (int)eBarrier);
-
-    // This is the trap this section's own COMMON TRAP names: the NCCL
-    // call above only ENQUEUES work onto a stream -- exactly like
-    // every kernel launch since Chapter 3 -- and returns to the CPU
-    // immediately, whether or not any other rank has reached it yet.
-    // Actually BLOCKING this CPU thread until the enqueued collective
-    // has genuinely finished needs the same real primitive Chapter 6
-    // introduced for exactly this reason.
-    cudaError_t eSync = cudaStreamSynchronize(stream);
-    printf("cudaStreamSynchronize(): %s (code %d)  <-- THIS is what "
-           "actually makes the CPU thread wait; the NCCL call alone "
-           "does not.\n", cudaGetErrorString(eSync), (int)eSync);
-
-    printf("\nEvery call above reports an honest failure -- "
-           "ncclCommInitAll() on a communicator that was never "
-           "successfully created, and no CUDA stream was ever real -- "
-           "but the sequence itself is the real pattern this book's own "
-           "cited GitHub issue observed: a dummy AllReduce for the "
-           "synchronization side effect, followed by a real stream/"
-           "device sync to actually block the host. Section 17.3 "
-           "checks what a barrier used this way is actually FOR: "
-           "keeping every rank's view of shared state consistent.\n");
-
-    return 0;
+ for(int rank=0;rank<world;++rank){CUDA(cudaSetDevice(rank));CUDA(cudaStreamDestroy(stream[rank]));CUDA(cudaFree(input[rank]));CUDA(cudaFree(output[rank]));NCCL(ncclCommDestroy(comm[rank]));}
+ printf("PASS: dummy-element AllReduce plus host completion wait on %d GPUs; all reference values checked.\n",world);return 0;
 }
 ```
 
+<!-- execution:start:a100:49_nccl_allreduce_as_barrier.cu -->
+> **Current execution — 2026-11-17-a100: Numerical/transport validation (recorded scope).** UTC (program start): `2026-11-18T00:02:51.364146+00:00`. Source SHA-256: `f17393f034b526cf66dfd5b538f6c7c32557526981fe0e0139028b40fd17cb70`.
+
+[Exact tested source](../validation/2026-11-17-a100/49_nccl_allreduce_as_barrier/49_nccl_allreduce_as_barrier.cu) · [Compiler log](../validation/2026-11-17-a100/49_nccl_allreduce_as_barrier/compile.log) · [Execution log](../validation/2026-11-17-a100/49_nccl_allreduce_as_barrier/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+nvcc -std=c++17 -O2 -arch=sm_80 49_nccl_allreduce_as_barrier.cu -o ./example -lnccl
+./example
+```
+
+<details markdown="1"><summary>Captured current-source output</summary>
+
+```text
+PASS: dummy-element AllReduce plus host completion wait on 4 GPUs; all reference values checked.
+```
+
+</details>
+<!-- execution:end:a100:49_nccl_allreduce_as_barrier.cu -->
+
+
+<!-- execution:start:h100:49_nccl_allreduce_as_barrier.cu -->
+> **Current execution — 2026-11-17-h100: Numerical/transport validation (recorded scope).** UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`. Source SHA-256: `f17393f034b526cf66dfd5b538f6c7c32557526981fe0e0139028b40fd17cb70`.
+
+[Exact tested source](../validation/2026-11-17-h100/49_nccl_allreduce_as_barrier/49_nccl_allreduce_as_barrier.cu) · [Compiler log](../validation/2026-11-17-h100/49_nccl_allreduce_as_barrier/compile.log) · [Execution log](../validation/2026-11-17-h100/49_nccl_allreduce_as_barrier/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+nvcc -std=c++17 -O2 -arch=sm_90 49_nccl_allreduce_as_barrier.cu -o ./example -lnccl
+./example
+```
+
+<details markdown="1"><summary>Captured current-source output</summary>
+
+```text
+PASS: dummy-element AllReduce plus host completion wait on 2 GPUs; all reference values checked.
+```
+
+</details>
+<!-- execution:end:h100:49_nccl_allreduce_as_barrier.cu -->
+
+
+**Current-source scope:** dummy-element AllReduce plus host completion wait uses real NCCL communicators, grouped rank participation, device buffers and checked stream completion. All output values are checked against a CPU formula; this is not a throughput benchmark. The current source was compiled and executed in the dated H100 suite; use the linked record for its numerical, API-probe or other-execution scope. The output below is retained from the earlier authoring diagnostic and is not evidence for this replacement source.
+
+The [2026-11-17 H100 execution record](../validation-h100.md) covers two GPUs connected by local NV18. It distinguishes numerical checks, API probes and other executions; a successful exit alone does not establish GPU algorithm correctness.
+
 Genuinely compiled with a real `nvcc` against the real installed `libnccl` and genuinely run. Locked output, deterministic across repeated runs:
+
+<details markdown="1"><summary>Historical authoring output — superseded by the current execution above</summary>
 
 ```
 cudaGetDeviceCount(): 0 device(s).
@@ -256,10 +358,16 @@ cudaStreamSynchronize(): no CUDA-capable device is detected (code 100)  <-- THIS
 Every call above reports an honest failure -- ncclCommInitAll() on a communicator that was never successfully created, and no CUDA stream was ever real -- but the sequence itself is the real pattern this book's own cited GitHub issue observed: a dummy AllReduce for the synchronization side effect, followed by a real stream/device sync to actually block the host. Section 17.3 checks what a barrier used this way is actually FOR: keeping every rank's view of shared state consistent.
 ```
 
-Three real calls, three different, honest failure codes -- `ncclCommInitAll()` on a four-rank request that finds no device (`ncclUnhandledCudaError`, code 1, the same code Chapter 11 reported for a well-formed `ndev` request), `ncclAllReduce()` on an explicitly null communicator (`ncclInvalidArgument`, code 4, the same code Chapter 12 onward has used for that convention), and `cudaStreamSynchronize()` on a stream that was never real (`cudaErrorNoDevice`, code 100, this book's most common honest failure since Chapter 3). None of that is the point of this section; the point is the *sequence*, which is real regardless of whether any individual call succeeds: a throwaway collective, followed by a real block. Skip the second call and you have something that *looks* like a barrier in source code but provides none of a barrier's actual guarantee -- the CPU thread would sail past the `ncclAllReduce()` line the instant it finished enqueueing, with no idea whether any other rank had even started.
+</details>
+
+File 49 checks a real collective and waits for its stream before inspecting results. The numerical H100 check exercises the selected two-rank case. The completion wait matters: returning from collective enqueue alone is not a host barrier and does not prove other ranks have completed their work.
+
+The [2026-11-17 H100 execution record](../validation-h100.md) covers two GPUs connected by local NV18. It distinguishes numerical checks, API probes and other executions; a successful exit alone does not establish GPU algorithm correctness.
 
 !!! warning "[COMMON TRAP] Assuming ncclAllReduce() itself blocks until every rank arrives"
-    It's tempting to think the throwaway `ncclAllReduce()` call above *is* the barrier, full stop -- after all, the property that justifies using it as one really is that it can't complete on any rank until every rank calls it. But "can't complete" and "the CPU thread waits for it to complete" are different claims. Every NCCL call this book has made since Chapter 11 is asynchronous with respect to the calling CPU thread: it enqueues its work onto a stream and returns immediately, exactly like a kernel launch. The collective genuinely won't finish executing until every rank participates -- but the CPU thread that issued it doesn't wait around to find out unless something *else* makes it wait. That's `cudaStreamSynchronize()` (or `cudaDeviceSynchronize()`), and skipping it after a "barrier" `ncclAllReduce()` produces code that reads like a barrier but synchronizes nothing at all -- one of the quieter, easier-to-miss versions of the asynchronous-execution trap this book first raised in Chapter 3.
+    It's tempting to think the throwaway `ncclAllReduce()` call above *is* the barrier, full stop -- after all, the property that justifies using it as one really is that it can't complete on any rank until every rank calls it. But "can't complete" and "the CPU thread waits for it to complete" are different claims. Every NCCL call this book has made since Chapter 11 is asynchronous with respect to the calling CPU thread: it enqueues its work onto a stream and returns immediately, exactly like a kernel launch. The collective genuinely won't finish executing until every rank participates -- but the CPU thread that issued it doesn't wait around to find out unless something *else* makes it wait. That's `cudaStreamSynchronize()` (or `cudaDeviceSynchronize()`), and skipping a completion wait means the host has not waited for the collective; later work in that same stream is still ordered behind it -- one of the quieter, easier-to-miss versions of the asynchronous-execution trap this book first raised in Chapter 3.
+
+The dummy collective coordinates participation and completion on its participating streams. Prior work in unrelated streams must first be joined with explicit events or another valid completion protocol. It does not automatically publish arbitrary peer-memory writes, repair a buffer-lifetime violation or make unsynchronized concurrent host submissions safe. See [NCCL’s CUDA stream semantics](https://docs.nvidia.com/deeplearning/nccl/user-guide/docs/usage/streams.html).
 
 ## 17.3 What a Barrier Buys You, and What It Costs
 
@@ -435,7 +543,103 @@ int main() {
 }
 ```
 
+<!-- execution:start:a100:50_barrier_consistency_simulation.cpp -->
+> **Current execution — 2026-11-17-a100: Host program/model (exit-only).** UTC (program start): `2026-11-18T00:02:58.862435+00:00`. Source SHA-256: `5443cc0bbf8d2cd18346f7aa258f35c85df35f61613b0af99fd6c225596d2295`.
+
+[Exact tested source](../validation/2026-11-17-a100/50_barrier_consistency_simulation/50_barrier_consistency_simulation.cpp) · [Compiler log](../validation/2026-11-17-a100/50_barrier_consistency_simulation/compile.log) · [Execution log](../validation/2026-11-17-a100/50_barrier_consistency_simulation/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+g++ -std=c++17 -O2 50_barrier_consistency_simulation.cpp -o ./example
+./example
+```
+
+<details markdown="1"><summary>Captured current-source output</summary>
+
+```text
+Part A: 4 ranks, heterogeneous arrival times 3/7/2/5 (rank 2 arrives first, rank 1 arrives last), each contributing to a shared checkpoint total. Independently computed reference total: 100.
+
+WITHOUT a barrier -- each rank reads immediately after its own write:
+  rank 0 (arrived at t=3): observed total = 40    STALE -- missing later contributions
+  rank 1 (arrived at t=7): observed total = 100   matches reference
+  rank 2 (arrived at t=2): observed total = 30    STALE -- missing later contributions
+  rank 3 (arrived at t=5): observed total = 80    STALE -- missing later contributions
+  1 of 4 ranks saw the correct, complete total.
+
+WITH a barrier -- every write finishes before any read:
+  rank 0: observed total = 100   matches reference
+  rank 1: observed total = 100   matches reference
+  rank 2: observed total = 100   matches reference
+  rank 3: observed total = 100   matches reference
+  4 of 4 ranks saw the correct, complete total: PASS
+
+Only the LAST rank to arrive (rank 1, at t=7) happened to see the correct total without a barrier -- purely because every other rank had already written by the time it read. That's not a guarantee, it's an accident of this particular arrival order; change which rank arrives LAST and a DIFFERENT rank would be the lucky one, while every other rank would see a stale value, silently, with no error raised anywhere. This is exactly the failure mode Chapter 16's own halo exchange had to guard against every iteration, generalized to any shared checkpoint, not just a grid's neighboring rows.
+
+Part B: a barrier's real communication cost, in rounds -- reusing Chapter 9's ring formula 2*(N-1) and Chapter 11's tree formula 2*ceil(log2(N)).
+
+N          ring rounds        tree rounds
+4          6                  4
+8          14                 6
+35         68                 12
+
+A barrier's payload is the smallest possible -- one element, not a real gradient tensor or activation -- but the ROUND COUNT above doesn't depend on payload size at all; it depends only on N, the number of ranks. A barrier is exactly as latency-expensive, per call, as any other AllReduce with the same N -- it is cheap in bytes moved, never in synchronization rounds paid. Calling one every iteration, for every one of Part 3's parallelization strategies, is a real, recurring cost, not a free correctness guarantee.
+```
+
+</details>
+<!-- execution:end:a100:50_barrier_consistency_simulation.cpp -->
+
+
+<!-- execution:start:h100:50_barrier_consistency_simulation.cpp -->
+> **Current execution — 2026-11-17-h100: Host program/model (exit-only).** UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`. Source SHA-256: `5443cc0bbf8d2cd18346f7aa258f35c85df35f61613b0af99fd6c225596d2295`.
+
+[Exact tested source](../validation/2026-11-17-h100/50_barrier_consistency_simulation/50_barrier_consistency_simulation.cpp) · [Compiler log](../validation/2026-11-17-h100/50_barrier_consistency_simulation/compile.log) · [Execution log](../validation/2026-11-17-h100/50_barrier_consistency_simulation/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+g++ -std=c++17 -O2 50_barrier_consistency_simulation.cpp -o ./example
+./example
+```
+
+<details markdown="1"><summary>Captured current-source output</summary>
+
+```text
+Part A: 4 ranks, heterogeneous arrival times 3/7/2/5 (rank 2 arrives first, rank 1 arrives last), each contributing to a shared checkpoint total. Independently computed reference total: 100.
+
+WITHOUT a barrier -- each rank reads immediately after its own write:
+  rank 0 (arrived at t=3): observed total = 40    STALE -- missing later contributions
+  rank 1 (arrived at t=7): observed total = 100   matches reference
+  rank 2 (arrived at t=2): observed total = 30    STALE -- missing later contributions
+  rank 3 (arrived at t=5): observed total = 80    STALE -- missing later contributions
+  1 of 4 ranks saw the correct, complete total.
+
+WITH a barrier -- every write finishes before any read:
+  rank 0: observed total = 100   matches reference
+  rank 1: observed total = 100   matches reference
+  rank 2: observed total = 100   matches reference
+  rank 3: observed total = 100   matches reference
+  4 of 4 ranks saw the correct, complete total: PASS
+
+Only the LAST rank to arrive (rank 1, at t=7) happened to see the correct total without a barrier -- purely because every other rank had already written by the time it read. That's not a guarantee, it's an accident of this particular arrival order; change which rank arrives LAST and a DIFFERENT rank would be the lucky one, while every other rank would see a stale value, silently, with no error raised anywhere. This is exactly the failure mode Chapter 16's own halo exchange had to guard against every iteration, generalized to any shared checkpoint, not just a grid's neighboring rows.
+
+Part B: a barrier's real communication cost, in rounds -- reusing Chapter 9's ring formula 2*(N-1) and Chapter 11's tree formula 2*ceil(log2(N)).
+
+N          ring rounds        tree rounds
+4          6                  4
+8          14                 6
+35         68                 12
+
+A barrier's payload is the smallest possible -- one element, not a real gradient tensor or activation -- but the ROUND COUNT above doesn't depend on payload size at all; it depends only on N, the number of ranks. A barrier is exactly as latency-expensive, per call, as any other AllReduce with the same N -- it is cheap in bytes moved, never in synchronization rounds paid. Calling one every iteration, for every one of Part 3's parallelization strategies, is a real, recurring cost, not a free correctness guarantee.
+```
+
+</details>
+<!-- execution:end:h100:50_barrier_consistency_simulation.cpp -->
+
+
 Genuinely compiled with a real `g++` and genuinely run, re-verified identical on both this book's real toolchains. Locked output, deterministic across repeated runs:
+
+<details markdown="1"><summary>Historical authoring output — superseded by the current execution above</summary>
 
 ```
 Part A: 4 ranks, heterogeneous arrival times 3/7/2/5 (rank 2 arrives first, rank 1 arrives last), each contributing to a shared checkpoint total. Independently computed reference total: 100.
@@ -466,6 +670,8 @@ N          ring rounds        tree rounds
 A barrier's payload is the smallest possible -- one element, not a real gradient tensor or activation -- but the ROUND COUNT above doesn't depend on payload size at all; it depends only on N, the number of ranks. A barrier is exactly as latency-expensive, per call, as any other AllReduce with the same N -- it is cheap in bytes moved, never in synchronization rounds paid. Calling one every iteration, for every one of Part 3's parallelization strategies, is a real, recurring cost, not a free correctness guarantee.
 ```
 
+</details>
+
 Without a barrier, only rank 1 -- the *last* to arrive, purely by the accident of this particular arrival-time assignment -- happens to see the correct, complete total; the other three each read a partial sum missing whichever ranks hadn't written yet. With a barrier separating every write from every read, all four ranks see the identical, correct total, regardless of arrival order. That's the whole guarantee, and it's not free: Part B's round counts, reused directly from Chapter 9 and Chapter 11 rather than invented for this chapter, show a barrier costs exactly as many communication rounds as a full collective of the same rank count -- 6 ring rounds or 4 tree rounds for 4 ranks, scaling up to 68 or 12 for the 35-way split Chapter 13 introduced. Calling a barrier is not a lightweight courtesy; it is a real collective operation, with a real per-call latency cost that scales with the number of ranks, wearing a payload of just one element.
 
 !!! warning "[COMMON TRAP] Treating a barrier as free because its payload is tiny"
@@ -473,7 +679,7 @@ Without a barrier, only rank 1 -- the *last* to arrive, purely by the accident o
 
 ## Chapter Summary
 
-This chapter opened Part 4 by addressing a concern that cuts across every parallelization strategy Part 3 built, rather than introducing a new one. Section 17.1 established the gap directly: Chapter 6's `cudaDeviceSynchronize()`, looped over every device, only confirms each device's own queue was empty at the moment it was checked -- it never makes any device wait for any other device's progress. Section 17.2 closed that gap the way real distributed training code actually does, since NCCL itself has no dedicated barrier call (confirmed against NCCL's own Collective Operations documentation and the installed 2.18.3 `nccl.h`, and contrasted with MPI's real, dedicated `MPI_Barrier()`): a throwaway `ncclAllReduce()` on a one-element buffer, exploiting the fact that no rank's call can complete until every rank has issued it, followed by a real `cudaStreamSynchronize()` to actually block the CPU thread -- both calls are required, since the collective alone only enqueues work asynchronously. Section 17.3 verified what that combination buys: with heterogeneous per-rank arrival times, only a barrier guarantees every rank observes the same, complete shared state, rather than some ranks silently reading a stale, partial view -- and quantified what it costs, reusing Chapter 9's and Chapter 11's own round-count formulas to show a barrier's latency cost scales with the number of ranks exactly like any other collective, regardless of its tiny payload. Chapter 18 picks up directly where this chapter's heterogeneous-arrival-time simulation left off: why devices make progress at different speeds in the first place, and what to do about it besides just waiting for the slowest one.
+This chapter opened Part 4 by addressing a concern that cuts across every parallelization strategy Part 3 built, rather than introducing a new one. Section 17.1 distinguishes a valid single-controller phase boundary from independently progressing ranks, which require a coordinated protocol. Section 17.2 closed that gap the way real distributed training code actually does, since NCCL itself has no dedicated barrier call (confirmed against NCCL's own Collective Operations documentation and the installed 2.18.3 `nccl.h`, and contrasted with MPI's real, dedicated `MPI_Barrier()`): a throwaway `ncclAllReduce()` on a one-element buffer, exploiting the fact that no rank's call can complete until every rank has issued it, followed by a real `cudaStreamSynchronize()` to actually block the CPU thread -- both calls are required, since the collective alone only enqueues work asynchronously. Section 17.3 verified what that combination buys: with heterogeneous per-rank arrival times, only a barrier guarantees every rank observes the same, complete shared state, rather than some ranks silently reading a stale, partial view -- and quantified what it costs, reusing Chapter 9's and Chapter 11's own round-count formulas to show a barrier's latency cost scales with the number of ranks exactly like any other collective, regardless of its tiny payload. Chapter 18 picks up directly where this chapter's heterogeneous-arrival-time simulation left off: why devices make progress at different speeds in the first place, and what to do about it besides just waiting for the slowest one.
 
 ## Self-Check Questions
 
@@ -492,7 +698,7 @@ Chapter 18 addresses directly what this chapter's own Part A simulation only mod
 
 ## Worked Solutions
 
-**1.** The loop checks each device's own command queue independently and sequentially, one device at a time, on a single CPU thread. `cudaDeviceSynchronize()`'s guarantee is scoped to exactly one device: it confirms that device's queue is empty at the moment it's called. Nothing in the loop prevents a device that was checked earlier from launching new work immediately afterward, and nothing makes any device's progress depend on any other device's -- so by the time the loop finishes, the four devices could be at four completely different points in their own execution, which is the opposite of what a barrier guarantees.
+**1.** If one host controls all submissions, enqueue-all/wait-all/launch-next provides a valid phase boundary. If independent submitters can advance, a loop in one thread alone does not coordinate them. `cudaDeviceSynchronize()`'s guarantee is scoped to exactly one device: it confirms that device's queue is empty at the moment it's called. The host-controlled case is safe because that controller does not enqueue the next phase until every wait returns. The limitation concerns independent submitters that are not part of that protocol.
 
 **2.** Section 17.2 lists AllReduce, Broadcast, Reduce, AllGather, ReduceScatter, AlltoAll, Gather, and Scatter, cited from NCCL's current (2.31.2) Collective Operations documentation. AlltoAll, Gather, and Scatter were only added in NCCL 2.28.3, so the installed 2.18.3 has none of them (grep its `nccl.h` and you'll find `ncclSend`/`ncclRecv` but no `ncclAlltoAll`). Barrier is absent from every version. The workaround is calling `ncclAllReduce()` on a single throwaway element purely for its synchronization side effect -- exploiting that the call cannot complete on any rank until every rank in the communicator has issued it, without caring what value comes back.
 

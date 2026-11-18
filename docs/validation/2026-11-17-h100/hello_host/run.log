@@ -1,0 +1,2 @@
+$ /home/ubuntu/codex-multigpu-audit-20261117/multi-gpu-audit/artifacts/h100-reviewed-20261117/hello_host/example
+hello_host: compiled with plain g++, no CUDA involved.

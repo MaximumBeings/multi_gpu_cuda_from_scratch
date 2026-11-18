@@ -1,3 +1,15 @@
+# Chapter 38: Real-Time Fraud Detection at Payment Scale
+
+<!-- execution:provenance -->
+!!! info "Execution provenance"
+
+    Current execution blocks identify the tested source hash, hardware dataset, commands and captured output. References elsewhere on this page to a device-less environment describe the original authoring context. Historical output is superseded by the current record. Displayed output omits the runner command header and trims trailing line whitespace; raw logs remain exact. A host simulation or API validation has its stated scope; neither alone establishes a numerical multi-GPU workload or measured performance.
+
+
+<!-- mgpu:opener:start -->
+[![Chapter 38: Real-Time Fraud Detection at Payment Scale](../images/chapter-openers/38.svg)](../images/chapter-openers/38.svg)
+<!-- mgpu:opener:end -->
+
 **What you will understand after this chapter:** why real production fraud detection increasingly treats accounts, merchants, and transactions as a GRAPH rather than scoring each transaction in isolation, and what real, measured accuracy improvement that produces; why partitioning that graph across multiple GPUs (NVIDIA's own real WholeGraph technique) creates a genuinely new communication shape for this book -- a demand-driven, per-batch remote feature fetch, decided by which nodes happen to be sampled, rather than a fixed schedule like Chapter 16's halo exchange or a level-by-level frontier like Chapter 28's distributed BFS; and why the second real stage of NVIDIA's own hybrid pipeline, distributed XGBoost tree-building, produces a genuinely different reduction pattern from Chapter 36's own exposure profile -- one that is sequentially chained within a single tree, not independent and overlappable.
 
 **What you need to know first:** Chapter 4 (Universal Virtual Addressing, reused by name in Section 38.2's own real citation), Chapter 9 (the reduction primitive reused throughout this book, including Section 38.3's own per-split reductions), Chapter 16 (domain decomposition, this chapter's point of contrast for Section 38.2's own graph partitioning), Chapter 28 (distributed BFS, the book's other graph-shaped communication pattern), and Chapter 36 (the T-independent-reductions structure Section 38.3 directly contrasts against).
@@ -20,6 +32,10 @@ NVIDIA's own real American Express case study describes a production system "gen
 ```
 
 ## 38.1 Why Fraud Detection Needs a Graph, Not Isolated Transactions
+
+<!-- mgpu:figure-1:start -->
+[![A transaction connects several entities](../images/technical/ch38/1-fraud.svg)](../images/technical/ch38/1-fraud.svg)
+<!-- mgpu:figure-1:end -->
 
 ### Intuition
 
@@ -128,6 +144,80 @@ int main() {
 }
 ```
 
+<!-- execution:start:a100:111_gnn_embedding_fraud_accuracy_model.cpp -->
+> **Current execution — 2026-11-17-a100: Host program/model (exit-only).** UTC (program start): `2026-11-18T00:05:32.197883+00:00`. Source SHA-256: `56f630a63f4295412f66336efabf82a4b5947478ace94fdc15babb7a2de6d898`.
+
+[Exact tested source](../validation/2026-11-17-a100/111_gnn_embedding_fraud_accuracy_model/111_gnn_embedding_fraud_accuracy_model.cpp) · [Compiler log](../validation/2026-11-17-a100/111_gnn_embedding_fraud_accuracy_model/compile.log) · [Execution log](../validation/2026-11-17-a100/111_gnn_embedding_fraud_accuracy_model/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+g++ -std=c++17 -O2 111_gnn_embedding_fraud_accuracy_model.cpp -o ./example
+./example
+```
+
+<details markdown="1"><summary>Captured current-source output</summary>
+
+```text
+Real cited American Express / NVIDIA production context:
+- "generating a fraud decision in milliseconds for every card transaction worldwide"
+- "monitors more than $1.2 trillion in transaction value every year"
+- "deep-learning-based models optimized with NVIDIA TensorRT and running on NVIDIA Triton Inference Server"
+
+Real cited rationale for a GRAPH, not isolated per-transaction scoring (NVIDIA Financial Fraud Detection AI Blueprint):
+- "Fraudsters operate within complex networks, often using connections between accounts and transactions to hide their activities."
+- "...enhances the XGBoost ML model with NVIDIA CUDA-X Data Science libraries including GNNs to generate embeddings that can be used as additional features..."
+
+Real cited accuracy figures (MAG240M benchmark, XGBoost classifier):
+- AUPRC WITH GNN embeddings as additional features: 0.90
+- AUPRC WITHOUT embeddings (XGBoost on raw features alone): 0.79
+
+Honest, simple arithmetic on those two real cited numbers (a relative change in the AUPRC metric itself, not a claim about real-world fraud-catch-rate or false-positive-rate percentages, which AUPRC does not translate into directly): 13.9% relative improvement in AUPRC from adding GNN embeddings as features.
+
+This is the real, cited motivation for everything the rest of this chapter builds: turning transactions, accounts, and merchants into a GRAPH, and training a model that can see each node's own NEIGHBORS, measurably outperformed treating each transaction in isolation on this real cited benchmark. Section 38.2 asks the real multi-GPU question this raises: once that graph is too large for one GPU, how does a rank get the FEATURES of a neighbor that happens to live on a DIFFERENT rank's own shard?
+```
+
+</details>
+<!-- execution:end:a100:111_gnn_embedding_fraud_accuracy_model.cpp -->
+
+
+<!-- execution:start:h100:111_gnn_embedding_fraud_accuracy_model.cpp -->
+> **Current execution — 2026-11-17-h100: Host program/model (exit-only).** UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`. Source SHA-256: `56f630a63f4295412f66336efabf82a4b5947478ace94fdc15babb7a2de6d898`.
+
+[Exact tested source](../validation/2026-11-17-h100/111_gnn_embedding_fraud_accuracy_model/111_gnn_embedding_fraud_accuracy_model.cpp) · [Compiler log](../validation/2026-11-17-h100/111_gnn_embedding_fraud_accuracy_model/compile.log) · [Execution log](../validation/2026-11-17-h100/111_gnn_embedding_fraud_accuracy_model/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+g++ -std=c++17 -O2 111_gnn_embedding_fraud_accuracy_model.cpp -o ./example
+./example
+```
+
+<details markdown="1"><summary>Captured current-source output</summary>
+
+```text
+Real cited American Express / NVIDIA production context:
+- "generating a fraud decision in milliseconds for every card transaction worldwide"
+- "monitors more than $1.2 trillion in transaction value every year"
+- "deep-learning-based models optimized with NVIDIA TensorRT and running on NVIDIA Triton Inference Server"
+
+Real cited rationale for a GRAPH, not isolated per-transaction scoring (NVIDIA Financial Fraud Detection AI Blueprint):
+- "Fraudsters operate within complex networks, often using connections between accounts and transactions to hide their activities."
+- "...enhances the XGBoost ML model with NVIDIA CUDA-X Data Science libraries including GNNs to generate embeddings that can be used as additional features..."
+
+Real cited accuracy figures (MAG240M benchmark, XGBoost classifier):
+- AUPRC WITH GNN embeddings as additional features: 0.90
+- AUPRC WITHOUT embeddings (XGBoost on raw features alone): 0.79
+
+Honest, simple arithmetic on those two real cited numbers (a relative change in the AUPRC metric itself, not a claim about real-world fraud-catch-rate or false-positive-rate percentages, which AUPRC does not translate into directly): 13.9% relative improvement in AUPRC from adding GNN embeddings as features.
+
+This is the real, cited motivation for everything the rest of this chapter builds: turning transactions, accounts, and merchants into a GRAPH, and training a model that can see each node's own NEIGHBORS, measurably outperformed treating each transaction in isolation on this real cited benchmark. Section 38.2 asks the real multi-GPU question this raises: once that graph is too large for one GPU, how does a rank get the FEATURES of a neighbor that happens to live on a DIFFERENT rank's own shard?
+```
+
+</details>
+<!-- execution:end:h100:111_gnn_embedding_fraud_accuracy_model.cpp -->
+
+
 Compile and run (a plain host `.cpp` file with no CUDA/NCCL/MPI/NVSHMEM linkage, cross-verified on both the cloud sandbox and the device):
 
 ```bash
@@ -137,6 +227,8 @@ g++ -O2 -ffp-contract=off -o 111_gnn_embedding_fraud_accuracy_model \
 ```
 
 Locked output:
+
+<details markdown="1"><summary>Historical authoring output — superseded by the current execution above</summary>
 
 ```
 Real cited American Express / NVIDIA production context:
@@ -156,6 +248,8 @@ Honest, simple arithmetic on those two real cited numbers (a relative change in 
 
 This is the real, cited motivation for everything the rest of this chapter builds: turning transactions, accounts, and merchants into a GRAPH, and training a model that can see each node's own NEIGHBORS, measurably outperformed treating each transaction in isolation on this real cited benchmark. Section 38.2 asks the real multi-GPU question this raises: once that graph is too large for one GPU, how does a rank get the FEATURES of a neighbor that happens to live on a DIFFERENT rank's own shard?
 ```
+
+</details>
 
 ## 38.2 Partitioning the Graph: A Demand-Driven Communication Shape
 
@@ -331,6 +425,74 @@ int main() {
 }
 ```
 
+<!-- execution:start:a100:112_graph_partitioned_neighbor_fetch_correctness_simulation.cpp -->
+> **Current execution — 2026-11-17-a100: Host program/model (exit-only).** UTC (program start): `2026-11-18T00:05:32.268772+00:00`. Source SHA-256: `cc0456753eb3d33fa33f65212d9657ee03ea36bbf371b66ad327a180f274e757`.
+
+[Exact tested source](../validation/2026-11-17-a100/112_graph_partitioned_neighbor_fetch_correctness_simulation/112_graph_partitioned_neighbor_fetch_correctness_simulation.cpp) · [Compiler log](../validation/2026-11-17-a100/112_graph_partitioned_neighbor_fetch_correctness_simulation/compile.log) · [Execution log](../validation/2026-11-17-a100/112_graph_partitioned_neighbor_fetch_correctness_simulation/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+g++ -std=c++17 -O2 112_graph_partitioned_neighbor_fetch_correctness_simulation.cpp -o ./example
+./example
+```
+
+<details markdown="1"><summary>Captured current-source output</summary>
+
+```text
+Reference (single-process): node 0's own neighbor-feature sum, dim 0..3: 117.00 62.20 46.90 106.60
+
+P      all match  remote fetches (of total)
+1      YES        0   of 72
+2      YES        48  of 72
+3      YES        48  of 72
+4      YES        60  of 72
+6      YES        72  of 72
+8      YES        66  of 72
+12     YES        72  of 72
+24     YES        72  of 72
+
+Every P reproduces the exact same neighbor-feature sums as the single-process reference. Like Chapter 35's distributed-FFT transpose and Chapter 34's embedding all-to-all, this is correctness by construction: a feature fetch -- local or remote -- is pure RETRIEVAL of a value that is never recomputed differently by rank, never combined with another rank's own partial value at fetch time. What DOES trend upward with P (not perfectly monotonically here, an artifact of this file's own small, fixed-modulus toy graph, not a real property being claimed), visible in the "remote fetches" column above, is the FRACTION of neighbor lookups that must cross a rank boundary -- a demand-driven, per-BATCH communication pattern decided by which nodes happen to be sampled, genuinely different from Chapter 16's own fixed halo schedule and Chapter 28's own frontier expansion, though it shares Chapter 4's own real Universal Virtual Addressing idea of letting any rank transparently reach any other rank's own memory.
+```
+
+</details>
+<!-- execution:end:a100:112_graph_partitioned_neighbor_fetch_correctness_simulation.cpp -->
+
+
+<!-- execution:start:h100:112_graph_partitioned_neighbor_fetch_correctness_simulation.cpp -->
+> **Current execution — 2026-11-17-h100: Host program/model (exit-only).** UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`. Source SHA-256: `cc0456753eb3d33fa33f65212d9657ee03ea36bbf371b66ad327a180f274e757`.
+
+[Exact tested source](../validation/2026-11-17-h100/112_graph_partitioned_neighbor_fetch_correctness_simulation/112_graph_partitioned_neighbor_fetch_correctness_simulation.cpp) · [Compiler log](../validation/2026-11-17-h100/112_graph_partitioned_neighbor_fetch_correctness_simulation/compile.log) · [Execution log](../validation/2026-11-17-h100/112_graph_partitioned_neighbor_fetch_correctness_simulation/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+g++ -std=c++17 -O2 112_graph_partitioned_neighbor_fetch_correctness_simulation.cpp -o ./example
+./example
+```
+
+<details markdown="1"><summary>Captured current-source output</summary>
+
+```text
+Reference (single-process): node 0's own neighbor-feature sum, dim 0..3: 117.00 62.20 46.90 106.60
+
+P      all match  remote fetches (of total)
+1      YES        0   of 72
+2      YES        48  of 72
+3      YES        48  of 72
+4      YES        60  of 72
+6      YES        72  of 72
+8      YES        66  of 72
+12     YES        72  of 72
+24     YES        72  of 72
+
+Every P reproduces the exact same neighbor-feature sums as the single-process reference. Like Chapter 35's distributed-FFT transpose and Chapter 34's embedding all-to-all, this is correctness by construction: a feature fetch -- local or remote -- is pure RETRIEVAL of a value that is never recomputed differently by rank, never combined with another rank's own partial value at fetch time. What DOES trend upward with P (not perfectly monotonically here, an artifact of this file's own small, fixed-modulus toy graph, not a real property being claimed), visible in the "remote fetches" column above, is the FRACTION of neighbor lookups that must cross a rank boundary -- a demand-driven, per-BATCH communication pattern decided by which nodes happen to be sampled, genuinely different from Chapter 16's own fixed halo schedule and Chapter 28's own frontier expansion, though it shares Chapter 4's own real Universal Virtual Addressing idea of letting any rank transparently reach any other rank's own memory.
+```
+
+</details>
+<!-- execution:end:h100:112_graph_partitioned_neighbor_fetch_correctness_simulation.cpp -->
+
+
 Compile and run (plain host `.cpp`, cross-verified on both the cloud sandbox and the device):
 
 ```bash
@@ -340,6 +502,8 @@ g++ -O2 -ffp-contract=off -o 112_graph_partitioned_neighbor_fetch_correctness_si
 ```
 
 Locked output:
+
+<details markdown="1"><summary>Historical authoring output — superseded by the current execution above</summary>
 
 ```
 Reference (single-process): node 0's own neighbor-feature sum, dim 0..3: 117.00 62.20 46.90 106.60 
@@ -357,7 +521,13 @@ P      all match  remote fetches (of total)
 Every P reproduces the exact same neighbor-feature sums as the single-process reference. Like Chapter 35's distributed-FFT transpose and Chapter 34's embedding all-to-all, this is correctness by construction: a feature fetch -- local or remote -- is pure RETRIEVAL of a value that is never recomputed differently by rank, never combined with another rank's own partial value at fetch time. What DOES trend upward with P (not perfectly monotonically here, an artifact of this file's own small, fixed-modulus toy graph, not a real property being claimed), visible in the "remote fetches" column above, is the FRACTION of neighbor lookups that must cross a rank boundary -- a demand-driven, per-BATCH communication pattern decided by which nodes happen to be sampled, genuinely different from Chapter 16's own fixed halo schedule and Chapter 28's own frontier expansion, though it shares Chapter 4's own real Universal Virtual Addressing idea of letting any rank transparently reach any other rank's own memory.
 ```
 
+</details>
+
 ## 38.3 Distributed Tree-Building: Reductions That Cannot Be Overlapped
+
+<!-- mgpu:figure-3:start -->
+[![A tree level depends on a global statistic](../images/technical/ch38/3-tree.svg)](../images/technical/ch38/3-tree.svg)
+<!-- mgpu:figure-3:end -->
 
 ### Intuition
 
@@ -469,6 +639,66 @@ int main() {
 }
 ```
 
+<!-- execution:start:a100:113_distributed_tree_building_sequential_reduction_model.cpp -->
+> **Current execution — 2026-11-17-a100: Host program/model (exit-only).** UTC (program start): `2026-11-18T00:05:32.590304+00:00`. Source SHA-256: `57d2fd0668f7f24e778257a726ac97281327514f231692fd84b5fcbda86bf6dd`.
+
+[Exact tested source](../validation/2026-11-17-a100/113_distributed_tree_building_sequential_reduction_model/113_distributed_tree_building_sequential_reduction_model.cpp) · [Compiler log](../validation/2026-11-17-a100/113_distributed_tree_building_sequential_reduction_model/compile.log) · [Execution log](../validation/2026-11-17-a100/113_distributed_tree_building_sequential_reduction_model/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+g++ -std=c++17 -O2 113_distributed_tree_building_sequential_reduction_model.cpp -o ./example
+./example
+```
+
+<details markdown="1"><summary>Captured current-source output</summary>
+
+```text
+Real cited XGBoost default: max_depth=6 (xgboost.readthedocs.io official parameter reference).
+Illustrative production-scale ensemble size (not an XGBoost default -- XGBoost has none; chosen here as a realistic illustrative figure): 500 trees.
+
+Splits per tree at max_depth=6 (fully-grown complete binary tree, 2^6 - 1): 63
+Total splits across all 500 trees: 31500
+
+Per NVIDIA's own real cited description, EVERY one of those splits is itself a real cross-shard reduction ("all GPUs collaborate on each tree") -- so this ensemble requires 31500 total real reductions.
+
+Chapter 36's own File 105 found T=360 independent reductions for a full XVA exposure profile -- independent because date 5's own reduction never needed date 4's own result. Here, the story is structurally different: within one tree, split k+1 needs to know WHERE split k put its own boundary before it can even decide which shard's own data to look at next -- a real SEQUENTIAL dependency chain of depth 6 per tree, 500 trees deep. The total reduction COUNT (31500) is large for the same reason Chapter 36's own T was large -- an unchanged technique repeated many times -- but unlike Chapter 36's own T independent reductions, these 6-deep chains cannot be issued concurrently with each other WITHIN one tree: each one's own real cross-shard reduction must complete before the next split in that same tree can even be computed. Only ACROSS different trees (if built independently rather than in strict boosting sequence) is there room for the kind of overlap Chapter 36's own T dates already had throughout.
+```
+
+</details>
+<!-- execution:end:a100:113_distributed_tree_building_sequential_reduction_model.cpp -->
+
+
+<!-- execution:start:h100:113_distributed_tree_building_sequential_reduction_model.cpp -->
+> **Current execution — 2026-11-17-h100: Host program/model (exit-only).** UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`. Source SHA-256: `57d2fd0668f7f24e778257a726ac97281327514f231692fd84b5fcbda86bf6dd`.
+
+[Exact tested source](../validation/2026-11-17-h100/113_distributed_tree_building_sequential_reduction_model/113_distributed_tree_building_sequential_reduction_model.cpp) · [Compiler log](../validation/2026-11-17-h100/113_distributed_tree_building_sequential_reduction_model/compile.log) · [Execution log](../validation/2026-11-17-h100/113_distributed_tree_building_sequential_reduction_model/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+g++ -std=c++17 -O2 113_distributed_tree_building_sequential_reduction_model.cpp -o ./example
+./example
+```
+
+<details markdown="1"><summary>Captured current-source output</summary>
+
+```text
+Real cited XGBoost default: max_depth=6 (xgboost.readthedocs.io official parameter reference).
+Illustrative production-scale ensemble size (not an XGBoost default -- XGBoost has none; chosen here as a realistic illustrative figure): 500 trees.
+
+Splits per tree at max_depth=6 (fully-grown complete binary tree, 2^6 - 1): 63
+Total splits across all 500 trees: 31500
+
+Per NVIDIA's own real cited description, EVERY one of those splits is itself a real cross-shard reduction ("all GPUs collaborate on each tree") -- so this ensemble requires 31500 total real reductions.
+
+Chapter 36's own File 105 found T=360 independent reductions for a full XVA exposure profile -- independent because date 5's own reduction never needed date 4's own result. Here, the story is structurally different: within one tree, split k+1 needs to know WHERE split k put its own boundary before it can even decide which shard's own data to look at next -- a real SEQUENTIAL dependency chain of depth 6 per tree, 500 trees deep. The total reduction COUNT (31500) is large for the same reason Chapter 36's own T was large -- an unchanged technique repeated many times -- but unlike Chapter 36's own T independent reductions, these 6-deep chains cannot be issued concurrently with each other WITHIN one tree: each one's own real cross-shard reduction must complete before the next split in that same tree can even be computed. Only ACROSS different trees (if built independently rather than in strict boosting sequence) is there room for the kind of overlap Chapter 36's own T dates already had throughout.
+```
+
+</details>
+<!-- execution:end:h100:113_distributed_tree_building_sequential_reduction_model.cpp -->
+
+
 Compile and run (plain host `.cpp`, cross-verified on both the cloud sandbox and the device):
 
 ```bash
@@ -478,6 +708,8 @@ g++ -O2 -ffp-contract=off -o 113_distributed_tree_building_sequential_reduction_
 ```
 
 Locked output:
+
+<details markdown="1"><summary>Historical authoring output — superseded by the current execution above</summary>
 
 ```
 Real cited XGBoost default: max_depth=6 (xgboost.readthedocs.io official parameter reference).
@@ -490,6 +722,8 @@ Per NVIDIA's own real cited description, EVERY one of those splits is itself a r
 
 Chapter 36's own File 105 found T=360 independent reductions for a full XVA exposure profile -- independent because date 5's own reduction never needed date 4's own result. Here, the story is structurally different: within one tree, split k+1 needs to know WHERE split k put its own boundary before it can even decide which shard's own data to look at next -- a real SEQUENTIAL dependency chain of depth 6 per tree, 500 trees deep. The total reduction COUNT (31500) is large for the same reason Chapter 36's own T was large -- an unchanged technique repeated many times -- but unlike Chapter 36's own T independent reductions, these 6-deep chains cannot be issued concurrently with each other WITHIN one tree: each one's own real cross-shard reduction must complete before the next split in that same tree can even be computed. Only ACROSS different trees (if built independently rather than in strict boosting sequence) is there room for the kind of overlap Chapter 36's own T dates already had throughout.
 ```
+
+</details>
 
 ## Chapter Summary
 

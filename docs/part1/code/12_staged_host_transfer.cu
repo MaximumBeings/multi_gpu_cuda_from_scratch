@@ -1,46 +1,21 @@
-// Chapter 5: Explicit Transfers -- cudaMemcpyPeer, Staged Host Transfers,
-// and When Each Wins
 // 12_staged_host_transfer.cu
-//
-// The staged fallback made explicit: two ordinary cudaMemcpy() calls,
-// device 0 -> host, then host -> device 1, using a pinned host buffer
-// as the waypoint. This is the two-hop route the documentation
-// describes as "staged through the host" when peer access between the
-// two devices has not been enabled. The driver's internal staging is not
-// documented and may pipeline in smaller chunks, so treat this as the
-// book's model of that fallback, not a copy of the driver's code.
-// Genuinely compiled with a real nvcc and genuinely run.
+// Checked teaching implementation; serial host scheduling favors clarity, not speed.
 #include <cstdio>
+#include <vector>
+#include <algorithm>
 #include <cuda_runtime.h>
-
-int main() {
-    void* devPtr0 = nullptr;
-    void* devPtr1 = nullptr;
-    void* hostStaging = nullptr;
-    const size_t BYTES = 64;
-
-    cudaError_t eAlloc0 = cudaMalloc(&devPtr0, BYTES);
-    printf("cudaMalloc(device 0 buffer): %s (code %d)\n", cudaGetErrorString(eAlloc0), (int)eAlloc0);
-
-    cudaError_t eAlloc1 = cudaMalloc(&devPtr1, BYTES);
-    printf("cudaMalloc(device 1 buffer): %s (code %d)\n", cudaGetErrorString(eAlloc1), (int)eAlloc1);
-
-    cudaError_t eHost = cudaMallocHost(&hostStaging, BYTES);
-    printf("cudaMallocHost(staging buffer): %s (code %d)\n", cudaGetErrorString(eHost), (int)eHost);
-
-    // Step 1: device 0 -> host.
-    cudaError_t e1 = cudaMemcpy(hostStaging, devPtr0, BYTES, cudaMemcpyDeviceToHost);
-    printf("Step 1, cudaMemcpy(device 0 -> host staging): %s (code %d)\n",
-           cudaGetErrorString(e1), (int)e1);
-
-    // Step 2: host -> device 1. Two PCIe (or equivalent) transfers where
-    // a single peer-direct copy would have used one link once.
-    cudaError_t e2 = cudaMemcpy(devPtr1, hostStaging, BYTES, cudaMemcpyHostToDevice);
-    printf("Step 2, cudaMemcpy(host staging -> device 1): %s (code %d)\n",
-           cudaGetErrorString(e2), (int)e2);
-
-    if (eAlloc0 == cudaSuccess) cudaFree(devPtr0);
-    if (eAlloc1 == cudaSuccess) cudaFree(devPtr1);
-    if (eHost == cudaSuccess) cudaFreeHost(hostStaging);
-    return 0;
+#define CUDA(call) do { cudaError_t status = (call); if (status != cudaSuccess) { \
+ fprintf(stderr,"%s: %s\n",#call,cudaGetErrorString(status)); \
+ return status==cudaErrorNoDevice || status==cudaErrorInsufficientDriver ? 2 : 1; } } while(0)
+int main(){
+ int count=0;CUDA(cudaGetDeviceCount(&count));if(count<2){printf("BLOCKED: requires 2 GPUs; found %d.\n",count);return 2;}
+ const int n=4096;const size_t bytes=n*sizeof(float);std::vector<float> input(n),output(n);
+ for(int i=0;i<n;++i)input[i]=float((i*17)%4093-2046)/8.0f;
+ float *source=nullptr,*destination=nullptr,*staging=nullptr;
+ CUDA(cudaSetDevice(0));CUDA(cudaMalloc(&source,bytes));CUDA(cudaMemcpy(source,input.data(),bytes,cudaMemcpyHostToDevice));CUDA(cudaMallocHost(&staging,bytes));
+ CUDA(cudaMemcpy(staging,source,bytes,cudaMemcpyDeviceToHost));
+ CUDA(cudaSetDevice(1));CUDA(cudaMalloc(&destination,bytes));CUDA(cudaMemset(destination,0,bytes));CUDA(cudaMemcpy(destination,staging,bytes,cudaMemcpyHostToDevice));CUDA(cudaMemcpy(output.data(),destination,bytes,cudaMemcpyDeviceToHost));
+ for(int i=0;i<n;++i)if(output[i]!=input[i]){fprintf(stderr,"FAIL staged transfer[%d]\n",i);return 1;}
+ CUDA(cudaFree(destination));CUDA(cudaSetDevice(0));CUDA(cudaFree(source));CUDA(cudaFreeHost(staging));
+ printf("PASS: 4096 nonuniform values verified through explicit pinned-host staging.\n");return 0;
 }

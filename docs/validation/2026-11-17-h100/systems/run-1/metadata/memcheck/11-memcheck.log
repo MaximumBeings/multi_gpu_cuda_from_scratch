@@ -1,0 +1,4 @@
+========= COMPUTE-SANITIZER
+PASS: 4096 nonuniform values verified in both peer-copy directions.
+Copy success does not identify the physical transfer route or bandwidth.
+========= ERROR SUMMARY: 0 errors

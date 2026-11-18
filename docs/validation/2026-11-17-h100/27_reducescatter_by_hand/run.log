@@ -1,0 +1,2 @@
+$ /home/ubuntu/codex-multigpu-audit-20261117/multi-gpu-audit/artifacts/h100-reviewed-20261117/27_reducescatter_by_hand/example
+PASS: host-staged rank-ordered reduce-scatter on 2 GPUs, all nonuniform output values checked.

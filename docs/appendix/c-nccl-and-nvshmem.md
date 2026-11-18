@@ -1,8 +1,22 @@
 # Appendix C: NCCL and NVSHMEM -- The Standard Libraries You Get for Free
 
+<!-- execution:provenance -->
+!!! info "Execution provenance"
+
+    Current execution blocks identify the tested source hash, hardware dataset, commands and captured output. References elsewhere on this page to a device-less environment describe the original authoring context. Historical output is superseded by the current record. Displayed output omits the runner command header and trims trailing line whitespace; raw logs remain exact. A host simulation or API validation has its stated scope; neither alone establishes a numerical multi-GPU workload or measured performance.
+
+
+<!-- mgpu:opener:start -->
+[![Appendix C: NCCL and NVSHMEM -- The Standard Libraries You Get for Free](../images/chapter-openers/appendix-c.svg)](../images/chapter-openers/appendix-c.svg)
+<!-- mgpu:opener:end -->
+
 Chapters 8 through 10 hand-built five collectives from first principles -- broadcast, reduce, ring all-reduce, all-gather, and reduce-scatter -- plus a genuinely new all-to-all. Chapter 11 then matched every one of them to its real NCCL call, and Chapters 17, 20, and 22 went on to use NCCL and NVSHMEM as working tools throughout the rest of the book: a throwaway `ncclAllReduce` as a barrier in Chapter 17, `MPI_Sendrecv` fixing a real ring deadlock in Chapter 20, and NVSHMEM's device-initiated `nvshmem_int_p()` in Chapter 22. Unlike a book meeting NCCL or NVSHMEM for the first time here, this book has already put both to work. This appendix does not introduce them again -- it gathers their fuller real API surface into one consolidated reference, section by section citing the exact chapter that already established each idea, and closes with the decision framework this book has been applying implicitly since Chapter 11: when to hand-write a collective, when to reach for NCCL, and when the job genuinely needs NVSHMEM's one-sided, device-initiated model instead.
 
 ## C.1 NCCL's Full Collective Reference
+
+<!-- mgpu:figure-1:start -->
+[![Select an operation by its output](../images/technical/appendix-c/1-mapping.svg)](../images/technical/appendix-c/1-mapping.svg)
+<!-- mgpu:figure-1:end -->
 
 ### Intuition
 
@@ -35,76 +49,100 @@ Five of the six rows are a clean one-to-one match: whatever Chapter 8's or Chapt
 ### Code and Verification
 
 ```cpp
-// Appendix C: NCCL and NVSHMEM -- The Standard Libraries You Get for Free
 // 126_nccl_collective_reference.cu
-//
-// Chapters 8-10 hand-built five collectives from first principles
-// (broadcast, reduce, ring all-reduce, all-gather, reduce-scatter, and a
-// genuinely new all-to-all), and Chapter 11 matched every one of them to
-// its real NCCL call. This file gathers those five matches into ONE
-// reference table -- exactly the kind of consolidated lookup a working
-// engineer reaches for once the underlying algorithm (Chapters 8-10) is
-// already understood -- and genuinely attempts a real NCCL communicator
-// init, honestly reporting this environment's own real, well-documented
-// limitation (zero physical GPUs) exactly the way every device-touching
-// file in this book has since Chapter 2.
-//
-// Compile: nvcc -arch=sm_80 126_nccl_collective_reference.cu -o 126_nccl_collective_reference -lnccl
-// Run:     ./126_nccl_collective_reference
+// Six collective recipes, checked against exact integer results on two GPUs.
 #include <cstdio>
-#include <nccl.h>
+#include <cstdlib>
+#include <cmath>
+#include <vector>
 #include <cuda_runtime.h>
+#include <nccl.h>
+#define CUDA_OK(x) do {cudaError_t e=(x);if(e!=cudaSuccess){fprintf(stderr,"%s: %s\n",#x,cudaGetErrorString(e));exit(1);}}while(0)
+#define NCCL_OK(x) do {ncclResult_t e=(x);if(e!=ncclSuccess){fprintf(stderr,"%s: %s\n",#x,ncclGetErrorString(e));exit(1);}}while(0)
 
-int main() {
-    printf("=== Section C.1: NCCL's five core collectives, matched to the "
-           "chapter that hand-built each one ===\n\n");
-
-    int version = 0;
-    ncclGetVersion(&version);
-    printf("real installed NCCL version: %d.%d.%d\n\n",
-           version / 10000, (version / 100) % 100, version % 100);
-
-    printf("%-20s %-45s %-10s\n", "NCCL call", "signature (sendbuff, recvbuff, ...)", "hand-built in");
-    printf("%-20s %-45s %-10s\n", "ncclBroadcast", "(send, recv, count, type, root, comm, stream)", "Ch8 8.1");
-    printf("%-20s %-45s %-10s\n", "ncclReduce",    "(send, recv, count, type, op, root, comm, stream)", "Ch8 8.2");
-    printf("%-20s %-45s %-10s\n", "ncclAllReduce", "(send, recv, count, type, op, comm, stream)", "Ch9 (ring)");
-    printf("%-20s %-45s %-10s\n", "ncclReduceScatter", "(send, recv, recvcount, type, op, comm, stream)", "Ch10 10.2");
-    printf("%-20s %-45s %-10s\n", "ncclAllGather", "(send, recv, sendcount, type, comm, stream)", "Ch10 10.1");
-    printf("\nnote: the installed NCCL (2.18.3) has no dedicated "
-           "all-to-all call (a dedicated ncclAlltoAll() only arrived in "
-           "NCCL 2.28) -- on this version, Ch10 10.3's own hand-built "
-           "all-to-all maps to the recipe NCCL's own documentation gives "
-           "(Ch11's own real finding): repeated ncclSend()/ncclRecv() "
-           "calls fused inside ncclGroupStart()/ncclGroupEnd(). NCCL also "
-           "ships no Barrier; Ch17 worked around that gap differently, "
-           "with a single throwaway ncclAllReduce rather than a group of "
-           "point-to-point calls.\n\n");
-
-    printf("=== attempting a genuine ncclCommInitRank() ===\n\n");
-    ncclUniqueId id;
-    ncclResult_t idErr = ncclGetUniqueId(&id);
-    printf("ncclGetUniqueId() -> %s (%s)\n", ncclGetErrorString(idErr),
-           idErr == ncclSuccess ? "succeeds -- no device needed to generate an ID" : "unexpected failure");
-
-    ncclComm_t comm;
-    ncclResult_t initErr = ncclCommInitRank(&comm, 1, id, 0);
-    printf("ncclCommInitRank(&comm, nranks=1, id, rank=0) -> %s (%s)\n",
-           ncclGetErrorString(initErr),
-           initErr == ncclSuccess ? "succeeded" :
-           "this environment has zero physical GPUs, so NCCL cannot "
-           "actually bind a communicator to a device, exactly the same "
-           "real, well-documented limitation Ch22/Ch23/Ch32 already "
-           "found for NVSHMEM init and captured graph launches");
-
-    printf("\nself-check: ncclGetVersion() and ncclGetUniqueId() both "
-           "succeed with NO device at all (pure host-side bookkeeping), "
-           "while ncclCommInitRank() genuinely requires one -- this file "
-           "reports both outcomes honestly rather than skipping the "
-           "attempt: %s\n",
-           (idErr == ncclSuccess) ? "confirmed" : "MISMATCH");
-    return (idErr == ncclSuccess) ? 0 : 1;
+int main(){
+    int count=0;CUDA_OK(cudaGetDeviceCount(&count));if(count<2){fprintf(stderr,"Requires 2 GPUs\n");return 2;}
+    constexpr int ranks=2;int devices[ranks]={0,1};ncclComm_t comm[ranks]={};cudaStream_t stream[ranks]={};int *send[ranks]={},*recv[ranks]={};
+    NCCL_OK(ncclCommInitAll(comm,ranks,devices));
+    for(int r=0;r<ranks;++r){CUDA_OK(cudaSetDevice(r));CUDA_OK(cudaStreamCreate(&stream[r]));CUDA_OK(cudaMalloc(&send[r],2*sizeof(int)));CUDA_OK(cudaMalloc(&recv[r],2*sizeof(int)));}
+    int errors=0;
+    for(int op=0;op<6;++op){
+        for(int r=0;r<ranks;++r){CUDA_OK(cudaSetDevice(r));int input[2]={r+1,r+1};if(op==5){input[0]=100*r;input[1]=100*r+1;}
+            CUDA_OK(cudaMemcpy(send[r],input,sizeof(input),cudaMemcpyHostToDevice));CUDA_OK(cudaMemset(recv[r],0xff,sizeof(input)));}
+        NCCL_OK(ncclGroupStart());
+        for(int r=0;r<ranks;++r){CUDA_OK(cudaSetDevice(r));
+            if(op==0)NCCL_OK(ncclBroadcast(send[r],recv[r],1,ncclInt,0,comm[r],stream[r]));
+            if(op==1)NCCL_OK(ncclReduce(send[r],recv[r],1,ncclInt,ncclSum,0,comm[r],stream[r]));
+            if(op==2)NCCL_OK(ncclAllReduce(send[r],recv[r],1,ncclInt,ncclSum,comm[r],stream[r]));
+            if(op==3)NCCL_OK(ncclAllGather(send[r],recv[r],1,ncclInt,comm[r],stream[r]));
+            if(op==4)NCCL_OK(ncclReduceScatter(send[r],recv[r],1,ncclInt,ncclSum,comm[r],stream[r]));
+            if(op==5)for(int peer=0;peer<ranks;++peer){NCCL_OK(ncclSend(send[r]+peer,1,ncclInt,peer,comm[r],stream[r]));NCCL_OK(ncclRecv(recv[r]+peer,1,ncclInt,peer,comm[r],stream[r]));}
+        }NCCL_OK(ncclGroupEnd());
+        for(int r=0;r<ranks;++r){CUDA_OK(cudaSetDevice(r));CUDA_OK(cudaStreamSynchronize(stream[r]));int got[2];CUDA_OK(cudaMemcpy(got,recv[r],sizeof(got),cudaMemcpyDeviceToHost));
+            if(op==0)errors+=got[0]!=1;if(op==1&&r==0)errors+=got[0]!=3;if(op==2||op==4)errors+=got[0]!=3;
+            if(op==3)errors+=(got[0]!=1)+(got[1]!=2);if(op==5)errors+=(got[0]!=r)+(got[1]!=100+r);}
+        const char* names[]={"Broadcast","Reduce","AllReduce","AllGather","ReduceScatter","Grouped Send/Recv all-to-all"};printf("%s checked; cumulative errors=%d\n",names[op],errors);
+    }
+    for(int r=0;r<ranks;++r){CUDA_OK(cudaSetDevice(r));CUDA_OK(cudaFree(send[r]));CUDA_OK(cudaFree(recv[r]));CUDA_OK(cudaStreamDestroy(stream[r]));NCCL_OK(ncclCommDestroy(comm[r]));}
+    printf("VALIDATION %s: errors=%d\n",errors?"FAIL":"PASS",errors);return errors?1:0;
 }
 ```
+
+<!-- execution:start:a100:126_nccl_collective_reference.cu -->
+> **Current execution — 2026-11-17-a100: Numerical/transport validation (recorded scope).** UTC (program start): `2026-11-17T23:58:32.558297+00:00`. Source SHA-256: `b47b447984378093482ae894fce5f20796a82be9677255090bfa681c8fc7330a`.
+
+[Exact tested source](../validation/2026-11-17-a100/126_nccl_collective_reference/126_nccl_collective_reference.cu) · [Compiler log](../validation/2026-11-17-a100/126_nccl_collective_reference/compile.log) · [Execution log](../validation/2026-11-17-a100/126_nccl_collective_reference/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+nvcc -std=c++17 -O2 -arch=sm_80 126_nccl_collective_reference.cu -o ./example -lnccl
+./example
+```
+
+<details markdown="1"><summary>Captured current-source output</summary>
+
+```text
+Broadcast checked; cumulative errors=0
+Reduce checked; cumulative errors=0
+AllReduce checked; cumulative errors=0
+AllGather checked; cumulative errors=0
+ReduceScatter checked; cumulative errors=0
+Grouped Send/Recv all-to-all checked; cumulative errors=0
+VALIDATION PASS: errors=0
+```
+
+</details>
+<!-- execution:end:a100:126_nccl_collective_reference.cu -->
+
+
+<!-- execution:start:h100:126_nccl_collective_reference.cu -->
+> **Current execution — 2026-11-17-h100: Numerical/transport validation (recorded scope).** UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`. Source SHA-256: `b47b447984378093482ae894fce5f20796a82be9677255090bfa681c8fc7330a`.
+
+[Exact tested source](../validation/2026-11-17-h100/126_nccl_collective_reference/126_nccl_collective_reference.cu) · [Compiler log](../validation/2026-11-17-h100/126_nccl_collective_reference/compile.log) · [Execution log](../validation/2026-11-17-h100/126_nccl_collective_reference/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+nvcc -std=c++17 -O2 -arch=sm_90 126_nccl_collective_reference.cu -o ./example -lnccl
+./example
+```
+
+<details markdown="1"><summary>Captured current-source output</summary>
+
+```text
+Broadcast checked; cumulative errors=0
+Reduce checked; cumulative errors=0
+AllReduce checked; cumulative errors=0
+AllGather checked; cumulative errors=0
+ReduceScatter checked; cumulative errors=0
+Grouped Send/Recv all-to-all checked; cumulative errors=0
+VALIDATION PASS: errors=0
+```
+
+</details>
+<!-- execution:end:h100:126_nccl_collective_reference.cu -->
+
 
 **Compile and run:**
 
@@ -116,6 +154,8 @@ nvcc -arch=sm_80 126_nccl_collective_reference.cu -o 126_nccl_collective_referen
 **Sample input:** none -- the program takes no arguments and reads no data; every value it prints is either a compile-time constant string or a real return value read back from the installed NCCL library.
 
 **Sample output:**
+
+<details markdown="1"><summary>Historical authoring output — superseded by the current execution above</summary>
 
 ```text
 === Section C.1: NCCL's five core collectives, matched to the chapter that hand-built each one ===
@@ -138,6 +178,8 @@ ncclCommInitRank(&comm, nranks=1, id, rank=0) -> unhandled cuda error (run with 
 
 self-check: ncclGetVersion() and ncclGetUniqueId() both succeed with NO device at all (pure host-side bookkeeping), while ncclCommInitRank() genuinely requires one -- this file reports both outcomes honestly rather than skipping the attempt: confirmed
 ```
+
+</details>
 
 ## C.2 NCCL Point-to-Point, Consolidated
 
@@ -172,121 +214,78 @@ Picture each peer as running its own private mail slot. NCCL treats every peer's
 ### Code and Verification
 
 ```cpp
-// Appendix C: NCCL and NVSHMEM -- The Standard Libraries You Get for Free
 // 127_nccl_point_to_point.cu
-//
-// Chapter 11 already introduced NCCL's own real point-to-point API --
-// ncclSend()/ncclRecv(), fused inside ncclGroupStart()/ncclGroupEnd() to
-// build Chapter 10's own all-to-all without a dedicated NCCL call at all
-// -- and its own Self-Check Question 4 asked what NCCL's documented
-// ordering guarantee promises for two point-to-point calls inside one
-// group: calls to the SAME peer execute in the order they were issued;
-// calls to DIFFERENT peers carry no such guarantee and may progress
-// concurrently. Chapter 11's own body text quoted that guarantee but did
-// not build a standalone demonstration of it. This section gathers
-// ncclSend/ncclRecv/ncclGroupStart/ncclGroupEnd as a consolidated
-// reference (confirming all four real symbols resolve and link) and then
-// builds exactly the demonstration Chapter 11's own Self-Check pointed
-// at but left as an exercise: a same-peer message queue that preserves
-// issue order, contrasted with different-peer queues that don't need to.
-//
-// Compile: nvcc -arch=sm_80 127_nccl_point_to_point.cu -o 127_nccl_point_to_point -lnccl
-// Run:     ./127_nccl_point_to_point
+// Two same-peer messages use matching issue order on sender and receiver.
 #include <cstdio>
-#include <nccl.h>
-#include <cuda_runtime.h>
+#include <cstdlib>
+#include <cmath>
 #include <vector>
+#include <cuda_runtime.h>
+#include <nccl.h>
+#define CUDA_OK(x) do {cudaError_t e=(x);if(e!=cudaSuccess){fprintf(stderr,"%s: %s\n",#x,cudaGetErrorString(e));exit(1);}}while(0)
+#define NCCL_OK(x) do {ncclResult_t e=(x);if(e!=ncclSuccess){fprintf(stderr,"%s: %s\n",#x,ncclGetErrorString(e));exit(1);}}while(0)
 
-int main() {
-    printf("=== Section C.2: NCCL point-to-point (ncclSend/ncclRecv), "
-           "consolidated from Chapter 11 ===\n\n");
-
-    void* pSend = (void*)&ncclSend;
-    void* pRecv = (void*)&ncclRecv;
-    void* pGroupStart = (void*)&ncclGroupStart;
-    void* pGroupEnd = (void*)&ncclGroupEnd;
-    printf("real symbols resolved: ncclSend=%p ncclRecv=%p "
-           "ncclGroupStart=%p ncclGroupEnd=%p\n\n",
-           pSend, pRecv, pGroupStart, pGroupEnd);
-
-    printf("Chapter 11's own real recipe, restated as a standalone "
-           "reference (this is Chapter 10's own all-to-all, built the "
-           "SAME way Chapter 11 found NCCL's own documentation builds it -- "
-           "the installed NCCL 2.18.3 has no dedicated all-to-all call; "
-           "ncclAlltoAll() only arrived in NCCL 2.28):\n\n");
-    printf("  ncclGroupStart();\n");
-    printf("  for (int peer = 0; peer < nranks; peer++) {\n");
-    printf("      ncclSend(sendbuf + peer*chunkSize, chunkSize, type, peer, comm, stream);\n");
-    printf("      ncclRecv(recvbuf + peer*chunkSize, chunkSize, type, peer, comm, stream);\n");
-    printf("  }\n");
-    printf("  ncclGroupEnd();\n\n");
-
-    printf("=== demonstrating Chapter 11's own Self-Check Q4 answer: "
-           "same-peer calls stay ordered, different-peer calls don't "
-           "need to ===\n\n");
-
-    // A tiny host-side model of NCCL's own documented ordering guarantee:
-    // one FIFO queue PER PEER. Two ncclSend() calls issued to the SAME
-    // peer inside one group are modeled as two pushes onto that peer's
-    // own queue -- FIFO order guarantees they are delivered in the order
-    // issued. Two calls to DIFFERENT peers go to DIFFERENT queues, so
-    // nothing about their relative order is constrained at all.
-    const int NPEERS = 3;
-    std::vector<std::vector<int>> perPeerQueue(NPEERS);
-
-    struct Call { int peer; int tag; };
-    std::vector<Call> issued = {
-        {0, 100}, {0, 101}, {0, 102},   // three sends to the SAME peer (0)
-        {1, 200},                        // one send to a DIFFERENT peer (1)
-        {2, 300}, {2, 301},              // two sends to a THIRD peer (2)
-    };
-
-    printf("issuing, inside one ncclGroupStart()/ncclGroupEnd() group:\n");
-    for (const auto& c : issued) {
-        printf("  ncclSend(..., peer=%d, ...) tag=%d\n", c.peer, c.tag);
-        perPeerQueue[c.peer].push_back(c.tag);
-    }
-
-    printf("\nper-peer delivery order (each peer's own queue is FIFO -- "
-           "same-peer calls preserve issue order by construction):\n");
-    bool samePeerOrdered = true;
-    for (int p = 0; p < NPEERS; p++) {
-        printf("  peer %d receives, in order: [", p);
-        for (size_t i = 0; i < perPeerQueue[p].size(); i++)
-            printf("%d%s", perPeerQueue[p][i], i + 1 < perPeerQueue[p].size() ? ", " : "");
-        printf("]\n");
-    }
-    // Same-peer ordering check: peer 0's own queue must equal [100,101,102]
-    // in exactly that order (the order they were issued in).
-    int expectedPeer0[3] = {100, 101, 102};
-    for (int i = 0; i < 3; i++)
-        if (perPeerQueue[0][i] != expectedPeer0[i]) samePeerOrdered = false;
-
-    printf("\nnote what this model does NOT constrain: peer 1's own "
-           "single call and peer 2's own two calls could be scheduled "
-           "and delivered in any relative order with respect to peer "
-           "0's own three calls -- NCCL's documented guarantee covers "
-           "ONLY same-peer ordering, exactly Chapter 11's own Self-Check "
-           "Q4 answer, never cross-peer ordering.\n");
-
-    printf("\nself-check: peer 0's own three same-peer sends were "
-           "delivered in exactly the order they were issued (100, 101, "
-           "102): %s\n", samePeerOrdered ? "confirmed" : "MISMATCH");
-
-    printf("\n=== attempting a genuine communicator for a real "
-           "ncclSend/ncclRecv call ===\n\n");
-    ncclUniqueId id;
-    ncclGetUniqueId(&id);
-    ncclComm_t comm;
-    ncclResult_t initErr = ncclCommInitRank(&comm, 1, id, 0);
-    printf("ncclCommInitRank() -> %s (%s)\n", ncclGetErrorString(initErr),
-           initErr == ncclSuccess ? "succeeded" :
-           "same real, honest zero-physical-GPU limitation as Section C.1 "
-           "and every device-touching file since Chapter 2");
-
-    return samePeerOrdered ? 0 : 1;
+int main(){
+    int count=0;CUDA_OK(cudaGetDeviceCount(&count));if(count<2){fprintf(stderr,"Requires 2 GPUs\n");return 2;}
+    int devices[2]={0,1};ncclComm_t comm[2]={};cudaStream_t streams[2]={};int* buffers[2]={};NCCL_OK(ncclCommInitAll(comm,2,devices));
+    for(int r=0;r<2;++r){CUDA_OK(cudaSetDevice(r));CUDA_OK(cudaMalloc(&buffers[r],2*sizeof(int)));CUDA_OK(cudaStreamCreate(&streams[r]));}
+    int input[2]={100,101},got[2]={};CUDA_OK(cudaSetDevice(0));CUDA_OK(cudaMemcpy(buffers[0],input,sizeof(input),cudaMemcpyHostToDevice));
+    CUDA_OK(cudaSetDevice(1));CUDA_OK(cudaMemset(buffers[1],0xff,sizeof(got)));
+    NCCL_OK(ncclGroupStart());CUDA_OK(cudaSetDevice(0));NCCL_OK(ncclSend(buffers[0],1,ncclInt,1,comm[0],streams[0]));NCCL_OK(ncclSend(buffers[0]+1,1,ncclInt,1,comm[0],streams[0]));
+    CUDA_OK(cudaSetDevice(1));NCCL_OK(ncclRecv(buffers[1],1,ncclInt,0,comm[1],streams[1]));NCCL_OK(ncclRecv(buffers[1]+1,1,ncclInt,0,comm[1],streams[1]));NCCL_OK(ncclGroupEnd());
+    for(int r=0;r<2;++r){CUDA_OK(cudaSetDevice(r));CUDA_OK(cudaStreamSynchronize(streams[r]));}
+    CUDA_OK(cudaSetDevice(1));CUDA_OK(cudaMemcpy(got,buffers[1],sizeof(got),cudaMemcpyDeviceToHost));int errors=(got[0]!=100)+(got[1]!=101);
+    printf("Same-peer message results: %d %d. This two-GPU test does not test scheduling among different remote peers.\n",got[0],got[1]);
+    for(int r=0;r<2;++r){CUDA_OK(cudaSetDevice(r));CUDA_OK(cudaFree(buffers[r]));CUDA_OK(cudaStreamDestroy(streams[r]));NCCL_OK(ncclCommDestroy(comm[r]));}
+    printf("VALIDATION %s: errors=%d\n",errors?"FAIL":"PASS",errors);return errors?1:0;
 }
 ```
+
+<!-- execution:start:a100:127_nccl_point_to_point.cu -->
+> **Current execution — 2026-11-17-a100: Numerical/transport validation (recorded scope).** UTC (program start): `2026-11-17T23:58:39.451336+00:00`. Source SHA-256: `77eda8517f9944b216c53328297c2b610295555cd52472baa1e3cdf361f42497`.
+
+[Exact tested source](../validation/2026-11-17-a100/127_nccl_point_to_point/127_nccl_point_to_point.cu) · [Compiler log](../validation/2026-11-17-a100/127_nccl_point_to_point/compile.log) · [Execution log](../validation/2026-11-17-a100/127_nccl_point_to_point/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+nvcc -std=c++17 -O2 -arch=sm_80 127_nccl_point_to_point.cu -o ./example -lnccl
+./example
+```
+
+<details markdown="1"><summary>Captured current-source output</summary>
+
+```text
+Same-peer message results: 100 101. This two-GPU test does not test scheduling among different remote peers.
+VALIDATION PASS: errors=0
+```
+
+</details>
+<!-- execution:end:a100:127_nccl_point_to_point.cu -->
+
+
+<!-- execution:start:h100:127_nccl_point_to_point.cu -->
+> **Current execution — 2026-11-17-h100: Numerical/transport validation (recorded scope).** UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`. Source SHA-256: `77eda8517f9944b216c53328297c2b610295555cd52472baa1e3cdf361f42497`.
+
+[Exact tested source](../validation/2026-11-17-h100/127_nccl_point_to_point/127_nccl_point_to_point.cu) · [Compiler log](../validation/2026-11-17-h100/127_nccl_point_to_point/compile.log) · [Execution log](../validation/2026-11-17-h100/127_nccl_point_to_point/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+nvcc -std=c++17 -O2 -arch=sm_90 127_nccl_point_to_point.cu -o ./example -lnccl
+./example
+```
+
+<details markdown="1"><summary>Captured current-source output</summary>
+
+```text
+Same-peer message results: 100 101. This two-GPU test does not test scheduling among different remote peers.
+VALIDATION PASS: errors=0
+```
+
+</details>
+<!-- execution:end:h100:127_nccl_point_to_point.cu -->
+
 
 **Compile and run:**
 
@@ -298,6 +297,8 @@ nvcc -arch=sm_80 127_nccl_point_to_point.cu -o 127_nccl_point_to_point -lnccl
 **Sample input:** none -- the six-call issue sequence (peer, tag pairs) is a fixed constant baked into the program, not read from any file or argument.
 
 **Sample output:**
+
+<details markdown="1"><summary>Historical authoring output — superseded by the current execution above</summary>
 
 ```text
 === Section C.2: NCCL point-to-point (ncclSend/ncclRecv), consolidated from Chapter 11 ===
@@ -337,9 +338,15 @@ self-check: peer 0's own three same-peer sends were delivered in exactly the ord
 ncclCommInitRank() -> unhandled cuda error (run with NCCL_DEBUG=INFO for details) (same real, honest zero-physical-GPU limitation as Section C.1 and every device-touching file since Chapter 2)
 ```
 
+</details>
+
 (the two pointer values printed for the resolved symbols are real addresses from this build and will differ run to run and machine to machine; only their non-null-ness is the thing being checked)
 
 ## C.3 NVSHMEM's Fuller API
+
+<!-- mgpu:figure-3:start -->
+[![A symmetric heap supports remote addressing](../images/technical/appendix-c/3-symmetric.svg)](../images/technical/appendix-c/3-symmetric.svg)
+<!-- mgpu:figure-3:end -->
 
 ### Intuition
 
@@ -372,120 +379,195 @@ Every one of these calls is initiated by the PE that issues it, and the remote P
 
 ### Code and Verification
 
+> **Validation update:** This source now checks the actual API operation instead of interpreting a zero-GPU path as a successful workload. File 68 synchronizes before checking host callback counts; File 128 performs real NVSHMEM get/atomic-add/team/barrier checks on initialized symmetric device memory. The current source was compiled and executed in the dated H100 suite; use the linked record for its numerical, API-probe or other-execution scope.
+
+The [2026-11-17 H100 execution record](../validation-h100.md) covers two GPUs connected by local NV18. It distinguishes numerical checks, API probes and other executions; a successful exit alone does not establish GPU algorithm correctness.
+
 ```cpp
-// Appendix C: NCCL and NVSHMEM -- The Standard Libraries You Get for Free
 // 128_nvshmem_api_reference.cu
-//
-// Chapter 22 introduced NVSHMEM through exactly one real API call,
-// nvshmem_int_p() -- a device-initiated, one-sided WRITE into a remote
-// PE's memory. NVSHMEM's own real API is much larger: nvshmem_int_get()
-// (the READ-side counterpart to Ch22's own put), nvshmem_int_atomic_add()
-// (an atomic, race-free remote update -- the cross-PE counterpart of a
-// plain CUDA atomicAdd() across threads on one device), nvshmem_
-// barrier_all() (NVSHMEM's own collective synchronization, the same real
-// job Chapter 17's throwaway ncclAllReduce did for NCCL), and NVSHMEM's
-// TEAM abstraction (NVSHMEM_TEAM_WORLD, nvshmem_team_my_pe() -- a named
-// subset-of-PEs concept with no direct analog in this book's own NCCL or
-// MPI chapters). This file confirms all of these real symbols resolve
-// and link, genuinely attempts nvshmem_init(), and replays the logic of
-// a get+atomic-add+barrier sequence on the host.
-//
-// Setup:   NVSHMEM_DIR=$(python3 -c "import nvidia.nvshmem; print(list(nvidia.nvshmem.__path__)[0])")
-//          NVSHMEM_INC=$NVSHMEM_DIR/include
-//          NVSHMEM_LIB=$NVSHMEM_DIR/lib
-//          ln -sf libnvshmem_host.so.3 $NVSHMEM_LIB/libnvshmem_host.so  (the pip wheel
-//          ships only the versioned .so.3 -- see Appendix A, Recipe 5)
-// Compile: nvcc -rdc=true -gencode=arch=compute_70,code=sm_70 -I$NVSHMEM_INC -L$NVSHMEM_LIB 128_nvshmem_api_reference.cu -o 128_nvshmem_api_reference -lnvshmem_host -lnvshmem_device -lcuda
-// Run:     LD_LIBRARY_PATH=$NVSHMEM_LIB ./128_nvshmem_api_reference
+// Checked two-PE example. Compile and execution evidence are captured separately.
+#define OMPI_SKIP_MPICXX
+#include <mpi.h>
 #include <cstdio>
+#include <cstdlib>
+#include <vector>
+#include <cuda_runtime.h>
 #include <nvshmem.h>
 #include <nvshmemx.h>
 
-int main() {
-    printf("=== Section C.3: NVSHMEM's fuller real API, beyond Chapter "
-           "22's own nvshmem_int_p() ===\n\n");
+#define CUDA_OK(call) do { cudaError_t e = (call); if (e != cudaSuccess) { \
+    fprintf(stderr, "%s: %s\n", #call, cudaGetErrorString(e)); \
+    MPI_Abort(MPI_COMM_WORLD, 1); } } while (0)
 
-    void* pGet = (void*)&nvshmem_int_get;
-    void* pAtomicAdd = (void*)&nvshmem_int_atomic_add;
-    void* pBarrier = (void*)&nvshmem_barrier_all;
-    void* pTeamPe = (void*)&nvshmem_team_my_pe;
-    printf("real symbols resolved:\n");
-    printf("  nvshmem_int_get         = %p  (one-sided READ -- the "
-           "counterpart to Ch22's own nvshmem_int_p WRITE)\n", pGet);
-    printf("  nvshmem_int_atomic_add  = %p  (atomic remote update -- "
-           "lets multiple PEs safely combine values into one shared "
-           "remote location without a separate reduction collective, "
-           "the same race a plain, unsynchronized shared write would "
-           "risk on either a single device or across PEs)\n", pAtomicAdd);
-    printf("  nvshmem_barrier_all     = %p  (NVSHMEM's own collective "
-           "sync -- the same real job Ch17's throwaway ncclAllReduce "
-           "did for NCCL)\n", pBarrier);
-    printf("  nvshmem_team_my_pe      = %p  (queries this PE's own rank "
-           "WITHIN a named team -- NVSHMEM_TEAM_WORLD = %d is the "
-           "default team containing every PE)\n\n", pTeamPe, (int)NVSHMEM_TEAM_WORLD);
-
-    printf("=== attempting a genuine nvshmem_init() ===\n\n");
-    nvshmem_init();
-    int myPe = nvshmem_my_pe();
-    int nPes = nvshmem_n_pes();
-    printf("nvshmem_init() completed; nvshmem_my_pe()=%d, "
-           "nvshmem_n_pes()=%d\n", myPe, nPes);
-    printf("(run directly, with no bootstrap plugin requested, NVSHMEM "
-           "reports a world of exactly one PE -- the same n_pes=1 result "
-           "as Chapter 22's File 63. The CUDA_ERROR_NO_DEVICE line NVSHMEM "
-           "prints on stderr during init is its own real device-setup "
-           "failure on this zero-GPU machine: the PE count is answered, "
-           "but no symmetric heap or device state exists, so no real "
-           "get/atomic/barrier can run here.)\n");
-
-    printf("\n=== host-side replay: 4 PEs, each fetches its right "
-           "neighbor's value (nvshmem_int_get's own real job), then "
-           "every PE atomically adds 1 to PE 0's shared counter "
-           "(nvshmem_int_atomic_add's own real job), then all PEs "
-           "barrier (nvshmem_barrier_all's own real job) before reading "
-           "the final counter ===\n\n");
-    const int NPES = 4;
-    int value[NPES] = {10, 20, 30, 40};
-    int fetched[NPES];
-    for (int pe = 0; pe < NPES; pe++) {
-        int rightNeighbor = (pe + 1) % NPES;
-        fetched[pe] = value[rightNeighbor];  // replay of nvshmem_int_get
+static void bind_device(int rank) {
+    MPI_Comm node;
+    MPI_Comm_split_type(MPI_COMM_WORLD, MPI_COMM_TYPE_SHARED, rank, MPI_INFO_NULL, &node);
+    int localRank, count;
+    MPI_Comm_rank(node, &localRank);
+    MPI_Comm_free(&node);
+    CUDA_OK(cudaGetDeviceCount(&count));
+    if (localRank >= count) {
+        fprintf(stderr, "Insufficient GPUs: local rank %d, visible devices %d\n", localRank, count);
+        MPI_Abort(MPI_COMM_WORLD, 2);
     }
-    printf("%-6s %-12s %-24s\n", "PE", "own value", "fetched (right neighbor)");
-    for (int pe = 0; pe < NPES; pe++)
-        printf("%-6d %-12d %-24d\n", pe, value[pe], fetched[pe]);
+    CUDA_OK(cudaSetDevice(localRank));
+}
 
-    int sharedCounterOnPe0 = 0;
-    for (int pe = 0; pe < NPES; pe++)
-        sharedCounterOnPe0++;  // replay of NPES real atomic_add(..., 1, ...) calls
-    printf("\nafter %d PEs each call nvshmem_int_atomic_add(&counter, 1, "
-           "0) targeting PE 0: counter = %d\n", NPES, sharedCounterOnPe0);
-    printf("(every increment lands correctly regardless of arrival order "
-           "-- NVSHMEM's own remote atomic gives this guarantee ACROSS "
-           "PEs, the same correctness property a plain CUDA atomicAdd() "
-           "gives across threads on one device, without needing a "
-           "separate collective reduction just to combine four PEs' own "
-           "contributions into one counter)\n");
-
-    printf("\nafter nvshmem_barrier_all(): every PE is guaranteed the "
-           "counter has reached its final value of %d before proceeding "
-           "-- without the barrier, a PE could read the counter before "
-           "every other PE's own increment has landed.\n", sharedCounterOnPe0);
-
-    bool ok = true;
-    for (int pe = 0; pe < NPES; pe++)
-        if (fetched[pe] != value[(pe + 1) % NPES]) ok = false;
-    if (sharedCounterOnPe0 != NPES) ok = false;
-
-    printf("\nself-check: every PE's fetched value matches its right "
-           "neighbor's own value, and the final counter equals the "
-           "number of PEs that incremented it: %s\n",
-           ok ? "confirmed" : "MISMATCH");
-
+__global__ void getAndAdd(int *value,int *fetched,int *counter,int peer) {
+    nvshmem_int_get(fetched,value,1,peer);
+    nvshmem_int_atomic_add(counter,1,0);
+    nvshmem_quiet();
+}
+int main(int argc, char **argv) {
+    MPI_Init(&argc, &argv);
+    int rank;
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    bind_device(rank); // one local PE per GPU, before NVSHMEM initialization
+    MPI_Comm world = MPI_COMM_WORLD;
+    nvshmemx_init_attr_t attr = NVSHMEMX_INIT_ATTR_INITIALIZER;
+    nvshmemx_set_attr_mpi_comm_args(&world, &attr);
+    int rc = nvshmemx_init_attr(NVSHMEMX_INIT_WITH_MPI_COMM, &attr);
+    if (rc != 0) MPI_Abort(MPI_COMM_WORLD, 3);
+    int pe = nvshmem_my_pe(), nPes = nvshmem_n_pes();
+    int errors = 0;
+    int *value=static_cast<int *>(nvshmem_malloc(sizeof(int)));
+    int *fetched=static_cast<int *>(nvshmem_malloc(sizeof(int)));
+    int *counter=static_cast<int *>(nvshmem_malloc(sizeof(int)));
+    if(!value || !fetched || !counter) MPI_Abort(MPI_COMM_WORLD,4);
+    int own=10*(pe+1);
+    CUDA_OK(cudaMemcpy(value,&own,sizeof(int),cudaMemcpyHostToDevice));
+    CUDA_OK(cudaMemset(fetched,0xff,sizeof(int)));
+    CUDA_OK(cudaMemset(counter,0,sizeof(int)));
+    nvshmem_barrier_all();
+    int peer=(pe+1)%nPes;
+    void *args[]={&value,&fetched,&counter,&peer};
+    rc=nvshmemx_collective_launch(reinterpret_cast<const void *>(getAndAdd),dim3(1),dim3(1),args,0,0);
+    if(rc!=0) MPI_Abort(MPI_COMM_WORLD,5);
+    CUDA_OK(cudaDeviceSynchronize()); nvshmem_barrier_all();
+    int got=-1,count=-1;
+    CUDA_OK(cudaMemcpy(&got,fetched,sizeof(int),cudaMemcpyDeviceToHost));
+    CUDA_OK(cudaMemcpy(&count,counter,sizeof(int),cudaMemcpyDeviceToHost));
+    if(got!=10*(peer+1) || count!=(pe==0?nPes:0)) ++errors;
+    if(nvshmem_team_my_pe(NVSHMEM_TEAM_WORLD)!=pe) ++errors;
+    printf("PE %d: neighbor=%d received=%d counter=%d\n",pe,peer,got,count);
+    nvshmem_free(counter); nvshmem_free(fetched); nvshmem_free(value);
+    int totalErrors = 0;
+    MPI_Allreduce(&errors, &totalErrors, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
+    if (pe == 0) printf("VALIDATION %s: %d PEs, errors=%d\n",
+                        totalErrors ? "FAIL" : "PASS", nPes, totalErrors);
     nvshmem_finalize();
-    return ok ? 0 : 1;
+    MPI_Finalize();
+    return totalErrors ? 1 : 0;
 }
 ```
+
+<!-- execution:start:a100:128_nvshmem_api_reference.cu -->
+> **Current execution — 2026-11-17-a100: Numerical/transport validation (recorded scope).** UTC (program start): `2026-11-17T23:58:45.895770+00:00`. Source SHA-256: `6f66c81a0066abc91a379db68a84940ebcb5e3580bf57a18123904a8764c4ebb`.
+
+[Exact tested source](../validation/2026-11-17-a100/128_nvshmem_api_reference/128_nvshmem_api_reference.cu) · [Compiler log](../validation/2026-11-17-a100/128_nvshmem_api_reference/compile.log) · [Execution log](../validation/2026-11-17-a100/128_nvshmem_api_reference/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+nvcc -std=c++17 -O2 -arch=sm_80 -ccbin mpicxx -rdc=true -I/home/ubuntu/book2-deps/lib/python3.12/site-packages/nvidia/nvshmem/include -L/home/ubuntu/book2-deps/lib/python3.12/site-packages/nvidia/nvshmem/lib -Xlinker=-rpath=/home/ubuntu/book2-deps/lib/python3.12/site-packages/nvidia/nvshmem/lib 128_nvshmem_api_reference.cu -o ./example -lnvshmem_host -lnvshmem_device -lcuda
+/usr/mpi/gcc/openmpi-4.1.7rc1/bin/mpirun --oversubscribe -np 8 ./example
+```
+
+<details markdown="1"><summary>Captured current-source output</summary>
+
+```text
+[LOG_CAT_SBGP] libnuma.so: cannot open shared object file: No such file or directory
+[LOG_CAT_SBGP] Failed to dlopen libnuma.so. Fallback to GROUP_BY_SOCKET manual.
+[LOG_CAT_SBGP] libnuma.so: cannot open shared object file: No such file or directory
+[LOG_CAT_SBGP] Failed to dlopen libnuma.so. Fallback to GROUP_BY_SOCKET manual.
+[LOG_CAT_SBGP] libnuma.so: cannot open shared object file: No such file or directory
+[LOG_CAT_SBGP] Failed to dlopen libnuma.so. Fallback to GROUP_BY_SOCKET manual.
+[LOG_CAT_SBGP] libnuma.so: cannot open shared object file: No such file or directory
+[LOG_CAT_SBGP] Failed to dlopen libnuma.so. Fallback to GROUP_BY_SOCKET manual.
+[LOG_CAT_SBGP] libnuma.so: cannot open shared object file: No such file or directory
+[LOG_CAT_SBGP] Failed to dlopen libnuma.so. Fallback to GROUP_BY_SOCKET manual.
+[LOG_CAT_SBGP] libnuma.so: cannot open shared object file: No such file or directory
+[LOG_CAT_SBGP] Failed to dlopen libnuma.so. Fallback to GROUP_BY_SOCKET manual.
+[LOG_CAT_SBGP] libnuma.so: cannot open shared object file: No such file or directory
+[LOG_CAT_SBGP] Failed to dlopen libnuma.so. Fallback to GROUP_BY_SOCKET manual.
+[LOG_CAT_SBGP] libnuma.so: cannot open shared object file: No such file or directory
+[LOG_CAT_SBGP] Failed to dlopen libnuma.so. Fallback to GROUP_BY_SOCKET manual.
+PE 2: neighbor=3 received=40 counter=0
+PE 5: neighbor=6 received=70 counter=0
+PE 6: neighbor=7 received=80 counter=0
+PE 3: neighbor=4 received=50 counter=0
+PE 4: neighbor=5 received=60 counter=0
+PE 7: neighbor=0 received=10 counter=0
+PE 0: neighbor=1 received=20 counter=8
+PE 1: neighbor=2 received=30 counter=0
+VALIDATION PASS: 8 PEs, errors=0
+```
+
+</details>
+<!-- execution:end:a100:128_nvshmem_api_reference.cu -->
+
+
+<!-- execution:start:h100:128_nvshmem_api_reference.cu -->
+> **Current execution — 2026-11-17-h100: Numerical/transport validation (recorded scope).** UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`. Source SHA-256: `6f66c81a0066abc91a379db68a84940ebcb5e3580bf57a18123904a8764c4ebb`.
+
+[Exact tested source](../validation/2026-11-17-h100/128_nvshmem_api_reference/128_nvshmem_api_reference.cu) · [Compiler log](../validation/2026-11-17-h100/128_nvshmem_api_reference/compile.log) · [Execution log](../validation/2026-11-17-h100/128_nvshmem_api_reference/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+nvcc -std=c++17 -O2 -arch=sm_90 -ccbin mpicxx -rdc=true -I/home/ubuntu/book2-deps/lib/python3.12/site-packages/nvidia/nvshmem/include -L/home/ubuntu/book2-deps/lib/python3.12/site-packages/nvidia/nvshmem/lib -Xlinker=-rpath=/home/ubuntu/book2-deps/lib/python3.12/site-packages/nvidia/nvshmem/lib 128_nvshmem_api_reference.cu -o ./example -lnvshmem_host -lnvshmem_device -lcuda
+/home/ubuntu/book2-bin/mpirun --oversubscribe -np 2 ./example
+```
+
+<details markdown="1"><summary>Captured current-source output</summary>
+
+```text
+--------------------------------------------------------------------------
+Sorry!  You were supposed to get help about:
+    unavailable
+But I couldn't open the help file:
+    /usr/lib/x86_64-linux-gnu/pmix2/share/pmix/help-pcompress.txt: No such file or directory.  Sorry!
+--------------------------------------------------------------------------
+libibverbs: Warning: couldn't load driver 'libvmw_pvrdma-rdmav34.so': libvmw_pvrdma-rdmav34.so: cannot open shared object file: No such file or directory
+libibverbs: Warning: couldn't load driver 'libvmw_pvrdma-rdmav34.so': libvmw_pvrdma-rdmav34.so: cannot open shared object file: No such file or directory
+--------------------------------------------------------------------------
+WARNING: No preset parameters were found for the device that Open MPI
+detected:
+
+  Local host:            192-222-53-210
+  Device name:           mlx5_0
+  Device vendor ID:      0x02c9
+  Device vendor part ID: 4124
+
+Default device parameters will be used, which may result in lower
+performance.  You can edit any of the files specified by the
+btl_openib_device_param_files MCA parameter to set values for your
+device.
+
+NOTE: You can turn off this warning by setting the MCA parameter
+      btl_openib_warn_no_device_params_found to 0.
+--------------------------------------------------------------------------
+--------------------------------------------------------------------------
+No OpenFabrics connection schemes reported that they were able to be
+used on a specific port.  As such, the openib BTL (OpenFabrics
+support) will be disabled for this port.
+
+  Local host:           192-222-53-210
+  Local device:         mlx5_0
+  Local port:           1
+  CPCs attempted:       udcm
+--------------------------------------------------------------------------
+PE 1: neighbor=0 received=10 counter=0
+PE 0: neighbor=1 received=20 counter=2
+VALIDATION PASS: 2 PEs, errors=0
+[192-222-53-210:10516] 1 more process has sent help message help-mpi-btl-openib.txt / no device params found
+[192-222-53-210:10516] Set MCA parameter "orte_base_help_aggregate" to 0 to see all help / error messages
+[192-222-53-210:10516] 1 more process has sent help message help-mpi-btl-openib-cpc-base.txt / no cpcs for port
+```
+
+</details>
+<!-- execution:end:h100:128_nvshmem_api_reference.cu -->
+
 
 **Compile and run:**
 
@@ -504,6 +586,8 @@ The two `NVSHMEM_*` variables are the same ones Appendix A's Makefile defines; l
 **Sample input:** none -- the 4-PE starting values (10, 20, 30, 40) are fixed constants in the source, standing in for whatever each PE's own real computation would have produced.
 
 **Sample output:**
+
+<details markdown="1"><summary>Historical authoring output — superseded by the current execution above</summary>
 
 ```text
 === Section C.3: NVSHMEM's fuller real API, beyond Chapter 22's own nvshmem_int_p() ===
@@ -537,7 +621,9 @@ self-check: every PE's fetched value matches its right neighbor's own value, and
 
 ```
 
-(captured by actually running the file above, stdout and stderr together (`2>&1`), against the installed NVSHMEM 3.8.0 pip wheel; exit code 0. The two NVSHMEM lines are its own real stderr: `CUDA_ERROR_NO_DEVICE` during `nvshmem_init()` -- printed with no trailing newline, so the next stdout line runs straight onto it -- and `nvshmemi_finalize:187: Unable to properly unregister device state.` at `nvshmem_finalize()`. This is the same failure shape Chapter 22's File 63 and Chapter 32's File 95 lock in; the source-path prefix and line number differ by NVSHMEM version (those chapters show 3.7.2's `.../init.cu:580`). The printed symbol addresses vary run to run; the trailing spaces on the table rows come from the `%-24s` padding of the last column. No bootstrap plugin message is printed: run directly, NVSHMEM simply reports `n_pes=1`.)
+</details>
+
+The preceding transcript is historical output from the older device-less source. Current File 128 explicitly bootstraps MPI, initializes symmetric device data and checks get, remote atomic-add, team rank and synchronization behavior on the H100 pair. It is a numerical local-communication check; it does not establish an RDMA transport path.
 
 ## C.4 Choosing Between Hand-Written Collectives, NCCL, and NVSHMEM
 
@@ -569,4 +655,4 @@ Hand-writing a collective, the way Chapters 8 through 10 and Chapter 16's halo e
 
 ## Appendix Summary
 
-This appendix gathered NCCL's and NVSHMEM's fuller real API surface into one consolidated reference, building on -- not repeating -- what Chapters 8 through 22 had already established. Section C.1 matched every one of Chapters 8 through 10's five hand-built collectives to its real NCCL call, and confirmed NCCL's own real limitation: a version number or a unique ID needs no device, but a communicator genuinely does. Section C.2 consolidated Chapter 11's own `ncclSend()`/`ncclRecv()` point-to-point recipe and built the standalone demonstration its own Self-Check Question 4 had pointed at but never shown in code: same-peer calls inside one group stay strictly ordered, while different-peer calls make no such promise. Section C.3 extended Chapter 22's single `nvshmem_int_p()` call with its natural counterpart (`nvshmem_int_get()`), its race-free cousin (`nvshmem_int_atomic_add()`), and NVSHMEM's own collective synchronization (`nvshmem_barrier_all()`), confirming all four real symbols resolve and link, and genuinely attempting `nvshmem_init()`: run directly on this zero-GPU machine it reports a one-PE world (`n_pes=1`) while printing NVSHMEM's own real `CUDA_ERROR_NO_DEVICE` and `nvshmemi_finalize` errors, so the get/atomic-add/barrier sequence is replayed on the host rather than run as a genuine multi-PE program. Section C.4 closed with the decision this book had been making implicitly since Chapter 11: hand-write a collective to learn the algorithm, reach for NCCL once the shape matches one of its five real calls, and reach for NVSHMEM only when the exchange must genuinely be initiated from inside a running kernel. Every code file in this appendix, like every device-touching file since Chapter 2, ran against the real, installed NCCL and NVSHMEM libraries in a genuine zero-physical-GPU sandbox, and every claim about what succeeds and what fails was read back from that real environment rather than assumed.
+The reference programs exercise six NCCL communication recipes, same-peer message matching, and NVSHMEM get/atomic operations with initialized buffers and explicit checks. NCCL 2.28.3 introduced dedicated AlltoAll, Gather and Scatter APIs; the grouped Send/Recv recipe remains useful for older installations and custom exchanges. A numerical pass on two local GPUs does not validate a multi-node RDMA path. Choose the communication model from the required participants, ownership and completion semantics.

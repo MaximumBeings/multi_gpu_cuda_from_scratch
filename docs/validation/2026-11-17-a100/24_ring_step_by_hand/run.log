@@ -1,0 +1,2 @@
+$ /home/ubuntu/codex-eight-gpu-audit-20261117/multi-gpu-audit/artifacts/a100-eight-20261117/24_ring_step_by_hand/example
+PASS: one ring step (distinct send/receive storage) on 4 GPUs, all nonuniform output values checked.

@@ -1,5 +1,15 @@
 # Chapter 1: Why One GPU Is Not Enough
 
+<!-- execution:provenance -->
+!!! info "Execution provenance"
+
+    Current execution blocks identify the tested source hash, hardware dataset, commands and captured output. References elsewhere on this page to a device-less environment describe the original authoring context. Historical output is superseded by the current record. Displayed output omits the runner command header and trims trailing line whitespace; raw logs remain exact. A host simulation or API validation has its stated scope; neither alone establishes a numerical multi-GPU workload or measured performance.
+
+
+<!-- mgpu:opener:start -->
+[![Chapter 1: Why One GPU Is Not Enough](../images/chapter-openers/01.svg)](../images/chapter-openers/01.svg)
+<!-- mgpu:opener:end -->
+
 **What you will understand by the end of this chapter:**
 
 - Why "not enough" hides two genuinely different failures — running out of memory and running out of time — and why the fix for one is not automatically the fix for the other.
@@ -19,6 +29,10 @@ Every chapter after this one is about getting two or more GPUs to cooperate. Bef
 
 ## 1.1 The Memory-Capacity Wall
 
+<!-- mgpu:figure-1:start -->
+[![One working set, several memories](../images/technical/ch01/1-capacity.svg)](../images/technical/ch01/1-capacity.svg)
+<!-- mgpu:figure-1:end -->
+
 ### Intuition
 
 Picture packing a moving truck. There are two completely different ways to fail. The truck might simply be too small — the couch does not fit, full stop, no amount of clever packing changes that. Or the truck might be plenty big, but you're only allowed one trip and a fixed number of hours to load and drive it — everything technically *fits*, yet the job still doesn't get done in time. A GPU fails the same two ways, and this section is about the first one: the truck being too small, stated in exact bytes rather than as a metaphor.
@@ -37,7 +51,12 @@ For parameters, gradients, and optimizer state, the accounting is exact. Rajbhan
 against roughly 2 bytes per parameter just to hold the weights for inference — training a model costs an order of magnitude more memory per parameter than merely running it. The program below turns that formula into exact numbers for two real model sizes, checked against two real GPUs' published memory capacities.
 
 ```cpp
+// Chapter 1: Why One GPU Is Not Enough
 // 02_memory_wall.cpp
+//
+// Plain host C++. No CUDA, no simulation, nothing to fake: this is ordinary
+// arithmetic on numbers taken from cited real sources (see the chapter
+// text for citations), computed exactly and reproducibly.
 #include <cstdio>
 #include <cstdint>
 #include <cmath>
@@ -94,12 +113,19 @@ int main() {
 }
 ```
 
+<!-- execution:start:a100:02_memory_wall.cpp -->
+> **Current execution — 2026-11-17-a100: Host program/model (exit-only).** UTC (program start): `2026-11-18T00:00:10.869538+00:00`. Source SHA-256: `a2ff2cb43ab47129401d4d1b916c527da97d8271196a249813fb57e3a3853b1b`.
+
+[Exact tested source](../validation/2026-11-17-a100/02_memory_wall/02_memory_wall.cpp) · [Compiler log](../validation/2026-11-17-a100/02_memory_wall/compile.log) · [Execution log](../validation/2026-11-17-a100/02_memory_wall/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
 ```bash
-g++ -std=c++17 -Wall -Wextra -O2 02_memory_wall.cpp -o memory_wall
-./memory_wall
+g++ -std=c++17 -O2 02_memory_wall.cpp -o ./example
+./example
 ```
 
-Output (genuinely compiled and run; re-verified by a fresh recompile and rerun before publication, identical both times):
+<details markdown="1"><summary>Captured current-source output</summary>
 
 ```text
 Model                Params  Inference(fp16) Training(Adam,mp) H100 SXM x H100 NVL x
@@ -109,12 +135,65 @@ GPT-3 (175B)        175.0B         350.0 GB        2800.0 GB         35         
 Minimum H100 SXM (80 GB) GPUs to hold GPT-3's training state (params+grads+Adam state only, no activations): 35
 ```
 
+</details>
+<!-- execution:end:a100:02_memory_wall.cpp -->
+
+
+<!-- execution:start:h100:02_memory_wall.cpp -->
+> **Current execution — 2026-11-17-h100: Host program/model (exit-only).** UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`. Source SHA-256: `a2ff2cb43ab47129401d4d1b916c527da97d8271196a249813fb57e3a3853b1b`.
+
+[Exact tested source](../validation/2026-11-17-h100/02_memory_wall/02_memory_wall.cpp) · [Compiler log](../validation/2026-11-17-h100/02_memory_wall/compile.log) · [Execution log](../validation/2026-11-17-h100/02_memory_wall/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+g++ -std=c++17 -O2 02_memory_wall.cpp -o ./example
+./example
+```
+
+<details markdown="1"><summary>Captured current-source output</summary>
+
+```text
+Model                Params  Inference(fp16) Training(Adam,mp) H100 SXM x H100 NVL x
+7B-class model        7.0B          14.0 GB         112.0 GB          2          2
+GPT-3 (175B)        175.0B         350.0 GB        2800.0 GB         35         30
+
+Minimum H100 SXM (80 GB) GPUs to hold GPT-3's training state (params+grads+Adam state only, no activations): 35
+```
+
+</details>
+<!-- execution:end:h100:02_memory_wall.cpp -->
+
+
+```bash
+g++ -std=c++17 -Wall -Wextra -O2 02_memory_wall.cpp -o memory_wall
+./memory_wall
+```
+
+Output (genuinely compiled and run; re-verified by a fresh recompile and rerun before publication, identical both times):
+
+<details markdown="1"><summary>Historical authoring output — superseded by the current execution above</summary>
+
+```text
+Model                Params  Inference(fp16) Training(Adam,mp) H100 SXM x H100 NVL x
+7B-class model        7.0B          14.0 GB         112.0 GB          2          2
+GPT-3 (175B)        175.0B         350.0 GB        2800.0 GB         35         30
+
+Minimum H100 SXM (80 GB) GPUs to hold GPT-3's training state (params+grads+Adam state only, no activations): 35
+```
+
+</details>
+
 A 175-billion-parameter model's weights alone (350 GB at fp16) already exceed a single H100's 80 GB several times over — before a single gradient or optimizer value is added. Once they are, the training state needs **35 H100 SXM GPUs' worth of memory just to exist**, with zero of it left over for the activations that actually let training happen. Even the comparatively modest 7B-class model's *training* footprint (112 GB) doesn't fit in one H100 (80 GB), though its *inference* footprint (14 GB) fits easily.
 
 !!! warning "[COMMON TRAP] Asking "does this model fit on a GPU" as if it's one question"
     "Fits on a GPU" has at least two different, very differently-sized answers depending on whether you mean *running* it or *training* it — 14 GB versus 112 GB for the exact same 7B-class model above, an 8x gap from precision and optimizer state alone, with real activation memory still not counted. A model comfortably fitting for inference is not evidence it will fit for training, and the two numbers should never be quoted interchangeably.
 
 ## 1.2 The Compute-Throughput Wall
+
+<!-- mgpu:figure-2:start -->
+[![Parallel work still has a critical path](../images/technical/ch01/2-balance.svg)](../images/technical/ch01/2-balance.svg)
+<!-- mgpu:figure-2:end -->
 
 ### Intuition
 
@@ -131,46 +210,73 @@ C ≈ 6 · N · D
 where `N` is the model's (non-embedding) parameter count, `D` is the number of training tokens, and the factor of 6 accounts for one forward pass and the (roughly twice as expensive) backward pass. This is the paper's own stated formula (`C ≈ 6NBS`, with batch size `B` times step count `S` equal to total tokens `D`), and it is a real, exactly-computable quantity once `N` and `D` are fixed — not a rough guess.
 
 ```cpp
+// Chapter 1: Why One GPU Is Not Enough
 // 03_compute_wall.cpp
+//
+// Plain host C++. Computes a deterministic FLOP count and divides by a
+// cited real peak-FLOPS figure -- never a fabricated wall-clock number,
+// per this book's own stated discipline (see getting-started.md).
 #include <cstdio>
 
 int main() {
-    const double N = 175.0e9;   // GPT-3's parameter count (Brown et al. 2020)
-    const double D = 300.0e9;   // GPT-3's stated training token budget
+    // Kaplan et al., "Scaling Laws for Neural Language Models" (2020):
+    // C ~= 6*N*D, where N is (non-embedding) parameter count and D is
+    // dataset size in tokens. We use GPT-3's reported total parameter
+    // count (175B, Brown et al. 2020, Table 2.1) as an approximation of
+    // N, and the paper's own stated token budget, D = 300e9 tokens
+    // ("All models were trained for a total of 300 billion tokens").
+    const double N = 175.0e9;
+    const double D = 300.0e9;
     const double totalFLOPs = 6.0 * N * D;
 
-    const double H100_PEAK_FLOPS = 989.0e12; // H100 SXM, dense BF16/FP16, no sparsity
+    // NVIDIA H100 SXM5: 989 TFLOP/s peak dense BF16/FP16 Tensor Core
+    // throughput (no sparsity). Real vendor-cited figure.
+    const double H100_PEAK_FLOPS = 989.0e12;
     const double SECONDS_PER_DAY = 86400.0;
 
     const double idealFlopsPerDay = H100_PEAK_FLOPS * SECONDS_PER_DAY;
     const double idealGpuDays = totalFLOPs / idealFlopsPerDay;
 
-    const double assumedMFU = 0.50;  // illustrative, not measured -- see text
+    // Real training never sustains 100% of peak. We label this an
+    // illustrative assumption, not a measurement: many public reports of
+    // well-optimized large-model training put achieved throughput in the
+    // 30-50% range of peak (Model FLOPs Utilization, or MFU); we use 50%
+    // here as a round, explicitly-labeled upper-end illustrative figure.
+    const double assumedMFU = 0.50;
     const double realisticGpuDays = idealGpuDays / assumedMFU;
 
     printf("Total training compute (C = 6*N*D): %.3e FLOPs\n", totalFLOPs);
     printf("N (parameters, approx.):            %.3e\n", N);
     printf("D (tokens):                         %.3e\n", D);
-    printf("H100 SXM peak dense BF16/FP16:       %.3e FLOP/s\n", H100_PEAK_FLOPS);
+    printf("H100 SXM peak dense BF16/FP16:       %.3e FLOP/s\n",
+           H100_PEAK_FLOPS);
     printf("\n");
-    printf("GPU-days on a single H100 at 100%% of peak (ideal, unreachable "
-           "in practice): %.1f\n", idealGpuDays);
+    printf("GPU-days on a single H100 at 100%% of peak (ideal, "
+           "unreachable in practice): %.1f\n", idealGpuDays);
     printf("GPU-days on a single H100 at an assumed %.0f%% of peak "
            "(illustrative MFU, not measured):   %.1f\n",
            assumedMFU * 100.0, realisticGpuDays);
     printf("Same total compute spread across 1024 such GPUs at the "
            "assumed %.0f%% MFU: %.2f days\n",
            assumedMFU * 100.0, realisticGpuDays / 1024.0);
+
     return 0;
 }
 ```
 
+<!-- execution:start:a100:03_compute_wall.cpp -->
+> **Current execution — 2026-11-17-a100: Host program/model (exit-only).** UTC (program start): `2026-11-18T00:00:11.088863+00:00`. Source SHA-256: `afb0e2461806947cd7f0bc421aac900cd61a586feb494c575609a410e5b492f3`.
+
+[Exact tested source](../validation/2026-11-17-a100/03_compute_wall/03_compute_wall.cpp) · [Compiler log](../validation/2026-11-17-a100/03_compute_wall/compile.log) · [Execution log](../validation/2026-11-17-a100/03_compute_wall/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
 ```bash
-g++ -std=c++17 -Wall -Wextra -O2 03_compute_wall.cpp -o compute_wall
-./compute_wall
+g++ -std=c++17 -O2 03_compute_wall.cpp -o ./example
+./example
 ```
 
-Output (genuinely compiled and run twice; identical both times, as expected of pure arithmetic with no timing or randomness involved):
+<details markdown="1"><summary>Captured current-source output</summary>
 
 ```text
 Total training compute (C = 6*N*D): 3.150e+23 FLOPs
@@ -182,6 +288,61 @@ GPU-days on a single H100 at 100% of peak (ideal, unreachable in practice): 3686
 GPU-days on a single H100 at an assumed 50% of peak (illustrative MFU, not measured):   7372.8
 Same total compute spread across 1024 such GPUs at the assumed 50% MFU: 7.20 days
 ```
+
+</details>
+<!-- execution:end:a100:03_compute_wall.cpp -->
+
+
+<!-- execution:start:h100:03_compute_wall.cpp -->
+> **Current execution — 2026-11-17-h100: Host program/model (exit-only).** UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`. Source SHA-256: `afb0e2461806947cd7f0bc421aac900cd61a586feb494c575609a410e5b492f3`.
+
+[Exact tested source](../validation/2026-11-17-h100/03_compute_wall/03_compute_wall.cpp) · [Compiler log](../validation/2026-11-17-h100/03_compute_wall/compile.log) · [Execution log](../validation/2026-11-17-h100/03_compute_wall/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+g++ -std=c++17 -O2 03_compute_wall.cpp -o ./example
+./example
+```
+
+<details markdown="1"><summary>Captured current-source output</summary>
+
+```text
+Total training compute (C = 6*N*D): 3.150e+23 FLOPs
+N (parameters, approx.):            1.750e+11
+D (tokens):                         3.000e+11
+H100 SXM peak dense BF16/FP16:       9.890e+14 FLOP/s
+
+GPU-days on a single H100 at 100% of peak (ideal, unreachable in practice): 3686.4
+GPU-days on a single H100 at an assumed 50% of peak (illustrative MFU, not measured):   7372.8
+Same total compute spread across 1024 such GPUs at the assumed 50% MFU: 7.20 days
+```
+
+</details>
+<!-- execution:end:h100:03_compute_wall.cpp -->
+
+
+```bash
+g++ -std=c++17 -Wall -Wextra -O2 03_compute_wall.cpp -o compute_wall
+./compute_wall
+```
+
+Output (genuinely compiled and run twice; identical both times, as expected of pure arithmetic with no timing or randomness involved):
+
+<details markdown="1"><summary>Historical authoring output — superseded by the current execution above</summary>
+
+```text
+Total training compute (C = 6*N*D): 3.150e+23 FLOPs
+N (parameters, approx.):            1.750e+11
+D (tokens):                         3.000e+11
+H100 SXM peak dense BF16/FP16:       9.890e+14 FLOP/s
+
+GPU-days on a single H100 at 100% of peak (ideal, unreachable in practice): 3686.4
+GPU-days on a single H100 at an assumed 50% of peak (illustrative MFU, not measured):   7372.8
+Same total compute spread across 1024 such GPUs at the assumed 50% MFU: 7.20 days
+```
+
+</details>
 
 **Model boundary, stated plainly:** the `3686.4` and `7372.8` GPU-day figures are *not* timing measurements — nothing was clocked. They're a deterministic FLOP count (`3.150e+23`, computed exactly from Kaplan's formula) divided by a real, vendor-published peak-FLOPS figure (H100 SXM's 989 TFLOP/s dense Tensor Core throughput, no sparsity). The 50%-of-peak scenario is explicitly labeled as an illustrative assumption about achieved utilization (Model FLOPs Utilization, or MFU), not a measurement of anything — real training runs report MFU figures all over the 30-50% range depending on model, hardware, and how well the implementation overlaps communication with compute, itself a running theme starting in Part 2. Either way the conclusion is the same: **over 10 years on one GPU even at ideal throughput (3686.4 days), over 20 years at the assumed 50% MFU (7372.8 days), or roughly a week on 1,024 of them at that same 50% MFU (7.20 days).**
 
@@ -199,7 +360,13 @@ Before ordering a fleet of trucks, the first thing any reasonable person checks 
 `cudaGetDeviceCount()` is worth calling for real right here in Chapter 1, on this book's own authoring machine, because how it behaves *matters for the rest of the book*: every later chapter's multi-device logic is built on trusting this call's answer rather than assuming one.
 
 ```cpp
+// Chapter 1: Why One GPU Is Not Enough
 // 01_device_query.cu
+//
+// A genuine CUDA Runtime API call, compiled with a real nvcc and genuinely
+// executed. It does not simulate anything: cudaGetDeviceCount() either finds
+// real devices or it doesn't, and this program prints exactly what the
+// runtime reports back, whatever that is.
 #include <cstdio>
 #include <cuda_runtime.h>
 
@@ -234,12 +401,70 @@ int main() {
 }
 ```
 
+<!-- execution:start:a100:01_device_query.cu -->
+> **Current execution — 2026-11-17-a100: API/host demonstration (exit-only).** UTC (program start): `2026-11-18T00:00:04.726059+00:00`. Source SHA-256: `4a14f312d6406e432c3bd12214a99f9e37288c7dea955f587460413a11d333cc`.
+
+[Exact tested source](../validation/2026-11-17-a100/01_device_query/01_device_query.cu) · [Compiler log](../validation/2026-11-17-a100/01_device_query/compile.log) · [Execution log](../validation/2026-11-17-a100/01_device_query/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+nvcc -std=c++17 -O2 -arch=sm_80 01_device_query.cu -o ./example
+./example
+```
+
+<details markdown="1"><summary>Captured current-source output</summary>
+
+```text
+cudaGetDeviceCount() returned: no error (code 0)
+Reported device count: 8
+Device 0: NVIDIA A100-SXM4-40GB -- 42.41 GB total, 41.96 GB free, compute capability 8.0
+Device 1: NVIDIA A100-SXM4-40GB -- 42.41 GB total, 41.96 GB free, compute capability 8.0
+Device 2: NVIDIA A100-SXM4-40GB -- 42.41 GB total, 41.96 GB free, compute capability 8.0
+Device 3: NVIDIA A100-SXM4-40GB -- 42.41 GB total, 41.96 GB free, compute capability 8.0
+Device 4: NVIDIA A100-SXM4-40GB -- 42.41 GB total, 41.96 GB free, compute capability 8.0
+Device 5: NVIDIA A100-SXM4-40GB -- 42.41 GB total, 41.96 GB free, compute capability 8.0
+Device 6: NVIDIA A100-SXM4-40GB -- 42.41 GB total, 41.96 GB free, compute capability 8.0
+Device 7: NVIDIA A100-SXM4-40GB -- 42.41 GB total, 41.96 GB free, compute capability 8.0
+```
+
+</details>
+<!-- execution:end:a100:01_device_query.cu -->
+
+
+<!-- execution:start:h100:01_device_query.cu -->
+> **Current execution — 2026-11-17-h100: API/host demonstration (exit-only).** UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`. Source SHA-256: `4a14f312d6406e432c3bd12214a99f9e37288c7dea955f587460413a11d333cc`.
+
+[Exact tested source](../validation/2026-11-17-h100/01_device_query/01_device_query.cu) · [Compiler log](../validation/2026-11-17-h100/01_device_query/compile.log) · [Execution log](../validation/2026-11-17-h100/01_device_query/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+nvcc -std=c++17 -O2 -arch=sm_90 01_device_query.cu -o ./example
+./example
+```
+
+<details markdown="1"><summary>Captured current-source output</summary>
+
+```text
+cudaGetDeviceCount() returned: no error (code 0)
+Reported device count: 2
+Device 0: NVIDIA H100 80GB HBM3 -- 85.02 GB total, 84.47 GB free, compute capability 9.0
+Device 1: NVIDIA H100 80GB HBM3 -- 85.02 GB total, 84.47 GB free, compute capability 9.0
+```
+
+</details>
+<!-- execution:end:h100:01_device_query.cu -->
+
+
 ```bash
 nvcc -arch=sm_80 01_device_query.cu -o device_query
 ./device_query
 ```
 
 Output (genuinely compiled with a real `nvcc` and genuinely run; identical across three consecutive runs):
+
+<details markdown="1"><summary>Historical authoring output — superseded by the current execution above</summary>
 
 ```text
 cudaGetDeviceCount() returned: no CUDA-capable device is detected (code 100)
@@ -248,14 +473,20 @@ No usable CUDA device on this machine.
 This is an honest, unmodified report from the CUDA Runtime API -- not a placeholder.
 ```
 
-This is exactly the outcome this book's own Getting Started guide promises: the authoring environment has no NVIDIA GPU and no NVIDIA driver, so `cudaGetDeviceCount()` genuinely, correctly reports zero devices and `cudaErrorNoDevice` (error code 100) — not a fabricated success, not a skipped call.
+</details>
+
+The earlier authoring transcript reports a device-less host. The current H100 record executes this query on two visible GPUs. A count query checks discovery only; it is not a numerical workload or topology benchmark.
+
+The [2026-11-17 H100 execution record](../validation-h100.md) covers two GPUs connected by local NV18. It distinguishes numerical checks, API probes and other executions; a successful exit alone does not establish GPU algorithm correctness.
 
 !!! warning "[COMMON TRAP] Hard-coding a device count instead of asking for one"
     A program that assumes "there are 2 GPUs" (or 4, or 8) because that's what the machine it was first written on happened to have will crash or misbehave the moment it runs anywhere else — including, honestly, right here. Every device-touching example from Chapter 3 onward loops over whatever `cudaGetDeviceCount()` actually reports, which is what lets this exact, unmodified source run correctly on a machine with zero devices, one device, or a thousand.
 
 ## Chapter Summary
 
-"Not enough" splits into two independent failures: the memory-capacity wall, a hard binary limit measured exactly in bytes (Section 1.1 found GPT-3's training state needs 35 H100 SXM GPUs' worth of memory, using ZeRO's real 16-bytes-per-parameter mixed-precision Adam breakdown), and the compute-throughput wall, a rate limit measured in FLOPs against a real peak-FLOPS figure (Section 1.2 found the same model needs over 10 years on one GPU even at ideal throughput, and over 20 years at an assumed 50% MFU, using Kaplan's real `C≈6ND` compute formula). Both walls have the same structural fix — stop asking one device to hold and do everything — but splitting work across devices creates a problem neither wall had: the pieces now have to communicate, correctly and fast enough that communication doesn't become the new bottleneck. Section 1.3's `cudaGetDeviceCount()` call is the first, smallest piece of the machinery every later chapter uses to manage that communication, and its honest zero-device answer here is the same honesty discipline this book applies everywhere a real device-touching call is made without real hardware to back it up.
+"Not enough" splits into two independent failures: the memory-capacity wall, a hard binary limit measured exactly in bytes (Section 1.1 found GPT-3's training state needs 35 H100 SXM GPUs' worth of memory, using ZeRO's real 16-bytes-per-parameter mixed-precision Adam breakdown), and the compute-throughput wall, a rate limit measured in FLOPs against a real peak-FLOPS figure (Section 1.2 found the same model needs over 10 years on one GPU even at ideal throughput, and over 20 years at an assumed 50% MFU, using Kaplan's real `C≈6ND` compute formula). Both walls have the same structural fix — stop asking one device to hold and do everything — but splitting work across devices creates a problem neither wall had: the pieces now have to communicate, correctly and fast enough that communication doesn't become the new bottleneck. Section 1.3's `cudaGetDeviceCount()` call is the first, smallest piece of the machinery every later chapter uses to manage that communication, and its current H100 result reports real device discovery; this query alone does not validate a numerical GPU algorithm.
+
+The [2026-11-17 H100 execution record](../validation-h100.md) covers two GPUs connected by local NV18. It distinguishes numerical checks, API probes and other executions; a successful exit alone does not establish GPU algorithm correctness.
 
 Part 1 (Chapters 4-7) builds the primitive layer for getting data between devices at all. Part 2 (Chapters 8-11) builds the communication patterns — broadcast, reduce, all-reduce — from scratch, by hand, before reaching for a library. Part 3 (Chapters 12-16) chooses *what* to split for a given workload shape. Part 4 handles devices that don't finish at the same time, or don't finish at all. Part 5 takes everything past the boundary of one machine. Part 6 puts all of it to work on real workloads, end to end.
 
@@ -283,7 +514,7 @@ Chapter 2 looks at the physical layer connecting multiple GPUs together — PCIe
 
 **4.** The 50%-MFU figure (7372.8 GPU-days) is closer to what a real run would take, because no real training run sustains 100% of a GPU's advertised peak FLOPS — the gap between the two figures represents Model FLOPs Utilization: overhead from memory stalls, communication waiting, and imperfect overlap between compute and data movement, all of which the "ideal" figure assumes away entirely.
 
-**5.** A nonzero error code can, in principle, accompany a stale or invalid device count value even though the common case here is that both signal the same thing (no device). Checking the error code directly reports *why* the call didn't succeed rather than inferring it indirectly from the count being zero, and it matches the same defensive pattern (check every return code, don't assume) this book uses for every other CUDA call from Chapter 3 onward.
+**5.** Check the error code before trusting the returned count. A failed query can leave an unusable output; a successful discovery query still does not establish peer access, transport performance or numerical algorithm correctness.
 
 **6.** They differ in kind, not just number. The capacity wall is binary — either the training state's bytes fit in the available memory or they don't, and no amount of waiting changes a "doesn't fit." The throughput wall is a rate multiplied by total work — the model's training compute technically *can* be run on one GPU, just not within a useful amount of time. The numbers for the 7B-class model make this concrete. Section 1.1's table gives its capacity check directly: 112 GB of training state against 80 GB, a fail by 32 GB. Its throughput figure is not in Section 1.2, but the same formula gives it: `C = 6ND = 6 x 7e9 x 3e11 = 1.26e22` FLOPs over 300 billion tokens, and `1.26e22 / 9.89e14 FLOP/s / 86,400 s/day` is about 147 GPU-days at ideal peak (about 295 at the assumed 50% MFU). That is months, not decades: slow, but not hopeless the way GPT-3's 3686 to 7372 GPU-days are. So the two checks give different verdicts for the same model, one a hard byte fail and the other a matter of how long you are willing to wait, which already shows they measure different things. A future GPU with far more memory but unchanged FLOPS would pass the capacity check while leaving every GPU-day figure above exactly where it is.
 

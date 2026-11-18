@@ -1,69 +1,37 @@
-// Appendix C: NCCL and NVSHMEM -- The Standard Libraries You Get for Free
 // 126_nccl_collective_reference.cu
-//
-// Chapters 8-10 hand-built five collectives from first principles
-// (broadcast, reduce, ring all-reduce, all-gather, reduce-scatter, and a
-// genuinely new all-to-all), and Chapter 11 matched every one of them to
-// its real NCCL call. This file gathers those five matches into ONE
-// reference table -- exactly the kind of consolidated lookup a working
-// engineer reaches for once the underlying algorithm (Chapters 8-10) is
-// already understood -- and genuinely attempts a real NCCL communicator
-// init, honestly reporting this environment's own real, well-documented
-// limitation (zero physical GPUs) exactly the way every device-touching
-// file in this book has since Chapter 2.
-//
-// Compile: nvcc -arch=sm_80 126_nccl_collective_reference.cu -o 126_nccl_collective_reference -lnccl
-// Run:     ./126_nccl_collective_reference
+// Six collective recipes, checked against exact integer results on two GPUs.
 #include <cstdio>
-#include <nccl.h>
+#include <cstdlib>
+#include <cmath>
+#include <vector>
 #include <cuda_runtime.h>
+#include <nccl.h>
+#define CUDA_OK(x) do {cudaError_t e=(x);if(e!=cudaSuccess){fprintf(stderr,"%s: %s\n",#x,cudaGetErrorString(e));exit(1);}}while(0)
+#define NCCL_OK(x) do {ncclResult_t e=(x);if(e!=ncclSuccess){fprintf(stderr,"%s: %s\n",#x,ncclGetErrorString(e));exit(1);}}while(0)
 
-int main() {
-    printf("=== Section C.1: NCCL's five core collectives, matched to the "
-           "chapter that hand-built each one ===\n\n");
-
-    int version = 0;
-    ncclGetVersion(&version);
-    printf("real installed NCCL version: %d.%d.%d\n\n",
-           version / 10000, (version / 100) % 100, version % 100);
-
-    printf("%-20s %-45s %-10s\n", "NCCL call", "signature (sendbuff, recvbuff, ...)", "hand-built in");
-    printf("%-20s %-45s %-10s\n", "ncclBroadcast", "(send, recv, count, type, root, comm, stream)", "Ch8 8.1");
-    printf("%-20s %-45s %-10s\n", "ncclReduce",    "(send, recv, count, type, op, root, comm, stream)", "Ch8 8.2");
-    printf("%-20s %-45s %-10s\n", "ncclAllReduce", "(send, recv, count, type, op, comm, stream)", "Ch9 (ring)");
-    printf("%-20s %-45s %-10s\n", "ncclReduceScatter", "(send, recv, recvcount, type, op, comm, stream)", "Ch10 10.2");
-    printf("%-20s %-45s %-10s\n", "ncclAllGather", "(send, recv, sendcount, type, comm, stream)", "Ch10 10.1");
-    printf("\nnote: the installed NCCL (2.18.3) has no dedicated "
-           "all-to-all call (a dedicated ncclAlltoAll() only arrived in "
-           "NCCL 2.28) -- on this version, Ch10 10.3's own hand-built "
-           "all-to-all maps to the recipe NCCL's own documentation gives "
-           "(Ch11's own real finding): repeated ncclSend()/ncclRecv() "
-           "calls fused inside ncclGroupStart()/ncclGroupEnd(). NCCL also "
-           "ships no Barrier; Ch17 worked around that gap differently, "
-           "with a single throwaway ncclAllReduce rather than a group of "
-           "point-to-point calls.\n\n");
-
-    printf("=== attempting a genuine ncclCommInitRank() ===\n\n");
-    ncclUniqueId id;
-    ncclResult_t idErr = ncclGetUniqueId(&id);
-    printf("ncclGetUniqueId() -> %s (%s)\n", ncclGetErrorString(idErr),
-           idErr == ncclSuccess ? "succeeds -- no device needed to generate an ID" : "unexpected failure");
-
-    ncclComm_t comm;
-    ncclResult_t initErr = ncclCommInitRank(&comm, 1, id, 0);
-    printf("ncclCommInitRank(&comm, nranks=1, id, rank=0) -> %s (%s)\n",
-           ncclGetErrorString(initErr),
-           initErr == ncclSuccess ? "succeeded" :
-           "this environment has zero physical GPUs, so NCCL cannot "
-           "actually bind a communicator to a device, exactly the same "
-           "real, well-documented limitation Ch22/Ch23/Ch32 already "
-           "found for NVSHMEM init and captured graph launches");
-
-    printf("\nself-check: ncclGetVersion() and ncclGetUniqueId() both "
-           "succeed with NO device at all (pure host-side bookkeeping), "
-           "while ncclCommInitRank() genuinely requires one -- this file "
-           "reports both outcomes honestly rather than skipping the "
-           "attempt: %s\n",
-           (idErr == ncclSuccess) ? "confirmed" : "MISMATCH");
-    return (idErr == ncclSuccess) ? 0 : 1;
+int main(){
+    int count=0;CUDA_OK(cudaGetDeviceCount(&count));if(count<2){fprintf(stderr,"Requires 2 GPUs\n");return 2;}
+    constexpr int ranks=2;int devices[ranks]={0,1};ncclComm_t comm[ranks]={};cudaStream_t stream[ranks]={};int *send[ranks]={},*recv[ranks]={};
+    NCCL_OK(ncclCommInitAll(comm,ranks,devices));
+    for(int r=0;r<ranks;++r){CUDA_OK(cudaSetDevice(r));CUDA_OK(cudaStreamCreate(&stream[r]));CUDA_OK(cudaMalloc(&send[r],2*sizeof(int)));CUDA_OK(cudaMalloc(&recv[r],2*sizeof(int)));}
+    int errors=0;
+    for(int op=0;op<6;++op){
+        for(int r=0;r<ranks;++r){CUDA_OK(cudaSetDevice(r));int input[2]={r+1,r+1};if(op==5){input[0]=100*r;input[1]=100*r+1;}
+            CUDA_OK(cudaMemcpy(send[r],input,sizeof(input),cudaMemcpyHostToDevice));CUDA_OK(cudaMemset(recv[r],0xff,sizeof(input)));}
+        NCCL_OK(ncclGroupStart());
+        for(int r=0;r<ranks;++r){CUDA_OK(cudaSetDevice(r));
+            if(op==0)NCCL_OK(ncclBroadcast(send[r],recv[r],1,ncclInt,0,comm[r],stream[r]));
+            if(op==1)NCCL_OK(ncclReduce(send[r],recv[r],1,ncclInt,ncclSum,0,comm[r],stream[r]));
+            if(op==2)NCCL_OK(ncclAllReduce(send[r],recv[r],1,ncclInt,ncclSum,comm[r],stream[r]));
+            if(op==3)NCCL_OK(ncclAllGather(send[r],recv[r],1,ncclInt,comm[r],stream[r]));
+            if(op==4)NCCL_OK(ncclReduceScatter(send[r],recv[r],1,ncclInt,ncclSum,comm[r],stream[r]));
+            if(op==5)for(int peer=0;peer<ranks;++peer){NCCL_OK(ncclSend(send[r]+peer,1,ncclInt,peer,comm[r],stream[r]));NCCL_OK(ncclRecv(recv[r]+peer,1,ncclInt,peer,comm[r],stream[r]));}
+        }NCCL_OK(ncclGroupEnd());
+        for(int r=0;r<ranks;++r){CUDA_OK(cudaSetDevice(r));CUDA_OK(cudaStreamSynchronize(stream[r]));int got[2];CUDA_OK(cudaMemcpy(got,recv[r],sizeof(got),cudaMemcpyDeviceToHost));
+            if(op==0)errors+=got[0]!=1;if(op==1&&r==0)errors+=got[0]!=3;if(op==2||op==4)errors+=got[0]!=3;
+            if(op==3)errors+=(got[0]!=1)+(got[1]!=2);if(op==5)errors+=(got[0]!=r)+(got[1]!=100+r);}
+        const char* names[]={"Broadcast","Reduce","AllReduce","AllGather","ReduceScatter","Grouped Send/Recv all-to-all"};printf("%s checked; cumulative errors=%d\n",names[op],errors);
+    }
+    for(int r=0;r<ranks;++r){CUDA_OK(cudaSetDevice(r));CUDA_OK(cudaFree(send[r]));CUDA_OK(cudaFree(recv[r]));CUDA_OK(cudaStreamDestroy(stream[r]));NCCL_OK(ncclCommDestroy(comm[r]));}
+    printf("VALIDATION %s: errors=%d\n",errors?"FAIL":"PASS",errors);return errors?1:0;
 }

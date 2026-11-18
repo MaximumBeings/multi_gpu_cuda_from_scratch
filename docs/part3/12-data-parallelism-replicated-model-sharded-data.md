@@ -1,5 +1,15 @@
 # Chapter 12: Data Parallelism: Replicated Model, Sharded Data
 
+<!-- execution:provenance -->
+!!! info "Execution provenance"
+
+    Current execution blocks identify the tested source hash, hardware dataset, commands and captured output. References elsewhere on this page to a device-less environment describe the original authoring context. Historical output is superseded by the current record. Displayed output omits the runner command header and trims trailing line whitespace; raw logs remain exact. A host simulation or API validation has its stated scope; neither alone establishes a numerical multi-GPU workload or measured performance.
+
+
+<!-- mgpu:opener:start -->
+[![Chapter 12: Data Parallelism: Replicated Model, Sharded Data](../images/chapter-openers/12.svg)](../images/chapter-openers/12.svg)
+<!-- mgpu:opener:end -->
+
 **What you will understand by the end of this chapter:**
 
 - Why data parallelism replicates the *entire* model on every device but splits only the *data* -- and why PyTorch's own DistributedDataParallel paper states this book's whole Part 2 exists to guarantee exactly one thing: "all model replicas start from the exact same model state, and see the same parameter gradients after every backward pass."
@@ -34,6 +44,10 @@ before anyone updates -- so every device's weights stay identical.
 
 ## 12.1 Same Model, Different Data: What "Replica" Actually Means
 
+<!-- mgpu:figure-1:start -->
+[![Replicate the model; partition samples](../images/technical/ch12/1-replicas.svg)](../images/technical/ch12/1-replicas.svg)
+<!-- mgpu:figure-1:end -->
+
 ### Intuition
 
 Picture four students given the exact same textbook and the exact same starting answer key, but each assigned a different quarter of the homework problems to practice on. For "replica" to mean anything, two things have to be true before anyone starts: every student's answer key has to start out genuinely identical -- not "close," identical -- and every student's practice problems have to be genuinely different from everyone else's, or there was no point splitting the homework up in the first place. Splitting the problems is just arithmetic -- dividing a stack into four piles needs no coordination. Making sure every answer key starts identical is not arithmetic -- it needs someone to actually hand out identical copies.
@@ -54,96 +68,88 @@ Setting up one training step's replicas:
 
 ### Background
 
-Splitting a global batch into per-device shards is pure index arithmetic -- it genuinely needs no device at all, so unlike almost every other call in this book, it can genuinely succeed here regardless of `deviceCount`. Broadcasting the initial weights is different: it's a real collective, using the real `ncclBroadcast()` this book linked against in Chapter 11, and Horovod's own documentation names this exact step -- `hvd.BroadcastGlobalVariablesHook(0)` -- as what makes "every replica starts identical" an enforced fact rather than an assumption.
+Sharding a global batch is host index arithmetic. Broadcasting model weights additionally requires valid device buffers, communicators and completion checks. File 33 now checks that actual two-H100 broadcast data matches its initialized reference.
 
 ```cpp
-// Chapter 12: Data Parallelism -- Replicated Model, Sharded Data
 // 33_replica_setup.cu
-//
-// Data parallelism needs exactly two things set up before any
-// training step can run: every device holding an IDENTICAL copy of
-// the model's initial weights, and every device holding a DIFFERENT
-// slice of the global batch. The first needs a real collective
-// (ncclBroadcast, genuinely called below); the second needs no
-// device at all -- it's just arithmetic over indices, so this
-// section can genuinely succeed even here. Genuinely compiled with
-// a real nvcc, genuinely linked against a real libnccl, and
-// genuinely run.
+// Real 2--4 GPU teaching workload with independent nonuniform reference checks.
 #include <cstdio>
-#include <nccl.h>
+#include <vector>
+#include <algorithm>
+#include <cmath>
 #include <cuda_runtime.h>
+#include <nccl.h>
+#define CUDA(call) do {cudaError_t e=(call);if(e!=cudaSuccess){fprintf(stderr,"%s: %s\n",#call,cudaGetErrorString(e));return e==cudaErrorNoDevice||e==cudaErrorInsufficientDriver?2:1;}}while(0)
+#define NCCL(call) do {ncclResult_t e=(call);if(e!=ncclSuccess){fprintf(stderr,"%s: %s\n",#call,ncclGetErrorString(e));return 1;}}while(0)
 
-// Splits a global batch into `worldSize` equal, non-overlapping
-// shards, and returns device `rank`'s own [start, end) range. This
-// is pure host-side index arithmetic -- no device, no CUDA call, no
-// NCCL call. It genuinely succeeds no matter how many real devices
-// exist, because it doesn't need any.
-void computeShard(int globalBatchSize, int worldSize, int rank, int* start, int* end) {
-    int perDevice = globalBatchSize / worldSize; // assumes an even split
-    *start = rank * perDevice;
-    *end = *start + perDevice;
-}
+int main(){
+ int count=0;CUDA(cudaGetDeviceCount(&count));if(count<2){printf("BLOCKED: requires 2 GPUs; found %d.\n",count);return 2;}
+ const int world=std::min(count,4), n=257;
+ std::vector<ncclComm_t> comm(world,nullptr);NCCL(ncclCommInitAll(comm.data(),world,nullptr));
+ std::vector<cudaStream_t> stream(world,nullptr);std::vector<float*> input(world,nullptr),output(world,nullptr);
+ for(int rank=0;rank<world;++rank){CUDA(cudaSetDevice(rank));CUDA(cudaStreamCreate(&stream[rank]));CUDA(cudaMalloc(&input[rank],n*sizeof(float)));CUDA(cudaMalloc(&output[rank],n*sizeof(float)));std::vector<float> values(n);
+ for(int i=0;i<n;++i)values[i]=rank==0?float((i*17)%251-125)/8.0f:-777.0f;
+ CUDA(cudaMemcpy(input[rank],values.data(),n*sizeof(float),cudaMemcpyHostToDevice));CUDA(cudaMemset(output[rank],0xff,n*sizeof(float)));}
+ NCCL(ncclGroupStart());for(int rank=0;rank<world;++rank){CUDA(cudaSetDevice(rank));NCCL(ncclBroadcast(input[rank],output[rank],n,ncclFloat,0,comm[rank],stream[rank]));}NCCL(ncclGroupEnd());
+ for(int rank=0;rank<world;++rank){CUDA(cudaSetDevice(rank));CUDA(cudaStreamSynchronize(stream[rank]));std::vector<float> got(n);CUDA(cudaMemcpy(got.data(),output[rank],n*sizeof(float),cudaMemcpyDeviceToHost));
+ for(int i=0;i<n;++i){float expected=float((i*17)%251-125)/8.0f;if(!std::isfinite(got[i])||std::fabs(got[i]-expected)>1e-5f){fprintf(stderr,"FAIL rank %d output[%d] got %.9g expected %.9g\n",rank,i,got[i],expected);return 1;}}}
 
-int main() {
-    int deviceCount = 0;
-    cudaGetDeviceCount(&deviceCount);
-    printf("cudaGetDeviceCount(): %d device(s).\n", deviceCount);
-
-    const int GLOBAL_BATCH = 16;
-
-    // This book's own real deviceCount is 0, so there is genuinely
-    // nothing to shard across -- but the shard formula itself runs
-    // and reports that honestly, exactly like every device-count loop
-    // in this book since Chapter 4.
-    printf("\nSharding a global batch of %d across this book's own real "
-           "deviceCount (%d):\n", GLOBAL_BATCH, deviceCount);
-    for (int rank = 0; rank < deviceCount; ++rank) {
-        int start, end;
-        computeShard(GLOBAL_BATCH, deviceCount, rank, &start, &end);
-        printf("  rank %d: samples [%d, %d)\n", rank, start, end);
-    }
-    printf("  (%d device(s) -- nothing to print above.)\n", deviceCount);
-
-    // Hypothetically, if there WERE 4 devices: every rank gets a
-    // different, non-overlapping, equal-sized slice of the same
-    // global batch -- this is genuinely computed, not illustrative
-    // pseudocode.
-    const int HYPOTHETICAL_WORLD_SIZE = 4;
-    printf("\nThe same formula, hypothetically, with world size %d:\n", HYPOTHETICAL_WORLD_SIZE);
-    for (int rank = 0; rank < HYPOTHETICAL_WORLD_SIZE; ++rank) {
-        int start, end;
-        computeShard(GLOBAL_BATCH, HYPOTHETICAL_WORLD_SIZE, rank, &start, &end);
-        printf("  rank %d: samples [%d, %d)\n", rank, start, end);
-    }
-
-    // Splitting the DATA needs no device. Making every replica start
-    // from the SAME weights does -- that's a real collective, exactly
-    // the way Horovod's own hvd.BroadcastGlobalVariablesHook or this
-    // book's own Chapter 8 broadcast enforces it, rather than assuming
-    // it. Attempted here with the real ncclBroadcast() this book
-    // linked against in Chapter 11.
-    // No communicator can be created on this machine (Chapter 11), so
-    // the handle is literally NULL; NCCL rejects it up front
-    // (NCCL_DEBUG=WARN: "Broadcast : comm argument is NULL").
-    ncclComm_t comm = nullptr;
-    cudaStream_t stream = nullptr;
-    float* weights = nullptr;
-    const size_t WEIGHT_COUNT = 4;
-
-    ncclResult_t eBcast = ncclBroadcast(weights, weights, WEIGHT_COUNT, ncclFloat, 0, comm, stream);
-    printf("\nncclBroadcast(root=0, initial weights -> every replica): %s (code %d)\n",
-           ncclGetErrorString(eBcast), (int)eBcast);
-
-    printf("\nSharding data is arithmetic this chapter can genuinely run;\n"
-           "broadcasting weights is a real collective this chapter can only\n"
-           "genuinely attempt. Section 12.2 covers the other real collective\n"
-           "data parallelism needs every step after that: averaging gradients.\n");
-
-    return 0;
+ for(int rank=0;rank<world;++rank){CUDA(cudaSetDevice(rank));CUDA(cudaStreamDestroy(stream[rank]));CUDA(cudaFree(input[rank]));CUDA(cudaFree(output[rank]));NCCL(ncclCommDestroy(comm[rank]));}
+ printf("PASS: replica initial-weight broadcast on %d GPUs; all reference values checked.\n",world);return 0;
 }
 ```
 
+<!-- execution:start:a100:33_replica_setup.cu -->
+> **Current execution — 2026-11-17-a100: Numerical/transport validation (recorded scope).** UTC (program start): `2026-11-18T00:01:59.505525+00:00`. Source SHA-256: `18fdb24c4f1080443b43b0b5dbc4dc54eef777f331150e6b576e957137bf18a5`.
+
+[Exact tested source](../validation/2026-11-17-a100/33_replica_setup/33_replica_setup.cu) · [Compiler log](../validation/2026-11-17-a100/33_replica_setup/compile.log) · [Execution log](../validation/2026-11-17-a100/33_replica_setup/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+nvcc -std=c++17 -O2 -arch=sm_80 33_replica_setup.cu -o ./example -lnccl
+./example
+```
+
+<details markdown="1"><summary>Captured current-source output</summary>
+
+```text
+PASS: replica initial-weight broadcast on 4 GPUs; all reference values checked.
+```
+
+</details>
+<!-- execution:end:a100:33_replica_setup.cu -->
+
+
+<!-- execution:start:h100:33_replica_setup.cu -->
+> **Current execution — 2026-11-17-h100: Numerical/transport validation (recorded scope).** UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`. Source SHA-256: `18fdb24c4f1080443b43b0b5dbc4dc54eef777f331150e6b576e957137bf18a5`.
+
+[Exact tested source](../validation/2026-11-17-h100/33_replica_setup/33_replica_setup.cu) · [Compiler log](../validation/2026-11-17-h100/33_replica_setup/compile.log) · [Execution log](../validation/2026-11-17-h100/33_replica_setup/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+nvcc -std=c++17 -O2 -arch=sm_90 33_replica_setup.cu -o ./example -lnccl
+./example
+```
+
+<details markdown="1"><summary>Captured current-source output</summary>
+
+```text
+PASS: replica initial-weight broadcast on 2 GPUs; all reference values checked.
+```
+
+</details>
+<!-- execution:end:h100:33_replica_setup.cu -->
+
+
+**Current-source scope:** replica initial-weight broadcast uses real NCCL communicators, grouped rank participation, device buffers and checked stream completion. All output values are checked against a CPU formula; this is not a throughput benchmark. The current source was compiled and executed in the dated H100 suite; use the linked record for its numerical, API-probe or other-execution scope. The output below is retained from the earlier authoring diagnostic and is not evidence for this replacement source.
+
+The [2026-11-17 H100 execution record](../validation-h100.md) covers two GPUs connected by local NV18. It distinguishes numerical checks, API probes and other executions; a successful exit alone does not establish GPU algorithm correctness.
+
 Genuinely compiled with a real `nvcc`, genuinely linked against a real `libnccl`, and genuinely run. Locked output, deterministic across repeated runs:
+
+<details markdown="1"><summary>Historical authoring output — superseded by the current execution above</summary>
 
 ```
 cudaGetDeviceCount(): 0 device(s).
@@ -165,12 +171,18 @@ genuinely attempt. Section 12.2 covers the other real collective
 data parallelism needs every step after that: averaging gradients.
 ```
 
+</details>
+
 The shard formula is the first calculation in this section of the book that hasn't needed a single device to genuinely succeed -- it ran, honestly, twice: once against this book's own real `deviceCount` (reporting, honestly, that there's nothing to shard across), and once against a hypothetical world size, producing four genuinely correct, non-overlapping ranges. `ncclBroadcast()` is a different kind of call entirely -- it needs a real communicator attached to real devices, and no communicator can be created on this machine, so the `comm` handle it is given is literally `nullptr`. It reports exactly the honest `ncclInvalidArgument` Chapter 11 established for a `NULL` comm -- running with `NCCL_DEBUG=WARN` shows NCCL's own reason, `Broadcast : comm argument is NULL`.
 
 !!! warning "[COMMON TRAP] Assuming a replica's weights start identical just because the training script initializes them the same way"
     Every replica running the *same initialization code* -- the same random seed, the same formula -- can still end up with genuinely different starting weights, because random number generators, floating-point rounding, and even library versions can differ subtly across processes and devices. PyTorch's own DDP paper is explicit that correctness rests on replicas provably starting from "the exact same model state," not merely similar initialization logic -- which is exactly why real frameworks broadcast the actual weight values from one root, the way this section's code attempts, rather than trusting every replica to compute the same values independently.
 
 ## 12.2 Averaging Gradients: One Real Call, `ncclAvg`
+
+<!-- mgpu:figure-2:start -->
+[![Combine gradients before updating](../images/technical/ch12/2-reduce.svg)](../images/technical/ch12/2-reduce.svg)
+<!-- mgpu:figure-2:end -->
 
 ### Intuition
 
@@ -192,67 +204,86 @@ Before this chapter: ncclSum only              This chapter: ncclAvg too
 NCCL's own documentation describes `ncclAvg` plainly: "an average operation, i.e. a sum across all ranks, divided by the number of ranks." That division is the entire difference between this section and every prior all-reduce in this book -- the call shape is identical to Chapter 9's and Chapter 11's `ncclAllReduce()`, only the reduction operation passed in changes.
 
 ```cpp
-// Chapter 12: Data Parallelism -- Replicated Model, Sharded Data
 // 34_gradient_allreduce.cu
-//
-// Every training step, after every replica computes its own local
-// gradients from its own data shard, those gradients have to be
-// averaged across every replica before anyone updates their weights
-// -- otherwise "replica" stops meaning what Section 12.1 set it up
-// to mean. NCCL's ncclAvg reduction op (new in this chapter) does
-// the averaging as part of the same real ncclAllReduce() call this
-// book linked against in Chapter 11 -- no separate divide-by-N step
-// required. Genuinely compiled with a real nvcc, genuinely linked
-// against a real libnccl, and genuinely run.
+// Real 2--4 GPU teaching workload with independent nonuniform reference checks.
 #include <cstdio>
-#include <nccl.h>
+#include <vector>
+#include <algorithm>
+#include <cmath>
 #include <cuda_runtime.h>
+#include <nccl.h>
+#define CUDA(call) do {cudaError_t e=(call);if(e!=cudaSuccess){fprintf(stderr,"%s: %s\n",#call,cudaGetErrorString(e));return e==cudaErrorNoDevice||e==cudaErrorInsufficientDriver?2:1;}}while(0)
+#define NCCL(call) do {ncclResult_t e=(call);if(e!=ncclSuccess){fprintf(stderr,"%s: %s\n",#call,ncclGetErrorString(e));return 1;}}while(0)
 
-int main() {
-    int deviceCount = 0;
-    cudaGetDeviceCount(&deviceCount);
-    printf("cudaGetDeviceCount(): %d device(s).\n", deviceCount);
-
-    // No communicator can be created on this machine (Chapter 11), so
-    // the handle is literally NULL; NCCL rejects it up front
-    // (NCCL_DEBUG=WARN: "AllReduce : comm argument is NULL").
-    ncclComm_t comm = nullptr;
-    cudaStream_t stream = nullptr;
-    float* localGradients = nullptr;
-    const size_t WEIGHT_COUNT = 4;
-
-    // ncclSum, used in Chapter 11, would leave every replica with
-    // the SUM of every other replica's gradient -- exactly N times
-    // too large an update. ncclAvg divides by the number of ranks in
-    // the communicator as part of the same reduction, so the result
-    // is already the correct per-parameter average gradient.
-    ncclResult_t eAllReduceAvg = ncclAllReduce(localGradients, localGradients, WEIGHT_COUNT,
-                                                ncclFloat, ncclAvg, comm, stream);
-    printf("ncclAllReduce(localGradients, ..., ncclAvg, ...): %s (code %d)\n",
-           ncclGetErrorString(eAllReduceAvg), (int)eAllReduceAvg);
-
-    // For contrast: the same call with ncclSum, this book's only
-    // reduction op through Chapter 11 -- genuinely a different real
-    // call, not a relabeling of the one above.
-    ncclResult_t eAllReduceSum = ncclAllReduce(localGradients, localGradients, WEIGHT_COUNT,
-                                                ncclFloat, ncclSum, comm, stream);
-    printf("ncclAllReduce(localGradients, ..., ncclSum, ...): %s (code %d)\n",
-           ncclGetErrorString(eAllReduceSum), (int)eAllReduceSum);
-
-    printf("\nBoth calls report the same honest failure every collective\n"
-           "handed a NULL comm has reported since Chapter 11 (NCCL_DEBUG=WARN:\n"
-           "\"comm argument is NULL\"). The real difference between ncclAvg\n"
-           "and ncclSum only shows up in what value ends up in the buffer,\n"
-           "which needs a real device to observe. Section 12.3's simulation\n"
-           "checks that difference the way this book always has when\n"
-           "hardware can't: against an independent reference, computed on\n"
-           "the host.\n");
-
-    return 0;
+int main(){
+ int count=0;CUDA(cudaGetDeviceCount(&count));if(count<2){printf("BLOCKED: requires 2 GPUs; found %d.\n",count);return 2;}
+ const int world=std::min(count,4), n=257;
+ std::vector<ncclComm_t> comm(world,nullptr);NCCL(ncclCommInitAll(comm.data(),world,nullptr));
+ std::vector<cudaStream_t> stream(world,nullptr);std::vector<float*> input(world,nullptr),output(world,nullptr);
+ for(int rank=0;rank<world;++rank){CUDA(cudaSetDevice(rank));CUDA(cudaStreamCreate(&stream[rank]));CUDA(cudaMalloc(&input[rank],n*sizeof(float)));CUDA(cudaMalloc(&output[rank],n*sizeof(float)));std::vector<float> values(n);
+ for(int i=0;i<n;++i)values[i]=float(rank*16+i%11)/8.0f;
+ CUDA(cudaMemcpy(input[rank],values.data(),n*sizeof(float),cudaMemcpyHostToDevice));CUDA(cudaMemset(output[rank],0xff,n*sizeof(float)));}
+ NCCL(ncclGroupStart());for(int rank=0;rank<world;++rank){CUDA(cudaSetDevice(rank));NCCL(ncclAllReduce(input[rank],output[rank],n,ncclFloat,ncclAvg,comm[rank],stream[rank]));}NCCL(ncclGroupEnd());
+ for(int rank=0;rank<world;++rank){CUDA(cudaSetDevice(rank));CUDA(cudaStreamSynchronize(stream[rank]));std::vector<float> got(n);CUDA(cudaMemcpy(got.data(),output[rank],n*sizeof(float),cudaMemcpyDeviceToHost));
+ for(int i=0;i<n;++i){float expected=float(8*(world-1)+i%11)/8.0f;if(!std::isfinite(got[i])||std::fabs(got[i]-expected)>1e-5f){fprintf(stderr,"FAIL rank %d output[%d] got %.9g expected %.9g\n",rank,i,got[i],expected);return 1;}}}
+ NCCL(ncclGroupStart());for(int rank=0;rank<world;++rank){CUDA(cudaSetDevice(rank));NCCL(ncclAllReduce(input[rank],output[rank],n,ncclFloat,ncclSum,comm[rank],stream[rank]));}NCCL(ncclGroupEnd());
+ for(int rank=0;rank<world;++rank){CUDA(cudaSetDevice(rank));CUDA(cudaStreamSynchronize(stream[rank]));std::vector<float> got(n);CUDA(cudaMemcpy(got.data(),output[rank],n*sizeof(float),cudaMemcpyDeviceToHost));for(int i=0;i<n;++i){float expected=float(8*world*(world-1)+world*(i%11))/8.0f;if(!std::isfinite(got[i])||got[i]!=expected){fprintf(stderr,"FAIL sum gradient rank %d index %d\n",rank,i);return 1;}}}
+ for(int rank=0;rank<world;++rank){CUDA(cudaSetDevice(rank));CUDA(cudaStreamDestroy(stream[rank]));CUDA(cudaFree(input[rank]));CUDA(cudaFree(output[rank]));NCCL(ncclCommDestroy(comm[rank]));}
+ printf("PASS: average and sum gradient AllReduce on %d GPUs; all reference values checked.\n",world);return 0;
 }
 ```
 
+<!-- execution:start:a100:34_gradient_allreduce.cu -->
+> **Current execution — 2026-11-17-a100: Numerical/transport validation (recorded scope).** UTC (program start): `2026-11-18T00:02:06.952824+00:00`. Source SHA-256: `df562388a04106ea487942c8dd1569ba0d32279098ea79149c6e2c6406a0b8d8`.
+
+[Exact tested source](../validation/2026-11-17-a100/34_gradient_allreduce/34_gradient_allreduce.cu) · [Compiler log](../validation/2026-11-17-a100/34_gradient_allreduce/compile.log) · [Execution log](../validation/2026-11-17-a100/34_gradient_allreduce/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+nvcc -std=c++17 -O2 -arch=sm_80 34_gradient_allreduce.cu -o ./example -lnccl
+./example
+```
+
+<details markdown="1"><summary>Captured current-source output</summary>
+
+```text
+PASS: average and sum gradient AllReduce on 4 GPUs; all reference values checked.
+```
+
+</details>
+<!-- execution:end:a100:34_gradient_allreduce.cu -->
+
+
+<!-- execution:start:h100:34_gradient_allreduce.cu -->
+> **Current execution — 2026-11-17-h100: Numerical/transport validation (recorded scope).** UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`. Source SHA-256: `df562388a04106ea487942c8dd1569ba0d32279098ea79149c6e2c6406a0b8d8`.
+
+[Exact tested source](../validation/2026-11-17-h100/34_gradient_allreduce/34_gradient_allreduce.cu) · [Compiler log](../validation/2026-11-17-h100/34_gradient_allreduce/compile.log) · [Execution log](../validation/2026-11-17-h100/34_gradient_allreduce/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+nvcc -std=c++17 -O2 -arch=sm_90 34_gradient_allreduce.cu -o ./example -lnccl
+./example
+```
+
+<details markdown="1"><summary>Captured current-source output</summary>
+
+```text
+PASS: average and sum gradient AllReduce on 2 GPUs; all reference values checked.
+```
+
+</details>
+<!-- execution:end:h100:34_gradient_allreduce.cu -->
+
+
+**Current-source scope:** average and sum gradient AllReduce uses real NCCL communicators, grouped rank participation, device buffers and checked stream completion. All output values are checked against a CPU formula; this is not a throughput benchmark. The current source was compiled and executed in the dated H100 suite; use the linked record for its numerical, API-probe or other-execution scope. The output below is retained from the earlier authoring diagnostic and is not evidence for this replacement source.
+
+The [2026-11-17 H100 execution record](../validation-h100.md) covers two GPUs connected by local NV18. It distinguishes numerical checks, API probes and other executions; a successful exit alone does not establish GPU algorithm correctness.
+
 Genuinely compiled with a real `nvcc`, genuinely linked against a real `libnccl`, and genuinely run. Locked output, deterministic across repeated runs:
+
+<details markdown="1"><summary>Historical authoring output — superseded by the current execution above</summary>
 
 ```
 cudaGetDeviceCount(): 0 device(s).
@@ -269,10 +300,16 @@ hardware can't: against an independent reference, computed on
 the host.
 ```
 
-Both calls genuinely fail identically here, for the same reason every real collective call has failed since Chapter 11 -- the `comm` handle is `NULL`, so NCCL's own argument check rejects both (`NCCL_DEBUG=WARN` prints `AllReduce : comm argument is NULL` twice) before either reduction operation would ever run. That's honest, but it's also exactly why this section can't be where the `ncclAvg`-vs-`ncclSum` distinction actually gets checked -- Section 12.3 is.
+</details>
+
+The current gradient example initializes real buffers and checks both reduction variants. For equally weighted ranks, `ncclAvg` and `ncclSum` followed by division implement the same mathematical mean, subject to floating-point rounding. The earlier null-communicator errors were argument-check diagnostics, not checks of either reduction.
+
+The [2026-11-17 H100 execution record](../validation-h100.md) covers two GPUs connected by local NV18. It distinguishes numerical checks, API probes and other executions; a successful exit alone does not establish GPU algorithm correctness.
 
 !!! warning "[COMMON TRAP] Assuming you can just divide by N yourself after an ncclSum, instead of using ncclAvg"
     Manually dividing a summed gradient by `N` after an `ncclSum`-based all-reduce produces the mathematically identical number to `ncclAvg` -- so it's tempting to treat the two as interchangeable, just one extra line of code either way. They aren't equivalent as a matter of what actually executes: `ncclAvg` performs the division inside the same reduction NCCL already has to do, on whatever internal precision NCCL's own implementation uses for the reduction itself, while a separate manual division is a distinct floating-point operation performed afterward, by your own code, on the already-reduced result. For plain sums of well-scaled floating-point gradients the difference is usually invisible; the two are not, however, defined to be bit-identical, and reaching for `ncclAvg` when it exists avoids ever needing to reason about whether that difference matters for a given training run.
+
+An unweighted mean of rank-local mean gradients corresponds to the global sample mean only when each rank contributes equal sample weight. For uneven shards, accumulate local gradient sums and sample counts, reduce both, and divide by the global count (or apply equivalent weighting). `ncclSum` is also valid when normalization is performed explicitly; `ncclAvg` is not intrinsically required. See [NCCL reduction semantics](https://docs.nvidia.com/deeplearning/nccl/user-guide/docs/api/types.html).
 
 ## 12.3 Verifying Consistency: Why Skipping the All-Reduce Silently Breaks Everything
 
@@ -294,7 +331,7 @@ After just ONE training step, starting all four replicas at w=0:
 
 ### Background
 
-This is the section where this chapter's actual correctness claim gets checked, since neither real collective call in Sections 12.1-12.2 could run on this machine. The simulation below uses the smallest model this book could reasonably check by hand: a single scalar weight per replica, and a toy gradient, `grad = weight - target`, standing in for a real backward pass. Four devices, four different per-shard targets, matching this book's own established `N=4` convention. It runs the training loop two ways -- once with a real average all-reduce every step (Section 12.2's `ncclAvg`, computed here on the host since no device can run it for real), and once with no synchronization at all -- and checks the first against an independent single-model reference, and the second for the divergence Section 12.3's intuition predicts.
+The current collective examples have numerical H100 checks. This simulation adds an independent, small training model that compares synchronized replicas with a single-model reference and demonstrates divergence when synchronization is omitted; it is not a GPU training benchmark.
 
 ```cpp
 // Chapter 12: Data Parallelism -- Replicated Model, Sharded Data
@@ -418,7 +455,85 @@ int main() {
 }
 ```
 
+<!-- execution:start:a100:35_data_parallel_consistency_simulation.cpp -->
+> **Current execution — 2026-11-17-a100: Host program/model (exit-only).** UTC (program start): `2026-11-18T00:02:14.450789+00:00`. Source SHA-256: `fcc474089776db5c52e03eaa13c0358e9ea44e9fcea300ca8a6aecd3b552f2a7`.
+
+[Exact tested source](../validation/2026-11-17-a100/35_data_parallel_consistency_simulation/35_data_parallel_consistency_simulation.cpp) · [Compiler log](../validation/2026-11-17-a100/35_data_parallel_consistency_simulation/compile.log) · [Execution log](../validation/2026-11-17-a100/35_data_parallel_consistency_simulation/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+g++ -std=c++17 -O2 35_data_parallel_consistency_simulation.cpp -o ./example
+./example
+```
+
+<details markdown="1"><summary>Captured current-source output</summary>
+
+```text
+WITH synchronization (average gradients via ncclAvg every step):
+step 0: replica0=0.0000 replica1=0.0000 replica2=0.0000 replica3=0.0000  | reference=0.0000
+step 1: replica0=1.4000 replica1=1.4000 replica2=1.4000 replica3=1.4000  | reference=1.4000
+step 2: replica0=2.6600 replica1=2.6600 replica2=2.6600 replica3=2.6600  | reference=2.6600
+step 3: replica0=3.7940 replica1=3.7940 replica2=3.7940 replica3=3.7940  | reference=3.7940
+step 4: replica0=4.8146 replica1=4.8146 replica2=4.8146 replica3=4.8146  | reference=4.8146
+step 5: replica0=5.7331 replica1=5.7331 replica2=5.7331 replica3=5.7331  | reference=5.7331
+After 5 step(s): every replica identical to every other: PASS; every replica matches the independent single-model reference: PASS
+
+WITHOUT synchronization (each replica updates from its own local gradient only):
+step 0: replica0=0.0000 replica1=0.0000 replica2=0.0000 replica3=0.0000
+step 1: replica0=1.2000 replica1=0.8000 replica2=2.0000 replica3=1.6000
+step 2: replica0=2.2800 replica1=1.5200 replica2=3.8000 replica3=3.0400
+step 3: replica0=3.2520 replica1=2.1680 replica2=5.4200 replica3=4.3360
+step 4: replica0=4.1268 replica1=2.7512 replica2=6.8780 replica3=5.5024
+step 5: replica0=4.9141 replica1=3.2761 replica2=8.1902 replica3=6.5522
+After 5 step(s) with no synchronization: replicas have diverged from each other: PASS (divergence correctly demonstrated)
+```
+
+</details>
+<!-- execution:end:a100:35_data_parallel_consistency_simulation.cpp -->
+
+
+<!-- execution:start:h100:35_data_parallel_consistency_simulation.cpp -->
+> **Current execution — 2026-11-17-h100: Host program/model (exit-only).** UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`. Source SHA-256: `fcc474089776db5c52e03eaa13c0358e9ea44e9fcea300ca8a6aecd3b552f2a7`.
+
+[Exact tested source](../validation/2026-11-17-h100/35_data_parallel_consistency_simulation/35_data_parallel_consistency_simulation.cpp) · [Compiler log](../validation/2026-11-17-h100/35_data_parallel_consistency_simulation/compile.log) · [Execution log](../validation/2026-11-17-h100/35_data_parallel_consistency_simulation/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+g++ -std=c++17 -O2 35_data_parallel_consistency_simulation.cpp -o ./example
+./example
+```
+
+<details markdown="1"><summary>Captured current-source output</summary>
+
+```text
+WITH synchronization (average gradients via ncclAvg every step):
+step 0: replica0=0.0000 replica1=0.0000 replica2=0.0000 replica3=0.0000  | reference=0.0000
+step 1: replica0=1.4000 replica1=1.4000 replica2=1.4000 replica3=1.4000  | reference=1.4000
+step 2: replica0=2.6600 replica1=2.6600 replica2=2.6600 replica3=2.6600  | reference=2.6600
+step 3: replica0=3.7940 replica1=3.7940 replica2=3.7940 replica3=3.7940  | reference=3.7940
+step 4: replica0=4.8146 replica1=4.8146 replica2=4.8146 replica3=4.8146  | reference=4.8146
+step 5: replica0=5.7331 replica1=5.7331 replica2=5.7331 replica3=5.7331  | reference=5.7331
+After 5 step(s): every replica identical to every other: PASS; every replica matches the independent single-model reference: PASS
+
+WITHOUT synchronization (each replica updates from its own local gradient only):
+step 0: replica0=0.0000 replica1=0.0000 replica2=0.0000 replica3=0.0000
+step 1: replica0=1.2000 replica1=0.8000 replica2=2.0000 replica3=1.6000
+step 2: replica0=2.2800 replica1=1.5200 replica2=3.8000 replica3=3.0400
+step 3: replica0=3.2520 replica1=2.1680 replica2=5.4200 replica3=4.3360
+step 4: replica0=4.1268 replica1=2.7512 replica2=6.8780 replica3=5.5024
+step 5: replica0=4.9141 replica1=3.2761 replica2=8.1902 replica3=6.5522
+After 5 step(s) with no synchronization: replicas have diverged from each other: PASS (divergence correctly demonstrated)
+```
+
+</details>
+<!-- execution:end:h100:35_data_parallel_consistency_simulation.cpp -->
+
+
 Genuinely compiled with `g++` and genuinely run. Locked output, deterministic across repeated runs:
+
+<details markdown="1"><summary>Historical authoring output — superseded by the current execution above</summary>
 
 ```
 WITH synchronization (average gradients via ncclAvg every step):
@@ -440,6 +555,8 @@ step 5: replica0=4.9141 replica1=3.2761 replica2=8.1902 replica3=6.5522
 After 5 step(s) with no synchronization: replicas have diverged from each other: PASS (divergence correctly demonstrated)
 ```
 
+</details>
+
 With synchronization, all four replicas stay bit-identical through all five steps, and match a reference model trained directly on the mean of all four targets -- the mathematical stand-in for "the true global batch" -- at every single step, not just at the end. Two different guarantees are hiding in those two PASS lines, and they are not equally strong. Replica-vs-replica equality is guaranteed unconditionally: every replica applies the *one* `avgGrad` value computed once, so their weights cannot differ. Replica-vs-reference equality is guaranteed only *algebraically*: since every replica's weight is identical entering a step, each local gradient is `w - target_i`, and their average equals `w - mean(target_i)` -- the recurrence the reference runs directly. In floating point, though, "sum the `N` differences, then divide" and "subtract the precomputed mean" round differently, so the two are not bit-identical in general. This section's targets (12, 8, 20, 16) happen to keep them bit-identical (checked for 200 steps), but a scratch copy of this exact program with targets `{0.1, 0.7, 1.3, 2.9}` first diverges in the last bit at step 19 (`1.0811435352908758` vs. `1.081143535290876`), and its reference check reports FAIL at 20 steps. That is Chapter 8's floating-point non-associativity lesson showing up again: the exact `!=` reference check is valid *for these chosen values*, and a reference check on arbitrary floating-point data would need a tolerance. Without synchronization, the four replicas are already different after step 1 (`1.2`, `0.8`, `2.0`, `1.6` instead of one shared `1.4`), and the gap only widens with every further step -- by step 5, replica 2's weight (`8.19`) is more than double replica 1's (`3.28`). Nothing in the loop that produced this divergence looks wrong on its own; the only thing that reveals it is exactly the kind of independent, cross-replica check this section ran.
 
 !!! warning "[COMMON TRAP] Assuming a bug that skips synchronization will be obvious quickly"
@@ -447,7 +564,7 @@ With synchronization, all four replicas stay bit-identical through all five step
 
 ## Chapter Summary
 
-Data parallelism replicates a full model across every device and splits only the training data, and this chapter showed that "replica" is a claim that has to be actively maintained, not a label that stays true on its own. Section 12.1 split this setup into the two things it actually requires: sharding data, which is pure arithmetic that needs no device at all, and broadcasting the initial weights, a real collective (`ncclBroadcast()`) that enforces every replica starting genuinely identical, the same guarantee Horovod's own `hvd.BroadcastGlobalVariablesHook` and PyTorch DDP's own stated correctness property both describe directly. Section 12.2 introduced `ncclAvg`, a second real reduction op alongside the `ncclSum` this book has used since Chapter 11, needed because gradient synchronization requires the *mean* of every replica's local gradient, not their sum. Section 12.3 -- the chapter's actual verification, since neither real collective call could run on this machine -- checked both halves of the claim with a small, checkable simulation: with synchronization, every replica stays bit-identical to every other and (for this section's targets, bit-for-bit; in general, up to floating-point rounding) matches an independently-computed single-model reference at every step; without it, replicas silently diverge starting at step 1, with no error, no crash, and no local sign anything is wrong. Chapter 13 turns to model parallelism -- what to do when replicating the *entire* model on every device isn't an option in the first place, because no single device can hold it.
+Data parallelism replicates a full model across every device and splits only the training data, and this chapter showed that "replica" is a claim that has to be actively maintained, not a label that stays true on its own. Section 12.1 split this setup into the two things it actually requires: sharding data, which is pure arithmetic that needs no device at all, and broadcasting the initial weights, a real collective (`ncclBroadcast()`) that enforces every replica starting genuinely identical, the same guarantee Horovod's own `hvd.BroadcastGlobalVariablesHook` and PyTorch DDP's own stated correctness property both describe directly. Section 12.2 introduced `ncclAvg`, a second real reduction op alongside the `ncclSum` this book has used since Chapter 11, used here for equally weighted replica gradients; sum followed by explicit normalization is equivalent under that assumption. Section 12.3 -- an independent host-model check supplementing the current numerical H100 checks -- checked both halves of the claim with a small, checkable simulation: with synchronization, every replica stays bit-identical to every other and (for this section's targets, bit-for-bit; in general, up to floating-point rounding) matches an independently-computed single-model reference at every step; without it, replicas silently diverge starting at step 1, with no error, no crash, and no local sign anything is wrong. Chapter 13 turns to model parallelism -- what to do when replicating the *entire* model on every device isn't an option in the first place, because no single device can hold it.
 
 ## Self-Check Questions
 

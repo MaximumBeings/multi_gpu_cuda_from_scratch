@@ -1,12 +1,26 @@
 # Getting Started
 
-This book targets CUDA C++ compiled with `nvcc` for real NVIDIA GPU architectures -- `sm_70` (Volta) and newer covers everything this book builds -- plus MPI (OpenMPI or MPICH) for Part 5's multi-node material. A real multi-GPU machine with a matching driver is what you need to *run* the code in this book end to end; `nvcc` itself only needs a CUDA toolkit and will happily compile for architectures your current machine doesn't have, and MPI programs compile and run fine as multiple local ranks on a single machine with no GPU at all.
+<!-- execution:overview -->
+!!! success "Recorded hardware validation"
+
+    All 145 current source programs compiled and executed on [two H100 GPUs](validation-h100.md) and again on [eight A100 GPUs](validation-a100.md). Each pass records 33 numerical/transport validations, 13 API validations and 99 other executions with limited correctness scope. The A100 pass uses eight MPI processes for multi-rank examples; individual programs retain their documented participant counts. A separate eight-device harness checks all 56 ordered peer-copy pairs, four collective patterns and three halo generations. B200 execution remains untested.
+
+
+<!-- mgpu:opener:start -->
+[![Getting Started](images/chapter-openers/getting-started.svg)](images/chapter-openers/getting-started.svg)
+<!-- mgpu:opener:end -->
+
+This book targets CUDA C++ compiled with `nvcc` for real NVIDIA GPU architectures -- the appropriate target must be selected per example -- plus MPI (OpenMPI or MPICH) for Part 5's multi-node material. A real multi-GPU machine with a matching driver is what you need to *run* the code in this book end to end; `nvcc` itself only needs a CUDA toolkit and will happily compile for architectures your current machine doesn't have, and host-only MPI programs can run as multiple local ranks without GPUs; CUDA-aware MPI examples still need CUDA devices.
 
 ## Installing a toolchain
 
-A full NVIDIA CUDA Toolkit install (from developer.nvidia.com, or via your platform's package manager, e.g. `apt-get install nvidia-cuda-toolkit` on Debian/Ubuntu) gives you a genuine, working `nvcc`, `ptxas`, `cicc`, and every header this book uses, with no GPU or driver required to *compile* -- only to run device code. This is what this book's own examples are authored and verified with.
+<!-- mgpu:figure-overview:start -->
+[![Separate build checks from hardware execution](images/technical/getting-started.svg)](images/technical/getting-started.svg)
+<!-- mgpu:figure-overview:end -->
 
-The lighter-weight `pip install nvidia-cuda-nvcc-cu12` route some CUDA guides suggest is **verified here not to work as a drop-in `nvcc` replacement**: as of the versions checked while writing this book (12.9.86 and 12.4.131, on both x86_64 and aarch64), that wheel installs only `ptxas`, the `nvvm` backend, and CUDA C++ headers -- it does *not* include the `nvcc` driver script or the `cicc` front-end compiler, so there is no `nvcc` binary to invoke afterward. This matches multiple reports on NVIDIA's own developer forums of the same gap. If a lighter-than-full-toolkit option matters to you, check for an `nvcc` binary under the installed package's `bin/` directory before relying on it -- don't assume the package name implies a working compiler. For Part 5's MPI material, an ordinary OpenMPI install (`apt-get install libopenmpi-dev openmpi-bin` or your platform's equivalent) is enough to compile and run real, multi-rank MPI programs on one machine -- CUDA-aware MPI specifically (an OpenMPI build configured `--with-cuda`) is the one piece of this book's own toolchain that a driver-less, device-less environment cannot exercise for real, and Chapter 20 and Appendix A both say exactly which parts of that chapter's code are genuinely run as ordinary MPI ranks versus checked by simulation for that reason.
+A full NVIDIA CUDA Toolkit install (from developer.nvidia.com, or via your platform's package manager, e.g. `apt-get install nvidia-cuda-toolkit` on Debian/Ubuntu) gives you a genuine, working `nvcc`, `ptxas`, `cicc`, and CUDA headers; NCCL, NVSHMEM and MPI development packages are separate dependencies, with no GPU or driver required to *compile* -- only to run device code. The package name and supported compiler/architecture targets depend on the distribution and toolkit version. Use [NVIDIA’s installation guide](https://docs.nvidia.com/cuda/cuda-installation-guide-linux/) for the actual host.
+
+Check that your selected toolkit provides `nvcc --version`; a Python package containing some CUDA components is not automatically a full C++ build environment. Install NCCL/NVSHMEM headers and libraries separately where required. Host-only MPI can run without CUDA devices; CUDA-aware MPI requires a compatible MPI build and real device buffers. Follow [NVIDIA’s CUDA-aware MPI guidance](https://developer.nvidia.com/blog/introduction-cuda-aware-mpi/) and the chapter’s actual build options rather than assuming an ordinary MPI installation supports GPU pointers.
 
 ```bash
 nvcc --version   # compiler, needed to build anything
@@ -16,17 +30,18 @@ mpirun --version   # for Part 5 onward
 
 ## The honesty discipline this book follows
 
-This book's reference implementations were authored and compiled in an environment with a full CUDA and MPI toolchain but **no NVIDIA GPU, no NVIDIA driver, and no real second device of any kind** -- a more severe version of the constraint a single-GPU CUDA book already has, since a multi-GPU book's own central claims are about what happens *between* devices, not just on one. This book handles that limitation the same way throughout, stated once here rather than repeated on every page:
+The original authoring transcripts were produced with a CUDA and MPI toolchain but **no NVIDIA GPU or driver** -- a more severe version of the constraint a single-GPU CUDA book already has, since a multi-GPU book's own central claims are about what happens *between* devices, not just on one. The subsequent two-H100 execution removes that earlier hardware limitation for the recorded tests. Current validation uses the following scopes:
 
-- **Plain C++ host code** (no `__global__`, no `__device__`, no CUDA Runtime API calls) is genuinely compiled with `g++` and genuinely run. Its output is locked into the page and re-verified by a fresh recompile and rerun before publication.
-- **CUDA kernels that need a device to execute** are genuinely compiled with `nvcc` for a real architecture, then checked by a **host-side simulation**: ordinary C++ that walks the exact same grid, block, and thread loop nest the kernel's own launch configuration would produce, checked against an independent scalar reference.
-- **Multi-device orchestration** -- a peer-to-peer transfer, a collective like ring all-reduce, a cross-device barrier -- is checked by a **host-side simulation of every participating device**: N real in-memory buffers standing in for N real devices, exchanging data with the exact same message pattern (same ring order, same tree shape, same round count) the real collective would use, with the final result checked against an independently computed reference (an ordinary sequential sum, for instance, checked against a simulated ring all-reduce's result). This is a real, exhaustive verification of the collective's *logic* -- where nearly every genuine multi-GPU bug actually lives (an off-by-one in a ring's neighbor index, a race between a send and the buffer it reads from, a barrier one rank never reaches) -- not a substitute for measuring it on real hardware.
-- **CUDA Runtime API calls that can be genuinely made without a device** (`cudaGetDeviceCount`, `cudaMalloc`, `cudaDeviceCanAccessPeer`, and similar) are genuinely called, and this environment honestly reports back whatever a driver-less, device-less machine actually reports -- typically a device count of zero and `cudaErrorNoDevice` or `cudaErrorInsufficientDriver` -- rather than a fabricated success.
-- **Plain MPI code** (point-to-point sends/receives, communicators, collectives) genuinely runs as multiple real local ranks (`mpirun -np 4 ...`) on a single machine, with no GPU involved at all -- this is real, not simulated, since MPI itself needs no special hardware.
-- **Real hardware facts** this book states -- NVLink or PCIe generation bandwidth figures, a specific GPU's real interconnect topology, a real cluster's real numbers -- are cited to real, current vendor documentation rather than assumed from memory, the same discipline this book's own sibling volume follows for edge-hardware bandwidth figures.
-- **Timing and throughput numbers are never fabricated.** Where a chapter's argument depends on which of two approaches is faster rather than merely which is correct, this book measures a genuinely computed, deterministic quantity instead of a wall-clock number -- a message count, a round count, a byte count moved -- specifically because a wall-clock number captured once on one machine is not reproducible on a rerun, let alone on a reader's own cluster, the way an exact count is.
+- **Host programs and simulations** are compiled and executed as host programs. Their results check the modeled arithmetic and scheduling, not CUDA concurrency or physical links.
+- **GPU numerical checks** initialize data and compare actual device results with an explicit reference.
+- **API probes** check the stated capability, lifecycle or expected-error behavior; they are not numerical collective tests.
+- **Execution evidence** records source hashes, commands, timestamps, system information and raw logs. The 2026-11-17 two-H100 local NV18 run compiled and executed all 145 programs: 33 numerical checks, 13 API probes and 99 other executions. See [H100 validation](validation-h100.md). Host simulations remain useful supplementary checks; neither they nor this single-node run validate cross-node RDMA, failure recovery or performance on other hardware.
 
-Every chapter states which of the above applies to each piece of its own code, so nothing is left for a reader to guess about how a claim was actually established.
+Historical no-device output establishes an observed prerequisite/error path, not a successful GPU workload. Current-source execution must be supported by a fresh manifest, source hashes, commands and logs; compilation alone does not establish correctness.
+
+Before execution, run `nvidia-smi`, `nvcc --version`, and the chapter’s device-count/topology checks. H100 uses the generic `sm_90` target for these ordinary CUDA examples; B200 uses `sm_100` with a toolkit that supports it. Rebuild and revalidate rather than reusing a Hopper cubin on Blackwell. [NVIDIA’s compatibility guide](https://docs.nvidia.com/cuda/blackwell-compatibility-guide/index.html) explains cubin and PTX compatibility. Run MPI examples with the required number of distinct visible devices; multiple ranks on one GPU are not a substitute for a multi-GPU collective.
+
+From the repository root, `python3 tools/validate_examples.py --output artifacts/local-audit` collects compiler evidence. GPU execution is opt-in with `--execute --arch sm_90` on H100 or `--execute --arch sm_100` on B200. Keep each architecture’s output separate and inspect per-example classifications; API diagnostics and simulations are not numerical GPU validations.
 
 ## Compile-line conventions
 

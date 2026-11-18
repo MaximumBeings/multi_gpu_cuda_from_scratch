@@ -1,0 +1,19 @@
+$ /home/ubuntu/codex-eight-gpu-audit-20261117/multi-gpu-audit/artifacts/a100-eight-20261117/124_quiz_reassociation_cancellation/example
+=== summing the same four doubles in two different orders ===
+a=10000000000000000.0, b=1.0, c=-10000000000000000.0, d=1.0
+
+sequential ((a+b)+c)+d:
+  a+b       = 10000000000000000.0  (b=1.0 is far smaller than a's own ULP at this magnitude -- it vanishes in the rounding)
+  (a+b)+c   = 0.0
+  ((a+b)+c)+d = 1.0
+
+pairwise (a+c)+(b+d):
+  a+c       = 0.0  (equal magnitude, opposite sign -- exact cancellation, no rounding loss)
+  b+d       = 2.0
+  (a+c)+(b+d) = 2.0
+
+sequential result = 1.0
+pairwise result   = 2.0
+difference        = 1.0
+
+self-check: do the two orders agree? NO -- both orders sum the IDENTICAL four numbers, so any difference is entirely a property of ROUND-OFF ORDER, not of the data itself. This is the exact same real mechanism Chapters 25/29/31 each found: a ring's own sequential forwarding order and a tree-style pairwise combine order are NOT required to produce bit-identical sums, even though both are mathematically "the same" reduction.

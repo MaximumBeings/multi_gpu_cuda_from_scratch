@@ -1,0 +1,1 @@
+$ nvcc -std=c++17 -O2 -arch=sm_90 -ccbin mpicxx /home/ubuntu/codex-multigpu-audit-20261117/multi-gpu-audit/docs/part5/code/67_nccl_captured_in_graph.cu -o /home/ubuntu/codex-multigpu-audit-20261117/multi-gpu-audit/artifacts/h100-reviewed-20261117/67_nccl_captured_in_graph/example -lnccl

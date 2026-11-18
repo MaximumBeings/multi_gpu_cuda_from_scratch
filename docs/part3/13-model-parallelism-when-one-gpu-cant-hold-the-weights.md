@@ -1,10 +1,20 @@
 # Chapter 13: Model Parallelism: When One GPU Can't Hold the Weights
 
+<!-- execution:provenance -->
+!!! info "Execution provenance"
+
+    Current execution blocks identify the tested source hash, hardware dataset, commands and captured output. References elsewhere on this page to a device-less environment describe the original authoring context. Historical output is superseded by the current record. Displayed output omits the runner command header and trims trailing line whitespace; raw logs remain exact. A host simulation or API validation has its stated scope; neither alone establishes a numerical multi-GPU workload or measured performance.
+
+
+<!-- mgpu:opener:start -->
+[![Chapter 13: Model Parallelism: When One GPU Can't Hold the Weights](../images/chapter-openers/13.svg)](../images/chapter-openers/13.svg)
+<!-- mgpu:opener:end -->
+
 **What you will understand by the end of this chapter:**
 
 - Why data parallelism (Chapter 12) cannot fix the memory-capacity wall Chapter 1 opened this book with -- replicating a model that doesn't fit on one device onto *more* devices still doesn't make it fit on any *one* of them.
 - How to partition a model's own layers across devices using the same host-arithmetic pattern Chapter 12 used to partition data, and what real transfer -- not a new API, the same `cudaMemcpyPeer()` from Chapter 5 -- has to move between devices at every layer boundary.
-- Why a forward pass split across devices this way must produce the *exact same*, bit-identical output as an unsplit one -- and why that guarantee is strictly stronger than anything this book's collectives (Chapters 8-11) could promise about floating-point order.
+- Why this host example’s split forward pass produces bit-identical output, and which assumptions that comparison uses -- and why that guarantee is strictly stronger than anything this book's collectives (Chapters 8-11) could promise about floating-point order.
 - The real cost naive model parallelism doesn't pay for free: GPipe's own documented "severe under-utilization due to the sequential dependency of the network" -- named here, quantified in Chapter 15.
 
 **What you need to know first:**
@@ -33,6 +43,10 @@ Data parallelism (Chapter 12):        Model parallelism (this chapter):
 ```
 
 ## 13.1 Why Split the Model Itself: Memory Capacity, Revisited
+
+<!-- mgpu:figure-1:start -->
+[![Partitioning changes memory ownership](../images/technical/ch13/1-capacity.svg)](../images/technical/ch13/1-capacity.svg)
+<!-- mgpu:figure-1:end -->
 
 ### Intuition
 
@@ -147,7 +161,73 @@ int main() {
 }
 ```
 
+<!-- execution:start:a100:36_model_shard_memory_model.cpp -->
+> **Current execution — 2026-11-17-a100: Host program/model (exit-only).** UTC (program start): `2026-11-18T00:02:14.570821+00:00`. Source SHA-256: `0355d1d3e848f8870551214f9ab56fec971df732792974ec8c45c4ffd5a363cc`.
+
+[Exact tested source](../validation/2026-11-17-a100/36_model_shard_memory_model/36_model_shard_memory_model.cpp) · [Compiler log](../validation/2026-11-17-a100/36_model_shard_memory_model/compile.log) · [Execution log](../validation/2026-11-17-a100/36_model_shard_memory_model/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+g++ -std=c++17 -O2 36_model_shard_memory_model.cpp -o ./example
+./example
+```
+
+<details markdown="1"><summary>Captured current-source output</summary>
+
+```text
+Model                Params  Training(Adam,mp)      Min SXM x      Min NVL x
+GPT-2 (1.5B)          1.5B            24.0 GB             1             1
+7B-class model        7.0B           112.0 GB             2             2
+GPT-3 (175B)        175.0B          2800.0 GB            35            30
+
+Self-consistency check against Chapter 1's own locked GPT-3 figures (35 H100 SXM, 30 H100 NVL): PASS
+
+Running 8 data-parallel replicas of GPT-3 (Chapter 12's own technique) needs 22400.0 GB of TOTAL cluster memory (8 x 2800.0 GB) -- but EACH replica still individually needs the same 35 H100 SXM GPUs' worth of memory to exist at all.
+Data parallelism multiplies how many times the model exists;
+it does not reduce how big any one copy has to be. Only model
+parallelism -- splitting the model ITSELF, this chapter's subject -- changes that number.
+```
+
+</details>
+<!-- execution:end:a100:36_model_shard_memory_model.cpp -->
+
+
+<!-- execution:start:h100:36_model_shard_memory_model.cpp -->
+> **Current execution — 2026-11-17-h100: Host program/model (exit-only).** UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`. Source SHA-256: `0355d1d3e848f8870551214f9ab56fec971df732792974ec8c45c4ffd5a363cc`.
+
+[Exact tested source](../validation/2026-11-17-h100/36_model_shard_memory_model/36_model_shard_memory_model.cpp) · [Compiler log](../validation/2026-11-17-h100/36_model_shard_memory_model/compile.log) · [Execution log](../validation/2026-11-17-h100/36_model_shard_memory_model/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+g++ -std=c++17 -O2 36_model_shard_memory_model.cpp -o ./example
+./example
+```
+
+<details markdown="1"><summary>Captured current-source output</summary>
+
+```text
+Model                Params  Training(Adam,mp)      Min SXM x      Min NVL x
+GPT-2 (1.5B)          1.5B            24.0 GB             1             1
+7B-class model        7.0B           112.0 GB             2             2
+GPT-3 (175B)        175.0B          2800.0 GB            35            30
+
+Self-consistency check against Chapter 1's own locked GPT-3 figures (35 H100 SXM, 30 H100 NVL): PASS
+
+Running 8 data-parallel replicas of GPT-3 (Chapter 12's own technique) needs 22400.0 GB of TOTAL cluster memory (8 x 2800.0 GB) -- but EACH replica still individually needs the same 35 H100 SXM GPUs' worth of memory to exist at all.
+Data parallelism multiplies how many times the model exists;
+it does not reduce how big any one copy has to be. Only model
+parallelism -- splitting the model ITSELF, this chapter's subject -- changes that number.
+```
+
+</details>
+<!-- execution:end:h100:36_model_shard_memory_model.cpp -->
+
+
 Genuinely compiled with `g++` and genuinely run. Locked output, deterministic across repeated runs:
+
+<details markdown="1"><summary>Historical authoring output — superseded by the current execution above</summary>
 
 ```
 Model                Params  Training(Adam,mp)      Min SXM x      Min NVL x
@@ -163,12 +243,18 @@ it does not reduce how big any one copy has to be. Only model
 parallelism -- splitting the model ITSELF, this chapter's subject -- changes that number.
 ```
 
+</details>
+
 GPT-2's own 1.5-billion-parameter model needs only 24 GB of training-state memory -- Rajbhandari et al.'s own ZeRO paper cites this exact figure as their motivating example, and it fits on a single modern H100 with room to spare, which is exactly why GPT-2-scale models never needed model parallelism to train. The 7B-class model already needs 2 shards; GPT-3 needs 35, reproducing Chapter 1's own already-locked number exactly, confirmed by this section's own self-consistency check. The closing calculation is the point of this whole section: multiplying replicas multiplies total cluster memory linearly, but does nothing at all to the 35-GPU figure any single replica is stuck with -- that number only moves when the model itself gets divided, which is what the rest of this chapter builds.
 
 !!! warning "[COMMON TRAP] Assuming more GPUs always means more capacity, regardless of how they're used"
     A cluster with 280 GPUs (8 data-parallel replicas x 35 GPUs' worth of memory each, from this section's own numbers) has 8 times the memory of Chapter 1's minimum -- but every one of those 280 GPUs is still organized into groups of 35 that each, individually, face exactly the same capacity wall a single 35-GPU model-parallel group would. Adding GPUs only relieves a capacity wall when the *way they're used* actually divides the thing that didn't fit -- data parallelism adds GPUs by dividing the *data*, which never touches the per-device memory requirement at all. It's a completely reasonable-sounding mistake to assume "more GPUs" and "more capacity" are the same statement; Section 13.1's own table is the concrete case where they aren't.
 
 ## 13.2 Partitioning Layers Across Devices, and the Real Transfer Between Them
+
+<!-- mgpu:figure-2:start -->
+[![Activations cross layer boundaries](../images/technical/ch13/2-layers.svg)](../images/technical/ch13/2-layers.svg)
+<!-- mgpu:figure-2:end -->
 
 ### Intuition
 
@@ -193,99 +279,117 @@ needs no device):                          (a REAL transfer, needs a device):
 Assigning layer ranges is the exact same kind of arithmetic Chapter 12's `computeShard()` did for batches -- divide a known total by a known device count, compute offsets, and it genuinely succeeds regardless of how many real devices exist, because it doesn't need any. Moving the activation tensor produced at each layer boundary is a different kind of call entirely: it's the same real `cudaMemcpyPeer()` this book introduced in Chapter 5 for exactly this reason -- a real device-to-device transfer -- now carrying activations instead of the raw application data Chapter 5 first demonstrated it with. GPT-3's own real dimensions (Brown et al. 2020, Table 2.1: 96 layers, `d_model` = 12288, and a context window `n_ctx` = 2048 tokens applied uniformly across every model size in that paper) size a real, concrete activation tensor below, rather than an arbitrary placeholder buffer.
 
 ```cpp
-// Chapter 13: Model Parallelism -- When One GPU Can't Hold the Weights
+// Chapter 13: Model Parallelism -- Layer ranges and a real activation handoff.
 // 37_layer_partition_activation_handoff.cu
-//
-// Model parallelism needs exactly two things: an assignment of which
-// device holds which LAYERS (pure host arithmetic, needs no device --
-// structurally identical to Chapter 12's own batch-sharding formula,
-// just partitioning layer indices instead of sample indices), and a
-// real transfer that hands the ACTIVATION tensor produced by one
-// device's last layer to the next device's first layer. That second
-// part is not a new API -- it's the same real cudaMemcpyPeer() this
-// book introduced in Chapter 5 and has used ever since, now moving a
-// different kind of data across the same real device boundary.
-// Genuinely compiled with a real nvcc and genuinely run.
 #include <cstdio>
+#include <cstdint>
+#include <vector>
+#include <algorithm>
 #include <cuda_runtime.h>
-
-// Splits TOTAL_LAYERS into `worldSize` equal, non-overlapping,
-// contiguous ranges, and returns device `rank`'s own [start, end)
-// range of layer indices. Structurally identical to Chapter 12's
-// computeShard() -- only what's being partitioned (layers, not
-// samples) has changed. Pure host arithmetic; needs no device.
-void computeLayerRange(int totalLayers, int worldSize, int rank, int* start, int* end) {
-    int perDevice = totalLayers / worldSize; // assumes an even split
-    *start = rank * perDevice;
-    *end = *start + perDevice;
+#define CUDA(call) do { cudaError_t status = (call); if (status != cudaSuccess) { \
+    fprintf(stderr, "%s: %s\n", #call, cudaGetErrorString(status)); \
+    return status == cudaErrorNoDevice || status == cudaErrorInsufficientDriver ? 2 : 1; } } while (0)
+void computeLayerRange(int layers, int world, int rank, int* start, int* end) {
+    *start = layers * rank / world;
+    *end = layers * (rank + 1) / world;
 }
-
+static uint16_t pattern(size_t index) { return uint16_t(0x0400 + (index * 17) % 0x7400); }
 int main() {
-    int deviceCount = 0;
-    cudaGetDeviceCount(&deviceCount);
-    printf("cudaGetDeviceCount(): %d device(s).\n", deviceCount);
-
-    // GPT-3 175B's own real depth: 96 transformer layers (Brown et al.
-    // 2020, Table 2.1).
-    const int TOTAL_LAYERS = 96;
-
-    printf("\nPartitioning %d layers across this book's own real "
-           "deviceCount (%d):\n", TOTAL_LAYERS, deviceCount);
-    for (int rank = 0; rank < deviceCount; ++rank) {
-        int start, end;
-        computeLayerRange(TOTAL_LAYERS, deviceCount, rank, &start, &end);
-        printf("  rank %d: layers [%d, %d)\n", rank, start, end);
+    int count = 0;
+    CUDA(cudaGetDeviceCount(&count));
+    if (count < 2) { printf("BLOCKED: requires 2 GPUs; found %d.\n", count); return 2; }
+    int world = std::min(count, 4);
+    for (int rank = 0; rank < world; ++rank) {
+        int begin, end;
+        computeLayerRange(96, world, rank, &begin, &end);
+        printf("rank %d: layer indices [%d, %d)\n", rank, begin, end);
     }
-    printf("  (%d device(s) -- nothing to print above.)\n", deviceCount);
-
-    // Hypothetically, if there WERE 4 devices: every rank gets a
-    // different, non-overlapping, equal-sized run of consecutive
-    // layers -- genuinely computed, not illustrative.
-    const int HYPOTHETICAL_WORLD_SIZE = 4;
-    printf("\nThe same formula, hypothetically, with world size %d:\n", HYPOTHETICAL_WORLD_SIZE);
-    for (int rank = 0; rank < HYPOTHETICAL_WORLD_SIZE; ++rank) {
-        int start, end;
-        computeLayerRange(TOTAL_LAYERS, HYPOTHETICAL_WORLD_SIZE, rank, &start, &end);
-        printf("  rank %d: layers [%d, %d)\n", rank, start, end);
+    // GPT-3 dimensions size this handoff, but no GPT-3 layer is executed here.
+    // The uint16_t words are varied finite positive binary16 bit patterns.
+    const size_t elements = size_t(2048) * 12288;
+    const size_t bytes = elements * sizeof(uint16_t);
+    std::vector<uint16_t> input(elements), output(elements);
+    for (size_t i = 0; i < elements; ++i) input[i] = pattern(i);
+    uint16_t *producer = nullptr, *consumer = nullptr;
+    CUDA(cudaSetDevice(0));
+    CUDA(cudaMalloc(&producer, bytes));
+    CUDA(cudaMemcpy(producer, input.data(), bytes, cudaMemcpyHostToDevice));
+    CUDA(cudaSetDevice(1));
+    CUDA(cudaMalloc(&consumer, bytes));
+    CUDA(cudaMemset(consumer, 0, bytes));
+    CUDA(cudaMemcpyPeer(consumer, 1, producer, 0, bytes));
+    CUDA(cudaDeviceSynchronize());
+    CUDA(cudaMemcpy(output.data(), consumer, bytes, cudaMemcpyDeviceToHost));
+    for (size_t i = 0; i < elements; ++i) if (output[i] != pattern(i)) {
+        fprintf(stderr, "FAIL: activation word %zu: %u expected %u\n", i, unsigned(output[i]), unsigned(pattern(i)));
+        return 1;
     }
-
-    // Partitioning layer INDICES needs no device, same as Chapter 12's
-    // batch sharding. Moving the ACTIVATION TENSOR that rank 0's last
-    // layer produced into rank 1's first layer's input is different --
-    // it is a real, unavoidable device-to-device transfer, sized by
-    // GPT-3's own real dimensions: a sequence of 2048 tokens (Brown et
-    // al.'s own context length, nctx) x 12288 features per token
-    // (d_model), stored fp16 (2 bytes/element) the way Chapter 1's own
-    // inference-footprint row already did.
-    const size_t SEQ_LEN = 2048;
-    const size_t D_MODEL = 12288;
-    const size_t ACTIVATION_ELEMS = SEQ_LEN * D_MODEL;
-    const size_t ACTIVATION_BYTES = ACTIVATION_ELEMS * 2; // fp16
-    printf("\nOne layer-boundary activation tensor: %zu tokens x %zu "
-           "features, fp16 -> %.2f MB that must genuinely cross the "
-           "device boundary between rank 0 and rank 1 at every forward "
-           "pass.\n", SEQ_LEN, D_MODEL, ACTIVATION_BYTES / 1.0e6);
-
-    float* activation = nullptr; // never successfully allocated -- deviceCount is 0
-    cudaError_t eMemcpyPeer = cudaMemcpyPeer(activation, 1, activation, 0, ACTIVATION_BYTES);
-    printf("\ncudaMemcpyPeer(activation, dstDevice=1, activation, "
-           "srcDevice=0, %.2f MB): %s (code %d)\n",
-           ACTIVATION_BYTES / 1.0e6, cudaGetErrorString(eMemcpyPeer), (int)eMemcpyPeer);
-
-    printf("\nPartitioning layer indices is arithmetic this chapter can\n"
-           "genuinely run, exactly like Chapter 12's batch sharding. "
-           "Handing\nthe activation tensor across the device boundary "
-           "is the same real\ntransfer call this book has used since "
-           "Chapter 5 -- it is not a new\nprimitive, only a new reason "
-           "to call it. Section 13.3 checks the one\nthing that "
-           "actually matters about doing this: whether a SPLIT forward\n"
-           "pass computes the exact same thing an UNSPLIT one would.\n");
-
+    CUDA(cudaFree(consumer));
+    CUDA(cudaSetDevice(0));
+    CUDA(cudaFree(producer));
+    printf("PASS: %zu nonuniform FP16-sized activation words (%zu bytes) handed off exactly.\n", elements, bytes);
+    printf("Scope: layer-index partition and transfer payload, not a transformer forward pass.\n");
     return 0;
 }
 ```
 
-Genuinely compiled with a real `nvcc` and genuinely run. Locked output, deterministic across repeated runs:
+<!-- execution:start:a100:37_layer_partition_activation_handoff.cu -->
+> **Current execution — 2026-11-17-a100: Numerical/transport validation (recorded scope).** UTC (program start): `2026-11-18T00:02:14.791027+00:00`. Source SHA-256: `244ce50f61e442268c674907d06530161f9fb74719df61bfdba41040ea06e4af`.
+
+[Exact tested source](../validation/2026-11-17-a100/37_layer_partition_activation_handoff/37_layer_partition_activation_handoff.cu) · [Compiler log](../validation/2026-11-17-a100/37_layer_partition_activation_handoff/compile.log) · [Execution log](../validation/2026-11-17-a100/37_layer_partition_activation_handoff/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+nvcc -std=c++17 -O2 -arch=sm_80 37_layer_partition_activation_handoff.cu -o ./example
+./example
+```
+
+<details markdown="1"><summary>Captured current-source output</summary>
+
+```text
+rank 0: layer indices [0, 24)
+rank 1: layer indices [24, 48)
+rank 2: layer indices [48, 72)
+rank 3: layer indices [72, 96)
+PASS: 25165824 nonuniform FP16-sized activation words (50331648 bytes) handed off exactly.
+Scope: layer-index partition and transfer payload, not a transformer forward pass.
+```
+
+</details>
+<!-- execution:end:a100:37_layer_partition_activation_handoff.cu -->
+
+
+<!-- execution:start:h100:37_layer_partition_activation_handoff.cu -->
+> **Current execution — 2026-11-17-h100: Numerical/transport validation (recorded scope).** UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`. Source SHA-256: `244ce50f61e442268c674907d06530161f9fb74719df61bfdba41040ea06e4af`.
+
+[Exact tested source](../validation/2026-11-17-h100/37_layer_partition_activation_handoff/37_layer_partition_activation_handoff.cu) · [Compiler log](../validation/2026-11-17-h100/37_layer_partition_activation_handoff/compile.log) · [Execution log](../validation/2026-11-17-h100/37_layer_partition_activation_handoff/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+nvcc -std=c++17 -O2 -arch=sm_90 37_layer_partition_activation_handoff.cu -o ./example
+./example
+```
+
+<details markdown="1"><summary>Captured current-source output</summary>
+
+```text
+rank 0: layer indices [0, 48)
+rank 1: layer indices [48, 96)
+PASS: 25165824 nonuniform FP16-sized activation words (50331648 bytes) handed off exactly.
+Scope: layer-index partition and transfer payload, not a transformer forward pass.
+```
+
+</details>
+<!-- execution:end:h100:37_layer_partition_activation_handoff.cu -->
+
+
+**Historical authoring transcript (earlier diagnostic source).** The current listing uses real per-device allocations, nonuniform payloads, an independent readback oracle and checked failure exits. The current source was compiled and executed in the dated H100 suite; use the linked record for its numerical, API-probe or other-execution scope.
+
+The [2026-11-17 H100 execution record](../validation-h100.md) covers two GPUs connected by local NV18. It distinguishes numerical checks, API probes and other executions; a successful exit alone does not establish GPU algorithm correctness.
+
+<details markdown="1"><summary>Historical authoring output — superseded by the current execution above</summary>
 
 ```
 cudaGetDeviceCount(): 0 device(s).
@@ -312,7 +416,9 @@ thing that actually matters about doing this: whether a SPLIT forward
 pass computes the exact same thing an UNSPLIT one would.
 ```
 
-Four ranks split GPT-3's 96 real layers into four genuinely computed, equal, 24-layer ranges -- the same host arithmetic Chapter 12 used, now partitioning depth instead of batch. The activation tensor at each of those three boundaries is not a token placeholder: 2048 tokens by 12288 features at 2 bytes each is a real 50.33 MB that would have to physically leave one device and arrive at another, every single forward pass, for every layer boundary this partition creates. `cudaMemcpyPeer()` reports the same honest `cudaErrorNoDevice` (code 100) this book's every real device-touching call has reported since Chapter 3 -- this section attempted a real transfer, and got a real, honest answer about why it can't happen here.
+</details>
+
+The layer-range arithmetic models a four-way split of GPT-3’s 96 layers and the corresponding activation volume. Current File 37 separately initializes and checks actual two-H100 boundary transfer data. The four-rank model is not an executed four-GPU inference run.
 
 !!! warning "[COMMON TRAP] Thinking model parallelism replaces the peer-to-peer machinery Part 1 built"
     It's tempting to think of model parallelism as a fundamentally different technique from the P2P transfers and IPC this book spent Chapters 4 through 7 building -- after all, those chapters were about moving raw data, and this chapter is about running a model. But Section 13.2's own code shows the opposite: partitioning layers doesn't introduce a new transfer mechanism, it introduces a new *reason to call the same one*. The `cudaMemcpyPeer()` call above is byte-for-byte the same API Chapter 5 introduced, now carrying an activation tensor instead of Chapter 5's own example buffer. Every real multi-GPU technique this book builds -- collectives, data parallelism, and now model parallelism -- is built out of the same small set of real transfer primitives from Part 1, not a new one per technique.
@@ -321,7 +427,7 @@ Four ranks split GPT-3's 96 real layers into four genuinely computed, equal, 24-
 
 ### Intuition
 
-Here is the one property that actually has to be true for Sections 13.1 and 13.2's partitioning to be worth doing at all: computing a model's forward pass split across four devices has to produce the *exact same result* as computing it, unsplit, on one device that happened to be big enough. That's a stronger claim than it might sound. This book's own collectives already showed a case where splitting a computation across devices genuinely can change a floating-point result -- Chapter 8 explicitly declined to verify reduce bit-identical across summation orders, citing real IEEE 754 non-associativity. Model parallelism doesn't have that risk, and the reason is structural: a model's layers already execute in one strict, unavoidable sequence -- layer 24 cannot start until layer 23 has finished, on one device or four. Partitioning that sequence across devices doesn't reorder a single operation; it only relocates *where* each already-ordered step happens to run. Nothing about the arithmetic itself changes, which is exactly why this section's check can demand bit-identical equality, not "close enough."
+Here is the one property that actually has to be true for Sections 13.1 and 13.2's partitioning to be worth doing at all: computing a model's forward pass split across four devices has to produce the *exact same result* as computing it, unsplit, on one device that happened to be big enough. That's a stronger claim than it might sound. This book's own collectives already showed a case where splitting a computation across devices genuinely can change a floating-point result -- Chapter 8 explicitly declined to verify reduce bit-identical across summation orders, citing real IEEE 754 non-associativity. This host simulation preserves operation order, data type and implementation, so it avoids that particular risk. Its exact-equality result does not generalize automatically to real GPU libraries, where kernel selection, fused operations, precision modes and architecture can differ. [CUDA’s numerical accuracy guidance](https://docs.nvidia.com/cuda/cuda-c-best-practices-guide/index.html#numerical-accuracy-and-precision) explains why equivalent arithmetic can differ. Structurally, a model's layers already execute in one strict, unavoidable sequence -- layer 24 cannot start until layer 23 has finished, on one device or four. Partitioning that sequence across devices doesn't reorder a single operation; it only relocates *where* each already-ordered step happens to run. In this particular scalar simulation the arithmetic itself is unchanged, so exact equality is an appropriate oracle. Use an independently justified tolerance and finite-value checks for a real implementation that changes kernels or arithmetic modes.
 
 ```text
 Unsplit (one device, all 8 layers):        Split (4 devices, 2 layers each):
@@ -464,7 +570,75 @@ int main() {
 }
 ```
 
+<!-- execution:start:a100:38_model_parallel_forward_simulation.cpp -->
+> **Current execution — 2026-11-17-a100: Host program/model (exit-only).** UTC (program start): `2026-11-18T00:02:19.883471+00:00`. Source SHA-256: `1df99e752e772f09b834b3c4fd73d73068cdb800f2166a316c033460894d7711`.
+
+[Exact tested source](../validation/2026-11-17-a100/38_model_parallel_forward_simulation/38_model_parallel_forward_simulation.cpp) · [Compiler log](../validation/2026-11-17-a100/38_model_parallel_forward_simulation/compile.log) · [Execution log](../validation/2026-11-17-a100/38_model_parallel_forward_simulation/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+g++ -std=c++17 -O2 38_model_parallel_forward_simulation.cpp -o ./example
+./example
+```
+
+<details markdown="1"><summary>Captured current-source output</summary>
+
+```text
+input (1.00, 1.00): unsplit reference = (0.3285223992, 0.2628870847), split across 4 devices = (0.3285223992, 0.2628870847) -- PASS (bit-identical)
+input (2.00, -1.00): unsplit reference = (0.3181013191, 0.2436102732), split across 4 devices = (0.3181013191, 0.2436102732) -- PASS (bit-identical)
+input (0.50, 3.00): unsplit reference = (0.3560831617, 0.3077149331), split across 4 devices = (0.3560831617, 0.3077149331) -- PASS (bit-identical)
+
+All 3 input(s) bit-identical between the unsplit reference and the 4-device split forward pass: PASS
+
+Unlike Chapter 8's floating-point reduce (order-sensitive --
+explicitly NOT verified bit-identical there), splitting a
+strictly SEQUENTIAL computation across devices never reorders
+any operation -- it only relocates WHERE each already-ordered
+step runs. That is why this section's match is bit-identical,
+not merely equal up to floating-point rounding.
+```
+
+</details>
+<!-- execution:end:a100:38_model_parallel_forward_simulation.cpp -->
+
+
+<!-- execution:start:h100:38_model_parallel_forward_simulation.cpp -->
+> **Current execution — 2026-11-17-h100: Host program/model (exit-only).** UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`. Source SHA-256: `1df99e752e772f09b834b3c4fd73d73068cdb800f2166a316c033460894d7711`.
+
+[Exact tested source](../validation/2026-11-17-h100/38_model_parallel_forward_simulation/38_model_parallel_forward_simulation.cpp) · [Compiler log](../validation/2026-11-17-h100/38_model_parallel_forward_simulation/compile.log) · [Execution log](../validation/2026-11-17-h100/38_model_parallel_forward_simulation/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+g++ -std=c++17 -O2 38_model_parallel_forward_simulation.cpp -o ./example
+./example
+```
+
+<details markdown="1"><summary>Captured current-source output</summary>
+
+```text
+input (1.00, 1.00): unsplit reference = (0.3285223992, 0.2628870847), split across 4 devices = (0.3285223992, 0.2628870847) -- PASS (bit-identical)
+input (2.00, -1.00): unsplit reference = (0.3181013191, 0.2436102732), split across 4 devices = (0.3181013191, 0.2436102732) -- PASS (bit-identical)
+input (0.50, 3.00): unsplit reference = (0.3560831617, 0.3077149331), split across 4 devices = (0.3560831617, 0.3077149331) -- PASS (bit-identical)
+
+All 3 input(s) bit-identical between the unsplit reference and the 4-device split forward pass: PASS
+
+Unlike Chapter 8's floating-point reduce (order-sensitive --
+explicitly NOT verified bit-identical there), splitting a
+strictly SEQUENTIAL computation across devices never reorders
+any operation -- it only relocates WHERE each already-ordered
+step runs. That is why this section's match is bit-identical,
+not merely equal up to floating-point rounding.
+```
+
+</details>
+<!-- execution:end:h100:38_model_parallel_forward_simulation.cpp -->
+
+
 Genuinely compiled with `g++` and genuinely run. Locked output, deterministic across repeated runs:
+
+<details markdown="1"><summary>Historical authoring output — superseded by the current execution above</summary>
 
 ```
 input (1.00, 1.00): unsplit reference = (0.3285223992, 0.2628870847), split across 4 devices = (0.3285223992, 0.2628870847) -- PASS (bit-identical)
@@ -480,6 +654,8 @@ any operation -- it only relocates WHERE each already-ordered
 step runs. That is why this section's match is bit-identical,
 not merely equal up to floating-point rounding.
 ```
+
+</details>
 
 All three test inputs match bit-for-bit, exactly as the structural argument in this section's Intuition predicted -- there was never a floating-point-ordering risk to check for in the first place, since splitting a strictly sequential computation never changes the order any operation happens in. That correctness comes with a real cost this chapter has deliberately not measured: GPipe's own paper names the naive version of exactly this split -- "consecutive groups of layers... partitioned into cells... placed on a separate accelerator" -- and states plainly that "the naive model parallelism strategy leads to severe under-utilization due to the sequential dependency of the network." The reason is visible right in this section's own diagram: while device 1 is running layers 2 and 3, device 0 has nothing left to do until the *next* input arrives -- it already finished layers 0 and 1 and handed off the result. Every device downstream of the first one sits idle waiting for its input, and the first device sits idle waiting for the *next* forward pass to start. This chapter's correctness guarantee is real and unconditional; the idle time it creates is also real, and Chapter 15 -- whose own title already promises "the bubble that costs you" -- is where this book quantifies and then fixes it.
 
@@ -513,7 +689,7 @@ Chapter 14 stays inside a single layer instead of splitting between layers -- te
 
 **3.** The three factors are `SEQ_LEN` (2048, GPT-3's own context window, `n_ctx`, from Brown et al.'s Table 2.1), `D_MODEL` (12288, GPT-3's own per-token feature width from the same table), and 2 bytes per element for fp16 storage. Together they represent the size of one full activation tensor -- every token in a 2048-token sequence, each represented by a 12288-element feature vector, stored at 2 bytes per value -- that has to physically exist at a layer boundary and cross a device-to-device transfer.
 
-**4.** Chapter 8 explicitly declined to verify its reduce bit-identical because summing floating-point values in a different order can produce a genuinely different result, due to real IEEE 754 non-associativity -- splitting a *reduction* across devices can change the order values are combined in. Section 13.3's split forward pass never combines values from different sources at all; it only ever applies one layer's function to the single running result of the layer before it, in the exact same sequence an unsplit run would use. Since no operation's order changes, there is no floating-point-ordering risk to guard against, so exact `==` is a valid, not merely convenient, check.
+**4.** Chapter 8 explicitly declined to verify its reduce bit-identical because summing floating-point values in a different order can produce a genuinely different result, due to real IEEE 754 non-associativity -- splitting a *reduction* across devices can change the order values are combined in. Section 13.3's split forward pass never combines values from different sources at all; it only ever applies one layer's function to the single running result of the layer before it, in the exact same sequence an unsplit run would use. Since no operation's order changes, exact `==` is valid for this unchanged scalar implementation. A GPU implementation must additionally control arithmetic mode and kernel choice before promising bitwise identity.
 
 **5.** GPipe's paper states: "the naive model parallelism strategy leads to severe under-utilization due to the sequential dependency of the network." Using Section 13.3's own diagram (8 layers split across 4 devices, 2 layers each): while device 1 is computing layers 2 and 3 on the current input, device 0 has already finished layers 0 and 1 for that same input and has nothing left to do until the *next* input begins its own forward pass -- so device 0 sits idle during the time devices 1 through 3 are still working on the input it already finished processing.
 

@@ -1,8 +1,22 @@
 # Appendix B: Practice Quiz
 
+<!-- execution:provenance -->
+!!! info "Execution provenance"
+
+    Current execution blocks identify the tested source hash, hardware dataset, commands and captured output. References elsewhere on this page to a device-less environment describe the original authoring context. Historical output is superseded by the current record. Displayed output omits the runner command header and trims trailing line whitespace; raw logs remain exact. A host simulation or API validation has its stated scope; neither alone establishes a numerical multi-GPU workload or measured performance.
+
+
+<!-- mgpu:opener:start -->
+[![Appendix B: Practice Quiz](../images/chapter-openers/appendix-b.svg)](../images/chapter-openers/appendix-b.svg)
+<!-- mgpu:opener:end -->
+
 Every chapter in this book already ends with its own Self-Check Questions and Worked Solutions, testing that chapter's own material in isolation. This appendix is different: it tests whether the ideas actually connect across chapters -- whether you can look at Chapter 40's own backprojection/forward-projection split and recognize it as the same "same partition, different operation, different communication need" shape Chapter 34's gated-versus-fixed all-to-all raises, or explain why Chapter 16's per-rank halo stays the same size no matter how many GPUs share the grid, while Chapter 27's per-GPU all-gather volume climbs toward the size of the entire dataset and never shrinks. B.2 asks sixteen conceptual questions, two from each of this book's eight Parts, with answers in B.3. B.4 raises the stakes: three short, genuinely compiled programs, each built around a real finding this book established somewhere -- read the setup, commit to a prediction, then compile and run it yourself before reading the revealed output.
 
 ## B.1 How to Use This Quiz
+
+<!-- mgpu:figure-1:start -->
+[![Predict, trace, then compare](../images/technical/appendix-b/1-flow.svg)](../images/technical/appendix-b/1-flow.svg)
+<!-- mgpu:figure-1:end -->
 
 Answer every question in B.2 in your own words -- out loud, or on paper -- before reading B.3's answer. For B.4, do the same with actual code: read the setup, write down what you believe the program will print, and only then compile it and compare. A prediction you get wrong tells you exactly which chapter to reread; a prediction you get right by guessing, without being able to explain why, is worth treating the same way. Every one of B.4's programs compiles and runs in seconds, entirely on the host, with no GPU required -- this book's entire method has been "genuinely compiled, genuinely run, never assumed," and this quiz is not an exception.
 
@@ -66,7 +80,7 @@ Answer every question in B.2 in your own words -- out loud, or on paper -- befor
 
 **8.** Chapter 16's halo and ghost cells exist to minimize COMMUNICATION VOLUME for a spatially local computation -- a stencil update needs only its immediate neighbors' boundary data, not the whole remote domain -- so the inefficiency being fought is wasted bandwidth from over-communicating. Chapter 15's pipeline bubble is a COMPUTE-UTILIZATION problem -- with only one microbatch in flight, most pipeline stages sit idle waiting for data to reach them -- so the inefficiency being fought is wasted GPU time from under-utilization, fixed by keeping multiple microbatches in flight simultaneously (the `(K-1)/(M+K-1)` bubble fraction Chapter 15 derived, which shrinks as more microbatches M are used). One is a communication-volume problem; the other is a compute-idle-time problem, and the two don't trade off against each other in general.
 
-**9.** In practice, even nominally-identical GPUs can have real, measurable performance differences from thermal throttling, differing power limits, differing firmware or driver versions, or simply age-related clock degradation -- and a heterogeneous cluster explicitly mixing GPU generations, an increasingly common real deployment shape, makes the differences even starker. Chapter 18's weighted-sharding approach queries each device's OWN reported capability directly and assigns work proportionally, rather than assuming a naive equal split is optimal -- an equal split leaves the slowest device as the critical-path bottleneck while faster devices sit idle waiting for it, exactly the avoidable inefficiency real production multi-GPU clusters are built to avoid.
+**9.** In practice, even nominally-identical GPUs can have real, measurable performance differences from thermal throttling, differing power limits, differing firmware or driver versions -- and a heterogeneous cluster explicitly mixing GPU generations, an increasingly common real deployment shape, makes the differences even starker. Chapter 18's weighted-sharding approach uses reported capabilities as an initial model; measured per-device timings under the target workload are needed to choose useful weights, rather than assuming a naive equal split is optimal -- an equal split leaves the slowest device as the critical-path bottleneck while faster devices sit idle waiting for it, exactly the avoidable inefficiency real production multi-GPU clusters are built to avoid.
 
 **10.** Once a NCCL communicator's own internal collective state becomes inconsistent -- a rank died mid-collective, say -- there is no way to resynchronize the surviving ranks' own view of that collective's progress; NCCL's communicators are not designed to be repaired, only destroyed and, at best, rebuilt from scratch with a smaller or different rank set. `ncclCommAbort()` is explicitly a one-way escape hatch: it tears the broken communicator down immediately rather than attempting to complete or roll back the in-flight collective. MPI's ULFM (User-Level Fault Mitigation) extension, by contrast, is specifically designed to let a surviving set of ranks revalidate a communicator and continue operating with the failed ranks excised -- a genuinely different design goal NCCL's own API was never built around.
 
@@ -83,6 +97,10 @@ Answer every question in B.2 in your own words -- out loud, or on paper -- befor
 **16.** Backprojection's own real cited property is that "each node locally stores the part of the detector data needed to perform a BP operation, so this can be performed locally and independently" -- every voxel a given rank owns can be fully reconstructed using only that same rank's own already-local detector data, with no dependency on any other rank's slab at all. Forward projection's own geometry is different: computing a projection ray's contribution on the detector can require volume data from multiple z-slabs at once, because a single ray can pass through voxels owned by different ranks as it traverses the volume -- the partition is identical, but which OPERATION is applied to that partition determines whether a given rank's own local data is sufficient by itself, or whether the operation's own geometry inherently reaches across partition boundaries.
 
 ## B.4 Predict-the-Output Challenges
+
+<!-- mgpu:figure-4:start -->
+[![Track values and chunk ownership separately](../images/technical/appendix-b/4-chunks.svg)](../images/technical/appendix-b/4-chunks.svg)
+<!-- mgpu:figure-4:end -->
 
 ### Challenge 1: Reduce-Scatter's Own Intermediate State
 
@@ -187,14 +205,19 @@ int main() {
 }
 ```
 
-**Compile and run:**
+<!-- execution:start:a100:123_quiz_ring_allreduce_phases.cpp -->
+> **Current execution — 2026-11-17-a100: Host program/model (exit-only).** UTC (program start): `2026-11-17T23:58:31.850735+00:00`. Source SHA-256: `de78a917a29312f29b7ee7ce0fb3405a64481c852426eeeb1072c31c0dda2e81`.
+
+[Exact tested source](../validation/2026-11-17-a100/123_quiz_ring_allreduce_phases/123_quiz_ring_allreduce_phases.cpp) · [Compiler log](../validation/2026-11-17-a100/123_quiz_ring_allreduce_phases/compile.log) · [Execution log](../validation/2026-11-17-a100/123_quiz_ring_allreduce_phases/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
 
 ```bash
-g++ -std=c++17 -Wall -Wextra -O2 123_quiz_ring_allreduce_phases.cpp -o 123_quiz_ring_allreduce_phases
-./123_quiz_ring_allreduce_phases
+g++ -std=c++17 -O2 123_quiz_ring_allreduce_phases.cpp -o ./example
+./example
 ```
 
-**Revealed output:**
+<details markdown="1"><summary>Captured current-source output</summary>
 
 ```text
 === initial state (before reduce-scatter) ===
@@ -222,6 +245,95 @@ rank 2's own fully-reduced chunk is chunk index 3, value = 112 (matches ground t
 
 self-check: every rank's final buffer matches ground truth: YES
 ```
+
+</details>
+<!-- execution:end:a100:123_quiz_ring_allreduce_phases.cpp -->
+
+
+<!-- execution:start:h100:123_quiz_ring_allreduce_phases.cpp -->
+> **Current execution — 2026-11-17-h100: Host program/model (exit-only).** UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`. Source SHA-256: `de78a917a29312f29b7ee7ce0fb3405a64481c852426eeeb1072c31c0dda2e81`.
+
+[Exact tested source](../validation/2026-11-17-h100/123_quiz_ring_allreduce_phases/123_quiz_ring_allreduce_phases.cpp) · [Compiler log](../validation/2026-11-17-h100/123_quiz_ring_allreduce_phases/compile.log) · [Execution log](../validation/2026-11-17-h100/123_quiz_ring_allreduce_phases/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+g++ -std=c++17 -O2 123_quiz_ring_allreduce_phases.cpp -o ./example
+./example
+```
+
+<details markdown="1"><summary>Captured current-source output</summary>
+
+```text
+=== initial state (before reduce-scatter) ===
+  rank 0: [10, 11, 12, 13]
+  rank 1: [20, 21, 22, 23]
+  rank 2: [30, 31, 32, 33]
+  rank 3: [40, 41, 42, 43]
+
+=== ground truth: elementwise sum across all 4 ranks ===
+  [100, 104, 108, 112]
+
+=== after reduce-scatter (P-1 = 3 steps) ===
+  rank 0: [10, 104, 86, 56]
+  rank 1: [30, 21, 108, 79]
+  rank 2: [60, 52, 32, 112]
+  rank 3: [100, 93, 74, 43]
+
+rank 2's own fully-reduced chunk is chunk index 3, value = 112 (matches ground truth [3]=112)
+
+=== after all-gather (P-1 = 3 more steps) -- every rank now holds the full result ===
+  rank 0: [100, 104, 108, 112]
+  rank 1: [100, 104, 108, 112]
+  rank 2: [100, 104, 108, 112]
+  rank 3: [100, 104, 108, 112]
+
+self-check: every rank's final buffer matches ground truth: YES
+```
+
+</details>
+<!-- execution:end:h100:123_quiz_ring_allreduce_phases.cpp -->
+
+
+**Compile and run:**
+
+```bash
+g++ -std=c++17 -Wall -Wextra -O2 123_quiz_ring_allreduce_phases.cpp -o 123_quiz_ring_allreduce_phases
+./123_quiz_ring_allreduce_phases
+```
+
+**Revealed output:**
+
+<details markdown="1"><summary>Historical authoring output — superseded by the current execution above</summary>
+
+```text
+=== initial state (before reduce-scatter) ===
+  rank 0: [10, 11, 12, 13]
+  rank 1: [20, 21, 22, 23]
+  rank 2: [30, 31, 32, 33]
+  rank 3: [40, 41, 42, 43]
+
+=== ground truth: elementwise sum across all 4 ranks ===
+  [100, 104, 108, 112]
+
+=== after reduce-scatter (P-1 = 3 steps) ===
+  rank 0: [10, 104, 86, 56]
+  rank 1: [30, 21, 108, 79]
+  rank 2: [60, 52, 32, 112]
+  rank 3: [100, 93, 74, 43]
+
+rank 2's own fully-reduced chunk is chunk index 3, value = 112 (matches ground truth [3]=112)
+
+=== after all-gather (P-1 = 3 more steps) -- every rank now holds the full result ===
+  rank 0: [100, 104, 108, 112]
+  rank 1: [100, 104, 108, 112]
+  rank 2: [100, 104, 108, 112]
+  rank 3: [100, 104, 108, 112]
+
+self-check: every rank's final buffer matches ground truth: YES
+```
+
+</details>
 
 Only chunk index 3 is fully reduced on rank 2 right after reduce-scatter -- every other entry in rank 2's own buffer at that point is still a partial, in-progress sum, not yet the final answer, exactly the distinction the two-phase design exists to make precise.
 
@@ -292,14 +404,19 @@ int main() {
 }
 ```
 
-**Compile and run:**
+<!-- execution:start:a100:124_quiz_reassociation_cancellation.cpp -->
+> **Current execution — 2026-11-17-a100: Host program/model (exit-only).** UTC (program start): `2026-11-17T23:58:32.220725+00:00`. Source SHA-256: `5b7a6dbb7d3434c7d9cca6f57135e389ceb89387093e13c38d52ee0de5289c64`.
+
+[Exact tested source](../validation/2026-11-17-a100/124_quiz_reassociation_cancellation/124_quiz_reassociation_cancellation.cpp) · [Compiler log](../validation/2026-11-17-a100/124_quiz_reassociation_cancellation/compile.log) · [Execution log](../validation/2026-11-17-a100/124_quiz_reassociation_cancellation/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
 
 ```bash
-g++ -std=c++17 -Wall -Wextra -O2 124_quiz_reassociation_cancellation.cpp -o 124_quiz_reassociation_cancellation
-./124_quiz_reassociation_cancellation
+g++ -std=c++17 -O2 124_quiz_reassociation_cancellation.cpp -o ./example
+./example
 ```
 
-**Revealed output:**
+<details markdown="1"><summary>Captured current-source output</summary>
 
 ```text
 === summing the same four doubles in two different orders ===
@@ -321,6 +438,83 @@ difference        = 1.0
 
 self-check: do the two orders agree? NO -- both orders sum the IDENTICAL four numbers, so any difference is entirely a property of ROUND-OFF ORDER, not of the data itself. This is the exact same real mechanism Chapters 25/29/31 each found: a ring's own sequential forwarding order and a tree-style pairwise combine order are NOT required to produce bit-identical sums, even though both are mathematically "the same" reduction.
 ```
+
+</details>
+<!-- execution:end:a100:124_quiz_reassociation_cancellation.cpp -->
+
+
+<!-- execution:start:h100:124_quiz_reassociation_cancellation.cpp -->
+> **Current execution — 2026-11-17-h100: Host program/model (exit-only).** UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`. Source SHA-256: `5b7a6dbb7d3434c7d9cca6f57135e389ceb89387093e13c38d52ee0de5289c64`.
+
+[Exact tested source](../validation/2026-11-17-h100/124_quiz_reassociation_cancellation/124_quiz_reassociation_cancellation.cpp) · [Compiler log](../validation/2026-11-17-h100/124_quiz_reassociation_cancellation/compile.log) · [Execution log](../validation/2026-11-17-h100/124_quiz_reassociation_cancellation/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+g++ -std=c++17 -O2 124_quiz_reassociation_cancellation.cpp -o ./example
+./example
+```
+
+<details markdown="1"><summary>Captured current-source output</summary>
+
+```text
+=== summing the same four doubles in two different orders ===
+a=10000000000000000.0, b=1.0, c=-10000000000000000.0, d=1.0
+
+sequential ((a+b)+c)+d:
+  a+b       = 10000000000000000.0  (b=1.0 is far smaller than a's own ULP at this magnitude -- it vanishes in the rounding)
+  (a+b)+c   = 0.0
+  ((a+b)+c)+d = 1.0
+
+pairwise (a+c)+(b+d):
+  a+c       = 0.0  (equal magnitude, opposite sign -- exact cancellation, no rounding loss)
+  b+d       = 2.0
+  (a+c)+(b+d) = 2.0
+
+sequential result = 1.0
+pairwise result   = 2.0
+difference        = 1.0
+
+self-check: do the two orders agree? NO -- both orders sum the IDENTICAL four numbers, so any difference is entirely a property of ROUND-OFF ORDER, not of the data itself. This is the exact same real mechanism Chapters 25/29/31 each found: a ring's own sequential forwarding order and a tree-style pairwise combine order are NOT required to produce bit-identical sums, even though both are mathematically "the same" reduction.
+```
+
+</details>
+<!-- execution:end:h100:124_quiz_reassociation_cancellation.cpp -->
+
+
+**Compile and run:**
+
+```bash
+g++ -std=c++17 -Wall -Wextra -O2 124_quiz_reassociation_cancellation.cpp -o 124_quiz_reassociation_cancellation
+./124_quiz_reassociation_cancellation
+```
+
+**Revealed output:**
+
+<details markdown="1"><summary>Historical authoring output — superseded by the current execution above</summary>
+
+```text
+=== summing the same four doubles in two different orders ===
+a=10000000000000000.0, b=1.0, c=-10000000000000000.0, d=1.0
+
+sequential ((a+b)+c)+d:
+  a+b       = 10000000000000000.0  (b=1.0 is far smaller than a's own ULP at this magnitude -- it vanishes in the rounding)
+  (a+b)+c   = 0.0
+  ((a+b)+c)+d = 1.0
+
+pairwise (a+c)+(b+d):
+  a+c       = 0.0  (equal magnitude, opposite sign -- exact cancellation, no rounding loss)
+  b+d       = 2.0
+  (a+c)+(b+d) = 2.0
+
+sequential result = 1.0
+pairwise result   = 2.0
+difference        = 1.0
+
+self-check: do the two orders agree? NO -- both orders sum the IDENTICAL four numbers, so any difference is entirely a property of ROUND-OFF ORDER, not of the data itself. This is the exact same real mechanism Chapters 25/29/31 each found: a ring's own sequential forwarding order and a tree-style pairwise combine order are NOT required to produce bit-identical sums, even though both are mathematically "the same" reduction.
+```
+
+</details>
 
 The two orders don't merely round differently in some tiny last digit -- they disagree by a full `1.0`, because `a` and `c` cancel EXACTLY when added directly to each other, but `b`'s own contribution is lost entirely when added to `a` first, since `b` falls below `a`'s own representable precision at that magnitude. This is deliberately the least subtle possible version of the same mechanism Chapters 25/29/31 found as a small, easy-to-miss single-bit difference -- the underlying cause is identical.
 
@@ -438,6 +632,76 @@ int main() {
 }
 ```
 
+<!-- execution:start:a100:125_quiz_ghost_cell_trap.cpp -->
+> **Current execution — 2026-11-17-a100: Host program/model (exit-only).** UTC (program start): `2026-11-17T23:58:32.287992+00:00`. Source SHA-256: `0e77e1425ac760ec69d2b496ad330625e5abb2c524d204b02285fe4142d1eeb5`.
+
+[Exact tested source](../validation/2026-11-17-a100/125_quiz_ghost_cell_trap/125_quiz_ghost_cell_trap.cpp) · [Compiler log](../validation/2026-11-17-a100/125_quiz_ghost_cell_trap/compile.log) · [Execution log](../validation/2026-11-17-a100/125_quiz_ghost_cell_trap/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+g++ -std=c++17 -O2 125_quiz_ghost_cell_trap.cpp -o ./example
+./example
+```
+
+<details markdown="1"><summary>Captured current-source output</summary>
+
+```text
+=== 8-cell array split across 2 ranks, 4 interior cells each ===
+
+cell   reference      correct-sync   buggy(no-sync)
+0      10.5000        matches        matches
+1      11.0000        matches        matches
+2      12.0000        matches        matches
+3      13.0000        matches        MISMATCH (stale ghost=0)
+4      14.0000        matches        MISMATCH (stale ghost=0)
+5      15.0000        matches        matches
+6      16.0000        matches        matches
+7      16.5000        matches        matches
+
+total cells where the no-sync version disagrees with the single-process reference: 2 out of 8
+those mismatches occur ONLY at the two rank-boundary cells (index 3 and index 4) -- every purely interior cell (0,1,2 and 5,6,7) never reads a neighbor across the rank boundary at all, so it is correct with or without the ghost-cell exchange. This is exactly Chapters 16 and 40's own real finding: a missing halo sync does not corrupt the whole domain, it silently corrupts precisely the cells whose correctness depends on it -- the boundary, and nowhere else.
+```
+
+</details>
+<!-- execution:end:a100:125_quiz_ghost_cell_trap.cpp -->
+
+
+<!-- execution:start:h100:125_quiz_ghost_cell_trap.cpp -->
+> **Current execution — 2026-11-17-h100: Host program/model (exit-only).** UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`. Source SHA-256: `0e77e1425ac760ec69d2b496ad330625e5abb2c524d204b02285fe4142d1eeb5`.
+
+[Exact tested source](../validation/2026-11-17-h100/125_quiz_ghost_cell_trap/125_quiz_ghost_cell_trap.cpp) · [Compiler log](../validation/2026-11-17-h100/125_quiz_ghost_cell_trap/compile.log) · [Execution log](../validation/2026-11-17-h100/125_quiz_ghost_cell_trap/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+g++ -std=c++17 -O2 125_quiz_ghost_cell_trap.cpp -o ./example
+./example
+```
+
+<details markdown="1"><summary>Captured current-source output</summary>
+
+```text
+=== 8-cell array split across 2 ranks, 4 interior cells each ===
+
+cell   reference      correct-sync   buggy(no-sync)
+0      10.5000        matches        matches
+1      11.0000        matches        matches
+2      12.0000        matches        matches
+3      13.0000        matches        MISMATCH (stale ghost=0)
+4      14.0000        matches        MISMATCH (stale ghost=0)
+5      15.0000        matches        matches
+6      16.0000        matches        matches
+7      16.5000        matches        matches
+
+total cells where the no-sync version disagrees with the single-process reference: 2 out of 8
+those mismatches occur ONLY at the two rank-boundary cells (index 3 and index 4) -- every purely interior cell (0,1,2 and 5,6,7) never reads a neighbor across the rank boundary at all, so it is correct with or without the ghost-cell exchange. This is exactly Chapters 16 and 40's own real finding: a missing halo sync does not corrupt the whole domain, it silently corrupts precisely the cells whose correctness depends on it -- the boundary, and nowhere else.
+```
+
+</details>
+<!-- execution:end:h100:125_quiz_ghost_cell_trap.cpp -->
+
+
 **Compile and run:**
 
 ```bash
@@ -446,6 +710,8 @@ g++ -std=c++17 -Wall -Wextra -O2 125_quiz_ghost_cell_trap.cpp -o 125_quiz_ghost_
 ```
 
 **Revealed output:**
+
+<details markdown="1"><summary>Historical authoring output — superseded by the current execution above</summary>
 
 ```text
 === 8-cell array split across 2 ranks, 4 interior cells each ===
@@ -463,6 +729,8 @@ cell   reference      correct-sync   buggy(no-sync)
 total cells where the no-sync version disagrees with the single-process reference: 2 out of 8
 those mismatches occur ONLY at the two rank-boundary cells (index 3 and index 4) -- every purely interior cell (0,1,2 and 5,6,7) never reads a neighbor across the rank boundary at all, so it is correct with or without the ghost-cell exchange. This is exactly Chapters 16 and 40's own real finding: a missing halo sync does not corrupt the whole domain, it silently corrupts precisely the cells whose correctness depends on it -- the boundary, and nowhere else.
 ```
+
+</details>
 
 Exactly 2 of the 8 cells are wrong, and both are the cells immediately adjacent to the rank boundary -- not a handful of scattered errors, and not the entire domain. A missing synchronization step tends to look like this in practice: a small, localized, boundary-shaped wrongness that is easy to miss in a quick spot-check of the interior, and easy to misdiagnose as "probably fine" precisely because most of the output IS fine.
 

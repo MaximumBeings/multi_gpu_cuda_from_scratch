@@ -1,0 +1,748 @@
+{
+  "status": "PASS",
+  "pages": 49,
+  "svgs": 148,
+  "issues": [],
+  "files": [
+    {
+      "file": "chapter-openers/01.svg",
+      "sha256": "396806fdcd8ab799a5cb5d234d6c50752c9278c9c063812c7bb76435400a2974",
+      "height": 543.0
+    },
+    {
+      "file": "technical/ch01/1-capacity.svg",
+      "sha256": "402f7e40191887edc01dfacd6d27a17083bf92e3f5213228aff8412e1f53e219",
+      "height": 764.0
+    },
+    {
+      "file": "technical/ch01/2-balance.svg",
+      "sha256": "60bce260e2045483d07ce5f20308992499e50b924b660c597033faaaab46ceb3",
+      "height": 777.0
+    },
+    {
+      "file": "chapter-openers/02.svg",
+      "sha256": "8decd71166df123b9c112d40959b64ce8838842975139c2d01aba3a0b58d1bad",
+      "height": 586.0
+    },
+    {
+      "file": "technical/ch02/1-topology.svg",
+      "sha256": "8856d72975516515b2f4841ecc63f4584a2a1d320f7a6900d7ce19719364669b",
+      "height": 661.0
+    },
+    {
+      "file": "technical/ch02/2-numa.svg",
+      "sha256": "e721759de3b91b1cb0a539c010bcf4d16d05b58dcb525a83f677e314c52c23eb",
+      "height": 719.0
+    },
+    {
+      "file": "technical/ch02/3-switch.svg",
+      "sha256": "48d23ae445e26c3c12c1ab2a6d4d1eb8cb0daee3dce19f9111b9b485178253ae",
+      "height": 725.0
+    },
+    {
+      "file": "chapter-openers/03.svg",
+      "sha256": "75c05c610482b04b3a16f338be778c8b8f5ec526f15d3f828b47ee29bfdcdaeb",
+      "height": 629.0
+    },
+    {
+      "file": "technical/ch03/1-threads.svg",
+      "sha256": "4ebe8b14b82a6af2a9debf89d880ac943b55f2ad5387d2e9f29ae87ecce55ecc",
+      "height": 704.0
+    },
+    {
+      "file": "technical/ch03/2-events.svg",
+      "sha256": "3d0d070e210e539cb38eefc2c53f9430043cd234afb8e4cf892be9ba9f980d2f",
+      "height": 659.0
+    },
+    {
+      "file": "chapter-openers/04.svg",
+      "sha256": "a896116cc736a127dfc5f07780a184bbd05095dc67827e715de579f1462fb79b",
+      "height": 586.0
+    },
+    {
+      "file": "technical/ch04/1-ownership.svg",
+      "sha256": "1ecb74fb8f237117b6973f64ab907227bc1238b4703db7dcf0ea2975983af6c2",
+      "height": 699.0
+    },
+    {
+      "file": "technical/ch04/2-flow.svg",
+      "sha256": "9611af210a9419f8209c50c437dbc9ef622101707708bd51e40bd8edd5ac2a82",
+      "height": 587.0
+    },
+    {
+      "file": "chapter-openers/05.svg",
+      "sha256": "351b5cb36cff9eb13987bed8474eed45757a6cb08b70f50c63f6d060ef583fb2",
+      "height": 629.0
+    },
+    {
+      "file": "technical/ch05/1-transfer.svg",
+      "sha256": "2ec9a0eb3dbdc2269b66632c043bd7821179ae888f56d2fa216b9d35ca4068ae",
+      "height": 731.0
+    },
+    {
+      "file": "technical/ch05/2-staging.svg",
+      "sha256": "295c3ed102f7fe2e045c75fbbd6bfd5ab136f82ccc8330c95261040ec3282b21",
+      "height": 731.0
+    },
+    {
+      "file": "chapter-openers/06.svg",
+      "sha256": "79d04ea7b1d898db4bc61c1f3e0f01d4f70bd86e1329eda4dc8e74e735a18fdd",
+      "height": 586.0
+    },
+    {
+      "file": "technical/ch06/1-events.svg",
+      "sha256": "9ddba995c740fad5084cb745ee9a431bd831a0c9cdbafd4b67e6b0ef1069e2fb",
+      "height": 659.0
+    },
+    {
+      "file": "technical/ch06/2-handoff.svg",
+      "sha256": "ab9d2c9d4dc36c70be887129c2460e0ebca53271014c3e9d8be071bdf0b5278e",
+      "height": 659.0
+    },
+    {
+      "file": "chapter-openers/07.svg",
+      "sha256": "18402e7e895cce5044ed2617c5914e9686b3df6a7d7e94fa3fef36e83b9cf6cc",
+      "height": 629.0
+    },
+    {
+      "file": "technical/ch07/1-ipc.svg",
+      "sha256": "0f24ee75b5e7846897d7d24ac2c28da8a43cba9e64057e0729a0e339158ecccb",
+      "height": 709.0
+    },
+    {
+      "file": "technical/ch07/2-handoff.svg",
+      "sha256": "412e16d430e17f3a86b589adc8e4cf3a36006667c2da0d6ed1d7743039811075",
+      "height": 659.0
+    },
+    {
+      "file": "chapter-openers/08.svg",
+      "sha256": "175cd3bcf0141a89f25a73db835cd311bb8f8dde4179a2c271fd1d75b1796d63",
+      "height": 586.0
+    },
+    {
+      "file": "technical/ch08/1-broadcast.svg",
+      "sha256": "25453a64e7ccb489a99e1029a6bcc1e9348212ed75aeb2f8da2542d849ee1160",
+      "height": 739.0
+    },
+    {
+      "file": "technical/ch08/2-reduce.svg",
+      "sha256": "37d302b9bb0bf94529bcad8b0686ec081490aef090639cb8d972a1a0a7b26e8a",
+      "height": 739.0
+    },
+    {
+      "file": "chapter-openers/09.svg",
+      "sha256": "61c29b3ed9a33dc4cce77858c3f91a835dc447ff3925ce494a9855789079af7c",
+      "height": 586.0
+    },
+    {
+      "file": "technical/ch09/1-hub.svg",
+      "sha256": "065d03f8a345c60d0c7ba06a4fc8d6d3ac87648e01e720b4fe57b91e77bac0a6",
+      "height": 739.0
+    },
+    {
+      "file": "technical/ch09/2-ring.svg",
+      "sha256": "549058172597a76385d37f83df46a213d5c6434d5eb947e80b88b7e4398258a2",
+      "height": 774.0
+    },
+    {
+      "file": "technical/ch09/3-chunks.svg",
+      "sha256": "98554bd25339c56ca0b9f70bf14e483315cab30dd836b171ffc884c381c5a0df",
+      "height": 789.0
+    },
+    {
+      "file": "chapter-openers/10.svg",
+      "sha256": "7c2a5b7c286f57c49c467d95efcb78e78d164c676a5e53113c7e627c1f53ffff",
+      "height": 543.0
+    },
+    {
+      "file": "technical/ch10/1-gather.svg",
+      "sha256": "902d846533266bed36a46f90cb0b1851fded9304b0352534bd3156e4477d1cae",
+      "height": 789.0
+    },
+    {
+      "file": "technical/ch10/2-scatter.svg",
+      "sha256": "de2057ed68864269627ba2ddaf32f8abf3e732f1f60a22932f2adba6e78f59ca",
+      "height": 789.0
+    },
+    {
+      "file": "technical/ch10/3-alltoall.svg",
+      "sha256": "7f2cba49ea51264b770f8058c97c19939fdd8e832b41e2af55f9a11844edda29",
+      "height": 789.0
+    },
+    {
+      "file": "chapter-openers/11.svg",
+      "sha256": "0c30627df6a96832b96d2f2581cc34dac7f6b11df2ed171838e1e83fe9c9c92c",
+      "height": 586.0
+    },
+    {
+      "file": "technical/ch11/1-flow.svg",
+      "sha256": "547d46a7ffc1721f657c1b594729f1c9d9a3708b53f5e4a6f8c8da9f6354b3de",
+      "height": 587.0
+    },
+    {
+      "file": "technical/ch11/2-mapping.svg",
+      "sha256": "419e5658fcf03bedd9af25c9816d587a16051344538530d29857bcb1fbee5cee",
+      "height": 698.0
+    },
+    {
+      "file": "chapter-openers/12.svg",
+      "sha256": "d2afab80b3afeecb3f1ca98eaca94b0dc2c01435b7c159c56f9528785348d876",
+      "height": 586.0
+    },
+    {
+      "file": "technical/ch12/1-replicas.svg",
+      "sha256": "4f34e72b4a72bf540f12e4a9de09c1999a1004561415329ea26c6adc280f50a6",
+      "height": 739.0
+    },
+    {
+      "file": "technical/ch12/2-reduce.svg",
+      "sha256": "e26efaa6f2b62f6e95fe6d93c55631f613c4146599a02a9a125e85b2e64eeea5",
+      "height": 739.0
+    },
+    {
+      "file": "chapter-openers/13.svg",
+      "sha256": "cd0c25b9815ed9f46e849e374e959ca2cc69fd0462371f2ca2039209533ab6a6",
+      "height": 586.0
+    },
+    {
+      "file": "technical/ch13/1-capacity.svg",
+      "sha256": "669ffb62a366439b0367d35e725a6821a3b9f2912017830ddff61d0871c845f4",
+      "height": 764.0
+    },
+    {
+      "file": "technical/ch13/2-layers.svg",
+      "sha256": "20adbeb8ce71c686f57ec97137e308022242630d5e2932c638eb11daa9bd109a",
+      "height": 694.0
+    },
+    {
+      "file": "chapter-openers/14.svg",
+      "sha256": "496640292e1750f4e5820366da1bc652ee9aaf26447c4b5cdc63f39acf8c7772",
+      "height": 586.0
+    },
+    {
+      "file": "technical/ch14/1-column.svg",
+      "sha256": "69d72eb953776592f34c67935e9b623a3f1e283b1a84895437458cb3ba514941",
+      "height": 749.0
+    },
+    {
+      "file": "technical/ch14/2-row.svg",
+      "sha256": "cc6b0919973da97913551983101f84cfb9360eef2afef0cf45fd423ac059d8f8",
+      "height": 869.0
+    },
+    {
+      "file": "chapter-openers/15.svg",
+      "sha256": "ee032fcb52ff3799f829a0b7a62567e9161212fb0c862b0bebd8dc5246518405",
+      "height": 629.0
+    },
+    {
+      "file": "technical/ch15/1-pipeline.svg",
+      "sha256": "db38e3e262de16ae50a889f1e8a4915cee7f4c87395fb1f34bf0a4ca93b5cd31",
+      "height": 752.0
+    },
+    {
+      "file": "technical/ch15/2-handoff.svg",
+      "sha256": "cda310720c0c9de083f1b540108a61b88116155a5eccd307f200b2e5048e925a",
+      "height": 659.0
+    },
+    {
+      "file": "chapter-openers/16.svg",
+      "sha256": "cde0a6743cf181c0e90bcef0972d1c0c2637f7ba038df7bd9422670b41052fba",
+      "height": 629.0
+    },
+    {
+      "file": "technical/ch16/1-halo.svg",
+      "sha256": "25058ca6c5f3903a705664e15da4d37e5c1d49d19d2ef507c823b798d1941bc4",
+      "height": 829.0
+    },
+    {
+      "file": "technical/ch16/2-handoff.svg",
+      "sha256": "8a7549e6579a1912b1a142f6cbb37b3a3321435b814da7c80e4034165deaf9a2",
+      "height": 659.0
+    },
+    {
+      "file": "chapter-openers/17.svg",
+      "sha256": "c278a931b4dafd65e9e3e62c71f77179f4d9be8f87902a79094bec55b1824c5f",
+      "height": 586.0
+    },
+    {
+      "file": "technical/ch17/1-events.svg",
+      "sha256": "6a747e2bdf0d6ffed0161522e04ee321ac597c360e87f8be9687b47e139b72d6",
+      "height": 659.0
+    },
+    {
+      "file": "technical/ch17/2-reduce.svg",
+      "sha256": "e68246ce22065ff4fe048d43a50d50d2979f0a4d19eb637bd5d4d44533c47079",
+      "height": 739.0
+    },
+    {
+      "file": "chapter-openers/18.svg",
+      "sha256": "4475c69598ccd9727a3b415b22636c3f4a1f26f2707cbd3232a86b55c776550c",
+      "height": 586.0
+    },
+    {
+      "file": "technical/ch18/1-balance.svg",
+      "sha256": "f9d91fba3a49b6858849217998cd7762026b2932ce3b7331004da605bfa5dfa0",
+      "height": 777.0
+    },
+    {
+      "file": "technical/ch18/2-weighted.svg",
+      "sha256": "19bd2e0a4b3c5d1b61785e74e012eb7abf318c2f229b68dd131add5ae239e948",
+      "height": 777.0
+    },
+    {
+      "file": "chapter-openers/19.svg",
+      "sha256": "63292e825c56193d4a618fee3cc3b393f42762f35a685543e0e327786aa9d4e0",
+      "height": 586.0
+    },
+    {
+      "file": "technical/ch19/1-failure.svg",
+      "sha256": "251fb8ba93380f582ea93359836f7cf59cab39856f0928df24cfba99c02beaec",
+      "height": 774.0
+    },
+    {
+      "file": "technical/ch19/2-flow.svg",
+      "sha256": "0b5d23f9f42941a67691afb5f80ef7a1842a5d4ef79d810af4ae7d134721409d",
+      "height": 587.0
+    },
+    {
+      "file": "chapter-openers/20.svg",
+      "sha256": "019a3b5f8efa65e7a219caa8ab936df5672b199c1c4e78245452c118a527eeb8",
+      "height": 586.0
+    },
+    {
+      "file": "technical/ch20/1-ring.svg",
+      "sha256": "6638568f069ac4c5ac30ff6590f7c42be8ca9e383fc123ce80ec40fb3e83af01",
+      "height": 774.0
+    },
+    {
+      "file": "technical/ch20/2-rdma.svg",
+      "sha256": "c7e6b778eae36b2dae359ee8223cd37cc802713c8b16a89d2a8c3f6732e704a3",
+      "height": 759.0
+    },
+    {
+      "file": "chapter-openers/21.svg",
+      "sha256": "9c10ffe36ab216cec3d9269194d5c79d403206087f5a2bdde6dd630cd5e68e9a",
+      "height": 586.0
+    },
+    {
+      "file": "technical/ch21/1-flow.svg",
+      "sha256": "b672a14a3a2ed6836b253a53756ee2d5bd81c7bd0cbe09135008a2eccab08758",
+      "height": 587.0
+    },
+    {
+      "file": "technical/ch21/2-rdma.svg",
+      "sha256": "b1788151e516a25cd8ab4e84670ccd115be828fe595f74d1b6396044b085f670",
+      "height": 787.0
+    },
+    {
+      "file": "chapter-openers/22.svg",
+      "sha256": "70db5c65323dbc7c9568aa6cdd09506e46ae0dd427752a0d70262c1de97716a9",
+      "height": 586.0
+    },
+    {
+      "file": "technical/ch22/1-symmetric.svg",
+      "sha256": "597a4710b088d12b64b73fcd47f75defef8c2b6d453a2d24c502732d601a7680",
+      "height": 699.0
+    },
+    {
+      "file": "technical/ch22/3-put.svg",
+      "sha256": "629f21ade93a9eda0aa0260138f14a98eb4a59e2f8d6927bf3df1467041b4b63",
+      "height": 700.0
+    },
+    {
+      "file": "chapter-openers/23.svg",
+      "sha256": "7261a7c6c44f49c68b717953eae472734f5b4a94632eb7671efdb83d93318bb0",
+      "height": 586.0
+    },
+    {
+      "file": "technical/ch23/1-handoff.svg",
+      "sha256": "5238878fcb3b253f4fa72aedf621fd4cf0f28ace10a99b94853d37b05bd81cee",
+      "height": 659.0
+    },
+    {
+      "file": "technical/ch23/2-graph.svg",
+      "sha256": "eef3416ac54be758cf45b8af9b2ff4d20bf292234908252ac92a3c97a340375e",
+      "height": 734.0
+    },
+    {
+      "file": "chapter-openers/24.svg",
+      "sha256": "207bac93e865d9130d180cf40561695e83d543e883ab82883522c44e5f857422",
+      "height": 586.0
+    },
+    {
+      "file": "technical/ch24/1-capacity.svg",
+      "sha256": "2b249b8e003a0110e913d4e15715eacb083eaca37fe23df424e9269d164ddbc9",
+      "height": 764.0
+    },
+    {
+      "file": "technical/ch24/2-summa.svg",
+      "sha256": "db914757cef7377dfbe2af2d4c2dd98f7cf9a5b6a4527530abd1e5c5a86c03d1",
+      "height": 734.0
+    },
+    {
+      "file": "chapter-openers/25.svg",
+      "sha256": "8b818720013f136a7620e29a8fc8ef83a2d298a19d521ee722e2959248834d68",
+      "height": 586.0
+    },
+    {
+      "file": "technical/ch25/1-buckets.svg",
+      "sha256": "3b0e0819f164711cba5aea65a00a5993e43f030b61da8cfccddc3920b2719f17",
+      "height": 752.0
+    },
+    {
+      "file": "technical/ch25/2-replicas.svg",
+      "sha256": "bf6700b623a510706652a03744cce4e9fc98473c8f0e4155c213daf923642052",
+      "height": 767.0
+    },
+    {
+      "file": "chapter-openers/26.svg",
+      "sha256": "fb88c6970a1fb7acaa50ae1d0172039eab02c753ce3e2e309df85e72d337d703",
+      "height": 586.0
+    },
+    {
+      "file": "technical/ch26/1-tpgrid.svg",
+      "sha256": "e14d3aeb41fce963dd3221bb63ca397bee2f06e63b4eb7ae0b0668ddd56f50ed",
+      "height": 734.0
+    },
+    {
+      "file": "technical/ch26/3-capacity.svg",
+      "sha256": "27509b2be9f6935026f76689edecd558ff67083745327089f2fd85bc34364d42",
+      "height": 792.0
+    },
+    {
+      "file": "chapter-openers/27.svg",
+      "sha256": "c18e4e2e520d59e3d0df4bc5d76b5263aaec8d5d4554d7f8e3b251d414241c2d",
+      "height": 543.0
+    },
+    {
+      "file": "technical/ch27/1-gather.svg",
+      "sha256": "d1aeeeb02d09b30c1fc3a5abff8c1b67570e686e22db30b720e44fb40de0da8c",
+      "height": 789.0
+    },
+    {
+      "file": "technical/ch27/3-tree.svg",
+      "sha256": "ccb8ce8c5cff8684049e286632075d2b1c73fe0f307f7758d6a00ba42689c70a",
+      "height": 697.0
+    },
+    {
+      "file": "chapter-openers/28.svg",
+      "sha256": "6831788828feb6c8d54cf624dd9d4240fd923a8f845b7118775483c286bb21ac",
+      "height": 543.0
+    },
+    {
+      "file": "technical/ch28/1-frontier.svg",
+      "sha256": "4bf6e1ed666b6e3d74f2db13fa554b6769d152dc096d160f23c63efd6b56ceb7",
+      "height": 734.0
+    },
+    {
+      "file": "technical/ch28/3-matrixgrid.svg",
+      "sha256": "2f34d9ce2f629cbad225f0a999df2962b677b9ad7704e98861e5e6d1c791bf91",
+      "height": 734.0
+    },
+    {
+      "file": "chapter-openers/29.svg",
+      "sha256": "81aa433bf60cc00ff230f3f6f8ca5e08f0c92edd0ffcb7d596a03357776130ed",
+      "height": 543.0
+    },
+    {
+      "file": "technical/ch29/1-halo.svg",
+      "sha256": "bdbfd6eb04aff2a6b18d20cb28b51fa401b1dd7ace63eb780ffb87a625368514",
+      "height": 829.0
+    },
+    {
+      "file": "technical/ch29/2-reduce.svg",
+      "sha256": "a96a189cb23c398297c61ca467298394744a21fd60c91e137a9ae187b0192394",
+      "height": 739.0
+    },
+    {
+      "file": "chapter-openers/30.svg",
+      "sha256": "c61a84d4ae4dd3caa4baaf3c52141e2cca6c404bd51d0d1d155f54ad9d748ab2",
+      "height": 543.0
+    },
+    {
+      "file": "technical/ch30/1-tiles.svg",
+      "sha256": "eb65f0ed30ba1634925b9168a03c4c4678bcc8a09155a69867eb344e40f194d9",
+      "height": 731.0
+    },
+    {
+      "file": "technical/ch30/2-weighted.svg",
+      "sha256": "5261003595fabb430ac0d65d4a57857a7088eb1bb81879e71cf3afad96204080",
+      "height": 777.0
+    },
+    {
+      "file": "chapter-openers/31.svg",
+      "sha256": "80d785baa5425254dc59c15e5d8fb3fcf30a12323a62dfbcfa0b7b74840b1a95",
+      "height": 543.0
+    },
+    {
+      "file": "technical/ch31/1-reduce.svg",
+      "sha256": "8405351e591f134992c6b15527c0d48982f67ac1d8176205ff3bc3ec311f17b3",
+      "height": 739.0
+    },
+    {
+      "file": "technical/ch31/3-gather.svg",
+      "sha256": "57d04ed20fb846a072f65772d52e52e4d749fde133bcea5d148c9287676367e2",
+      "height": 817.0
+    },
+    {
+      "file": "chapter-openers/32.svg",
+      "sha256": "da5fb47b11868da91d962587623bafcd6f16128028344fa74578dd55c09eb582",
+      "height": 629.0
+    },
+    {
+      "file": "technical/ch32/1-experts.svg",
+      "sha256": "62da6f3862a6b12443e5414d78db64b399614bb5b173277a9eea0db6f5044a68",
+      "height": 819.0
+    },
+    {
+      "file": "technical/ch32/3-put.svg",
+      "sha256": "a39d834055eb767960fe9654802d2e1491a41e06747756f83958a5fe143d6a7a",
+      "height": 672.0
+    },
+    {
+      "file": "chapter-openers/33.svg",
+      "sha256": "69f8001ca6ffe210ad2c09650f0c86f1c1d5415ae3e0fcad714615f621d9b952",
+      "height": 586.0
+    },
+    {
+      "file": "technical/ch33/1-layers.svg",
+      "sha256": "bbcdfa3f2f62a6f22e92e3c1ccb624b836dbb646aadedf3fcec956a980c7a076",
+      "height": 719.0
+    },
+    {
+      "file": "technical/ch33/3-transfer.svg",
+      "sha256": "b80b16ce725644d6a174825dff151a16071ab7d5889fc09bb081f30100638f9a",
+      "height": 731.0
+    },
+    {
+      "file": "chapter-openers/34.svg",
+      "sha256": "edd684f4564362005f16d868198d51d3aac3f3af0eb42facac25a49957e120c9",
+      "height": 629.0
+    },
+    {
+      "file": "technical/ch34/1-hybrid.svg",
+      "sha256": "b2aa98a42d5dada95ad3d6c2b0a4dca18bcadd0b18792b695c894a08790fdcdd",
+      "height": 739.0
+    },
+    {
+      "file": "technical/ch34/2-alltoall.svg",
+      "sha256": "0f779b11c64dd5184a7dd7111a52ecb23abfcf9a7cbb51dce88da77a418f3d0b",
+      "height": 789.0
+    },
+    {
+      "file": "chapter-openers/35.svg",
+      "sha256": "f061a4be1ca0d66fd9a57957e89e99c312aa505338778a354cc7a2ddb528bef7",
+      "height": 586.0
+    },
+    {
+      "file": "technical/ch35/1-replicas.svg",
+      "sha256": "0181bb243ad4f329414459a81484123407645eb6f449a08f30fdecac7ac0e527",
+      "height": 739.0
+    },
+    {
+      "file": "technical/ch35/3-alltoall.svg",
+      "sha256": "3dd28f8d0471008dcedbb9d39a7f2e38b2b8006d8359cd02544cc059e7855832",
+      "height": 789.0
+    },
+    {
+      "file": "chapter-openers/36.svg",
+      "sha256": "1824af736b74fdb23fe14947b546eb58569fb04328dfcdf3a4ad75abd85f10f5",
+      "height": 543.0
+    },
+    {
+      "file": "technical/ch36/1-profile.svg",
+      "sha256": "213436bdade5bc68a85a94cfc82eade8efdc92fc3b2720b29a015ecb2820e5b0",
+      "height": 749.0
+    },
+    {
+      "file": "technical/ch36/2-netting.svg",
+      "sha256": "b0973ae021b3f3298e372d273b4201a6f361eaabde55ce061bbdcc8b3bddce1a",
+      "height": 789.0
+    },
+    {
+      "file": "chapter-openers/37.svg",
+      "sha256": "b00351e7c13ca50adcbec92c5f1a617a20c2b7021ded6680efcd10eb0b02adbb",
+      "height": 543.0
+    },
+    {
+      "file": "technical/ch37/1-staging.svg",
+      "sha256": "1995c26e367f058618a20865697e76b9c9dca54f4cad032f9513ac6111136701",
+      "height": 731.0
+    },
+    {
+      "file": "technical/ch37/2-rdma.svg",
+      "sha256": "6324f041cf78dff9fc05c06d4effb9945e7bda8654c476aa093d983761fa4e0f",
+      "height": 759.0
+    },
+    {
+      "file": "chapter-openers/38.svg",
+      "sha256": "7519ef3b3d4adad063c94da472ec05d8e41661fc0bccc7f07355909763ac9e5e",
+      "height": 586.0
+    },
+    {
+      "file": "technical/ch38/1-fraud.svg",
+      "sha256": "9ea3c9a17debf953c59907e4cb587f0b12b1bb11ce88d0c1b197a6c2fc9456c4",
+      "height": 734.0
+    },
+    {
+      "file": "technical/ch38/3-tree.svg",
+      "sha256": "2bd9ab4e35a610186c1652fb3947d44649b8591c4f3dc58feafa367fe7f73d6c",
+      "height": 764.0
+    },
+    {
+      "file": "chapter-openers/39.svg",
+      "sha256": "3a24b00c8627f6351ac872d9a447ee5f5008433af378e0cf7d7b4536d1863635",
+      "height": 543.0
+    },
+    {
+      "file": "technical/ch39/2-tiles.svg",
+      "sha256": "7bfcd38cd19b7d134ab4d3291de25f2faddc06069ee90717ef7af5cdbf9a4ec3",
+      "height": 731.0
+    },
+    {
+      "file": "technical/ch39/3-flow.svg",
+      "sha256": "e9af67e0a45e277057be537a114c4c41dcbfcb9ffffcb7cbdfe5107ffee976d9",
+      "height": 587.0
+    },
+    {
+      "file": "chapter-openers/40.svg",
+      "sha256": "8e77651c614217ee4dc4f6ba11595a45c0292589351d48f1fc8201194e95f850",
+      "height": 543.0
+    },
+    {
+      "file": "technical/ch40/1-halo.svg",
+      "sha256": "7b42dbb98434f9537346f02cfc5e4f266aff383055b89e22e1052b673ef0ec66",
+      "height": 829.0
+    },
+    {
+      "file": "technical/ch40/3-reduce.svg",
+      "sha256": "66d1c2e896314f3312398bc9fc2adfc66560f11f4f61c732e1ec632f66836740",
+      "height": 775.0
+    },
+    {
+      "file": "chapter-openers/appendix-a.svg",
+      "sha256": "c18eb3e2f3b5e3bd24696ce5b4ac36ee73e55e83acab4b6aa6da958e0809eb78",
+      "height": 629.0
+    },
+    {
+      "file": "technical/appendix-a/1-flow.svg",
+      "sha256": "6fb3d49a0f01c876eedd5eede0bb41b1a1f94432dd6c4d7e27987920ae4c2bed",
+      "height": 587.0
+    },
+    {
+      "file": "technical/appendix-a/2-layers.svg",
+      "sha256": "31dda05784b3a996caccfb27b35f513ee85bbbddc25924196a96295da28985a5",
+      "height": 729.0
+    },
+    {
+      "file": "chapter-openers/appendix-b.svg",
+      "sha256": "87cc2f146269313c17decfaaa2731cec58b8012a3d8fb352b9b5b75526423bde",
+      "height": 543.0
+    },
+    {
+      "file": "technical/appendix-b/1-flow.svg",
+      "sha256": "c8648bd2634872b3ce52fad6bc5bb78a6d4be541f601035eb2c7ae35077d2810",
+      "height": 587.0
+    },
+    {
+      "file": "technical/appendix-b/4-chunks.svg",
+      "sha256": "26d06efef636757ceb519a11c6ce084f04a36d295e1fd61f0c32f8874918312a",
+      "height": 789.0
+    },
+    {
+      "file": "chapter-openers/appendix-c.svg",
+      "sha256": "8bb28d9abdc9c5182c648ef3bdec82db9df7f1aa61ec8cccb5168b2f33a566c9",
+      "height": 586.0
+    },
+    {
+      "file": "technical/appendix-c/1-mapping.svg",
+      "sha256": "3110eceb201bb3e08829c8268700ed541ae99ee4b5b29596d5c1e8d4fb783ade",
+      "height": 670.0
+    },
+    {
+      "file": "technical/appendix-c/3-symmetric.svg",
+      "sha256": "35689f53465561d77dff9e392df0aeb73797fb1f7afd8614b73dfe94be8de103",
+      "height": 699.0
+    },
+    {
+      "file": "chapter-openers/appendix-d.svg",
+      "sha256": "329e879ebd2531bdca7fb84c64bd17f0f0ba742368cddf84bf820f498cecc8a3",
+      "height": 586.0
+    },
+    {
+      "file": "technical/appendix-d/1-graph.svg",
+      "sha256": "1742d3100c95345ee13694439bc154917d8953a984978f1ec3585cd5c6b7885c",
+      "height": 734.0
+    },
+    {
+      "file": "technical/appendix-d/3-handoff.svg",
+      "sha256": "eaccb821d215a8b6ca0974c5c7ebbf8de99c477c363a780cdc2b6436ce2074cf",
+      "height": 659.0
+    },
+    {
+      "file": "chapter-openers/appendix-e.svg",
+      "sha256": "2525c96072e21d120ba69c1d966bd5ee7f16afbbbb1434ee5a6e9a6b4d4b6f10",
+      "height": 586.0
+    },
+    {
+      "file": "technical/appendix-e/2-timing.svg",
+      "sha256": "3e15b7c6f9a83eddbb659ef062a5c8f6a57b3b33e317c17d2d143c911f79c417",
+      "height": 970.0
+    },
+    {
+      "file": "technical/appendix-e/4-flow.svg",
+      "sha256": "6d4f930a7d6bc8c2eb2f04260b6e86dbc336384167095ae99766edb5082fde8d",
+      "height": 587.0
+    },
+    {
+      "file": "chapter-openers/appendix-f.svg",
+      "sha256": "01663c03ffa2ec02451f5f77dc34afb9c3a35be060d5c22a56d923816dad87ee",
+      "height": 586.0
+    },
+    {
+      "file": "technical/appendix-f/1-mapping.svg",
+      "sha256": "42397c1270595529280fb12bc299a49d1b3e98893ab0f05cf370c33398836e4b",
+      "height": 698.0
+    },
+    {
+      "file": "technical/appendix-f/3-capacity.svg",
+      "sha256": "d6fe98d7cce50ce8a4f419bf7727e629d2117116dc01cbb544447419d8fb186c",
+      "height": 764.0
+    },
+    {
+      "file": "chapter-openers/appendix-g.svg",
+      "sha256": "f7848c66170bcd4e419bb5bcefcc1f10981a154374adedd9131ac9766860e1f3",
+      "height": 672.0
+    },
+    {
+      "file": "technical/appendix-g/1-failure.svg",
+      "sha256": "d140bc7af75f9b0b5b0d08ad5676256efdc34ff04b510784af7003bef0ddef57",
+      "height": 774.0
+    },
+    {
+      "file": "technical/appendix-g/2-handoff.svg",
+      "sha256": "ee6eccf512a30b31e056abaaa269a6ad8673996dc8852495bcfc6569f85d9505",
+      "height": 659.0
+    },
+    {
+      "file": "chapter-openers/index.svg",
+      "sha256": "f6c68390b80f5ef1f68026cf7ec50e905b3ff87c1bc2c1ec63d2c9fab2709b1f",
+      "height": 860.0
+    },
+    {
+      "file": "technical/index.svg",
+      "sha256": "0f6e9c955a1dfa60470d1fb9f1b77d5e5e57a27e08d1ab47260f7b9617709c88",
+      "height": 587.0
+    },
+    {
+      "file": "chapter-openers/getting-started.svg",
+      "sha256": "f0cf92c7e8eda03d133d233cc7f165c07475e508687d2c6a5b44e161e80db31b",
+      "height": 543.0
+    },
+    {
+      "file": "technical/getting-started.svg",
+      "sha256": "22bcb3cfa4b3b5102d3ce8e633cddd5d1cb3c8f7b321d0e746270e8c1696ad22",
+      "height": 587.0
+    }
+  ]
+}

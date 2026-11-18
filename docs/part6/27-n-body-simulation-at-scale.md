@@ -1,5 +1,15 @@
 # Chapter 27: N-Body Simulation at Scale
 
+<!-- execution:provenance -->
+!!! info "Execution provenance"
+
+    Current execution blocks identify the tested source hash, hardware dataset, commands and captured output. References elsewhere on this page to a device-less environment describe the original authoring context. Historical output is superseded by the current record. Displayed output omits the runner command header and trims trailing line whitespace; raw logs remain exact. A host simulation or API validation has its stated scope; neither alone establishes a numerical multi-GPU workload or measured performance.
+
+
+<!-- mgpu:opener:start -->
+[![Chapter 27: N-Body Simulation at Scale](../images/chapter-openers/27.svg)](../images/chapter-openers/27.svg)
+<!-- mgpu:opener:end -->
+
 **What you will understand by the end of this chapter:**
 
 - Why N-body force calculation needs a fundamentally different communication pattern from every domain-decomposition problem this book has built so far -- a real, quoted reason gravitational and Coulomb forces cannot be handled with a halo exchange.
@@ -33,6 +43,10 @@ Chapter 16 (PDE stencil, halo exchange):     This chapter (N-body, all-gather):
 ```
 
 ## 27.1 All-Pairs: Every Body Needs Every Other Body
+
+<!-- mgpu:figure-1:start -->
+[![Each local body needs the global source set](../images/technical/ch27/1-gather.svg)](../images/technical/ch27/1-gather.svg)
+<!-- mgpu:figure-1:end -->
 
 ### Intuition
 
@@ -203,7 +217,19 @@ int main() {
 }
 ```
 
-Compiled with `g++ -O2 78_all_pairs_nbody_correctness_simulation.cpp -o 78_all_pairs_nbody_correctness_simulation` and genuinely run, on both the cloud sandbox and the device (a plain host computation), with byte-identical output on both. Locked output:
+<!-- execution:start:a100:78_all_pairs_nbody_correctness_simulation.cpp -->
+> **Current execution — 2026-11-17-a100: Host program/model (exit-only).** UTC (program start): `2026-11-18T00:05:25.277799+00:00`. Source SHA-256: `bf686d8feaf3d7154c054b4543d0c79e6d06c328df4733a631055f75779af5f9`.
+
+[Exact tested source](../validation/2026-11-17-a100/78_all_pairs_nbody_correctness_simulation/78_all_pairs_nbody_correctness_simulation.cpp) · [Compiler log](../validation/2026-11-17-a100/78_all_pairs_nbody_correctness_simulation/compile.log) · [Execution log](../validation/2026-11-17-a100/78_all_pairs_nbody_correctness_simulation/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+g++ -std=c++17 -O2 78_all_pairs_nbody_correctness_simulation.cpp -o ./example
+./example
+```
+
+<details markdown="1"><summary>Captured current-source output</summary>
 
 ```text
 N=12 bodies, P=3 shards (4 bodies/shard). Each shard must ALL-GATHER every other shard's bodies before computing forces -- unlike Chapter 16's own halo exchange, which only ever moved BOUNDARY-adjacent data.
@@ -223,6 +249,72 @@ Body 11 (x= 18, mass=4): naive force=   -1800  distributed force=   -1800  EXACT
 
 All 12 bodies EXACT MATCH between naive all-pairs and distributed (shard + all-gather) all-pairs: YES
 ```
+
+</details>
+<!-- execution:end:a100:78_all_pairs_nbody_correctness_simulation.cpp -->
+
+
+<!-- execution:start:h100:78_all_pairs_nbody_correctness_simulation.cpp -->
+> **Current execution — 2026-11-17-h100: Host program/model (exit-only).** UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`. Source SHA-256: `bf686d8feaf3d7154c054b4543d0c79e6d06c328df4733a631055f75779af5f9`.
+
+[Exact tested source](../validation/2026-11-17-h100/78_all_pairs_nbody_correctness_simulation/78_all_pairs_nbody_correctness_simulation.cpp) · [Compiler log](../validation/2026-11-17-h100/78_all_pairs_nbody_correctness_simulation/compile.log) · [Execution log](../validation/2026-11-17-h100/78_all_pairs_nbody_correctness_simulation/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+g++ -std=c++17 -O2 78_all_pairs_nbody_correctness_simulation.cpp -o ./example
+./example
+```
+
+<details markdown="1"><summary>Captured current-source output</summary>
+
+```text
+N=12 bodies, P=3 shards (4 bodies/shard). Each shard must ALL-GATHER every other shard's bodies before computing forces -- unlike Chapter 16's own halo exchange, which only ever moved BOUNDARY-adjacent data.
+
+Body  0 (x=-15, mass=1): naive force=     540  distributed force=     540  EXACT MATCH
+Body  1 (x=-12, mass=2): naive force=     900  distributed force=     900  EXACT MATCH
+Body  2 (x= -9, mass=3): naive force=    1080  distributed force=    1080  EXACT MATCH
+Body  3 (x= -6, mass=4): naive force=    1080  distributed force=    1080  EXACT MATCH
+Body  4 (x= -3, mass=1): naive force=     180  distributed force=     180  EXACT MATCH
+Body  5 (x=  0, mass=2): naive force=     180  distributed force=     180  EXACT MATCH
+Body  6 (x=  3, mass=3): naive force=       0  distributed force=       0  EXACT MATCH
+Body  7 (x=  6, mass=4): naive force=    -360  distributed force=    -360  EXACT MATCH
+Body  8 (x=  9, mass=1): naive force=    -180  distributed force=    -180  EXACT MATCH
+Body  9 (x= 12, mass=2): naive force=    -540  distributed force=    -540  EXACT MATCH
+Body 10 (x= 15, mass=3): naive force=   -1080  distributed force=   -1080  EXACT MATCH
+Body 11 (x= 18, mass=4): naive force=   -1800  distributed force=   -1800  EXACT MATCH
+
+All 12 bodies EXACT MATCH between naive all-pairs and distributed (shard + all-gather) all-pairs: YES
+```
+
+</details>
+<!-- execution:end:h100:78_all_pairs_nbody_correctness_simulation.cpp -->
+
+
+Compiled with `g++ -O2 78_all_pairs_nbody_correctness_simulation.cpp -o 78_all_pairs_nbody_correctness_simulation` and genuinely run, on both the cloud sandbox and the device (a plain host computation), with byte-identical output on both. Locked output:
+
+<details markdown="1"><summary>Historical authoring output — superseded by the current execution above</summary>
+
+```text
+N=12 bodies, P=3 shards (4 bodies/shard). Each shard must ALL-GATHER every other shard's bodies before computing forces -- unlike Chapter 16's own halo exchange, which only ever moved BOUNDARY-adjacent data.
+
+Body  0 (x=-15, mass=1): naive force=     540  distributed force=     540  EXACT MATCH
+Body  1 (x=-12, mass=2): naive force=     900  distributed force=     900  EXACT MATCH
+Body  2 (x= -9, mass=3): naive force=    1080  distributed force=    1080  EXACT MATCH
+Body  3 (x= -6, mass=4): naive force=    1080  distributed force=    1080  EXACT MATCH
+Body  4 (x= -3, mass=1): naive force=     180  distributed force=     180  EXACT MATCH
+Body  5 (x=  0, mass=2): naive force=     180  distributed force=     180  EXACT MATCH
+Body  6 (x=  3, mass=3): naive force=       0  distributed force=       0  EXACT MATCH
+Body  7 (x=  6, mass=4): naive force=    -360  distributed force=    -360  EXACT MATCH
+Body  8 (x=  9, mass=1): naive force=    -180  distributed force=    -180  EXACT MATCH
+Body  9 (x= 12, mass=2): naive force=    -540  distributed force=    -540  EXACT MATCH
+Body 10 (x= 15, mass=3): naive force=   -1080  distributed force=   -1080  EXACT MATCH
+Body 11 (x= 18, mass=4): naive force=   -1800  distributed force=   -1800  EXACT MATCH
+
+All 12 bodies EXACT MATCH between naive all-pairs and distributed (shard + all-gather) all-pairs: YES
+```
+
+</details>
 
 !!! warning "[COMMON TRAP] Assuming domain decomposition (Chapter 16-style particle/space partitioning) automatically implies nearest-neighbor communication"
     Chapter 16's own domain decomposition and this chapter's own body-sharding LOOK like the same idea -- split the data across devices by index or by region. The mistake this section's own simulation is built to head off is assuming that partitioning scheme, by itself, determines the communication pattern. It does not: the communication pattern is determined by the PHYSICS of the update rule, not by how the data happens to be split. Chapter 16's stencil update only reads adjacent cells, so its own partition needed only a halo exchange. This chapter's own force law has no such locality -- "the total force F_i on body i... is obtained by summing all interactions" with every other body -- so the identical-LOOKING partitioning scheme (splitting an array of N items across P shards) requires an entirely different collective, an all-gather, to stay correct. Two problems that look alike at the partitioning level can require completely different communication.
@@ -320,7 +412,75 @@ int main() {
 }
 ```
 
+<!-- execution:start:a100:79_nbody_vs_halo_communication_model.cpp -->
+> **Current execution — 2026-11-17-a100: Host program/model (exit-only).** UTC (program start): `2026-11-18T00:05:25.650710+00:00`. Source SHA-256: `8f59996bb939f91280b669a5753827f5032a825752060b65d320de316fb64cff`.
+
+[Exact tested source](../validation/2026-11-17-a100/79_nbody_vs_halo_communication_model/79_nbody_vs_halo_communication_model.cpp) · [Compiler log](../validation/2026-11-17-a100/79_nbody_vs_halo_communication_model/compile.log) · [Execution log](../validation/2026-11-17-a100/79_nbody_vs_halo_communication_model/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+g++ -std=c++17 -O2 79_nbody_vs_halo_communication_model.cpp -o ./example
+./example
+```
+
+<details markdown="1"><summary>Captured current-source output</summary>
+
+```text
+N=5000000 bodies (Burtscher & Pingali's own real cited scale), 32 bytes/body (this chapter's own stated assumption) -> total dataset = 152.59 MiB
+
+P      N-body all-gather MiB/GPU    Ch16 halo-exchange MiB/GPU
+------------------------------------------------------------------
+2      76.29                        0.50
+4      114.44                       0.50
+8      133.51                       0.50
+16     143.05                       0.50
+32     147.82                       0.50
+64     150.20                       0.50
+
+As P grows, N-body's own per-GPU all-gather volume APPROACHES the FULL dataset size (152.59 MiB) and never drops below it by much -- every GPU still needs every body's data, every step. Chapter 16's own halo-exchange volume stayed FLAT at a fixed boundary size regardless of P, because a stencil update only ever reads immediately adjacent cells. Adding more GPUs leaves Chapter 16's own per-GPU communication flat; for this chapter's own all-pairs N-body case it makes each GPU's receive volume GROW toward the full dataset.
+```
+
+</details>
+<!-- execution:end:a100:79_nbody_vs_halo_communication_model.cpp -->
+
+
+<!-- execution:start:h100:79_nbody_vs_halo_communication_model.cpp -->
+> **Current execution — 2026-11-17-h100: Host program/model (exit-only).** UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`. Source SHA-256: `8f59996bb939f91280b669a5753827f5032a825752060b65d320de316fb64cff`.
+
+[Exact tested source](../validation/2026-11-17-h100/79_nbody_vs_halo_communication_model/79_nbody_vs_halo_communication_model.cpp) · [Compiler log](../validation/2026-11-17-h100/79_nbody_vs_halo_communication_model/compile.log) · [Execution log](../validation/2026-11-17-h100/79_nbody_vs_halo_communication_model/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+g++ -std=c++17 -O2 79_nbody_vs_halo_communication_model.cpp -o ./example
+./example
+```
+
+<details markdown="1"><summary>Captured current-source output</summary>
+
+```text
+N=5000000 bodies (Burtscher & Pingali's own real cited scale), 32 bytes/body (this chapter's own stated assumption) -> total dataset = 152.59 MiB
+
+P      N-body all-gather MiB/GPU    Ch16 halo-exchange MiB/GPU
+------------------------------------------------------------------
+2      76.29                        0.50
+4      114.44                       0.50
+8      133.51                       0.50
+16     143.05                       0.50
+32     147.82                       0.50
+64     150.20                       0.50
+
+As P grows, N-body's own per-GPU all-gather volume APPROACHES the FULL dataset size (152.59 MiB) and never drops below it by much -- every GPU still needs every body's data, every step. Chapter 16's own halo-exchange volume stayed FLAT at a fixed boundary size regardless of P, because a stencil update only ever reads immediately adjacent cells. Adding more GPUs leaves Chapter 16's own per-GPU communication flat; for this chapter's own all-pairs N-body case it makes each GPU's receive volume GROW toward the full dataset.
+```
+
+</details>
+<!-- execution:end:h100:79_nbody_vs_halo_communication_model.cpp -->
+
+
 Compiled with `g++ -O2 79_nbody_vs_halo_communication_model.cpp -o 79_nbody_vs_halo_communication_model` and genuinely run, on both the cloud sandbox and the device, with byte-identical output on both. Locked output:
+
+<details markdown="1"><summary>Historical authoring output — superseded by the current execution above</summary>
 
 ```text
 N=5000000 bodies (Burtscher & Pingali's own real cited scale), 32 bytes/body (this chapter's own stated assumption) -> total dataset = 152.59 MiB
@@ -337,10 +497,16 @@ P      N-body all-gather MiB/GPU    Ch16 halo-exchange MiB/GPU
 As P grows, N-body's own per-GPU all-gather volume APPROACHES the FULL dataset size (152.59 MiB) and never drops below it by much -- every GPU still needs every body's data, every step. Chapter 16's own halo-exchange volume stayed FLAT at a fixed boundary size regardless of P, because a stencil update only ever reads immediately adjacent cells. Adding more GPUs leaves Chapter 16's own per-GPU communication flat; for this chapter's own all-pairs N-body case it makes each GPU's receive volume GROW toward the full dataset.
 ```
 
+</details>
+
 !!! warning "[COMMON TRAP] Assuming adding GPUs leaves per-GPU communication flat, the way it did in Chapter 16"
     Chapter 16's own real finding -- that each shard's halo-exchange volume depends only on the fixed boundary between neighbors, so it stays flat no matter how many shards are added -- is true for LOCAL, neighbor-only update rules, and it is tempting to treat that as a general property of "adding more GPUs." This section's own locked output shows it is not: for all-pairs N-body, going from P=2 to P=64 GPUs does not keep per-GPU communication flat -- it GROWS, from 76.29 MiB to 150.20 MiB, approaching the full 152.59 MiB dataset size and staying there. The real reason is Section 27.1's own finding: every GPU still needs every body's data, every step, so adding GPUs only ever adds MORE all-gather participants, never reduces what any one of them individually needs to receive. Whether adding GPUs helps or hurts per-GPU communication depends entirely on whether the underlying problem is LOCAL (Chapter 16) or GLOBAL (this chapter) -- it is not a property of parallelism in general.
 
 ## 27.3 Barnes-Hut: The Real Algorithmic Answer
+
+<!-- mgpu:figure-3:start -->
+[![A hierarchy replaces distant detail](../images/technical/ch27/3-tree.svg)](../images/technical/ch27/3-tree.svg)
+<!-- mgpu:figure-3:end -->
 
 ### Intuition
 
@@ -444,7 +610,89 @@ int main() {
 }
 ```
 
+<!-- execution:start:a100:80_barnes_hut_complexity_crossover_model.cpp -->
+> **Current execution — 2026-11-17-a100: Host program/model (exit-only).** UTC (program start): `2026-11-18T00:05:25.771052+00:00`. Source SHA-256: `1d63a67093a51927597d9160653c4a82288b5c21211c47edea36d687680d2946`.
+
+[Exact tested source](../validation/2026-11-17-a100/80_barnes_hut_complexity_crossover_model/80_barnes_hut_complexity_crossover_model.cpp) · [Compiler log](../validation/2026-11-17-a100/80_barnes_hut_complexity_crossover_model/compile.log) · [Execution log](../validation/2026-11-17-a100/80_barnes_hut_complexity_crossover_model/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+g++ -std=c++17 -O2 80_barnes_hut_complexity_crossover_model.cpp -o ./example
+./example
+```
+
+<details markdown="1"><summary>Captured current-source output</summary>
+
+```text
+--- This chapter's own worked model: O(N^2) vs O(N log N) operation counts (NOT a runtime measurement) ---
+N            N^2 ops          N*log2(N) ops    ratio N/log2(N)
+1000         1.000e+06        9.966e+03        100.3           x
+10000        1.000e+08        1.329e+05        752.6           x
+100000       1.000e+10        1.661e+06        6020.6          x
+1000000      1.000e+12        1.993e+07        50171.7         x
+5000000      2.500e+13        1.113e+08        224683.8        x
+50000000     2.500e+15        1.279e+09        1955001.7       x
+
+As N grows, the ratio N/log2(N) grows WITHOUT BOUND -- all-pairs' own O(N^2) cost doesn't just stay worse than Barnes-Hut's O(N log N), it gets steadily WORSE (by a factor N/log2(N), which grows almost linearly in N), relative to Barnes-Hut, the larger the simulation gets. This compounds Section 27.2's own finding that all-pairs' per-GPU COMMUNICATION also does not improve by adding more GPUs -- both the compute and the communication argument point the same real direction at scale.
+
+--- Real, cited measured numbers for an ACTUAL GPU Barnes-Hut implementation (Burtscher & Pingali) -- NOT computed by this program ---
+"Our CUDA code takes 5.2 seconds to simulate one time step with 5,000,000 bodies on a 1.3 GHz Quadro FX 5800 GPU with 240 cores, which is 74 times faster than an optimized serial implementation running on a 2.53 GHz Xeon E5540 CPU."
+"With increasing input size, the parallel CUDA Barnes Hut code is 5, 35, 66, 74, and 53 times faster than the serial C code."
+"the Barnes Hut implementation reaches a respectable 75 Gflop/s."
+"The most important kernel, kernel 5, is over 90 times faster."
+
+--- What this chapter does NOT claim ---
+Burtscher & Pingali's own real speedup figures are for ONE GPU against a serial CPU baseline, not a multi-GPU distributed Barnes-Hut communication measurement. This chapter's own reasoning -- that a distributed Barnes-Hut implementation could exchange far LESS than Section 27.2's own full O(N) all-gather, by approximating a distant region's bodies as a single aggregate value rather than requiring every individual body's raw data -- is this chapter's own logical extension of the tree algorithm's own real approximation idea, not a number measured or published by any source this chapter cites.
+```
+
+</details>
+<!-- execution:end:a100:80_barnes_hut_complexity_crossover_model.cpp -->
+
+
+<!-- execution:start:h100:80_barnes_hut_complexity_crossover_model.cpp -->
+> **Current execution — 2026-11-17-h100: Host program/model (exit-only).** UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`. Source SHA-256: `1d63a67093a51927597d9160653c4a82288b5c21211c47edea36d687680d2946`.
+
+[Exact tested source](../validation/2026-11-17-h100/80_barnes_hut_complexity_crossover_model/80_barnes_hut_complexity_crossover_model.cpp) · [Compiler log](../validation/2026-11-17-h100/80_barnes_hut_complexity_crossover_model/compile.log) · [Execution log](../validation/2026-11-17-h100/80_barnes_hut_complexity_crossover_model/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+g++ -std=c++17 -O2 80_barnes_hut_complexity_crossover_model.cpp -o ./example
+./example
+```
+
+<details markdown="1"><summary>Captured current-source output</summary>
+
+```text
+--- This chapter's own worked model: O(N^2) vs O(N log N) operation counts (NOT a runtime measurement) ---
+N            N^2 ops          N*log2(N) ops    ratio N/log2(N)
+1000         1.000e+06        9.966e+03        100.3           x
+10000        1.000e+08        1.329e+05        752.6           x
+100000       1.000e+10        1.661e+06        6020.6          x
+1000000      1.000e+12        1.993e+07        50171.7         x
+5000000      2.500e+13        1.113e+08        224683.8        x
+50000000     2.500e+15        1.279e+09        1955001.7       x
+
+As N grows, the ratio N/log2(N) grows WITHOUT BOUND -- all-pairs' own O(N^2) cost doesn't just stay worse than Barnes-Hut's O(N log N), it gets steadily WORSE (by a factor N/log2(N), which grows almost linearly in N), relative to Barnes-Hut, the larger the simulation gets. This compounds Section 27.2's own finding that all-pairs' per-GPU COMMUNICATION also does not improve by adding more GPUs -- both the compute and the communication argument point the same real direction at scale.
+
+--- Real, cited measured numbers for an ACTUAL GPU Barnes-Hut implementation (Burtscher & Pingali) -- NOT computed by this program ---
+"Our CUDA code takes 5.2 seconds to simulate one time step with 5,000,000 bodies on a 1.3 GHz Quadro FX 5800 GPU with 240 cores, which is 74 times faster than an optimized serial implementation running on a 2.53 GHz Xeon E5540 CPU."
+"With increasing input size, the parallel CUDA Barnes Hut code is 5, 35, 66, 74, and 53 times faster than the serial C code."
+"the Barnes Hut implementation reaches a respectable 75 Gflop/s."
+"The most important kernel, kernel 5, is over 90 times faster."
+
+--- What this chapter does NOT claim ---
+Burtscher & Pingali's own real speedup figures are for ONE GPU against a serial CPU baseline, not a multi-GPU distributed Barnes-Hut communication measurement. This chapter's own reasoning -- that a distributed Barnes-Hut implementation could exchange far LESS than Section 27.2's own full O(N) all-gather, by approximating a distant region's bodies as a single aggregate value rather than requiring every individual body's raw data -- is this chapter's own logical extension of the tree algorithm's own real approximation idea, not a number measured or published by any source this chapter cites.
+```
+
+</details>
+<!-- execution:end:h100:80_barnes_hut_complexity_crossover_model.cpp -->
+
+
 Compiled with `g++ -O2 80_barnes_hut_complexity_crossover_model.cpp -o 80_barnes_hut_complexity_crossover_model` and genuinely run, on both the cloud sandbox and the device, with byte-identical output on both. Locked output:
+
+<details markdown="1"><summary>Historical authoring output — superseded by the current execution above</summary>
 
 ```text
 --- This chapter's own worked model: O(N^2) vs O(N log N) operation counts (NOT a runtime measurement) ---
@@ -467,6 +715,8 @@ As N grows, the ratio N/log2(N) grows WITHOUT BOUND -- all-pairs' own O(N^2) cos
 --- What this chapter does NOT claim ---
 Burtscher & Pingali's own real speedup figures are for ONE GPU against a serial CPU baseline, not a multi-GPU distributed Barnes-Hut communication measurement. This chapter's own reasoning -- that a distributed Barnes-Hut implementation could exchange far LESS than Section 27.2's own full O(N) all-gather, by approximating a distant region's bodies as a single aggregate value rather than requiring every individual body's raw data -- is this chapter's own logical extension of the tree algorithm's own real approximation idea, not a number measured or published by any source this chapter cites.
 ```
+
+</details>
 
 !!! warning "[COMMON TRAP] Citing Burtscher & Pingali's own real single-GPU speedup numbers as evidence about multi-GPU communication"
     Burtscher & Pingali's own real, measured numbers -- 74x faster than serial, 75 Gflop/s, kernel 5 over 90x faster -- are genuinely real and worth citing, but they describe ONE GPU's Barnes-Hut implementation against a SERIAL CPU baseline. Nothing in that paper measures, and this chapter has not found any other published source measuring, how much communication a MULTI-GPU distributed Barnes-Hut implementation would actually need. This section's own claim that Barnes-Hut's tree structure would plausibly reduce Section 27.2's own O(N) all-gather cost is a logical inference from the algorithm's own real approximation idea -- treating a distant cluster's bodies as one aggregate source rather than transmitting each one individually -- not a number this chapter measured or found published anywhere. Citing a real single-GPU compute speedup as if it settled a multi-GPU communication question would blur two genuinely different claims that this chapter has deliberately kept separate.

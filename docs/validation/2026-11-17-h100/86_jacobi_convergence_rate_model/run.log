@@ -1,0 +1,24 @@
+$ /home/ubuntu/codex-multigpu-audit-20261117/multi-gpu-audit/artifacts/h100-reviewed-20261117/86_jacobi_convergence_rate_model/example
+--- Jacobi iterations to HALVE the error, n x n grid ---
+rho_Jacobi = cos(pi/(n+1)) ~ 1 - pi^2/(2(n+1)^2)  (Demmel, CS267)
+m_half ~ 2*ln(2)*((n+1)/pi)^2
+
+n (grid)   m: iters to halve error  iters for error <= 1e-6 (~20 halvings)
+10         17.0                     338.8                       
+100        1432.8                   28558.8                     
+1000       140742.0                 2805209.8                   
+10000      14048907.9               280016771.4                 
+
+For n = 10,000 (a 10,000 x 10,000 grid, N = 10^8 unknowns -- a realistic production PDE mesh size), Jacobi alone would need on the order of 280016771 iterations just to reach a modest 1e-6 relative error. This is exactly why this chapter's own solver is a DIDACTIC vehicle for the communication pattern, not a claim that Jacobi itself is production-grade.
+
+--- Demmel's own real serial/PRAM complexity table (N = n^2 unknowns) ---
+Method         Serial         PRAM (parallel depth)
+Jacobi         N^2            N                 
+CG             N^1.5          N^0.5 * log N     
+SOR            N^1.5          N^0.5             
+Multigrid      N              (log N)^2         
+
+Gauss-Seidel's own real relation to Jacobi (Demmel, CS267): "converge[s] twice as fast (rho_GaussSeidel(n) = rho_Jacobi(n)^2)" -- a real, easy, one-line improvement this chapter's own solver deliberately does NOT take, precisely because Gauss-Seidel's own update makes each cell depend on NEIGHBOR VALUES ALREADY UPDATED THIS SWEEP, which breaks the clean halo-exchange-once-per-iteration pattern Section 29.1 relied on for its bit-exact correctness check.
+
+--- Real production successor: NVIDIA AmgX ---
+Naumov, Arsaev, Castonguay, Cohen, Demouth, Eaton, Layton, Markovskiy, Reguly, Sakharnykh, Sellappan & Strzodka, "AmgX: A Library for GPU Accelerated Algebraic Multigrid and Preconditioned Iterative Methods," SIAM J. Sci. Comput. 37(5):S602-S626, 2015. Real cited result: "The algebraic multigrid algorithm implemented in the AmgX library achieves 2-5x speedup on a single GPU against a competitive implementation on the CPU." AmgX's own multi-GPU solves reuse the exact same two ingredients this chapter built by hand: neighbor halo exchange for the local sparse matrix-vector product, and a global Allreduce for the residual norm/inner products the method's convergence check needs -- just wrapped around Multigrid instead of Jacobi.

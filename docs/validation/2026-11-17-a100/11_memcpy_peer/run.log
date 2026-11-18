@@ -1,0 +1,3 @@
+$ /home/ubuntu/codex-eight-gpu-audit-20261117/multi-gpu-audit/artifacts/a100-eight-20261117/11_memcpy_peer/example
+PASS: 4096 nonuniform values verified in both peer-copy directions.
+Copy success does not identify the physical transfer route or bandwidth.

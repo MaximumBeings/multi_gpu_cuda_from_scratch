@@ -1,0 +1,13 @@
+$ /home/ubuntu/codex-eight-gpu-audit-20261117/multi-gpu-audit/artifacts/a100-eight-20261117/71_cublasxt_multi_gpu_gemm/example
+--- Creating a cuBLAS-Xt handle (real, host-side library object) ---
+cublasXtCreate(&handle) -> CUBLAS_STATUS_SUCCESS (success)
+
+--- Checking real device count BEFORE selecting any device ordinals ---
+cudaGetDeviceCount() -> no error, count=8
+cublasXtDeviceSelect(handle, 2, {0,1}) -> CUBLAS_STATUS_SUCCESS
+cublasXtSetBlockDim(handle, 256) -> CUBLAS_STATUS_SUCCESS
+cublasXtSgemm(M=1024,K=1024,N=1024, A/B/C on HOST) -> CUBLAS_STATUS_SUCCESS
+VALIDATION PASS: checked 1048576 GEMM outputs, expected=2048 errors=0
+
+--- What this means for genuinely MULTI-NODE dense GEMM ---
+Everything above is real cuBLAS-Xt, but cuBLAS-Xt is explicitly single-node -- one process, one or more GPUs in that SAME machine. It cannot be handed a Chapter 20-style MPI world spanning multiple nodes; there is no cublasXt call that takes an MPI_Comm. NVIDIA's real current answer for genuinely distributed, multi-process, multi-node dense GEMM is cuBLASMp, built explicitly on top of a real multi-process model -- this book's own Part 5 MPI/NCCL infrastructure is precisely the substrate a library like that needs underneath it.

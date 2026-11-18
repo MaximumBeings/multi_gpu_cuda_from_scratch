@@ -1,0 +1,13 @@
+$ /home/ubuntu/codex-multigpu-audit-20261117/multi-gpu-audit/artifacts/h100-reviewed-20261117/38_model_parallel_forward_simulation/example
+input (1.00, 1.00): unsplit reference = (0.3285223992, 0.2628870847), split across 4 devices = (0.3285223992, 0.2628870847) -- PASS (bit-identical)
+input (2.00, -1.00): unsplit reference = (0.3181013191, 0.2436102732), split across 4 devices = (0.3181013191, 0.2436102732) -- PASS (bit-identical)
+input (0.50, 3.00): unsplit reference = (0.3560831617, 0.3077149331), split across 4 devices = (0.3560831617, 0.3077149331) -- PASS (bit-identical)
+
+All 3 input(s) bit-identical between the unsplit reference and the 4-device split forward pass: PASS
+
+Unlike Chapter 8's floating-point reduce (order-sensitive --
+explicitly NOT verified bit-identical there), splitting a
+strictly SEQUENTIAL computation across devices never reorders
+any operation -- it only relocates WHERE each already-ordered
+step runs. That is why this section's match is bit-identical,
+not merely equal up to floating-point rounding.

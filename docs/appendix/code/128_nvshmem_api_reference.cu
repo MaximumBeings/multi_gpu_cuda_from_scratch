@@ -1,112 +1,75 @@
-// Appendix C: NCCL and NVSHMEM -- The Standard Libraries You Get for Free
 // 128_nvshmem_api_reference.cu
-//
-// Chapter 22 introduced NVSHMEM through exactly one real API call,
-// nvshmem_int_p() -- a device-initiated, one-sided WRITE into a remote
-// PE's memory. NVSHMEM's own real API is much larger: nvshmem_int_get()
-// (the READ-side counterpart to Ch22's own put), nvshmem_int_atomic_add()
-// (an atomic, race-free remote update -- the cross-PE counterpart of a
-// plain CUDA atomicAdd() across threads on one device), nvshmem_
-// barrier_all() (NVSHMEM's own collective synchronization, the same real
-// job Chapter 17's throwaway ncclAllReduce did for NCCL), and NVSHMEM's
-// TEAM abstraction (NVSHMEM_TEAM_WORLD, nvshmem_team_my_pe() -- a named
-// subset-of-PEs concept with no direct analog in this book's own NCCL or
-// MPI chapters). This file confirms all of these real symbols resolve
-// and link, genuinely attempts nvshmem_init(), and replays the logic of
-// a get+atomic-add+barrier sequence on the host.
-//
-// Setup:   NVSHMEM_DIR=$(python3 -c "import nvidia.nvshmem; print(list(nvidia.nvshmem.__path__)[0])")
-//          NVSHMEM_INC=$NVSHMEM_DIR/include
-//          NVSHMEM_LIB=$NVSHMEM_DIR/lib
-//          ln -sf libnvshmem_host.so.3 $NVSHMEM_LIB/libnvshmem_host.so  (the pip wheel
-//          ships only the versioned .so.3 -- see Appendix A, Recipe 5)
-// Compile: nvcc -rdc=true -gencode=arch=compute_70,code=sm_70 -I$NVSHMEM_INC -L$NVSHMEM_LIB 128_nvshmem_api_reference.cu -o 128_nvshmem_api_reference -lnvshmem_host -lnvshmem_device -lcuda
-// Run:     LD_LIBRARY_PATH=$NVSHMEM_LIB ./128_nvshmem_api_reference
+// Checked two-PE example. Compile and execution evidence are captured separately.
+#define OMPI_SKIP_MPICXX
+#include <mpi.h>
 #include <cstdio>
+#include <cstdlib>
+#include <vector>
+#include <cuda_runtime.h>
 #include <nvshmem.h>
 #include <nvshmemx.h>
 
-int main() {
-    printf("=== Section C.3: NVSHMEM's fuller real API, beyond Chapter "
-           "22's own nvshmem_int_p() ===\n\n");
+#define CUDA_OK(call) do { cudaError_t e = (call); if (e != cudaSuccess) { \
+    fprintf(stderr, "%s: %s\n", #call, cudaGetErrorString(e)); \
+    MPI_Abort(MPI_COMM_WORLD, 1); } } while (0)
 
-    void* pGet = (void*)&nvshmem_int_get;
-    void* pAtomicAdd = (void*)&nvshmem_int_atomic_add;
-    void* pBarrier = (void*)&nvshmem_barrier_all;
-    void* pTeamPe = (void*)&nvshmem_team_my_pe;
-    printf("real symbols resolved:\n");
-    printf("  nvshmem_int_get         = %p  (one-sided READ -- the "
-           "counterpart to Ch22's own nvshmem_int_p WRITE)\n", pGet);
-    printf("  nvshmem_int_atomic_add  = %p  (atomic remote update -- "
-           "lets multiple PEs safely combine values into one shared "
-           "remote location without a separate reduction collective, "
-           "the same race a plain, unsynchronized shared write would "
-           "risk on either a single device or across PEs)\n", pAtomicAdd);
-    printf("  nvshmem_barrier_all     = %p  (NVSHMEM's own collective "
-           "sync -- the same real job Ch17's throwaway ncclAllReduce "
-           "did for NCCL)\n", pBarrier);
-    printf("  nvshmem_team_my_pe      = %p  (queries this PE's own rank "
-           "WITHIN a named team -- NVSHMEM_TEAM_WORLD = %d is the "
-           "default team containing every PE)\n\n", pTeamPe, (int)NVSHMEM_TEAM_WORLD);
-
-    printf("=== attempting a genuine nvshmem_init() ===\n\n");
-    nvshmem_init();
-    int myPe = nvshmem_my_pe();
-    int nPes = nvshmem_n_pes();
-    printf("nvshmem_init() completed; nvshmem_my_pe()=%d, "
-           "nvshmem_n_pes()=%d\n", myPe, nPes);
-    printf("(run directly, with no bootstrap plugin requested, NVSHMEM "
-           "reports a world of exactly one PE -- the same n_pes=1 result "
-           "as Chapter 22's File 63. The CUDA_ERROR_NO_DEVICE line NVSHMEM "
-           "prints on stderr during init is its own real device-setup "
-           "failure on this zero-GPU machine: the PE count is answered, "
-           "but no symmetric heap or device state exists, so no real "
-           "get/atomic/barrier can run here.)\n");
-
-    printf("\n=== host-side replay: 4 PEs, each fetches its right "
-           "neighbor's value (nvshmem_int_get's own real job), then "
-           "every PE atomically adds 1 to PE 0's shared counter "
-           "(nvshmem_int_atomic_add's own real job), then all PEs "
-           "barrier (nvshmem_barrier_all's own real job) before reading "
-           "the final counter ===\n\n");
-    const int NPES = 4;
-    int value[NPES] = {10, 20, 30, 40};
-    int fetched[NPES];
-    for (int pe = 0; pe < NPES; pe++) {
-        int rightNeighbor = (pe + 1) % NPES;
-        fetched[pe] = value[rightNeighbor];  // replay of nvshmem_int_get
+static void bind_device(int rank) {
+    MPI_Comm node;
+    MPI_Comm_split_type(MPI_COMM_WORLD, MPI_COMM_TYPE_SHARED, rank, MPI_INFO_NULL, &node);
+    int localRank, count;
+    MPI_Comm_rank(node, &localRank);
+    MPI_Comm_free(&node);
+    CUDA_OK(cudaGetDeviceCount(&count));
+    if (localRank >= count) {
+        fprintf(stderr, "Insufficient GPUs: local rank %d, visible devices %d\n", localRank, count);
+        MPI_Abort(MPI_COMM_WORLD, 2);
     }
-    printf("%-6s %-12s %-24s\n", "PE", "own value", "fetched (right neighbor)");
-    for (int pe = 0; pe < NPES; pe++)
-        printf("%-6d %-12d %-24d\n", pe, value[pe], fetched[pe]);
+    CUDA_OK(cudaSetDevice(localRank));
+}
 
-    int sharedCounterOnPe0 = 0;
-    for (int pe = 0; pe < NPES; pe++)
-        sharedCounterOnPe0++;  // replay of NPES real atomic_add(..., 1, ...) calls
-    printf("\nafter %d PEs each call nvshmem_int_atomic_add(&counter, 1, "
-           "0) targeting PE 0: counter = %d\n", NPES, sharedCounterOnPe0);
-    printf("(every increment lands correctly regardless of arrival order "
-           "-- NVSHMEM's own remote atomic gives this guarantee ACROSS "
-           "PEs, the same correctness property a plain CUDA atomicAdd() "
-           "gives across threads on one device, without needing a "
-           "separate collective reduction just to combine four PEs' own "
-           "contributions into one counter)\n");
-
-    printf("\nafter nvshmem_barrier_all(): every PE is guaranteed the "
-           "counter has reached its final value of %d before proceeding "
-           "-- without the barrier, a PE could read the counter before "
-           "every other PE's own increment has landed.\n", sharedCounterOnPe0);
-
-    bool ok = true;
-    for (int pe = 0; pe < NPES; pe++)
-        if (fetched[pe] != value[(pe + 1) % NPES]) ok = false;
-    if (sharedCounterOnPe0 != NPES) ok = false;
-
-    printf("\nself-check: every PE's fetched value matches its right "
-           "neighbor's own value, and the final counter equals the "
-           "number of PEs that incremented it: %s\n",
-           ok ? "confirmed" : "MISMATCH");
-
+__global__ void getAndAdd(int *value,int *fetched,int *counter,int peer) {
+    nvshmem_int_get(fetched,value,1,peer);
+    nvshmem_int_atomic_add(counter,1,0);
+    nvshmem_quiet();
+}
+int main(int argc, char **argv) {
+    MPI_Init(&argc, &argv);
+    int rank;
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    bind_device(rank); // one local PE per GPU, before NVSHMEM initialization
+    MPI_Comm world = MPI_COMM_WORLD;
+    nvshmemx_init_attr_t attr = NVSHMEMX_INIT_ATTR_INITIALIZER;
+    nvshmemx_set_attr_mpi_comm_args(&world, &attr);
+    int rc = nvshmemx_init_attr(NVSHMEMX_INIT_WITH_MPI_COMM, &attr);
+    if (rc != 0) MPI_Abort(MPI_COMM_WORLD, 3);
+    int pe = nvshmem_my_pe(), nPes = nvshmem_n_pes();
+    int errors = 0;
+    int *value=static_cast<int *>(nvshmem_malloc(sizeof(int)));
+    int *fetched=static_cast<int *>(nvshmem_malloc(sizeof(int)));
+    int *counter=static_cast<int *>(nvshmem_malloc(sizeof(int)));
+    if(!value || !fetched || !counter) MPI_Abort(MPI_COMM_WORLD,4);
+    int own=10*(pe+1);
+    CUDA_OK(cudaMemcpy(value,&own,sizeof(int),cudaMemcpyHostToDevice));
+    CUDA_OK(cudaMemset(fetched,0xff,sizeof(int)));
+    CUDA_OK(cudaMemset(counter,0,sizeof(int)));
+    nvshmem_barrier_all();
+    int peer=(pe+1)%nPes;
+    void *args[]={&value,&fetched,&counter,&peer};
+    rc=nvshmemx_collective_launch(reinterpret_cast<const void *>(getAndAdd),dim3(1),dim3(1),args,0,0);
+    if(rc!=0) MPI_Abort(MPI_COMM_WORLD,5);
+    CUDA_OK(cudaDeviceSynchronize()); nvshmem_barrier_all();
+    int got=-1,count=-1;
+    CUDA_OK(cudaMemcpy(&got,fetched,sizeof(int),cudaMemcpyDeviceToHost));
+    CUDA_OK(cudaMemcpy(&count,counter,sizeof(int),cudaMemcpyDeviceToHost));
+    if(got!=10*(peer+1) || count!=(pe==0?nPes:0)) ++errors;
+    if(nvshmem_team_my_pe(NVSHMEM_TEAM_WORLD)!=pe) ++errors;
+    printf("PE %d: neighbor=%d received=%d counter=%d\n",pe,peer,got,count);
+    nvshmem_free(counter); nvshmem_free(fetched); nvshmem_free(value);
+    int totalErrors = 0;
+    MPI_Allreduce(&errors, &totalErrors, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
+    if (pe == 0) printf("VALIDATION %s: %d PEs, errors=%d\n",
+                        totalErrors ? "FAIL" : "PASS", nPes, totalErrors);
     nvshmem_finalize();
-    return ok ? 0 : 1;
+    MPI_Finalize();
+    return totalErrors ? 1 : 0;
 }

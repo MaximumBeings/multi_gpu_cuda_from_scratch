@@ -1,0 +1,3 @@
+$ /home/ubuntu/codex-eight-gpu-audit-20261117/multi-gpu-audit/artifacts/a100-eight-20261117/129_graph_exec_update/example
+Compatible update: new pointer and scalar argument; original buffer unchanged.
+VALIDATION PASS: errors=0

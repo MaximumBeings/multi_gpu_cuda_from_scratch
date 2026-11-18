@@ -1,0 +1,5 @@
+$ /home/ubuntu/codex-multigpu-audit-20261117/multi-gpu-audit/artifacts/h100-reviewed-20261117/08_pointer_attributes/example
+cudaPointerGetAttributes(ordinary stack array): no error (code 0)
+  type=0 device=-1
+cudaMalloc: no error (code 0)
+cudaPointerGetAttributes(device ptr): no error

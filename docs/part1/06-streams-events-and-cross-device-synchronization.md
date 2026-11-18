@@ -1,5 +1,15 @@
 # Chapter 6: Streams, Events, and Cross-Device Synchronization
 
+<!-- execution:provenance -->
+!!! info "Execution provenance"
+
+    Current execution blocks identify the tested source hash, hardware dataset, commands and captured output. References elsewhere on this page to a device-less environment describe the original authoring context. Historical output is superseded by the current record. Displayed output omits the runner command header and trims trailing line whitespace; raw logs remain exact. A host simulation or API validation has its stated scope; neither alone establishes a numerical multi-GPU workload or measured performance.
+
+
+<!-- mgpu:opener:start -->
+[![Chapter 6: Streams, Events, and Cross-Device Synchronization](../images/chapter-openers/06.svg)](../images/chapter-openers/06.svg)
+<!-- mgpu:opener:end -->
+
 **What you will understand by the end of this chapter:**
 
 - What a CUDA event actually is -- a marker placed into a stream, not a timer that starts running the moment you create it -- and which calls on it block and which don't.
@@ -16,54 +26,116 @@
 
 Chapters 3 and 5 gave this book streams (an ordered queue of work bound to whichever device was current when the stream was created) and real cross-device copies. What's been missing is a way for work on *one* stream -- possibly on a different device entirely -- to depend on work in *another* stream, without forcing the host to stop and wait, and without forcing an entire device to drain before continuing. That's what events are for. This chapter builds the real dependency-tracking mechanism multi-GPU CUDA code actually uses, and closes with the one thing that has to be true about the hardware itself before any of it can produce real overlap: whether the device has an async copy engine and concurrent-kernel support at all.
 
-## 6.1 Events: Markers That Cost Nothing Until You Wait On Them
+## 6.1 Events: Markers, Polling, and Completion
+
+<!-- mgpu:figure-1:start -->
+[![An event marks preceding stream work](../images/technical/ch06/1-events.svg)](../images/technical/ch06/1-events.svg)
+<!-- mgpu:figure-1:end -->
 
 ### Intuition
 
-An event is not a stopwatch you start -- it's a flag you plant at a specific point in a specific stream's queue of work. Planting the flag (`cudaEventRecord()`) doesn't pause anything; the stream keeps moving, and the flag simply becomes "reached" once every operation queued before it in that stream has actually finished. Everything interesting happens on the *other* side: something else -- another stream, or the host itself -- can ask "has that flag been reached yet?" either by polling (a quick, non-blocking check) or by genuinely waiting for it. The event is cheap to create and cheap to plant; the cost only shows up when something chooses to wait on it.
+An event is not a stopwatch you start -- it's a flag you plant at a specific point in a specific stream's queue of work. Planting the flag (`cudaEventRecord()`) doesn't pause anything; the stream keeps moving, and the flag simply becomes "reached" once every operation queued before it in that stream has actually finished. Everything interesting happens on the *other* side: something else -- another stream, or the host itself -- can ask "has that flag been reached yet?" either by polling (a quick, non-blocking check) or by genuinely waiting for it. Event creation and recording also have overhead. Disable timing for dependency-only events; waits can introduce further stalls.
 
 ### Background
 
-`cudaEventCreate(&event)` allocates the event object. `cudaEventRecord(event, stream)` places it into a specific stream's queue -- it returns to the host immediately, without waiting for anything, exactly like every other stream-issued call this book has used since Chapter 3. Two different ways exist to ask whether it's been reached: `cudaEventQuery(event)`, which checks once and returns immediately either way (`cudaSuccess` if reached, `cudaErrorNotReady` if not -- never blocking), and `cudaEventSynchronize(event)`, which genuinely blocks the calling host thread until the event is reached. The CUDA Programming Guide describes exactly this pattern -- "By enqueuing an event into a stream directly after the first kernel, but before the second kernel, we can have either a CPU thread or another stream wait for this event to come to the front of the stream" -- which is precisely the query-vs-wait distinction this section's code exercises.
+`cudaEventCreate(&event)` allocates the event object. `cudaEventRecord(event, stream)` places it into a specific stream's queue -- it enqueues a marker without waiting for that marker’s device completion; API calls may still block for internal resource management. Two different ways exist to ask whether it's been reached: `cudaEventQuery(event)`, which checks once and returns immediately either way (`cudaSuccess` if reached, `cudaErrorNotReady` if not -- never blocking), and `cudaEventSynchronize(event)`, which genuinely blocks the calling host thread until the event is reached. The CUDA Programming Guide describes exactly this pattern -- "By enqueuing an event into a stream directly after the first kernel, but before the second kernel, we can have either a CPU thread or another stream wait for this event to come to the front of the stream" -- which is precisely the query-vs-wait distinction this section's code exercises.
 
 ```cpp
 // Chapter 6: Streams, Events, and Cross-Device Synchronization
 // 14_event_basics.cu
-//
-// The real event lifecycle: create, record (asynchronously, into a
-// stream), check without blocking (cudaEventQuery), and check while
-// blocking (cudaEventSynchronize). Genuinely compiled with a real nvcc
-// and genuinely run.
+// Guard each lifecycle step; no-device diagnostics are not a GPU pass.
 #include <cstdio>
 #include <cuda_runtime.h>
 
+static int failure(cudaError_t error) {
+    return error == cudaErrorNoDevice || error == cudaErrorInsufficientDriver ? 2 : 1;
+}
+
 int main() {
-    cudaStream_t stream;
-    cudaError_t eStream = cudaStreamCreate(&stream);
-    printf("cudaStreamCreate: %s (code %d)\n", cudaGetErrorString(eStream), (int)eStream);
-
-    cudaEvent_t event;
-    cudaError_t eEvent = cudaEventCreate(&event);
-    printf("cudaEventCreate: %s (code %d)\n", cudaGetErrorString(eEvent), (int)eEvent);
-
-    cudaError_t eRecord = cudaEventRecord(event, stream);
-    printf("cudaEventRecord(event, stream): %s (code %d)\n", cudaGetErrorString(eRecord), (int)eRecord);
-
-    cudaError_t eQuery = cudaEventQuery(event);
-    printf("cudaEventQuery(event) [non-blocking check]: %s (code %d)\n",
-           cudaGetErrorString(eQuery), (int)eQuery);
-
-    cudaError_t eSync = cudaEventSynchronize(event);
-    printf("cudaEventSynchronize(event) [blocking wait]: %s (code %d)\n",
-           cudaGetErrorString(eSync), (int)eSync);
-
-    if (eEvent == cudaSuccess) cudaEventDestroy(event);
-    if (eStream == cudaSuccess) cudaStreamDestroy(stream);
-    return 0;
+    cudaStream_t stream = nullptr;
+    cudaError_t status = cudaStreamCreate(&stream);
+    printf("cudaStreamCreate: %s (code %d)\n", cudaGetErrorString(status), (int)status);
+    if (status != cudaSuccess) return failure(status);
+    cudaEvent_t event = nullptr;
+    status = cudaEventCreate(&event);
+    printf("cudaEventCreate: %s (code %d)\n", cudaGetErrorString(status), (int)status);
+    if (status != cudaSuccess) { cudaStreamDestroy(stream); return failure(status); }
+    status = cudaEventRecord(event, stream);
+    printf("cudaEventRecord(event, stream): %s (code %d)\n", cudaGetErrorString(status), (int)status);
+    int result = status == cudaSuccess ? 0 : failure(status);
+    if (result == 0) {
+        status = cudaEventQuery(event);
+        printf("cudaEventQuery(event) [non-blocking check]: %s (code %d)\n", cudaGetErrorString(status), (int)status);
+        if (status != cudaSuccess && status != cudaErrorNotReady) result = failure(status);
+    }
+    if (result == 0) {
+        status = cudaEventSynchronize(event);
+        printf("cudaEventSynchronize(event) [blocking wait]: %s (code %d)\n", cudaGetErrorString(status), (int)status);
+        if (status != cudaSuccess) result = failure(status);
+    }
+    if (cudaEventDestroy(event) != cudaSuccess) result = 1;
+    if (cudaStreamDestroy(stream) != cudaSuccess) result = 1;
+    return result;
 }
 ```
 
-Genuinely compiled with a real `nvcc` and genuinely run. Locked output, deterministic across repeated runs:
+<!-- execution:start:a100:14_event_basics.cu -->
+> **Current execution — 2026-11-17-a100: API validation (recorded scope).** UTC (program start): `2026-11-18T00:00:46.329729+00:00`. Source SHA-256: `1141f20f7b822e6460546989f190bb3faf91d2fedb7ec31e06836cd71c6d1f11`.
+
+[Exact tested source](../validation/2026-11-17-a100/14_event_basics/14_event_basics.cu) · [Compiler log](../validation/2026-11-17-a100/14_event_basics/compile.log) · [Execution log](../validation/2026-11-17-a100/14_event_basics/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+nvcc -std=c++17 -O2 -arch=sm_80 14_event_basics.cu -o ./example
+./example
+```
+
+<details markdown="1"><summary>Captured current-source output</summary>
+
+```text
+cudaStreamCreate: no error (code 0)
+cudaEventCreate: no error (code 0)
+cudaEventRecord(event, stream): no error (code 0)
+cudaEventQuery(event) [non-blocking check]: device not ready (code 600)
+cudaEventSynchronize(event) [blocking wait]: no error (code 0)
+```
+
+</details>
+<!-- execution:end:a100:14_event_basics.cu -->
+
+
+<!-- execution:start:h100:14_event_basics.cu -->
+> **Current execution — 2026-11-17-h100: API validation (recorded scope).** UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`. Source SHA-256: `1141f20f7b822e6460546989f190bb3faf91d2fedb7ec31e06836cd71c6d1f11`.
+
+[Exact tested source](../validation/2026-11-17-h100/14_event_basics/14_event_basics.cu) · [Compiler log](../validation/2026-11-17-h100/14_event_basics/compile.log) · [Execution log](../validation/2026-11-17-h100/14_event_basics/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+nvcc -std=c++17 -O2 -arch=sm_90 14_event_basics.cu -o ./example
+./example
+```
+
+<details markdown="1"><summary>Captured current-source output</summary>
+
+```text
+cudaStreamCreate: no error (code 0)
+cudaEventCreate: no error (code 0)
+cudaEventRecord(event, stream): no error (code 0)
+cudaEventQuery(event) [non-blocking check]: device not ready (code 600)
+cudaEventSynchronize(event) [blocking wait]: no error (code 0)
+```
+
+</details>
+<!-- execution:end:h100:14_event_basics.cu -->
+
+
+**Historical authoring transcript (earlier source).** The current listing guards every prerequisite and returns nonzero on errors; it no longer invokes APIs with handles from failed creations. The output below is retained as historical context and is not a current-source GPU execution record. The current source was compiled and executed in the dated H100 suite; use the linked record for its numerical, API-probe or other-execution scope.
+
+The [2026-11-17 H100 execution record](../validation-h100.md) covers two GPUs connected by local NV18. It distinguishes numerical checks, API probes and other executions; a successful exit alone does not establish GPU algorithm correctness.
+
+<details markdown="1"><summary>Historical authoring output — superseded by the current execution above</summary>
 
 ```
 cudaStreamCreate: no CUDA-capable device is detected (code 100)
@@ -73,12 +145,18 @@ cudaEventQuery(event) [non-blocking check]: no CUDA-capable device is detected (
 cudaEventSynchronize(event) [blocking wait]: no CUDA-capable device is detected (code 100)
 ```
 
-The same `cudaErrorNoDevice` at every single call, for the same reason as every chapter since Chapter 1 -- there is no context here to create a stream or an event into. What this section verifies honestly is the exact, real sequence of calls -- create, record, query, synchronize -- that a real multi-GPU program uses to track a point in a stream's progress, genuinely compiled and genuinely run down to the first call that needs a real device.
+</details>
+
+The earlier device-less transcript returned `cudaErrorNoDevice` throughout; the current H100 API probes execute with valid device contexts. That historical output does not validate an event lifecycle. The current source stops after a failed creation and treats `cudaErrorNotReady` from a valid query as a normal pending state. An unrecorded event is considered complete; record the producer event before enqueuing the intended wait, and avoid confusing different recording generations.
 
 !!! warning "[COMMON TRAP] Assuming cudaEventRecord() captures a value, like a timestamp, at the moment it's called"
     `cudaEventRecord(event, stream)` does not record *when the call happened* on the host -- it inserts a marker into `stream`'s queue that becomes "reached" only once every operation already queued *ahead* of it in that stream has finished executing on the device. If the stream already has ten seconds of queued kernels ahead of this call, the event doesn't become reached until all ten seconds have elapsed, no matter how quickly `cudaEventRecord()` itself returned to the host. Confusing "the call returned" with "the event fired" is exactly the mistake Section 6.2's cross-device dependency depends on you *not* making.
 
 ## 6.2 Cross-Device Synchronization: cudaStreamWaitEvent Across Devices
+
+<!-- mgpu:figure-2:start -->
+[![Record, wait, then consume](../images/technical/ch06/2-handoff.svg)](../images/technical/ch06/2-handoff.svg)
+<!-- mgpu:figure-2:end -->
 
 ### Intuition
 
@@ -91,61 +169,118 @@ Chapter 3 already showed that streams are bound to whichever device was current 
 ```cpp
 // Chapter 6: Streams, Events, and Cross-Device Synchronization
 // 15_cross_device_wait.cu
-//
-// The real cross-device dependency mechanism: an event recorded into
-// one device's stream, then handed to cudaStreamWaitEvent() on a
-// DIFFERENT device's stream -- no cudaDeviceSynchronize() anywhere,
-// and no host blocking at all. Genuinely compiled with a real nvcc
-// and genuinely run.
+// Two real devices, guarded handles, and a checked cross-device dependency.
 #include <cstdio>
 #include <cuda_runtime.h>
 
+#define CHECK(call) do { cudaError_t status = (call); \
+    printf("%s: %s (code %d)\n", #call, cudaGetErrorString(status), (int)status); \
+    if (status != cudaSuccess) return status == cudaErrorNoDevice || \
+        status == cudaErrorInsufficientDriver ? 2 : 1; } while (0)
+
 int main() {
-    // Device 0 side: produce work, mark its completion point with an event.
-    cudaError_t eSet0 = cudaSetDevice(0);
-    printf("cudaSetDevice(0): %s (code %d)\n", cudaGetErrorString(eSet0), (int)eSet0);
-
-    cudaStream_t stream0;
-    cudaError_t eStream0 = cudaStreamCreate(&stream0);
-    printf("cudaStreamCreate(stream0, on device 0): %s (code %d)\n",
-           cudaGetErrorString(eStream0), (int)eStream0);
-
-    cudaEvent_t event0;
-    cudaError_t eEvent0 = cudaEventCreate(&event0);
-    printf("cudaEventCreate(event0, on device 0): %s (code %d)\n",
-           cudaGetErrorString(eEvent0), (int)eEvent0);
-
-    cudaError_t eRecord0 = cudaEventRecord(event0, stream0);
-    printf("cudaEventRecord(event0, stream0): %s (code %d)\n",
-           cudaGetErrorString(eRecord0), (int)eRecord0);
-
-    // Device 1 side: create its own stream, then make it wait on
-    // device 0's event -- WITHOUT calling cudaDeviceSynchronize()
-    // anywhere, and without the host blocking at all.
-    cudaError_t eSet1 = cudaSetDevice(1);
-    printf("cudaSetDevice(1): %s (code %d)\n", cudaGetErrorString(eSet1), (int)eSet1);
-
-    cudaStream_t stream1;
-    cudaError_t eStream1 = cudaStreamCreate(&stream1);
-    printf("cudaStreamCreate(stream1, on device 1): %s (code %d)\n",
-           cudaGetErrorString(eStream1), (int)eStream1);
-
-    cudaError_t eWait = cudaStreamWaitEvent(stream1, event0, 0);
-    printf("cudaStreamWaitEvent(stream1 waits on event0 from device 0): %s (code %d)\n",
-           cudaGetErrorString(eWait), (int)eWait);
-
-    printf("Host reached this line without blocking on any of the above --\n"
-           "cudaStreamWaitEvent only ever inserts a dependency for FUTURE\n"
-           "work on stream1; it does not itself wait for anything.\n");
-
-    if (eEvent0 == cudaSuccess) cudaEventDestroy(event0);
-    if (eStream0 == cudaSuccess) cudaStreamDestroy(stream0);
-    if (eStream1 == cudaSuccess) cudaStreamDestroy(stream1);
+    int count = 0;
+    CHECK(cudaGetDeviceCount(&count));
+    if (count < 2) { printf("BLOCKED: requires 2 visible GPUs; found %d.\n", count); return 2; }
+    cudaStream_t stream0 = nullptr, stream1 = nullptr;
+    cudaEvent_t event0 = nullptr;
+    CHECK(cudaSetDevice(0));
+    CHECK(cudaStreamCreate(&stream0));
+    CHECK(cudaEventCreateWithFlags(&event0, cudaEventDisableTiming));
+    CHECK(cudaEventRecord(event0, stream0));
+    CHECK(cudaSetDevice(1));
+    CHECK(cudaStreamCreate(&stream1));
+    CHECK(cudaStreamWaitEvent(stream1, event0, 0));
+    printf("Cross-device wait enqueued; host did not wait for event completion.\n");
+    // Drain the waiter before releasing resources. This demo checks API success;
+    // it does not validate a producer/consumer payload or measure overlap.
+    CHECK(cudaStreamSynchronize(stream1));
+    CHECK(cudaStreamDestroy(stream1));
+    CHECK(cudaSetDevice(0));
+    CHECK(cudaEventDestroy(event0));
+    CHECK(cudaStreamDestroy(stream0));
+    printf("PASS: checked two-device event dependency lifecycle.\n");
     return 0;
 }
 ```
 
-Genuinely compiled with a real `nvcc` and genuinely run. Locked output, deterministic across repeated runs:
+<!-- execution:start:a100:15_cross_device_wait.cu -->
+> **Current execution — 2026-11-17-a100: API validation (recorded scope).** UTC (program start): `2026-11-18T00:00:50.419783+00:00`. Source SHA-256: `055596de72b6edec945286a8d7d196c405f70535b56636da683788297e7e2e21`.
+
+[Exact tested source](../validation/2026-11-17-a100/15_cross_device_wait/15_cross_device_wait.cu) · [Compiler log](../validation/2026-11-17-a100/15_cross_device_wait/compile.log) · [Execution log](../validation/2026-11-17-a100/15_cross_device_wait/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+nvcc -std=c++17 -O2 -arch=sm_80 15_cross_device_wait.cu -o ./example
+./example
+```
+
+<details markdown="1"><summary>Captured current-source output</summary>
+
+```text
+cudaGetDeviceCount(&count): no error (code 0)
+cudaSetDevice(0): no error (code 0)
+cudaStreamCreate(&stream0): no error (code 0)
+cudaEventCreateWithFlags(&event0, cudaEventDisableTiming): no error (code 0)
+cudaEventRecord(event0, stream0): no error (code 0)
+cudaSetDevice(1): no error (code 0)
+cudaStreamCreate(&stream1): no error (code 0)
+cudaStreamWaitEvent(stream1, event0, 0): no error (code 0)
+Cross-device wait enqueued; host did not wait for event completion.
+cudaStreamSynchronize(stream1): no error (code 0)
+cudaStreamDestroy(stream1): no error (code 0)
+cudaSetDevice(0): no error (code 0)
+cudaEventDestroy(event0): no error (code 0)
+cudaStreamDestroy(stream0): no error (code 0)
+PASS: checked two-device event dependency lifecycle.
+```
+
+</details>
+<!-- execution:end:a100:15_cross_device_wait.cu -->
+
+
+<!-- execution:start:h100:15_cross_device_wait.cu -->
+> **Current execution — 2026-11-17-h100: API validation (recorded scope).** UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`. Source SHA-256: `055596de72b6edec945286a8d7d196c405f70535b56636da683788297e7e2e21`.
+
+[Exact tested source](../validation/2026-11-17-h100/15_cross_device_wait/15_cross_device_wait.cu) · [Compiler log](../validation/2026-11-17-h100/15_cross_device_wait/compile.log) · [Execution log](../validation/2026-11-17-h100/15_cross_device_wait/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+nvcc -std=c++17 -O2 -arch=sm_90 15_cross_device_wait.cu -o ./example
+./example
+```
+
+<details markdown="1"><summary>Captured current-source output</summary>
+
+```text
+cudaGetDeviceCount(&count): no error (code 0)
+cudaSetDevice(0): no error (code 0)
+cudaStreamCreate(&stream0): no error (code 0)
+cudaEventCreateWithFlags(&event0, cudaEventDisableTiming): no error (code 0)
+cudaEventRecord(event0, stream0): no error (code 0)
+cudaSetDevice(1): no error (code 0)
+cudaStreamCreate(&stream1): no error (code 0)
+cudaStreamWaitEvent(stream1, event0, 0): no error (code 0)
+Cross-device wait enqueued; host did not wait for event completion.
+cudaStreamSynchronize(stream1): no error (code 0)
+cudaStreamDestroy(stream1): no error (code 0)
+cudaSetDevice(0): no error (code 0)
+cudaEventDestroy(event0): no error (code 0)
+cudaStreamDestroy(stream0): no error (code 0)
+PASS: checked two-device event dependency lifecycle.
+```
+
+</details>
+<!-- execution:end:h100:15_cross_device_wait.cu -->
+
+
+**Historical authoring transcript (earlier source).** The current listing guards every prerequisite and returns nonzero on errors; it no longer invokes APIs with handles from failed creations. The output below is retained as historical context and is not a current-source GPU execution record. The current source was compiled and executed in the dated H100 suite; use the linked record for its numerical, API-probe or other-execution scope.
+
+The [2026-11-17 H100 execution record](../validation-h100.md) covers two GPUs connected by local NV18. It distinguishes numerical checks, API probes and other executions; a successful exit alone does not establish GPU algorithm correctness.
+
+<details markdown="1"><summary>Historical authoring output — superseded by the current execution above</summary>
 
 ```
 cudaSetDevice(0): no CUDA-capable device is detected (code 100)
@@ -160,7 +295,9 @@ cudaStreamWaitEvent only ever inserts a dependency for FUTURE
 work on stream1; it does not itself wait for anything.
 ```
 
-Every real API call fails with the now-familiar `cudaErrorNoDevice`, for the reason this book has given consistently since Chapter 1 -- `cudaSetDevice(0)` itself has nothing to select. What this section verifies honestly is the shape of the real dependency graph a multi-GPU program builds: two devices, two streams, one event carrying a single, specific dependency between them, with the host never once blocking to enforce it.
+</details>
+
+The historical transcript shows prerequisite failures only. The current source checks two-device availability, never uses a failed creation’s handle, and drains the waiting stream before releasing resources. Its eventual success would establish an API lifecycle, not payload correctness or measured overlap.
 
 !!! warning "[COMMON TRAP] Reaching for cudaDeviceSynchronize() as the 'safe' way to coordinate across devices"
     `cudaDeviceSynchronize()` blocks the host until *every* piece of work already queued on the current device has completed -- not just the one operation another device's stream actually depends on. Using it to coordinate devices (device 0 synchronize, then start device 1's dependent work) is correct but needlessly serializing: it throws away any concurrency device 0 could have kept running on other, unrelated streams while device 1's dependent work began. `cudaStreamWaitEvent()` expresses the *actual* dependency -- one specific point in one specific stream -- and lets everything else keep moving.
@@ -173,53 +310,80 @@ Sections 6.1 and 6.2 gave this book the *mechanism* for expressing dependencies 
 
 ### Background
 
-Two device properties answer this directly. `asyncEngineCount`, per the CUDA Runtime API's own `cudaDeviceProp` struct reference, is simply the "Number of asynchronous engines" -- the count of hardware copy engines that can move data independently of, and concurrently with, the engine executing kernels; a value of 0 means no such engine exists at all, and overlap between a transfer and a kernel is not physically possible on that device no matter how the streams are arranged. `concurrentKernels` reports whether the "Device can possibly execute multiple kernels concurrently" -- a separate capability from copy/kernel overlap, and a per-device one: it says whether kernels issued to different streams on *that one device* can run at the same time. Kernels on two different devices always run independently of each other, since each device has its own compute hardware; this attribute is about sharing within one device. Both are queryable two ways: `cudaDeviceGetAttribute()` for a single value, or `cudaGetDeviceProperties()` for the full struct at once. Chapter 5's Asynchronous Execution citation already established the other half of this requirement -- pinned host memory -- so getting real overlap needs all three things true simultaneously: pinned memory (Chapter 5), non-default streams carrying the dependency correctly (Sections 6.1-6.2), and a device that reports `asyncEngineCount >= 1` here.
+Two device properties answer this directly. `asyncEngineCount`, per the CUDA Runtime API's own `cudaDeviceProp` struct reference, is simply the "Number of asynchronous engines" -- the count of hardware copy engines that can move data independently of, and concurrently with, the engine executing kernels; a value of 0 means no such engine exists at all, and overlap between a transfer and a kernel is not physically possible on that device no matter how the streams are arranged. `concurrentKernels` reports whether the "Device can possibly execute multiple kernels concurrently" -- a separate capability from copy/kernel overlap, and a per-device one: it says whether kernels issued to different streams on *that one device* can run at the same time. Different devices have separate compute hardware, but explicit dependencies and shared host/network resources can still couple their progress; this attribute is about sharing within one device. Both are queryable two ways: `cudaDeviceGetAttribute()` for a single value, or `cudaGetDeviceProperties()` for the full struct at once. Chapter 5's Asynchronous Execution citation already established pinned host memory for host/device transfer overlap. That requirement does not apply to a transfer wholly between device allocations. `concurrentKernels` describes kernel/kernel overlap, not a prerequisite for copy/kernel overlap. Stream arrangement, transfer type and actual scheduling still determine whether overlap occurs.
+
+> **Validation update:** This API probe checks return values and actual reported capabilities. It does not measure copy/compute overlap, inject a failed peer, or validate a NIC/RDMA data transfer. Earlier zero-device transcripts below belong to the prior source.
+
+The [2026-11-17 H100 execution record](../validation-h100.md) covers two GPUs connected by local NV18. It distinguishes numerical checks, API probes and other executions; a successful exit alone does not establish GPU algorithm correctness.
 
 ```cpp
-// Chapter 6: Streams, Events, and Cross-Device Synchronization
 // 16_overlap_query.cu
-//
-// What the CUDA Runtime API can honestly report about a device's
-// capacity to overlap a transfer with kernel execution, without
-// running either: the asyncEngineCount and concurrentKernels device
-// attributes/properties. Genuinely compiled with a real nvcc and
-// genuinely run.
+// Capability query only: no measured overlap or throughput claim.
 #include <cstdio>
 #include <cuda_runtime.h>
-
 int main() {
-    int deviceCount = 0;
-    cudaGetDeviceCount(&deviceCount);
-    printf("cudaGetDeviceCount(): %d device(s).\n", deviceCount);
-
-    int asyncEngineCount = -1;
-    cudaError_t e1 = cudaDeviceGetAttribute(&asyncEngineCount, cudaDevAttrAsyncEngineCount, 0);
-    printf("cudaDeviceGetAttribute(AsyncEngineCount, device 0): %s (code %d), value=%d\n",
-           cudaGetErrorString(e1), (int)e1, asyncEngineCount);
-
-    int concurrentKernels = -1;
-    cudaError_t e2 = cudaDeviceGetAttribute(&concurrentKernels, cudaDevAttrConcurrentKernels, 0);
-    printf("cudaDeviceGetAttribute(ConcurrentKernels, device 0): %s (code %d), value=%d\n",
-           cudaGetErrorString(e2), (int)e2, concurrentKernels);
-
-    cudaDeviceProp prop;
-    cudaError_t e3 = cudaGetDeviceProperties(&prop, 0);
-    printf("cudaGetDeviceProperties(device 0): %s (code %d)\n", cudaGetErrorString(e3), (int)e3);
-    if (e3 == cudaSuccess) {
-        printf("  asyncEngineCount=%d concurrentKernels=%d\n", prop.asyncEngineCount, prop.concurrentKernels);
-    }
-
-    printf("\nNeither value can be honestly reported as a real number on this\n"
-           "machine -- there is no device 0 to query. On real hardware, both\n"
-           "queries would need to succeed, and asyncEngineCount would need to\n"
-           "be >=1, before overlap between a transfer and a kernel is even\n"
-           "physically possible, regardless of how the streams are arranged.\n");
-
-    return 0;
+ int count=0; if(cudaGetDeviceCount(&count)!=cudaSuccess || count<1) return 2;
+ int engines=-1,kernels=-1,errors=0;
+ if(cudaDeviceGetAttribute(&engines,cudaDevAttrAsyncEngineCount,0)!=cudaSuccess) ++errors;
+ if(cudaDeviceGetAttribute(&kernels,cudaDevAttrConcurrentKernels,0)!=cudaSuccess) ++errors;
+ cudaDeviceProp properties{};
+ if(cudaGetDeviceProperties(&properties,0)!=cudaSuccess) ++errors;
+ if(engines<0 || engines!=properties.asyncEngineCount || kernels!=properties.concurrentKernels) ++errors;
+ printf("device 0: asyncEngineCount=%d concurrentKernels=%d\n",engines,kernels);
+ printf("API PROBE %s: capability queries only, no overlap benchmark, errors=%d\n",errors?"FAIL":"PASS",errors);
+ return errors?1:0;
 }
 ```
 
+<!-- execution:start:a100:16_overlap_query.cu -->
+> **Current execution — 2026-11-17-a100: API validation (recorded scope).** UTC (program start): `2026-11-18T00:00:54.863486+00:00`. Source SHA-256: `b233728343488246a8239d354c36f4555fbb6d63fc76286db26aec6de54da837`.
+
+[Exact tested source](../validation/2026-11-17-a100/16_overlap_query/16_overlap_query.cu) · [Compiler log](../validation/2026-11-17-a100/16_overlap_query/compile.log) · [Execution log](../validation/2026-11-17-a100/16_overlap_query/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+nvcc -std=c++17 -O2 -arch=sm_80 16_overlap_query.cu -o ./example
+./example
+```
+
+<details markdown="1"><summary>Captured current-source output</summary>
+
+```text
+device 0: asyncEngineCount=3 concurrentKernels=1
+API PROBE PASS: capability queries only, no overlap benchmark, errors=0
+```
+
+</details>
+<!-- execution:end:a100:16_overlap_query.cu -->
+
+
+<!-- execution:start:h100:16_overlap_query.cu -->
+> **Current execution — 2026-11-17-h100: API validation (recorded scope).** UTC (program start): `2026-11-17T23:51:11.925996+00:00`. Source SHA-256: `b233728343488246a8239d354c36f4555fbb6d63fc76286db26aec6de54da837`.
+
+[Exact tested source](../validation/2026-11-17-h100/16_overlap_query/16_overlap_query.cu) · [Compiler log](../validation/2026-11-17-h100/16_overlap_query/compile.log) · [Execution log](../validation/2026-11-17-h100/16_overlap_query/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+nvcc -std=c++17 -O2 -arch=sm_90 16_overlap_query.cu -o ./example
+./example
+```
+
+<details markdown="1"><summary>Captured current-source output</summary>
+
+```text
+device 0: asyncEngineCount=3 concurrentKernels=1
+API PROBE PASS: capability queries only, no overlap benchmark, errors=0
+```
+
+</details>
+<!-- execution:end:h100:16_overlap_query.cu -->
+
+
 Genuinely compiled with a real `nvcc` and genuinely run. Locked output, deterministic across repeated runs:
+
+<details markdown="1"><summary>Historical authoring output — superseded by the current execution above</summary>
 
 ```
 cudaGetDeviceCount(): 0 device(s).
@@ -234,14 +398,18 @@ be >=1, before overlap between a transfer and a kernel is even
 physically possible, regardless of how the streams are arranged.
 ```
 
-Both attribute queries and the full properties query fail with the same `cudaErrorNoDevice` -- there is no device 0's hardware capability to report on. That is itself the honest, correct answer this section can give: not a fabricated "yes, this hardware supports overlap," but a genuine, verifiable statement that this specific query, run on this specific machine, cannot return a real value, and an explanation of exactly what a real value would need to be before anything in Sections 6.1-6.2 could produce real overlap on real hardware.
+</details>
+
+File 16 checks overlap capability queries against the device properties reported by the current H100 driver. This API-probe pass does not measure achieved copy/compute overlap or guarantee that an arbitrary stream schedule overlaps.
+
+The [2026-11-17 H100 execution record](../validation-h100.md) covers two GPUs connected by local NV18. It distinguishes numerical checks, API probes and other executions; a successful exit alone does not establish GPU algorithm correctness.
 
 !!! warning "[COMMON TRAP] Assuming two non-default streams automatically produce overlap"
     Placing a transfer and a kernel on two separate, non-default streams removes the *artificial* serialization the CUDA Programming Guide describes for the default stream ("it will wait for all other blocking streams to complete before it can execute") -- but it does not create hardware that doesn't exist. If the device's `asyncEngineCount` is 0, the device has no engine able to run a copy while a kernel is executing, so the transfer and the kernel still run one after the other, no matter which streams they're issued on. Streams remove a *software* obstacle to concurrency; `asyncEngineCount` and `concurrentKernels` report whether the *hardware* obstacle is also absent.
 
 ## Chapter Summary
 
-A CUDA event is a marker placed into a stream by `cudaEventRecord()` -- itself non-blocking -- that something else can either poll without blocking (`cudaEventQuery()`) or genuinely wait on (`cudaEventSynchronize()`), measured directly in Section 6.1 by exercising every stage of that lifecycle down to the same honest `cudaErrorNoDevice` this book has reported since Chapter 1. Because streams and their events are bound to whichever device was current when they were created (Chapter 3), but `cudaStreamWaitEvent()` explicitly supports an event from a different device than the waiting stream -- performing, per its own documentation, genuine "cross-device synchronization" -- Section 6.2 built the real, targeted dependency mechanism multi-GPU code uses instead of the blunter, needlessly serializing `cudaDeviceSynchronize()`. Neither mechanism produces real overlap between a transfer and a kernel unless the underlying hardware has a separate copy engine to run them on at the same time, which Section 6.3 showed is a fact the Runtime API can query honestly and directly (`asyncEngineCount`, `concurrentKernels`) without running either operation -- on this machine, reported as honestly absent, for the same reason every other device query in this book has been. Chapter 7 turns to CUDA's Inter-Process Communication support: sharing device memory and events not just across devices within one process, but across separate operating-system processes entirely.
+A CUDA event is a marker placed into a stream by `cudaEventRecord()` -- itself non-blocking -- that something else can either poll without blocking (`cudaEventQuery()`) or genuinely wait on (`cudaEventSynchronize()`), measured directly in Section 6.1 by exercising every stage of that lifecycle down to the same honest `cudaErrorNoDevice` this book has reported since Chapter 1. Because streams and their events are bound to whichever device was current when they were created (Chapter 3), but `cudaStreamWaitEvent()` explicitly supports an event from a different device than the waiting stream -- performing, per its own documentation, genuine "cross-device synchronization" -- Section 6.2 built the real, targeted dependency mechanism multi-GPU code uses instead of the blunter, needlessly serializing `cudaDeviceSynchronize()`. Neither mechanism produces real overlap between a transfer and a kernel unless the underlying hardware has a separate copy engine to run them on at the same time, which Section 6.3 showed is a fact the Runtime API can query honestly and directly (`asyncEngineCount`, `concurrentKernels`) without running either operation -- in the historical authoring transcript, unavailable to query, for the same reason every other device query in this book has been. Chapter 7 turns to CUDA's Inter-Process Communication support: sharing device memory and events not just across devices within one process, but across separate operating-system processes entirely.
 
 ## Self-Check Questions
 
@@ -251,7 +419,7 @@ A CUDA event is a marker placed into a stream by `cudaEventRecord()` -- itself n
 4. A programmer replaces Section 6.2's `cudaStreamWaitEvent()` call with `cudaSetDevice(0); cudaDeviceSynchronize();` immediately before starting device 1's dependent work. Explain concretely what this change costs, using the definition of `cudaDeviceSynchronize()` from Section 6.2's Common Trap.
 5. Section 6.3 states that `asyncEngineCount == 0` makes transfer/kernel overlap "not physically possible... no matter how the streams are arranged." Explain in your own words why placing the transfer and kernel on two different streams cannot fix this.
 6. Combine Chapter 5's pinned-memory requirement with this chapter's `asyncEngineCount` requirement: list all the conditions that must simultaneously hold for a real transfer and a real kernel to genuinely overlap on real hardware.
-7. Why does this chapter's Section 6.3 report `cudaErrorNoDevice` as the "honest, correct answer" rather than treating it as a failure to work around? What would fabricating a plausible `asyncEngineCount` value violate?
+7. Why must overlap capabilities be queried from the actual device, and why does a successful capability probe not measure achieved overlap?
 8. Suppose a future chapter needs device 1's kernel to depend on TWO separate pieces of device 0's work, completed at different points in device 0's stream. Based on this chapter's model, would that require one event or two? Explain.
 
 ## Where We Go Next
@@ -272,7 +440,7 @@ Chapter 7 extends synchronization and shared memory access beyond a single proce
 
 **6.** All three: (a) the host-side buffer involved in the transfer must be pinned (Chapter 5's Asynchronous Execution citation: unpinned memory makes the copy "revert to a synchronous behavior which will not overlap with other work"), (b) the transfer and the kernel must be issued to separate, non-default streams so software-level serialization from the default stream doesn't apply, and (c) the device must report `asyncEngineCount >= 1` (Section 6.3), meaning it has hardware capable of running the copy and the kernel at the same time in the first place. All three must hold simultaneously -- any one missing means no real overlap, regardless of the other two.
 
-**7.** `cudaErrorNoDevice` is the real, verifiable return value this exact query genuinely produces on this exact machine -- reporting it is simply telling the truth about what happened. Fabricating a plausible `asyncEngineCount` value (say, guessing "2," a common real figure for data-center GPUs) would mean printing a number this program never actually computed or received from any real API call -- exactly the kind of invented measurement this book's own stated honesty discipline forbids, on par with inventing a timing number in Chapter 5's cost model instead of reusing cited figures.
+**7.** Report the actual capability queries and their statuses instead of guessing device properties. File 16’s current H100 API probe compares attribute and property results. This establishes reported capabilities, not achieved asynchronous overlap.
 
 **8.** One event. Both pieces of work are in device 0's single stream, and a stream executes in order, so recording one event right after the *later* of the two pieces marks a point that can only be reached once both pieces have finished. Handing that one event to `cudaStreamWaitEvent()` on device 1's stream covers both dependencies. Two events (each with its own `cudaStreamWaitEvent()` call) become necessary only if the two pieces are on *different* streams on device 0, since then neither one's completion implies the other's.
 
@@ -281,6 +449,6 @@ Chapter 7 extends synchronization and shared memory access beyond a single proce
 **Sources cited in this chapter:**
 
 - [CUDA Programming Guide — Asynchronous Execution](https://docs.nvidia.com/cuda/cuda-programming-guide/02-basics/asynchronous-execution.html) -- the default (NULL) stream's blocking-stream serialization behavior; using an event so "either a CPU thread or another stream" can wait for a point in a stream's progress.
-- [cudaStreamWaitEvent — CUDA Runtime API documentation, mirrored](https://rdrr.io/github/duncantl/RCUDA/man/cudaStreamWaitEvent.html) -- the exact documented cross-device behavior: "the event may be from a different context than stream, in which case this function will perform cross-device synchronization."
+- [cudaStreamWaitEvent — NVIDIA CUDA Runtime API](https://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__STREAM.html) -- the exact documented cross-device behavior: "the event may be from a different context than stream, in which case this function will perform cross-device synchronization."
 - [CUDA Runtime API Reference — `cudaDeviceProp` struct](https://docs.nvidia.com/cuda/cuda-runtime-api/structcudaDeviceProp.html) -- the `asyncEngineCount` ("Number of asynchronous engines") and `concurrentKernels` ("Device can possibly execute multiple kernels concurrently") field descriptions.
 - Chapter 5 of this book ("Explicit Transfers: cudaMemcpyPeer, Staged Host Transfers, and When Each Wins") -- the pinned-memory requirement for genuine transfer asynchrony, reused here as one of the three simultaneous conditions for real transfer/kernel overlap.

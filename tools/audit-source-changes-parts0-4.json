@@ -1,0 +1,82 @@
+[
+  {
+    "source": "docs/part1/code/11_memcpy_peer.cu",
+    "sha256": "f8151f3549665a26fc20ba93fea9ba286120e625b4991dc8342e8c3ee030a299"
+  },
+  {
+    "source": "docs/part1/code/12_staged_host_transfer.cu",
+    "sha256": "e3d7e938f375c28fbb2bffba8013cb7347447bbca26ea1bac4f61207be4683de"
+  },
+  {
+    "source": "docs/part1/code/14_event_basics.cu",
+    "sha256": "1141f20f7b822e6460546989f190bb3faf91d2fedb7ec31e06836cd71c6d1f11"
+  },
+  {
+    "source": "docs/part1/code/15_cross_device_wait.cu",
+    "sha256": "055596de72b6edec945286a8d7d196c405f70535b56636da683788297e7e2e21"
+  },
+  {
+    "source": "docs/part1/code/17_ipc_mem_handle.cu",
+    "sha256": "fc4bd504bca901310ce7d63d5c62facc6b5093bb53c7ca06864026ce83df4ee5"
+  },
+  {
+    "source": "docs/part1/code/18_ipc_event_handle.cu",
+    "sha256": "5ca751f5113e67325f9bae932f5e16777800d3202b844a28b4c80bf3afffbebf"
+  },
+  {
+    "source": "docs/part2/code/20_broadcast_by_hand.cu",
+    "sha256": "b4f21489e3581a967b24259f6387068c0b98a38ac1ac98ae519b622d4f065433"
+  },
+  {
+    "source": "docs/part2/code/21_reduce_by_hand.cu",
+    "sha256": "31af26d63bb08f04ea9be7f5ff0c894aebeda6eb77b8a8462d4e33ee843fe5a9"
+  },
+  {
+    "source": "docs/part2/code/23_naive_allreduce.cu",
+    "sha256": "f5544339121bb2e49bb8fd519650811b79ab49543007222374435d50b1c7dbe5"
+  },
+  {
+    "source": "docs/part2/code/24_ring_step_by_hand.cu",
+    "sha256": "56eb9fa1d22abfcbb7b7022a76d3cc429e2665fdbc836427dbc6795a92f97137"
+  },
+  {
+    "source": "docs/part2/code/26_allgather_by_hand.cu",
+    "sha256": "7aebce9afa5c1fae9a892659b95242e60185232d2a90cab7df1f6bb6fc159d90"
+  },
+  {
+    "source": "docs/part2/code/27_reducescatter_by_hand.cu",
+    "sha256": "1e06d82c07020b03e80788e5723e95642c58c6af4343d7e81413c0f0262c7f4a"
+  },
+  {
+    "source": "docs/part2/code/28_alltoall_by_hand.cu",
+    "sha256": "4e9ca7b00c130e7c5f97b17cc7e43960421ce609cb3df7e1d40281608601a2c4"
+  },
+  {
+    "source": "docs/part3/code/33_replica_setup.cu",
+    "sha256": "18fdb24c4f1080443b43b0b5dbc4dc54eef777f331150e6b576e957137bf18a5"
+  },
+  {
+    "source": "docs/part3/code/34_gradient_allreduce.cu",
+    "sha256": "df562388a04106ea487942c8dd1569ba0d32279098ea79149c6e2c6406a0b8d8"
+  },
+  {
+    "source": "docs/part3/code/37_layer_partition_activation_handoff.cu",
+    "sha256": "244ce50f61e442268c674907d06530161f9fb74719df61bfdba41040ea06e4af"
+  },
+  {
+    "source": "docs/part3/code/40_row_parallel_allreduce.cu",
+    "sha256": "8568061f3a5e3c9943595f7419d7c63bdfd6c8ff817a2c67c01af9333b2464f1"
+  },
+  {
+    "source": "docs/part3/code/43_pipeline_stage_sync.cu",
+    "sha256": "e3d44151b74bd3c1534f9ab075292a9372a7389fa3d42ed29c50a71a0dd25f19"
+  },
+  {
+    "source": "docs/part3/code/46_halo_exchange.cu",
+    "sha256": "b42cfd48dd942f176fdaa604f43a16dce4d5d1cf9c5dc59c320e0c4b9a72e1bb"
+  },
+  {
+    "source": "docs/part4/code/49_nccl_allreduce_as_barrier.cu",
+    "sha256": "f17393f034b526cf66dfd5b538f6c7c32557526981fe0e0139028b40fd17cb70"
+  }
+]

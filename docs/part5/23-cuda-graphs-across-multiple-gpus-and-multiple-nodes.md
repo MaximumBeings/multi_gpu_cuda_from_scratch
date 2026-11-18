@@ -1,5 +1,15 @@
 # Chapter 23: CUDA Graphs Across Multiple GPUs and Multiple Nodes
 
+<!-- execution:provenance -->
+!!! info "Execution provenance"
+
+    Current execution blocks identify the tested source hash, hardware dataset, commands and captured output. References elsewhere on this page to a device-less environment describe the original authoring context. Historical output is superseded by the current record. Displayed output omits the runner command header and trims trailing line whitespace; raw logs remain exact. A host simulation or API validation has its stated scope; neither alone establishes a numerical multi-GPU workload or measured performance.
+
+
+<!-- mgpu:opener:start -->
+[![Chapter 23: CUDA Graphs Across Multiple GPUs and Multiple Nodes](../images/chapter-openers/23.svg)](../images/chapter-openers/23.svg)
+<!-- mgpu:opener:end -->
+
 **What you will understand by the end of this chapter:**
 
 - That a single CUDA graph, built via stream capture, can genuinely contain work issued on more than one GPU in the same process -- and exactly which real API (`cudaEventRecord()`/`cudaStreamWaitEvent()`, captured) creates the cross-device edge that makes this possible.
@@ -38,6 +48,10 @@ Every earlier chapter's device work:               This chapter's own graphs:
 
 ## 23.1 One Graph, Two Devices: Cross-Device Capture With Events
 
+<!-- mgpu:figure-1:start -->
+[![An event joins device work into a graph](../images/technical/ch23/1-handoff.svg)](../images/technical/ch23/1-handoff.svg)
+<!-- mgpu:figure-1:end -->
+
 ### Intuition
 
 Chapter 6 already built real cross-stream synchronization on ONE device: `cudaEventRecord()` on one stream, `cudaStreamWaitEvent()` on another, so one stream's work waits for another's without the CPU blocking in between. Stream capture -- the mechanism `cudaStreamBeginCapture()`/`cudaStreamEndCapture()` uses to turn a sequence of enqueued calls into a `cudaGraph_t` -- can record that exact same event-based dependency as a real edge in the resulting graph, and the CUDA Programming Guide is explicit that this is not limited to streams on the same device: "Stream capture can handle cross-stream dependencies expressed with `cudaEventRecord()` and `cudaStreamWaitEvent()`, provided the event being waited upon was recorded into the same capture graph." Combined with NVIDIA's own claim that "graphs may also span multiple GPUs," this section builds the plainest real version of that: device 0 does some work, records an event; device 1 waits on that event, then does its own work depending on device 0's result (a real `cudaMemcpyPeerAsync()`, Chapter 5's own API) -- all captured into ONE graph from a single CPU thread, with one call to `cudaStreamEndCapture()` on the stream where capture began (the "origin stream," which the Guide requires regardless of how many other streams joined the capture through events).
@@ -68,123 +82,113 @@ even though device 1's stream also contributed real nodes.
 
 ### Background
 
+> **Validation update:** This repaired graph example initializes its operands, checks every result after replay, and returns nonzero on an API or numerical failure. File 66 explicitly rejoins the secondary stream to the capture origin. Its device-1 kernel reads initialized device-0 memory through enabled UVA peer access, preserving a real data dependency without capturing cudaMemcpyPeerAsync, which this tested runtime rejects during capture. The current source was compiled and executed in the dated H100 suite; use the linked record for its numerical, API-probe or other-execution scope.
+
+The [2026-11-17 H100 execution record](../validation-h100.md) covers two GPUs connected by local NV18. It distinguishes numerical checks, API probes and other executions; a successful exit alone does not establish GPU algorithm correctness.
+
 ```cpp
-// Chapter 23: CUDA Graphs Across Multiple GPUs and Multiple Nodes
 // 66_cross_device_graph_capture.cu
-//
-// Every earlier chapter's device work was either one call at a time (Ch3
-// onward) or one collective at a time (Ch8 onward) -- the CPU issues each
-// operation, waits or moves on, then issues the next one. This section
-// builds something structurally different: ONE captured CUDA graph that
-// contains real work issued on TWO different devices' streams, joined by
-// a real cross-stream dependency. The CUDA Programming Guide states this
-// plainly: "Stream capture can handle cross-stream dependencies expressed
-// with cudaEventRecord() and cudaStreamWaitEvent(), provided the event
-// being waited upon was recorded into the same capture graph." NVIDIA's
-// own "Getting Started with CUDA Graphs" post is more direct still:
-// "graphs may also span multiple GPUs."
+// Initialized two-device capture with a fork AND a join back to the origin.
 #include <cstdio>
+#include <cstdlib>
 #include <cuda_runtime.h>
-
-__global__ void incrementKernel(int *data, int n) {
-    int idx = blockIdx.x * blockDim.x + threadIdx.x;
-    if (idx < n) data[idx] += 1;
+#define CUDA_OK(call) do { cudaError_t e=(call); if(e!=cudaSuccess) { \
+ fprintf(stderr,"%s: %s\n",#call,cudaGetErrorString(e)); std::exit(1); } } while(0)
+__global__ void incrementKernel(int *data,int n) {
+ int i=blockIdx.x*blockDim.x+threadIdx.x; if(i<n) ++data[i];
 }
-
+__global__ void peerIncrementKernel(const int *source,int *destination,int n) {
+ int i=blockIdx.x*blockDim.x+threadIdx.x;
+ if(i<n) destination[i]=source[i]+1; // UVA peer load from device 0
+}
 int main() {
-    int deviceCount = 0;
-    cudaError_t countErr = cudaGetDeviceCount(&deviceCount);
-    printf("cudaGetDeviceCount() -> %s, count=%d\n",
-           cudaGetErrorString(countErr), deviceCount);
-
-    // The origin stream: cudaStreamBeginCapture() is called here, and per
-    // the Programming Guide's own rule, cudaStreamEndCapture() must be
-    // called on THIS SAME stream, even though device 1's own stream will
-    // also be capturing work as part of the same graph.
-    cudaStream_t streamDev0, streamDev1;
-    cudaEvent_t dev0Done;
-    cudaGraph_t graph;
-    cudaGraphExec_t graphExec;
-
-    printf("\n--- Building device 0's stream and event ---\n");
-    cudaError_t e1 = cudaSetDevice(0);
-    printf("cudaSetDevice(0) -> %s\n", cudaGetErrorString(e1));
-    cudaError_t e2 = cudaStreamCreate(&streamDev0);
-    printf("cudaStreamCreate(&streamDev0) -> %s\n", cudaGetErrorString(e2));
-    cudaError_t e3 = cudaEventCreate(&dev0Done);
-    printf("cudaEventCreate(&dev0Done) -> %s\n", cudaGetErrorString(e3));
-
-    printf("\n--- Building device 1's stream ---\n");
-    cudaError_t e4 = cudaSetDevice(1);
-    printf("cudaSetDevice(1) -> %s\n", cudaGetErrorString(e4));
-    cudaError_t e5 = cudaStreamCreate(&streamDev1);
-    printf("cudaStreamCreate(&streamDev1) -> %s\n", cudaGetErrorString(e5));
-
-    printf("\n--- Beginning capture on device 0's stream (the origin stream) ---\n");
-    cudaError_t e6 = cudaSetDevice(0);
-    printf("cudaSetDevice(0) -> %s\n", cudaGetErrorString(e6));
-    cudaError_t e7 = cudaStreamBeginCapture(streamDev0, cudaStreamCaptureModeGlobal);
-    printf("cudaStreamBeginCapture(streamDev0, Global) -> %s\n", cudaGetErrorString(e7));
-
-    int *devBuf0 = nullptr;
-    cudaError_t e8 = cudaMallocAsync(&devBuf0, sizeof(int) * 256, streamDev0);
-    printf("cudaMallocAsync(devBuf0, streamDev0) -> %s\n", cudaGetErrorString(e8));
-    incrementKernel<<<1, 256, 0, streamDev0>>>(devBuf0, 256);
-    printf("incrementKernel<<<...,streamDev0>>>() enqueued (device 0's own work)\n");
-
-    // The cross-stream/cross-device edge: device 0's stream records an
-    // event; device 1's stream waits on it. Per the Programming Guide,
-    // this event MUST be recorded inside the same capture sequence for
-    // the dependency to become a real graph edge rather than a runtime
-    // error.
-    cudaError_t e9 = cudaEventRecord(dev0Done, streamDev0);
-    printf("cudaEventRecord(dev0Done, streamDev0) -> %s\n", cudaGetErrorString(e9));
-
-    cudaError_t e10 = cudaSetDevice(1);
-    printf("cudaSetDevice(1) -> %s\n", cudaGetErrorString(e10));
-    cudaError_t e11 = cudaStreamWaitEvent(streamDev1, dev0Done, 0);
-    printf("cudaStreamWaitEvent(streamDev1, dev0Done) -> %s "
-           "(this is the actual cross-device graph edge)\n",
-           cudaGetErrorString(e11));
-
-    int *devBuf1 = nullptr;
-    cudaError_t e12 = cudaMallocAsync(&devBuf1, sizeof(int) * 256, streamDev1);
-    printf("cudaMallocAsync(devBuf1, streamDev1) -> %s\n", cudaGetErrorString(e12));
-    // A real peer-to-peer style transfer: device 1 waits for device 0's
-    // buffer, then would copy it across -- reusing Chapter 5's own
-    // cudaMemcpyPeerAsync(), now issued INSIDE a captured graph rather
-    // than as a standalone call.
-    cudaError_t e13 = cudaMemcpyPeerAsync(devBuf1, 1, devBuf0, 0,
-                                          sizeof(int) * 256, streamDev1);
-    printf("cudaMemcpyPeerAsync(devBuf1<-devBuf0, streamDev1) -> %s\n",
-           cudaGetErrorString(e13));
-    incrementKernel<<<1, 256, 0, streamDev1>>>(devBuf1, 256);
-    printf("incrementKernel<<<...,streamDev1>>>() enqueued (device 1's own work)\n");
-
-    printf("\n--- Ending capture on the origin stream (streamDev0) ---\n");
-    cudaError_t e14 = cudaSetDevice(0);
-    cudaError_t e15 = cudaStreamEndCapture(streamDev0, &graph);
-    printf("cudaSetDevice(0) -> %s\n", cudaGetErrorString(e14));
-    printf("cudaStreamEndCapture(streamDev0, &graph) -> %s\n", cudaGetErrorString(e15));
-
-    printf("\n--- Instantiating and launching the graph ---\n");
-    cudaError_t e16 = cudaGraphInstantiate(&graphExec, graph, 0);
-    printf("cudaGraphInstantiate(&graphExec, graph) -> %s\n", cudaGetErrorString(e16));
-    cudaError_t e17 = cudaGraphLaunch(graphExec, streamDev0);
-    printf("cudaGraphLaunch(graphExec, streamDev0) -> %s\n", cudaGetErrorString(e17));
-    cudaError_t e18 = cudaStreamSynchronize(streamDev0);
-    printf("cudaStreamSynchronize(streamDev0) -> %s\n", cudaGetErrorString(e18));
-
-    printf("\n--- Relaunching the SAME instantiated graph a second time ---\n");
-    cudaError_t e19 = cudaGraphLaunch(graphExec, streamDev0);
-    printf("cudaGraphLaunch(graphExec, streamDev0) [2nd launch, no re-capture] -> %s\n",
-           cudaGetErrorString(e19));
-
-    return 0;
+ int count; CUDA_OK(cudaGetDeviceCount(&count));
+ if(count<2) { fprintf(stderr,"Requires two GPUs\n"); return 2; }
+ constexpr int n=256,replays=3;
+ cudaStream_t s0,s1; cudaEvent_t forkEvent,joinEvent; int *a,*b;
+ CUDA_OK(cudaSetDevice(0)); CUDA_OK(cudaStreamCreate(&s0));
+ CUDA_OK(cudaEventCreateWithFlags(&forkEvent,cudaEventDisableTiming));
+ CUDA_OK(cudaMalloc(&a,n*sizeof(int))); CUDA_OK(cudaMemset(a,0,n*sizeof(int)));
+ CUDA_OK(cudaSetDevice(1));
+ int peerAccess=0; CUDA_OK(cudaDeviceCanAccessPeer(&peerAccess,1,0));
+ if(!peerAccess) { fprintf(stderr,"Requires device 1 peer access to device 0\n"); return 2; }
+ CUDA_OK(cudaDeviceEnablePeerAccess(0,0));
+ CUDA_OK(cudaStreamCreate(&s1));
+ CUDA_OK(cudaEventCreateWithFlags(&joinEvent,cudaEventDisableTiming));
+ CUDA_OK(cudaMalloc(&b,n*sizeof(int))); CUDA_OK(cudaMemset(b,0,n*sizeof(int)));
+ CUDA_OK(cudaSetDevice(0));
+ CUDA_OK(cudaStreamBeginCapture(s0,cudaStreamCaptureModeGlobal));
+ incrementKernel<<<1,n,0,s0>>>(a,n); CUDA_OK(cudaGetLastError());
+ CUDA_OK(cudaEventRecord(forkEvent,s0));
+ CUDA_OK(cudaSetDevice(1)); CUDA_OK(cudaStreamWaitEvent(s1,forkEvent,0));
+ peerIncrementKernel<<<1,n,0,s1>>>(a,b,n); CUDA_OK(cudaGetLastError());
+ CUDA_OK(cudaEventRecord(joinEvent,s1));
+ CUDA_OK(cudaSetDevice(0)); CUDA_OK(cudaStreamWaitEvent(s0,joinEvent,0));
+ cudaGraph_t graph; CUDA_OK(cudaStreamEndCapture(s0,&graph));
+ cudaGraphExec_t exec; CUDA_OK(cudaGraphInstantiate(&exec,graph,0));
+ for(int i=0;i<replays;++i) CUDA_OK(cudaGraphLaunch(exec,s0));
+ CUDA_OK(cudaStreamSynchronize(s0));
+ int host[n],errors=0;
+ CUDA_OK(cudaMemcpy(host,a,sizeof(host),cudaMemcpyDeviceToHost));
+ for(int v:host) if(v!=replays) ++errors;
+ CUDA_OK(cudaSetDevice(1)); CUDA_OK(cudaMemcpy(host,b,sizeof(host),cudaMemcpyDeviceToHost));
+ for(int v:host) if(v!=replays+1) ++errors;
+ CUDA_OK(cudaFree(b)); CUDA_OK(cudaEventDestroy(joinEvent)); CUDA_OK(cudaStreamDestroy(s1));
+ CUDA_OK(cudaDeviceDisablePeerAccess(0));
+ CUDA_OK(cudaSetDevice(0)); CUDA_OK(cudaGraphExecDestroy(exec)); CUDA_OK(cudaGraphDestroy(graph));
+ CUDA_OK(cudaFree(a)); CUDA_OK(cudaEventDestroy(forkEvent)); CUDA_OK(cudaStreamDestroy(s0));
+ printf("VALIDATION %s: %d replays, %d checked values, errors=%d\n",errors?"FAIL":"PASS",replays,2*n,errors);
+ return errors?1:0;
 }
 ```
 
+<!-- execution:start:a100:66_cross_device_graph_capture.cu -->
+> **Current execution — 2026-11-17-a100: Numerical/transport validation (recorded scope).** UTC (program start): `2026-11-18T00:04:44.516606+00:00`. Source SHA-256: `15c5b1df7eab956645fdf841f40ca8a923706bcb746e8e83dc200231e4587e16`.
+
+[Exact tested source](../validation/2026-11-17-a100/66_cross_device_graph_capture/66_cross_device_graph_capture.cu) · [Compiler log](../validation/2026-11-17-a100/66_cross_device_graph_capture/compile.log) · [Execution log](../validation/2026-11-17-a100/66_cross_device_graph_capture/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+nvcc -std=c++17 -O2 -arch=sm_80 66_cross_device_graph_capture.cu -o ./example
+./example
+```
+
+<details markdown="1"><summary>Captured current-source output</summary>
+
+```text
+VALIDATION PASS: 3 replays, 512 checked values, errors=0
+```
+
+</details>
+<!-- execution:end:a100:66_cross_device_graph_capture.cu -->
+
+
+<!-- execution:start:h100:66_cross_device_graph_capture.cu -->
+> **Current execution — 2026-11-17-h100: Numerical/transport validation (recorded scope).** UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`. Source SHA-256: `15c5b1df7eab956645fdf841f40ca8a923706bcb746e8e83dc200231e4587e16`.
+
+[Exact tested source](../validation/2026-11-17-h100/66_cross_device_graph_capture/66_cross_device_graph_capture.cu) · [Compiler log](../validation/2026-11-17-h100/66_cross_device_graph_capture/compile.log) · [Execution log](../validation/2026-11-17-h100/66_cross_device_graph_capture/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+nvcc -std=c++17 -O2 -arch=sm_90 66_cross_device_graph_capture.cu -o ./example
+./example
+```
+
+<details markdown="1"><summary>Captured current-source output</summary>
+
+```text
+VALIDATION PASS: 3 replays, 512 checked values, errors=0
+```
+
+</details>
+<!-- execution:end:h100:66_cross_device_graph_capture.cu -->
+
+
 Compiled with `nvcc -gencode=arch=compute_70,code=sm_70 66_cross_device_graph_capture.cu -o 66_cross_device_graph_capture` (real dynamic linking against this environment's own installed CUDA 12.0 runtime) and genuinely run. Locked output:
+
+<details markdown="1"><summary>Historical authoring output — superseded by the current execution above</summary>
 
 ```text
 cudaGetDeviceCount() -> no CUDA-capable device is detected, count=0
@@ -223,10 +227,18 @@ cudaStreamSynchronize(streamDev0) -> no CUDA-capable device is detected
 cudaGraphLaunch(graphExec, streamDev0) [2nd launch, no re-capture] -> no CUDA-capable device is detected
 ```
 
-!!! warning "[COMMON TRAP] Expecting the FIRST failure to stop the program from reaching later real API calls"
-    Every single call in this file's locked output reports the identical `cudaErrorNoDevice`, from the very first `cudaGetDeviceCount()` down through `cudaGraphLaunch()`. That uniform failure is easy to misread as "the program crashed at the first error and nothing after it is real." It did not: the CUDA Runtime API's implicit per-thread initialization fails once, permanently, the moment it discovers zero devices, and every subsequent runtime call in this file genuinely executed, checked that same failed state, and returned its own honest `cudaErrorNoDevice` -- eighteen separate real calls, eighteen separate real checks. The uniformity of the error is itself the evidence that the entire real API sequence -- cross-device stream creation, capture, the cross-device event edge, instantiation, launch, and relaunch -- was genuinely exercised, not skipped.
+</details>
+
+!!! warning "[COMMON TRAP] Continuing after failed graph setup"
+    A failed stream, event, capture or instantiation call leaves later operations without their required valid handles. Check failures and stop that path. File 66 now checks setup and numerical replay results; the old device-less error transcript did not validate a graph.
+
+The [2026-11-17 H100 execution record](../validation-h100.md) covers two GPUs connected by local NV18. It distinguishes numerical checks, API probes and other executions; a successful exit alone does not establish GPU algorithm correctness.
 
 ## 23.2 Capturing a Real NCCL Collective Inside a Graph
+
+<!-- mgpu:figure-2:start -->
+[![Capture preserves operation dependencies](../images/technical/ch23/2-graph.svg)](../images/technical/ch23/2-graph.svg)
+<!-- mgpu:figure-2:end -->
 
 ### Intuition
 
@@ -253,102 +265,168 @@ Chapter 21's own hybrid bootstrap:                This chapter's own addition:
 
 ### Background
 
+> **Validation update:** This repaired graph example initializes its operands, checks every result after replay, and returns nonzero on an API or numerical failure. File 66 explicitly rejoins the secondary stream to the capture origin. Its device-1 kernel reads initialized device-0 memory through enabled UVA peer access, preserving a real data dependency without capturing cudaMemcpyPeerAsync, which this tested runtime rejects during capture. The current source was compiled and executed in the dated H100 suite; use the linked record for its numerical, API-probe or other-execution scope.
+
+The [2026-11-17 H100 execution record](../validation-h100.md) covers two GPUs connected by local NV18. It distinguishes numerical checks, API probes and other executions; a successful exit alone does not establish GPU algorithm correctness.
+
 ```cpp
-// Chapter 23: CUDA Graphs Across Multiple GPUs and Multiple Nodes
 // 67_nccl_captured_in_graph.cu
-//
-// File 66 captured plain CUDA work (kernels, a peer copy) across two
-// devices in one graph. NCCL's own user guide states a real, separate
-// capability this section builds next: "Starting with NCCL 2.9, NCCL
-// operations can be captured by CUDA Graphs. This support requires a
-// minimum CUDA version of 11.3." No new NCCL API is needed for this --
-// a collective call issued between cudaStreamBeginCapture() and
-// cudaStreamEndCapture() is captured exactly like any other kernel
-// launch, because ncclAllReduce() is, underneath, ordinary kernel
-// launches enqueued on the communicator's stream. This reuses Chapter
-// 21's own real hybrid MPI+NCCL bootstrap (ncclGetUniqueId() on rank 0,
-// MPI_Bcast() to every rank, then ncclCommInitRank() on all ranks).
-//
-// This file adds ONE real, disciplined check that no earlier chapter's
-// collective code strictly needed: it verifies ncclCommInitRank()
-// actually returned ncclSuccess BEFORE doing anything else with the
-// resulting handle -- including beginning a graph capture. This
-// section's own COMMON TRAP explains, with a real reproduced crash, why
-// that check is not optional once graph capture enters the picture.
+// Capture one initialized NCCL all-reduce and validate each replay on every rank.
 #define OMPI_SKIP_MPICXX
 #include <mpi.h>
 #include <cstdio>
+#include <vector>
 #include <cuda_runtime.h>
 #include <nccl.h>
-
-int main(int argc, char** argv) {
-    MPI_Init(&argc, &argv);
-    int rank, worldSize;
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-    MPI_Comm_size(MPI_COMM_WORLD, &worldSize);
-
-    ncclUniqueId id;
-    if (rank == 0) {
-        ncclResult_t idErr = ncclGetUniqueId(&id);
-        printf("Rank %d: ncclGetUniqueId() -> %s\n", rank, ncclGetErrorString(idErr));
-    }
-    MPI_Bcast(&id, sizeof(id), MPI_BYTE, 0, MPI_COMM_WORLD);
-    printf("Rank %d: MPI_Bcast(id) done -- every rank now holds the SAME id "
-           "(Chapter 21's own bootstrap, reused unchanged)\n", rank);
-
-    cudaError_t setDevErr = cudaSetDevice(rank);
-    printf("Rank %d: cudaSetDevice(%d) -> %s\n", rank, rank, cudaGetErrorString(setDevErr));
-
-    ncclComm_t comm;
-    ncclResult_t commErr = ncclCommInitRank(&comm, worldSize, id, rank);
-    printf("Rank %d: ncclCommInitRank() -> %s\n", rank, ncclGetErrorString(commErr));
-
-    // THE GUARD. Every earlier chapter's collective code (Ch11, Ch17,
-    // Ch21) called the next real API regardless of this return value,
-    // because in every one of those cases the next call still returned
-    // its OWN honest error code rather than corrupting anything. That is
-    // NOT true here -- see this section's COMMON TRAP for the real,
-    // reproduced crash that skipping this check causes the moment a
-    // collective on this handle is captured (or even just called) into
-    // a stream. This program stops here rather than reproduce it.
-    if (commErr != ncclSuccess) {
-        printf("Rank %d: STOPPING before touching this communicator again -- "
-               "ncclCommInitRank() did not return ncclSuccess, so nothing else "
-               "on `comm` is safe to call, capture included.\n", rank);
-        MPI_Finalize();
-        return 0;
-    }
-
-    cudaStream_t stream;
-    cudaStreamCreate(&stream);
-
-    float *sendBuf = nullptr, *recvBuf = nullptr;
-    cudaMalloc(&sendBuf, sizeof(float) * 1024);
-    cudaMalloc(&recvBuf, sizeof(float) * 1024);
-
-    printf("Rank %d: --- beginning capture (the collective goes INSIDE the graph) ---\n", rank);
-    cudaStreamBeginCapture(stream, cudaStreamCaptureModeGlobal);
-    ncclAllReduce(sendBuf, recvBuf, 1024, ncclFloat, ncclSum, comm, stream);
-    cudaGraph_t graph;
-    cudaStreamEndCapture(stream, &graph);
-
-    cudaGraphExec_t graphExec;
-    cudaGraphInstantiate(&graphExec, graph, 0);
-
-    printf("Rank %d: --- launching the captured graph 3 times (no re-issuing "
-           "ncclAllReduce by hand each time) ---\n", rank);
-    for (int iter = 0; iter < 3; iter++) {
-        cudaGraphLaunch(graphExec, stream);
-    }
-    cudaStreamSynchronize(stream);
-
-    ncclCommDestroy(comm);
-    MPI_Finalize();
-    return 0;
+#define CUDA_OK(call) do { cudaError_t e=(call); if(e!=cudaSuccess) { \
+ fprintf(stderr,"%s: %s\n",#call,cudaGetErrorString(e)); MPI_Abort(MPI_COMM_WORLD,1); } } while(0)
+#define NCCL_OK(call) do { ncclResult_t e=(call); if(e!=ncclSuccess) { \
+ fprintf(stderr,"%s: %s\n",#call,ncclGetErrorString(e)); MPI_Abort(MPI_COMM_WORLD,2); } } while(0)
+int main(int argc, char **argv) {
+ MPI_Init(&argc,&argv);
+ int rank,size,localRank,count;
+ MPI_Comm_rank(MPI_COMM_WORLD,&rank); MPI_Comm_size(MPI_COMM_WORLD,&size);
+ MPI_Comm node;
+ MPI_Comm_split_type(MPI_COMM_WORLD,MPI_COMM_TYPE_SHARED,rank,MPI_INFO_NULL,&node);
+ MPI_Comm_rank(node,&localRank); MPI_Comm_free(&node);
+ CUDA_OK(cudaGetDeviceCount(&count));
+ if(localRank>=count) MPI_Abort(MPI_COMM_WORLD,3);
+ CUDA_OK(cudaSetDevice(localRank));
+ ncclUniqueId id;
+ if(rank==0) NCCL_OK(ncclGetUniqueId(&id));
+ MPI_Bcast(&id,sizeof(id),MPI_BYTE,0,MPI_COMM_WORLD);
+ ncclComm_t comm; NCCL_OK(ncclCommInitRank(&comm,size,id,rank));
+ cudaStream_t stream; CUDA_OK(cudaStreamCreate(&stream));
+ constexpr int elements=1024,replays=3;
+ float *input,*output;
+ CUDA_OK(cudaMalloc(&input,elements*sizeof(float)));
+ CUDA_OK(cudaMalloc(&output,elements*sizeof(float)));
+ std::vector<float> host(elements,float(rank+1));
+ CUDA_OK(cudaMemcpy(input,host.data(),elements*sizeof(float),cudaMemcpyHostToDevice));
+ CUDA_OK(cudaMemset(output,0,elements*sizeof(float)));
+ cudaGraph_t graph; cudaGraphExec_t exec;
+ CUDA_OK(cudaStreamBeginCapture(stream,cudaStreamCaptureModeGlobal));
+ NCCL_OK(ncclAllReduce(input,output,elements,ncclFloat,ncclSum,comm,stream));
+ CUDA_OK(cudaStreamEndCapture(stream,&graph));
+ CUDA_OK(cudaGraphInstantiate(&exec,graph,0));
+ int errors=0;
+ float expected=float(size*(size+1)/2);
+ for(int replay=0;replay<replays;++replay) {
+  CUDA_OK(cudaGraphLaunch(exec,stream));
+  CUDA_OK(cudaMemcpyAsync(host.data(),output,elements*sizeof(float),cudaMemcpyDeviceToHost,stream));
+  CUDA_OK(cudaStreamSynchronize(stream));
+  for(float value:host) if(value!=expected) ++errors;
+ }
+ int totalErrors=0; MPI_Allreduce(&errors,&totalErrors,1,MPI_INT,MPI_SUM,MPI_COMM_WORLD);
+ if(rank==0) printf("VALIDATION %s: %d ranks, %d graph replays, errors=%d\n",
+  totalErrors?"FAIL":"PASS",size,replays,totalErrors);
+ CUDA_OK(cudaGraphExecDestroy(exec)); CUDA_OK(cudaGraphDestroy(graph));
+ CUDA_OK(cudaFree(input)); CUDA_OK(cudaFree(output)); CUDA_OK(cudaStreamDestroy(stream)); NCCL_OK(ncclCommDestroy(comm));
+ MPI_Finalize(); return totalErrors?1:0;
 }
 ```
 
+<!-- execution:start:a100:67_nccl_captured_in_graph.cu -->
+> **Current execution — 2026-11-17-a100: Numerical/transport validation (recorded scope).** UTC (program start): `2026-11-18T00:04:49.060020+00:00`. Source SHA-256: `1b95a0066781d7efbe953afc74ce9b98f79100a3657b814ad59cc34e4008172a`.
+
+[Exact tested source](../validation/2026-11-17-a100/67_nccl_captured_in_graph/67_nccl_captured_in_graph.cu) · [Compiler log](../validation/2026-11-17-a100/67_nccl_captured_in_graph/compile.log) · [Execution log](../validation/2026-11-17-a100/67_nccl_captured_in_graph/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+nvcc -std=c++17 -O2 -arch=sm_80 -ccbin mpicxx 67_nccl_captured_in_graph.cu -o ./example -lnccl
+/usr/mpi/gcc/openmpi-4.1.7rc1/bin/mpirun --oversubscribe -np 8 ./example
+```
+
+<details markdown="1"><summary>Captured current-source output</summary>
+
+```text
+[LOG_CAT_SBGP] libnuma.so: cannot open shared object file: No such file or directory
+[LOG_CAT_SBGP] Failed to dlopen libnuma.so. Fallback to GROUP_BY_SOCKET manual.
+[LOG_CAT_SBGP] libnuma.so: cannot open shared object file: No such file or directory
+[LOG_CAT_SBGP] Failed to dlopen libnuma.so. Fallback to GROUP_BY_SOCKET manual.
+[LOG_CAT_SBGP] libnuma.so: cannot open shared object file: No such file or directory
+[LOG_CAT_SBGP] Failed to dlopen libnuma.so. Fallback to GROUP_BY_SOCKET manual.
+[LOG_CAT_SBGP] libnuma.so: cannot open shared object file: No such file or directory
+[LOG_CAT_SBGP] Failed to dlopen libnuma.so. Fallback to GROUP_BY_SOCKET manual.
+[LOG_CAT_SBGP] libnuma.so: cannot open shared object file: No such file or directory
+[LOG_CAT_SBGP] Failed to dlopen libnuma.so. Fallback to GROUP_BY_SOCKET manual.
+[LOG_CAT_SBGP] libnuma.so: cannot open shared object file: No such file or directory
+[LOG_CAT_SBGP] Failed to dlopen libnuma.so. Fallback to GROUP_BY_SOCKET manual.
+[LOG_CAT_SBGP] libnuma.so: cannot open shared object file: No such file or directory
+[LOG_CAT_SBGP] Failed to dlopen libnuma.so. Fallback to GROUP_BY_SOCKET manual.
+[LOG_CAT_SBGP] libnuma.so: cannot open shared object file: No such file or directory
+[LOG_CAT_SBGP] Failed to dlopen libnuma.so. Fallback to GROUP_BY_SOCKET manual.
+VALIDATION PASS: 8 ranks, 3 graph replays, errors=0
+```
+
+</details>
+<!-- execution:end:a100:67_nccl_captured_in_graph.cu -->
+
+
+<!-- execution:start:h100:67_nccl_captured_in_graph.cu -->
+> **Current execution — 2026-11-17-h100: Numerical/transport validation (recorded scope).** UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`. Source SHA-256: `1b95a0066781d7efbe953afc74ce9b98f79100a3657b814ad59cc34e4008172a`.
+
+[Exact tested source](../validation/2026-11-17-h100/67_nccl_captured_in_graph/67_nccl_captured_in_graph.cu) · [Compiler log](../validation/2026-11-17-h100/67_nccl_captured_in_graph/compile.log) · [Execution log](../validation/2026-11-17-h100/67_nccl_captured_in_graph/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+nvcc -std=c++17 -O2 -arch=sm_90 -ccbin mpicxx 67_nccl_captured_in_graph.cu -o ./example -lnccl
+/home/ubuntu/book2-bin/mpirun --oversubscribe -np 2 ./example
+```
+
+<details markdown="1"><summary>Captured current-source output</summary>
+
+```text
+--------------------------------------------------------------------------
+Sorry!  You were supposed to get help about:
+    unavailable
+But I couldn't open the help file:
+    /usr/lib/x86_64-linux-gnu/pmix2/share/pmix/help-pcompress.txt: No such file or directory.  Sorry!
+--------------------------------------------------------------------------
+libibverbs: Warning: couldn't load driver 'libvmw_pvrdma-rdmav34.so': libvmw_pvrdma-rdmav34.so: cannot open shared object file: No such file or directory
+libibverbs: Warning: couldn't load driver 'libvmw_pvrdma-rdmav34.so': libvmw_pvrdma-rdmav34.so: cannot open shared object file: No such file or directory
+--------------------------------------------------------------------------
+WARNING: No preset parameters were found for the device that Open MPI
+detected:
+
+  Local host:            192-222-53-210
+  Device name:           mlx5_0
+  Device vendor ID:      0x02c9
+  Device vendor part ID: 4124
+
+Default device parameters will be used, which may result in lower
+performance.  You can edit any of the files specified by the
+btl_openib_device_param_files MCA parameter to set values for your
+device.
+
+NOTE: You can turn off this warning by setting the MCA parameter
+      btl_openib_warn_no_device_params_found to 0.
+--------------------------------------------------------------------------
+--------------------------------------------------------------------------
+No OpenFabrics connection schemes reported that they were able to be
+used on a specific port.  As such, the openib BTL (OpenFabrics
+support) will be disabled for this port.
+
+  Local host:           192-222-53-210
+  Local device:         mlx5_0
+  Local port:           1
+  CPCs attempted:       udcm
+--------------------------------------------------------------------------
+VALIDATION PASS: 2 ranks, 3 graph replays, errors=0
+[192-222-53-210:13477] 1 more process has sent help message help-mpi-btl-openib.txt / no device params found
+[192-222-53-210:13477] Set MCA parameter "orte_base_help_aggregate" to 0 to see all help / error messages
+[192-222-53-210:13477] 1 more process has sent help message help-mpi-btl-openib-cpc-base.txt / no cpcs for port
+```
+
+</details>
+<!-- execution:end:h100:67_nccl_captured_in_graph.cu -->
+
+
 Compiled with `nvcc -ccbin mpicxx -gencode=arch=compute_70,code=sm_70 67_nccl_captured_in_graph.cu -o 67_nccl_captured_in_graph -lnccl` and genuinely run with `mpirun --allow-run-as-root --oversubscribe -np 2 ./67_nccl_captured_in_graph`. Locked output:
+
+<details markdown="1"><summary>Historical authoring output — superseded by the current execution above</summary>
 
 ```text
 Rank 0: ncclGetUniqueId() -> no error
@@ -361,6 +439,8 @@ Rank 0: STOPPING before touching this communicator again -- ncclCommInitRank() d
 Rank 1: ncclCommInitRank() -> unhandled cuda error (run with NCCL_DEBUG=INFO for details)
 Rank 1: STOPPING before touching this communicator again -- ncclCommInitRank() did not return ncclSuccess, so nothing else on `comm` is safe to call, capture included.
 ```
+
+</details>
 
 !!! warning "[COMMON TRAP] Assuming a failed ncclCommInitRank() is as safe to keep using as Chapter 11/17's own failed communicators"
     Chapter 11 and Chapter 17 both called `ncclAllReduce()` (or a throwaway one-element version of it, for Chapter 17's barrier) on a communicator whose own initialization had already failed, and both got back a clean, honest NCCL error code every time -- `ncclUnhandledCudaError` or `ncclInvalidArgument`, never a crash. This file's own guard exists because that is NOT what happens with `ncclCommInitRank()`'s own failed handle once a real collective call on it is attempted: removing the guard above and calling `ncclAllReduce(sendBuf, recvBuf, 1024, ncclFloat, ncclSum, comm, stream)` directly on this exact environment's failed `comm` genuinely segfaults inside `libnccl.so.2` itself --
@@ -409,101 +489,83 @@ Real multi-node scaling with graphs, as actually built:
 
 ### Background
 
+> **Validation update:** This source now checks the actual API operation instead of interpreting a zero-GPU path as a successful workload. File 68 synchronizes before checking host callback counts; File 128 performs real NVSHMEM get/atomic-add/team/barrier checks on initialized symmetric device memory. The current source was compiled and executed in the dated H100 suite; use the linked record for its numerical, API-probe or other-execution scope.
+
+The [2026-11-17 H100 execution record](../validation-h100.md) covers two GPUs connected by local NV18. It distinguishes numerical checks, API probes and other executions; a successful exit alone does not establish GPU algorithm correctness.
+
 ```cpp
-// Chapter 23: CUDA Graphs Across Multiple GPUs and Multiple Nodes
 // 68_host_node_and_multi_process_graphs.cu
-//
-// Files 66-67 captured real device/collective work into a graph via
-// stream capture. This section asks the multi-NODE version of the same
-// question directly: can a single CUDA graph object span more than one
-// process, the way file 66's graph spanned two devices in ONE process?
-// The CUDA Graphs API itself answers this by omission -- there is no
-// API to hand a cudaGraph_t handle to a different process, no
-// "cudaGraphSend"/"cudaGraphRecv." A graph is a host-side object built
-// and instantiated inside one process's address space; nothing in the
-// Runtime API surface lets that object, or its instantiated executable
-// form, cross a process boundary at all.
-//
-// A CUDA GRAPH HOST NODE (cudaGraphAddHostNode) looks, at first glance,
-// like it might be the way around this: a node in the graph that runs
-// arbitrary CPU code (an MPI_Send/MPI_Recv call, say) when the graph
-// executes. This section builds one for real and shows exactly how far
-// that idea gets. The CUDA Runtime API's own restriction on the host
-// function is explicit: per the closely related cudaStreamAddCallback
-// (whose restriction cudaGraphAddHostNode's own documentation points
-// back to), "no CUDA function may be called from callback," and
-// separately, for the modern cudaLaunchHostFunc that shares the exact
-// same cudaHostFn_t signature as a host node's own callback, "The host
-// function must not make any CUDA API calls." A host node can run
-// ordinary CPU logic (including a real MPI call) -- it can NOT be used
-// to smuggle a second GPU's or a second process's CUDA work into this
-// process's own graph.
+// A local graph host callback; no MPI or CUDA call is made inside the callback.
 #include <cstdio>
+#include <cstdlib>
 #include <cuda_runtime.h>
-
-int hostNodeCallCount = 0;
-
-void CUDART_CB hostNodeFn(void *userData) {
-    hostNodeCallCount++;
-    printf("  [host node fired -- this is where a real MPI_Send()/MPI_Recv() "
-           "call could go, since this is ordinary CPU code, not a CUDA call]\n");
-}
-
+#define CUDA_OK(call) do { cudaError_t e=(call); if(e!=cudaSuccess) { \
+ fprintf(stderr,"%s: %s\n",#call,cudaGetErrorString(e)); std::exit(1); } } while(0)
+void CUDART_CB hostNode(void *argument) { ++*static_cast<int *>(argument); }
 int main() {
-    printf("--- Building a graph object and a host node (no device touched yet) ---\n");
-    cudaGraph_t graph;
-    cudaError_t createErr = cudaGraphCreate(&graph, 0);
-    printf("cudaGraphCreate(&graph, 0) -> %s\n", cudaGetErrorString(createErr));
-
-    cudaHostNodeParams hostParams;
-    hostParams.fn = hostNodeFn;
-    hostParams.userData = nullptr;
-
-    cudaGraphNode_t hostNode;
-    cudaError_t hostNodeErr = cudaGraphAddHostNode(&hostNode, graph, nullptr, 0, &hostParams);
-    printf("cudaGraphAddHostNode(&hostNode, graph, ...) -> %s\n",
-           cudaGetErrorString(hostNodeErr));
-    printf("Both calls above look like pure host-side bookkeeping -- a graph "
-           "object and a CPU-only callback node, nothing GPU-shaped at all -- "
-           "but they honestly fail the SAME way file 66's device-touching calls "
-           "did. The CUDA Runtime API implicitly initializes its driver context "
-           "on the first real runtime call from a thread, exactly as it has "
-           "since Chapter 3, and with zero devices present that implicit "
-           "initialization fails before cudaGraphCreate() ever gets to do its "
-           "own host-side work.\n");
-
-    printf("\n--- Instantiating and launching: this DOES need a device ---\n");
-    cudaGraphExec_t graphExec;
-    cudaError_t instErr = cudaGraphInstantiate(&graphExec, graph, 0);
-    printf("cudaGraphInstantiate(&graphExec, graph) -> %s\n", cudaGetErrorString(instErr));
-
-    cudaStream_t stream;
-    cudaError_t streamErr = cudaStreamCreate(&stream);
-    printf("cudaStreamCreate(&stream) -> %s\n", cudaGetErrorString(streamErr));
-
-    cudaError_t launchErr = cudaGraphLaunch(graphExec, stream);
-    printf("cudaGraphLaunch(graphExec, stream) -> %s\n", cudaGetErrorString(launchErr));
-    printf("hostNodeCallCount = %d (the host node never actually fired -- launch "
-           "itself never reached a real device to run the graph on)\n",
-           hostNodeCallCount);
-
-    printf("\n--- What this means for MULTI-NODE scaling with CUDA graphs ---\n");
-    printf("A host node could run a real MPI call when a graph reaches it, but "
-           "every real per-rank graph in a genuine multi-node job (Chapter 20's "
-           "own MPI ranks, Chapter 21's own hybrid MPI+NCCL bootstrap) is still "
-           "built, instantiated, and launched entirely LOCALLY, inside that one "
-           "rank's own process -- the graph object itself never crosses a rank "
-           "boundary. What DOES cross ranks, exactly as files 66-67 showed for "
-           "devices, is coordination through already-existing primitives: an "
-           "NCCL collective captured INSIDE each rank's own local graph (file "
-           "67), whose communicator was bootstrapped across ranks by real MPI "
-           "(Chapter 20/21) before any graph existed at all.\n");
-
-    return 0;
+ CUDA_OK(cudaSetDevice(0));
+ int calls=0; cudaGraph_t graph; cudaGraphNode_t node;
+ CUDA_OK(cudaGraphCreate(&graph,0));
+ cudaHostNodeParams parameters{}; parameters.fn=hostNode; parameters.userData=&calls;
+ CUDA_OK(cudaGraphAddHostNode(&node,graph,nullptr,0,&parameters));
+ cudaGraphExec_t exec; CUDA_OK(cudaGraphInstantiate(&exec,graph,0));
+ cudaStream_t stream; CUDA_OK(cudaStreamCreate(&stream));
+ for(int i=0;i<3;++i) CUDA_OK(cudaGraphLaunch(exec,stream));
+ CUDA_OK(cudaStreamSynchronize(stream)); // callback has completed before host reads calls
+ int errors=(calls!=3);
+ CUDA_OK(cudaGraphExecDestroy(exec)); CUDA_OK(cudaGraphDestroy(graph)); CUDA_OK(cudaStreamDestroy(stream));
+ printf("API PROBE %s: local graph host callbacks=%d expected=3, errors=%d\n",errors?"FAIL":"PASS",calls,errors);
+ return errors?1:0;
 }
 ```
 
+<!-- execution:start:a100:68_host_node_and_multi_process_graphs.cu -->
+> **Current execution — 2026-11-17-a100: API validation (recorded scope).** UTC (program start): `2026-11-18T00:05:01.117374+00:00`. Source SHA-256: `3b74456e01300c377b645c44256f853350cf0bd0449b36da5ba13c4c5266fbdb`.
+
+[Exact tested source](../validation/2026-11-17-a100/68_host_node_and_multi_process_graphs/68_host_node_and_multi_process_graphs.cu) · [Compiler log](../validation/2026-11-17-a100/68_host_node_and_multi_process_graphs/compile.log) · [Execution log](../validation/2026-11-17-a100/68_host_node_and_multi_process_graphs/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+nvcc -std=c++17 -O2 -arch=sm_80 68_host_node_and_multi_process_graphs.cu -o ./example
+./example
+```
+
+<details markdown="1"><summary>Captured current-source output</summary>
+
+```text
+API PROBE PASS: local graph host callbacks=3 expected=3, errors=0
+```
+
+</details>
+<!-- execution:end:a100:68_host_node_and_multi_process_graphs.cu -->
+
+
+<!-- execution:start:h100:68_host_node_and_multi_process_graphs.cu -->
+> **Current execution — 2026-11-17-h100: API validation (recorded scope).** UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`. Source SHA-256: `3b74456e01300c377b645c44256f853350cf0bd0449b36da5ba13c4c5266fbdb`.
+
+[Exact tested source](../validation/2026-11-17-h100/68_host_node_and_multi_process_graphs/68_host_node_and_multi_process_graphs.cu) · [Compiler log](../validation/2026-11-17-h100/68_host_node_and_multi_process_graphs/compile.log) · [Execution log](../validation/2026-11-17-h100/68_host_node_and_multi_process_graphs/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+nvcc -std=c++17 -O2 -arch=sm_90 68_host_node_and_multi_process_graphs.cu -o ./example
+./example
+```
+
+<details markdown="1"><summary>Captured current-source output</summary>
+
+```text
+API PROBE PASS: local graph host callbacks=3 expected=3, errors=0
+```
+
+</details>
+<!-- execution:end:h100:68_host_node_and_multi_process_graphs.cu -->
+
+
 Compiled with `nvcc -gencode=arch=compute_70,code=sm_70 68_host_node_and_multi_process_graphs.cu -o 68_host_node_and_multi_process_graphs` and genuinely run. Locked output:
+
+<details markdown="1"><summary>Historical authoring output — superseded by the current execution above</summary>
 
 ```text
 --- Building a graph object and a host node (no device touched yet) ---
@@ -521,12 +583,16 @@ hostNodeCallCount = 0 (the host node never actually fired -- launch itself never
 A host node could run a real MPI call when a graph reaches it, but every real per-rank graph in a genuine multi-node job (Chapter 20's own MPI ranks, Chapter 21's own hybrid MPI+NCCL bootstrap) is still built, instantiated, and launched entirely LOCALLY, inside that one rank's own process -- the graph object itself never crosses a rank boundary. What DOES cross ranks, exactly as files 66-67 showed for devices, is coordination through already-existing primitives: an NCCL collective captured INSIDE each rank's own local graph (file 67), whose communicator was bootstrapped across ranks by real MPI (Chapter 20/21) before any graph existed at all.
 ```
 
+</details>
+
 !!! warning "[COMMON TRAP] Assuming a host node is a general-purpose escape hatch for GPU work the graph API doesn't otherwise support"
     A host node's callback restriction -- "no CUDA function may be called from callback" -- is not a minor footnote; it is the exact boundary that stops a host node from being used to paper over Section 23.1's own real limit (one process's own graph, however many devices) or this section's own real limit (no cross-process graph at all). A host node can run real CPU-only logic, including a real blocking `MPI_Send()`/`MPI_Recv()` call -- but the moment that CPU code needs to touch a CUDA API (allocate memory, launch a kernel, check a device property), it is no longer legal inside a host node's callback, full stop. The real, working multi-node pattern this book has already built the pieces of is not "one host node calling MPI inside a bigger graph" -- it is Section 23.2's own pattern: each rank captures and launches its OWN local graph, and the cross-rank coordination happens through an NCCL communicator that was bootstrapped by real MPI calls made OUTSIDE any graph, before capture ever began.
 
 ## Chapter Summary
 
-This chapter asked how far CUDA Graphs' own "capture once, launch many times" model extends beyond the single device every earlier graph discussion in this book has assumed. Section 23.1 confirmed, with a real cross-device event dependency captured into one graph, that a graph genuinely can span multiple GPUs within one process -- and that every real API call in that sequence, even the purely host-side bookkeeping calls, fails identically to `cudaErrorNoDevice` once the CUDA Runtime's own implicit per-thread initialization fails. Section 23.2 confirmed NCCL's own real support for graph-captured collectives (since NCCL 2.9) by reusing Chapter 21's hybrid MPI+NCCL bootstrap, and surfaced a genuinely new, sharper failure mode this book had not produced before: a communicator handle from a failed `ncclCommInitRank()` call can crash the whole process with a real segfault the instant a collective on it is actually called, independent of whether graph capture is involved at all -- a lesson about defensive checking, not about graphs specifically, but one this chapter's own code now checks for by name. Section 23.3 answered the multi-node question directly: the CUDA Graphs API has no mechanism for one graph object to span multiple processes, a host node's callback restriction ("no CUDA function may be called from callback") rules out using it to smuggle cross-process CUDA work into a graph, and the real, working pattern for multi-node scaling is each rank capturing and launching its own local graph, coordinated through an NCCL communicator bootstrapped by MPI calls made entirely outside of, and before, any graph capture begins.
+CUDA graphs can capture cross-device event dependencies within one process when participating streams are properly forked and joined. File 66 checks initialized data across both GPUs and repeated replay; File 67 checks graph-captured NCCL reduction outputs. File 68 is a checked host-callback API probe, not a distributed graph or numerical GPU algorithm. The current H100 records cover these distinct scopes; the older device-less diagnostics did not establish any of them.
+
+The [2026-11-17 H100 execution record](../validation-h100.md) covers two GPUs connected by local NV18. It distinguishes numerical checks, API probes and other executions; a successful exit alone does not establish GPU algorithm correctness.
 
 ## Self-Check Questions
 
@@ -559,7 +625,9 @@ Chapter 23 completes Part 5 (Chapters 20 through 23: MPI, GPUDirect RDMA, NVSHME
 
 **7.** Each rank in a multi-node job builds, instantiates, and launches its own LOCAL CUDA graph, entirely inside that rank's own process -- the graph object itself never crosses a process boundary. Cross-rank coordination happens through an NCCL communicator (which CAN be used inside each rank's own captured graph, per Section 23.2) whose handle was bootstrapped across ranks by real MPI calls (Chapter 20's `MPI_Init`/`MPI_Comm_rank`/`MPI_Comm_size`, Chapter 21's `MPI_Bcast()` of a `ncclUniqueId`) made entirely outside of, and before, any graph capture begins.
 
-**8.** Because the CUDA Runtime API implicitly initializes its driver context on the very first real runtime call made by a thread, regardless of whether that call is itself GPU-shaped -- `cudaGraphCreate()` and `cudaGraphAddHostNode()` are still real CUDA Runtime API calls, so they trigger that same implicit initialization, which fails the instant it discovers zero devices, before either function gets to perform its own actual host-side bookkeeping work.
+**8.** A graph host callback runs ordinary host code and must not call CUDA APIs. The current callback probe checks invocation count after stream completion; it does not demonstrate a graph spanning MPI processes or nodes.
+
+The [2026-11-17 H100 execution record](../validation-h100.md) covers two GPUs connected by local NV18. It distinguishes numerical checks, API probes and other executions; a successful exit alone does not establish GPU algorithm correctness.
 
 ---
 
@@ -570,3 +638,5 @@ Chapter 23 completes Part 5 (Chapters 20 through 23: MPI, GPUDirect RDMA, NVSHME
 - ["Using NCCL with CUDA Graphs" — NCCL User Guide](https://docs.nvidia.com/deeplearning/nccl/user-guide/docs/usage/cudagraph.html) — the real, verified quote Section 23.2 is built on: "Starting with NCCL 2.9, NCCL operations can be captured by CUDA Graphs. This support requires a minimum CUDA version of 11.3."
 - [CUDA Runtime API Reference Manual, "Stream Management" and "Execution Control"](https://docs.nvidia.com/cuda/cuda-runtime-api/cuda_runtime_api/group__CUDART__STREAM.html) — the real, verified restriction language Section 23.3 quotes for `cudaStreamAddCallback` ("no CUDA function may be called from callback") and `cudaLaunchHostFunc` ("The host function must not make any CUDA API calls"), which `cudaGraphAddHostNode`'s own documentation points back to for a host node's own callback.
 - This exact environment's own installed CUDA 12.0 headers (`/usr/include/cuda_runtime_api.h`, `/usr/include/driver_types.h`) — grepped directly for the real signatures of `cudaStreamBeginCapture`, `cudaStreamEndCapture`, `cudaGraphInstantiate`, `cudaGraphLaunch`, `cudaGraphAddHostNode`, and the real `cudaHostNodeParams`/`cudaHostFn_t` definitions, per Chapter 21 and Chapter 22's own established practice of checking installed headers directly rather than trusting a web summary.
+
+Peer-load contract: [CUDA 12.8 peer-to-peer memory access](https://docs.nvidia.com/cuda/archive/12.8.0/cuda-c-programming-guide/index.html#peer-to-peer-memory-access).

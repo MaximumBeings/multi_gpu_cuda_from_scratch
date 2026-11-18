@@ -1,11 +1,23 @@
 # Chapter 20: MPI From Scratch, Then CUDA-Aware MPI: Scaling Beyond One Node
 
+<!-- execution:provenance -->
+!!! info "Execution provenance"
+
+    Current execution blocks identify the tested source hash, hardware dataset, commands and captured output. References elsewhere on this page to a device-less environment describe the original authoring context. Historical output is superseded by the current record. Displayed output omits the runner command header and trims trailing line whitespace; raw logs remain exact. A host simulation or API validation has its stated scope; neither alone establishes a numerical multi-GPU workload or measured performance.
+
+
+<!-- mgpu:opener:start -->
+[![Chapter 20: MPI From Scratch, Then CUDA-Aware MPI: Scaling Beyond One Node](../images/chapter-openers/20.svg)](../images/chapter-openers/20.svg)
+<!-- mgpu:opener:end -->
+
 **What you will understand by the end of this chapter:**
 
-- Why MPI is fundamentally different from every device-touching call this book has made since Chapter 3: it is a multi-*process* model that needs no GPU at all -- so for the first time in this book, `mpirun` gets a genuinely real multi-rank program running, not a simulation and not an honest device-less error.
+- How MPI creates independent operating-system processes and rank identities, with host-buffer communication that needs no GPU.
 - How to build `MPI_Init`/`MPI_Comm_rank`/`MPI_Comm_size` and real point-to-point `MPI_Send`/`MPI_Recv` from scratch, and the real, classic "unsafe" deadlock a naive ring of blocking sends can cause -- genuinely reproduced and genuinely fixed.
 - What "CUDA-aware MPI" means, how to query whether a given MPI build actually has it (`MPIX_Query_cuda_support()`), and what to do instead when it doesn't -- Chapter 5's own staged-transfer pattern, reused between MPI ranks instead of GPU peers.
 - Why this book's own real, installed Open MPI cannot run Chapter 19's own previewed ULFM calls, verified the same real way Chapter 19 verified NCCL's own API surface -- and what standard MPI offers instead, and why it is a strictly weaker guarantee.
+
+The [2026-11-17 H100 execution record](../validation-h100.md) covers two GPUs connected by local NV18. It distinguishes numerical checks, API probes and other executions; a successful exit alone does not establish GPU algorithm correctness.
 
 **What you need to know first:**
 
@@ -15,7 +27,9 @@
 
 ---
 
-Every chapter since Chapter 3 has lived inside one of two honest boxes: a real device-touching call with no real device to touch (an instant, honest `cudaErrorNoDevice`/`ncclUnhandledCudaError`), or a host-side simulation standing in for N devices that were never there. MPI breaks out of both boxes at once. `MPI_Init()` doesn't ask for a GPU -- it asks the operating system for processes, and `mpirun` genuinely launches them, right now, on this machine's real CPU cores. `MPI_Comm_rank()` below doesn't simulate a rank or honestly fail to find one; it returns a real rank, because there are, for the first time in this entire book, genuinely multiple real things running. This chapter opens Part 5 by building that real multi-process model from scratch (20.1), checking honestly what it takes to move data between MPI and a GPU when the two are combined (20.2), and closing the loop this book opened in Chapter 19: why a real, richer failure-recovery mechanism (ULFM) that MPI genuinely offers still couldn't be built here, verified the same honest way Chapter 19 verified NCCL's own real limits (20.3).
+MPI supplies independent operating-system processes and explicit rank identities. This chapter builds point-to-point communication, checks the installed CUDA-awareness capability and explains the host-staged alternative. These host/MPI examples were executed in the current H100 suite, but their successful exits must not be read as GPU-buffer transport or ULFM recovery validation.
+
+The [2026-11-17 H100 execution record](../validation-h100.md) covers two GPUs connected by local NV18. It distinguishes numerical checks, API probes and other executions; a successful exit alone does not establish GPU algorithm correctness.
 
 ```text
 Every earlier chapter (Ch3-19):              This chapter (Ch20), Part 5:
@@ -32,6 +46,10 @@ Every earlier chapter (Ch3-19):              This chapter (Ch20), Part 5:
 ```
 
 ## 20.1 MPI Basics, Built From Scratch: Init, Rank, Size, and a Real Point-to-Point Ring
+
+<!-- mgpu:figure-1:start -->
+[![Ranks communicate beyond one node](../images/technical/ch20/1-ring.svg)](../images/technical/ch20/1-ring.svg)
+<!-- mgpu:figure-1:end -->
 
 ### Intuition
 
@@ -141,7 +159,115 @@ int main(int argc, char** argv) {
 }
 ```
 
+<!-- execution:start:a100:57_mpi_ring_send_recv.c -->
+> **Current execution — 2026-11-17-a100: API/host demonstration (exit-only).** UTC (program start): `2026-11-18T00:03:15.798717+00:00`. Source SHA-256: `114a5d40b179b9f3f3734ccab571a7f456662988dd9d51df781bc827b5e2df7d`.
+
+[Exact tested source](../validation/2026-11-17-a100/57_mpi_ring_send_recv/57_mpi_ring_send_recv.c) · [Compiler log](../validation/2026-11-17-a100/57_mpi_ring_send_recv/compile.log) · [Execution log](../validation/2026-11-17-a100/57_mpi_ring_send_recv/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+mpicc -std=c11 -O2 57_mpi_ring_send_recv.c -o ./example
+/usr/mpi/gcc/openmpi-4.1.7rc1/bin/mpirun --oversubscribe -np 8 ./example 1000000 sendrecv
+```
+
+<details markdown="1"><summary>Captured current-source output</summary>
+
+```text
+[LOG_CAT_SBGP] libnuma.so: cannot open shared object file: No such file or directory
+[LOG_CAT_SBGP] libnuma.so: cannot open shared object file: No such file or directory
+[LOG_CAT_SBGP] Failed to dlopen libnuma.so. Fallback to GROUP_BY_SOCKET manual.
+[LOG_CAT_SBGP] libnuma.so: cannot open shared object file: No such file or directory
+[LOG_CAT_SBGP] Failed to dlopen libnuma.so. Fallback to GROUP_BY_SOCKET manual.
+[LOG_CAT_SBGP] libnuma.so: cannot open shared object file: No such file or directory
+[LOG_CAT_SBGP] Failed to dlopen libnuma.so. Fallback to GROUP_BY_SOCKET manual.
+[LOG_CAT_SBGP] libnuma.so: cannot open shared object file: No such file or directory
+[LOG_CAT_SBGP] Failed to dlopen libnuma.so. Fallback to GROUP_BY_SOCKET manual.
+[LOG_CAT_SBGP] libnuma.so: cannot open shared object file: No such file or directory
+[LOG_CAT_SBGP] Failed to dlopen libnuma.so. Fallback to GROUP_BY_SOCKET manual.
+[LOG_CAT_SBGP] libnuma.so: cannot open shared object file: No such file or directory
+[LOG_CAT_SBGP] Failed to dlopen libnuma.so. Fallback to GROUP_BY_SOCKET manual.
+[LOG_CAT_SBGP] libnuma.so: cannot open shared object file: No such file or directory
+[LOG_CAT_SBGP] Failed to dlopen libnuma.so. Fallback to GROUP_BY_SOCKET manual.
+[LOG_CAT_SBGP] Failed to dlopen libnuma.so. Fallback to GROUP_BY_SOCKET manual.
+rank 7 of 8: sent 700, received 600 (elems=1000000, mode=sendrecv)
+rank 3 of 8: sent 300, received 200 (elems=1000000, mode=sendrecv)
+rank 2 of 8: sent 200, received 100 (elems=1000000, mode=sendrecv)
+rank 4 of 8: sent 400, received 300 (elems=1000000, mode=sendrecv)
+rank 6 of 8: sent 600, received 500 (elems=1000000, mode=sendrecv)
+rank 5 of 8: sent 500, received 400 (elems=1000000, mode=sendrecv)
+rank 0 of 8: sent 0, received 700 (elems=1000000, mode=sendrecv)
+rank 1 of 8: sent 100, received 0 (elems=1000000, mode=sendrecv)
+```
+
+</details>
+<!-- execution:end:a100:57_mpi_ring_send_recv.c -->
+
+
+<!-- execution:start:h100:57_mpi_ring_send_recv.c -->
+> **Current execution — 2026-11-17-h100: API/host demonstration (exit-only).** UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`. Source SHA-256: `114a5d40b179b9f3f3734ccab571a7f456662988dd9d51df781bc827b5e2df7d`.
+
+[Exact tested source](../validation/2026-11-17-h100/57_mpi_ring_send_recv/57_mpi_ring_send_recv.c) · [Compiler log](../validation/2026-11-17-h100/57_mpi_ring_send_recv/compile.log) · [Execution log](../validation/2026-11-17-h100/57_mpi_ring_send_recv/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+mpicc -std=c11 -O2 57_mpi_ring_send_recv.c -o ./example
+/home/ubuntu/book2-bin/mpirun --oversubscribe -np 2 ./example 1000000 sendrecv
+```
+
+<details markdown="1"><summary>Captured current-source output</summary>
+
+```text
+--------------------------------------------------------------------------
+Sorry!  You were supposed to get help about:
+    unavailable
+But I couldn't open the help file:
+    /usr/lib/x86_64-linux-gnu/pmix2/share/pmix/help-pcompress.txt: No such file or directory.  Sorry!
+--------------------------------------------------------------------------
+libibverbs: Warning: couldn't load driver 'libvmw_pvrdma-rdmav34.so': libvmw_pvrdma-rdmav34.so: cannot open shared object file: No such file or directory
+libibverbs: Warning: couldn't load driver 'libvmw_pvrdma-rdmav34.so': libvmw_pvrdma-rdmav34.so: cannot open shared object file: No such file or directory
+--------------------------------------------------------------------------
+WARNING: No preset parameters were found for the device that Open MPI
+detected:
+
+  Local host:            192-222-53-210
+  Device name:           mlx5_0
+  Device vendor ID:      0x02c9
+  Device vendor part ID: 4124
+
+Default device parameters will be used, which may result in lower
+performance.  You can edit any of the files specified by the
+btl_openib_device_param_files MCA parameter to set values for your
+device.
+
+NOTE: You can turn off this warning by setting the MCA parameter
+      btl_openib_warn_no_device_params_found to 0.
+--------------------------------------------------------------------------
+--------------------------------------------------------------------------
+No OpenFabrics connection schemes reported that they were able to be
+used on a specific port.  As such, the openib BTL (OpenFabrics
+support) will be disabled for this port.
+
+  Local host:           192-222-53-210
+  Local device:         mlx5_0
+  Local port:           1
+  CPCs attempted:       udcm
+--------------------------------------------------------------------------
+rank 0 of 2: sent 0, received 100 (elems=1000000, mode=sendrecv)
+rank 1 of 2: sent 100, received 0 (elems=1000000, mode=sendrecv)
+[192-222-53-210:12836] 1 more process has sent help message help-mpi-btl-openib.txt / no device params found
+[192-222-53-210:12836] Set MCA parameter "orte_base_help_aggregate" to 0 to see all help / error messages
+[192-222-53-210:12836] 1 more process has sent help message help-mpi-btl-openib-cpc-base.txt / no cpcs for port
+```
+
+</details>
+<!-- execution:end:h100:57_mpi_ring_send_recv.c -->
+
+
 Compiled with `mpicc -Wall -Wextra 57_mpi_ring_send_recv.c -o 57_mpi_ring_send_recv`, genuinely run with `mpirun --allow-run-as-root --oversubscribe -np 4 ./57_mpi_ring_send_recv` (`--oversubscribe` because this real container has only 2 real CPU cores, not 4 -- a real, honest resource limit `mpirun` reports plainly if you omit it, rather than silently under-running the job). Locked output (values are exact and reproducible every run; the ORDER these four lines print in is not, and that's the point -- see below):
+
+<details markdown="1"><summary>Historical authoring output — superseded by the current execution above</summary>
 
 ```
 rank 0 of 4: sent 0, received 300 (elems=1, mode=naive)
@@ -149,6 +275,8 @@ rank 1 of 4: sent 100, received 0 (elems=1, mode=naive)
 rank 2 of 4: sent 200, received 100 (elems=1, mode=naive)
 rank 3 of 4: sent 300, received 200 (elems=1, mode=naive)
 ```
+
+</details>
 
 Every value above is exact and deterministic: rank *i* always sends `i*100` and always receives `((i-1+4)%4)*100`, run after run. What is genuinely *not* deterministic is the order these four lines appear on the real terminal, because these are four real, independent processes racing to reach their own `printf()` -- three real, separate runs of the exact same command produced three different real orderings (`rank 2, rank 3, rank 0, rank 1`; then `rank 0, rank 2, rank 3, rank 1`; then `rank 0, rank 1, rank 3, rank 2`). No earlier chapter's own simulation could ever produce that, because a host-side simulation of N devices was always really just one process's own sequential loop -- deterministic printing order was a side effect of never having been genuinely concurrent in the first place.
 
@@ -163,6 +291,10 @@ Every value above is exact and deterministic: rank *i* always sends `i*100` and 
     `MPI_Sendrecv()` posts both halves of the exchange in one call precisely so no rank is ever stuck waiting inside a lone `MPI_Send()` for a receive nobody has posted yet -- the real, standard fix, not a workaround specific to this book's own environment.
 
 ## 20.2 CUDA-Aware MPI: Querying What This Build Actually Supports
+
+<!-- mgpu:figure-2:start -->
+[![CUDA-aware MPI accepts device buffers](../images/technical/ch20/2-rdma.svg)](../images/technical/ch20/2-rdma.svg)
+<!-- mgpu:figure-2:end -->
 
 ### Intuition
 
@@ -268,7 +400,117 @@ int main(int argc, char** argv) {
 }
 ```
 
+<!-- execution:start:a100:58_mpi_cuda_aware_query_and_fallback.cpp -->
+> **Current execution — 2026-11-17-a100: API/host demonstration (exit-only).** UTC (program start): `2026-11-18T00:03:16.733571+00:00`. Source SHA-256: `516c7b932f5994492accfb5674fca28c5ef8694544fa0baf324dc96e71309010`.
+
+[Exact tested source](../validation/2026-11-17-a100/58_mpi_cuda_aware_query_and_fallback/58_mpi_cuda_aware_query_and_fallback.cpp) · [Compiler log](../validation/2026-11-17-a100/58_mpi_cuda_aware_query_and_fallback/compile.log) · [Execution log](../validation/2026-11-17-a100/58_mpi_cuda_aware_query_and_fallback/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+mpicxx -std=c++17 -O2 -I/usr/include -L/usr/local/cuda/lib64 -Wl,-rpath,/usr/local/cuda/lib64 58_mpi_cuda_aware_query_and_fallback.cpp -o ./example -lcudart
+/usr/mpi/gcc/openmpi-4.1.7rc1/bin/mpirun --oversubscribe -np 8 ./example
+```
+
+<details markdown="1"><summary>Captured current-source output</summary>
+
+```text
+[LOG_CAT_SBGP] libnuma.so: cannot open shared object file: No such file or directory
+[LOG_CAT_SBGP] Failed to dlopen libnuma.so. Fallback to GROUP_BY_SOCKET manual.
+[LOG_CAT_SBGP] libnuma.so: cannot open shared object file: No such file or directory
+[LOG_CAT_SBGP] Failed to dlopen libnuma.so. Fallback to GROUP_BY_SOCKET manual.
+[LOG_CAT_SBGP] libnuma.so: cannot open shared object file: No such file or directory
+[LOG_CAT_SBGP] Failed to dlopen libnuma.so. Fallback to GROUP_BY_SOCKET manual.
+[LOG_CAT_SBGP] libnuma.so: cannot open shared object file: No such file or directory
+[LOG_CAT_SBGP] Failed to dlopen libnuma.so. Fallback to GROUP_BY_SOCKET manual.
+[LOG_CAT_SBGP] libnuma.so: cannot open shared object file: No such file or directory
+[LOG_CAT_SBGP] Failed to dlopen libnuma.so. Fallback to GROUP_BY_SOCKET manual.
+[LOG_CAT_SBGP] libnuma.so: cannot open shared object file: No such file or directory
+[LOG_CAT_SBGP] Failed to dlopen libnuma.so. Fallback to GROUP_BY_SOCKET manual.
+[LOG_CAT_SBGP] libnuma.so: cannot open shared object file: No such file or directory
+[LOG_CAT_SBGP] Failed to dlopen libnuma.so. Fallback to GROUP_BY_SOCKET manual.
+[LOG_CAT_SBGP] libnuma.so: cannot open shared object file: No such file or directory
+[LOG_CAT_SBGP] Failed to dlopen libnuma.so. Fallback to GROUP_BY_SOCKET manual.
+MPIX_CUDA_AWARE_SUPPORT (compile-time macro): 0
+MPIX_Query_cuda_support() (runtime query):    0
+Both report 0 (false) for this exact installed Open MPI build -- apt's libopenmpi-dev was built with opal_built_with_cuda_support=false, confirmed independently via `ompi_info | grep cuda`. Passing a device pointer straight into MPI_Send() on a build that answers 0 here is a real, documented misuse with undefined results (this book does not simulate that UB case, per Chapter 7's own established practice) -- the correct move, taken below, is Chapter 5's own staged fallback.
+rank 0: cudaMalloc()=no error cudaMemcpy(D2H)=no error -- sending host buffer via a REAL MPI_Send
+rank 1: REAL MPI_Recv got [0.0, 0.0, 0.0, 0.0] -- now staging host-to-device
+rank 1: cudaMalloc()=no error cudaMemcpy(H2D)=no error
+```
+
+</details>
+<!-- execution:end:a100:58_mpi_cuda_aware_query_and_fallback.cpp -->
+
+
+<!-- execution:start:h100:58_mpi_cuda_aware_query_and_fallback.cpp -->
+> **Current execution — 2026-11-17-h100: API/host demonstration (exit-only).** UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`. Source SHA-256: `516c7b932f5994492accfb5674fca28c5ef8694544fa0baf324dc96e71309010`.
+
+[Exact tested source](../validation/2026-11-17-h100/58_mpi_cuda_aware_query_and_fallback/58_mpi_cuda_aware_query_and_fallback.cpp) · [Compiler log](../validation/2026-11-17-h100/58_mpi_cuda_aware_query_and_fallback/compile.log) · [Execution log](../validation/2026-11-17-h100/58_mpi_cuda_aware_query_and_fallback/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+mpicxx -std=c++17 -O2 -I/usr/include -L/usr/local/cuda/lib64 -Wl,-rpath,/usr/local/cuda/lib64 58_mpi_cuda_aware_query_and_fallback.cpp -o ./example -lcudart
+/home/ubuntu/book2-bin/mpirun --oversubscribe -np 2 ./example
+```
+
+<details markdown="1"><summary>Captured current-source output</summary>
+
+```text
+--------------------------------------------------------------------------
+Sorry!  You were supposed to get help about:
+    unavailable
+But I couldn't open the help file:
+    /usr/lib/x86_64-linux-gnu/pmix2/share/pmix/help-pcompress.txt: No such file or directory.  Sorry!
+--------------------------------------------------------------------------
+libibverbs: Warning: couldn't load driver 'libvmw_pvrdma-rdmav34.so': libvmw_pvrdma-rdmav34.so: cannot open shared object file: No such file or directory
+libibverbs: Warning: couldn't load driver 'libvmw_pvrdma-rdmav34.so': libvmw_pvrdma-rdmav34.so: cannot open shared object file: No such file or directory
+--------------------------------------------------------------------------
+WARNING: No preset parameters were found for the device that Open MPI
+detected:
+
+  Local host:            192-222-53-210
+  Device name:           mlx5_0
+  Device vendor ID:      0x02c9
+  Device vendor part ID: 4124
+
+Default device parameters will be used, which may result in lower
+performance.  You can edit any of the files specified by the
+btl_openib_device_param_files MCA parameter to set values for your
+device.
+
+NOTE: You can turn off this warning by setting the MCA parameter
+      btl_openib_warn_no_device_params_found to 0.
+--------------------------------------------------------------------------
+--------------------------------------------------------------------------
+No OpenFabrics connection schemes reported that they were able to be
+used on a specific port.  As such, the openib BTL (OpenFabrics
+support) will be disabled for this port.
+
+  Local host:           192-222-53-210
+  Local device:         mlx5_0
+  Local port:           1
+  CPCs attempted:       udcm
+--------------------------------------------------------------------------
+MPIX_CUDA_AWARE_SUPPORT (compile-time macro): 0
+MPIX_Query_cuda_support() (runtime query):    0
+Both report 0 (false) for this exact installed Open MPI build -- apt's libopenmpi-dev was built with opal_built_with_cuda_support=false, confirmed independently via `ompi_info | grep cuda`. Passing a device pointer straight into MPI_Send() on a build that answers 0 here is a real, documented misuse with undefined results (this book does not simulate that UB case, per Chapter 7's own established practice) -- the correct move, taken below, is Chapter 5's own staged fallback.
+rank 0: cudaMalloc()=no error cudaMemcpy(D2H)=no error -- sending host buffer via a REAL MPI_Send
+rank 1: REAL MPI_Recv got [0.0, 0.0, 0.0, 0.0] -- now staging host-to-device
+rank 1: cudaMalloc()=no error cudaMemcpy(H2D)=no error
+[192-222-53-210:12853] 1 more process has sent help message help-mpi-btl-openib.txt / no device params found
+[192-222-53-210:12853] Set MCA parameter "orte_base_help_aggregate" to 0 to see all help / error messages
+[192-222-53-210:12853] 1 more process has sent help message help-mpi-btl-openib-cpc-base.txt / no cpcs for port
+```
+
+</details>
+<!-- execution:end:h100:58_mpi_cuda_aware_query_and_fallback.cpp -->
+
+
 Compiled with `mpicxx -Wall -Wextra 58_mpi_cuda_aware_query_and_fallback.cpp -o 58_mpi_cuda_aware_query_and_fallback -lcudart` (linking a real installed `libcudart` from a real `mpicxx` wrapper -- the first file in this book to genuinely combine both toolchains in one binary), genuinely run with `mpirun --allow-run-as-root --oversubscribe -np 2 ./58_mpi_cuda_aware_query_and_fallback`. Locked output (every value is the same on every run; because rank 0's and rank 1's lines come from two separate processes, their relative order on the terminal is not guaranteed, though it matched the order below in repeated runs here):
+
+<details markdown="1"><summary>Historical authoring output — superseded by the current execution above</summary>
 
 ```
 MPIX_CUDA_AWARE_SUPPORT (compile-time macro): 0
@@ -279,7 +521,11 @@ rank 1: REAL MPI_Recv got [100.0, 101.0, 102.0, 103.0] -- now staging host-to-de
 rank 1: cudaMalloc()=no CUDA-capable device is detected cudaMemcpy(H2D)=no CUDA-capable device is detected
 ```
 
-Both real queries agree, independently: this exact installed Open MPI build is not CUDA-aware. The `cudaMalloc()`/`cudaMemcpy()` calls fail the same honest way every device-touching call in this book has failed since Chapter 3 -- `no CUDA-capable device is detected` -- but the real point of this section survives that failure intact: `MPI_Send()`/`MPI_Recv()` genuinely moved the real host-resident values `[100.0, 101.0, 102.0, 103.0]` from rank 0's process to rank 1's process, correctly, over real host memory, exactly as Chapter 5's own staged-transfer pattern always required when a direct path isn't available.
+</details>
+
+CUDA-aware support is a property of the particular MPI build. Read its capability-query result in the current execution log rather than assuming that every Open MPI installation accepts device pointers. The host-buffer send/receive path checks MPI transport through ordinary host memory; device copies require their own checked CUDA results.
+
+The [2026-11-17 H100 execution record](../validation-h100.md) covers two GPUs connected by local NV18. It distinguishes numerical checks, API probes and other executions; a successful exit alone does not establish GPU algorithm correctness.
 
 !!! warning "[COMMON TRAP] Assuming a newer/bigger MPI build implies CUDA-aware support"
     `MPIX_CUDA_AWARE_SUPPORT` and `MPIX_Query_cuda_support()` exist as *separate*, explicit queries precisely because CUDA-aware support is a real *build-time choice* Open MPI makes (it has to be compiled against CUDA and configured to use it), not a property that comes for free with a newer version number, a bigger package, or a vendor's name on the box. This exact chapter's own installed Open MPI is perfectly real, perfectly functional for everything Section 20.1 built, and still answers `0` to both queries -- apt's own generic `libopenmpi-dev` package was simply never built with `--with-cuda`. A real cluster's own MPI module (frequently a separately-built "CUDA-aware" variant, sometimes even a different module entirely from the same vendor) may answer differently, which is exactly why a real application checks `MPIX_Query_cuda_support()` itself at startup rather than assuming either answer from context.
@@ -367,7 +613,123 @@ int main(int argc, char** argv) {
 }
 ```
 
+<!-- execution:start:a100:59_mpi_errhandler_return.c -->
+> **Current execution — 2026-11-17-a100: API/host demonstration (exit-only).** UTC (program start): `2026-11-18T00:03:24.434054+00:00`. Source SHA-256: `104caef5326cfbba709ecba2f08b68ea6ede3a40f5a767c6f6d0846bff331145`.
+
+[Exact tested source](../validation/2026-11-17-a100/59_mpi_errhandler_return/59_mpi_errhandler_return.c) · [Compiler log](../validation/2026-11-17-a100/59_mpi_errhandler_return/compile.log) · [Execution log](../validation/2026-11-17-a100/59_mpi_errhandler_return/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+mpicc -std=c11 -O2 59_mpi_errhandler_return.c -o ./example
+/usr/mpi/gcc/openmpi-4.1.7rc1/bin/mpirun --oversubscribe -np 8 ./example
+```
+
+<details markdown="1"><summary>Captured current-source output</summary>
+
+```text
+[LOG_CAT_SBGP] libnuma.so: cannot open shared object file: No such file or directory
+[LOG_CAT_SBGP] Failed to dlopen libnuma.so. Fallback to GROUP_BY_SOCKET manual.
+[LOG_CAT_SBGP] libnuma.so: cannot open shared object file: No such file or directory
+[LOG_CAT_SBGP] Failed to dlopen libnuma.so. Fallback to GROUP_BY_SOCKET manual.
+[LOG_CAT_SBGP] libnuma.so: cannot open shared object file: No such file or directory
+[LOG_CAT_SBGP] Failed to dlopen libnuma.so. Fallback to GROUP_BY_SOCKET manual.
+[LOG_CAT_SBGP] libnuma.so: cannot open shared object file: No such file or directory
+[LOG_CAT_SBGP] Failed to dlopen libnuma.so. Fallback to GROUP_BY_SOCKET manual.
+[LOG_CAT_SBGP] libnuma.so: cannot open shared object file: No such file or directory
+[LOG_CAT_SBGP] Failed to dlopen libnuma.so. Fallback to GROUP_BY_SOCKET manual.
+[LOG_CAT_SBGP] libnuma.so: cannot open shared object file: No such file or directory
+[LOG_CAT_SBGP] Failed to dlopen libnuma.so. Fallback to GROUP_BY_SOCKET manual.
+[LOG_CAT_SBGP] libnuma.so: cannot open shared object file: No such file or directory
+[LOG_CAT_SBGP] Failed to dlopen libnuma.so. Fallback to GROUP_BY_SOCKET manual.
+[LOG_CAT_SBGP] libnuma.so: cannot open shared object file: No such file or directory
+[LOG_CAT_SBGP] Failed to dlopen libnuma.so. Fallback to GROUP_BY_SOCKET manual.
+[129-203-141-160:09268] pml_ucx.c:178  Error: Failed to receive UCX worker address: Not found (-13)
+[129-203-141-160:09268] pml_ucx.c:474  Error: Rank number (999) is larger than communicator size (8)
+rank 0: about to MPI_Send to invalid destination rank 999 (real world size 8), now under MPI_ERRORS_RETURN
+rank 0: MPI_Send RETURNED rc=16 (MPI_ERR_OTHER: known error not in list) -- this process did NOT abort
+rank 0: NOTE -- the MPI standard's own words on this: 'the state of MPI is undefined' after an error is detected, even under MPI_ERRORS_RETURN. Catching rc above is real, but it is NOT the same guarantee as ULFM's own MPIX_Comm_revoke()/MPIX_Comm_shrink(), which define exactly what a communicator's surviving ranks may do next.
+rank 0 of 8: reached MPI_Finalize
+rank 6 of 8: reached MPI_Finalize
+rank 3 of 8: reached MPI_Finalize
+rank 4 of 8: reached MPI_Finalize
+rank 1 of 8: reached MPI_Finalize
+rank 5 of 8: reached MPI_Finalize
+rank 7 of 8: reached MPI_Finalize
+rank 2 of 8: reached MPI_Finalize
+```
+
+</details>
+<!-- execution:end:a100:59_mpi_errhandler_return.c -->
+
+
+<!-- execution:start:h100:59_mpi_errhandler_return.c -->
+> **Current execution — 2026-11-17-h100: API/host demonstration (exit-only).** UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`. Source SHA-256: `104caef5326cfbba709ecba2f08b68ea6ede3a40f5a767c6f6d0846bff331145`.
+
+[Exact tested source](../validation/2026-11-17-h100/59_mpi_errhandler_return/59_mpi_errhandler_return.c) · [Compiler log](../validation/2026-11-17-h100/59_mpi_errhandler_return/compile.log) · [Execution log](../validation/2026-11-17-h100/59_mpi_errhandler_return/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+mpicc -std=c11 -O2 59_mpi_errhandler_return.c -o ./example
+/home/ubuntu/book2-bin/mpirun --oversubscribe -np 2 ./example
+```
+
+<details markdown="1"><summary>Captured current-source output</summary>
+
+```text
+--------------------------------------------------------------------------
+Sorry!  You were supposed to get help about:
+    unavailable
+But I couldn't open the help file:
+    /usr/lib/x86_64-linux-gnu/pmix2/share/pmix/help-pcompress.txt: No such file or directory.  Sorry!
+--------------------------------------------------------------------------
+libibverbs: Warning: couldn't load driver 'libvmw_pvrdma-rdmav34.so': libvmw_pvrdma-rdmav34.so: cannot open shared object file: No such file or directory
+libibverbs: Warning: couldn't load driver 'libvmw_pvrdma-rdmav34.so': libvmw_pvrdma-rdmav34.so: cannot open shared object file: No such file or directory
+--------------------------------------------------------------------------
+WARNING: No preset parameters were found for the device that Open MPI
+detected:
+
+  Local host:            192-222-53-210
+  Device name:           mlx5_0
+  Device vendor ID:      0x02c9
+  Device vendor part ID: 4124
+
+Default device parameters will be used, which may result in lower
+performance.  You can edit any of the files specified by the
+btl_openib_device_param_files MCA parameter to set values for your
+device.
+
+NOTE: You can turn off this warning by setting the MCA parameter
+      btl_openib_warn_no_device_params_found to 0.
+--------------------------------------------------------------------------
+--------------------------------------------------------------------------
+No OpenFabrics connection schemes reported that they were able to be
+used on a specific port.  As such, the openib BTL (OpenFabrics
+support) will be disabled for this port.
+
+  Local host:           192-222-53-210
+  Local device:         mlx5_0
+  Local port:           1
+  CPCs attempted:       udcm
+--------------------------------------------------------------------------
+rank 1 of 2: reached MPI_Finalize
+rank 0: about to MPI_Send to invalid destination rank 999 (real world size 2), now under MPI_ERRORS_RETURN
+rank 0: MPI_Send RETURNED rc=6 (MPI_ERR_RANK: invalid rank) -- this process did NOT abort
+rank 0: NOTE -- the MPI standard's own words on this: 'the state of MPI is undefined' after an error is detected, even under MPI_ERRORS_RETURN. Catching rc above is real, but it is NOT the same guarantee as ULFM's own MPIX_Comm_revoke()/MPIX_Comm_shrink(), which define exactly what a communicator's surviving ranks may do next.
+rank 0 of 2: reached MPI_Finalize
+[192-222-53-210:12880] 1 more process has sent help message help-mpi-btl-openib.txt / no device params found
+[192-222-53-210:12880] Set MCA parameter "orte_base_help_aggregate" to 0 to see all help / error messages
+[192-222-53-210:12880] 1 more process has sent help message help-mpi-btl-openib-cpc-base.txt / no cpcs for port
+```
+
+</details>
+<!-- execution:end:h100:59_mpi_errhandler_return.c -->
+
+
 Compiled with `mpicc -Wall -Wextra 59_mpi_errhandler_return.c -o 59_mpi_errhandler_return`, genuinely run with `mpirun --allow-run-as-root --oversubscribe -np 2 ./59_mpi_errhandler_return`. Locked output (the content of every line is the same on every run, but the line ORDER is not deterministic: rank 1's single `reached MPI_Finalize` line comes from a separate process and can land anywhere -- in six real runs it appeared last four times and first twice):
+
+<details markdown="1"><summary>Historical authoring output — superseded by the current execution above</summary>
 
 ```
 rank 0: about to MPI_Send to invalid destination rank 999 (real world size 2), now under MPI_ERRORS_RETURN
@@ -376,6 +738,8 @@ rank 0: NOTE -- the MPI standard's own words on this: 'the state of MPI is undef
 rank 0: reached MPI_Finalize
 rank 1 of 2: reached MPI_Finalize
 ```
+
+</details>
 
 This is the real, positive half of the contrast; the real negative half was verified separately, deliberately not folded into the same run since it is destructive by design: removing the `MPI_Comm_set_errhandler()` call and issuing the exact same invalid-rank `MPI_Send()` under Open MPI's own *default* handler genuinely aborts the whole job --
 
@@ -414,7 +778,7 @@ Chapter 21 continues Part 5 with GPUDirect RDMA: bypassing the host entirely. Se
 
 ## Worked Solutions
 
-**1.** MPI's own model is multi-*process*, not multi-*device* -- `mpirun -np N` asks the operating system to launch N genuinely separate processes, and `MPI_Init()` lets them find each other through the OS, not through a GPU driver. No call in that sequence ever asks whether a CUDA-capable device exists, so there is nothing for this environment's real absence of one to honestly fail on, and no need to simulate N devices with N host buffers either, since the "N" here is already genuinely real operating-system processes.
+**1.** MPI's own model is multi-*process*, not multi-*device* -- `mpirun -np N` asks the operating system to launch N genuinely separate processes, and `MPI_Init()` lets them find each other through the OS, not through a GPU driver. No call in that sequence ever asks whether a CUDA-capable device exists, so this process bootstrap does not depend on GPU availability, and no need to simulate N devices with N host buffers either, since the "N" here is already genuinely real operating-system processes.
 
 **2.** The four values (`sent 0/100/200/300`, `received 300/0/100/200`) are computed purely from each rank's own fixed rank number (`rank*100`) and the fixed ring topology (`next`/`prev`), so they never depend on timing and are identical every run. The PRINT order, though, depends on which of the four genuinely separate, genuinely concurrent operating-system processes happens to reach its own `printf()` and flush to the shared terminal first on that particular run -- a race with no defined winner, unlike every earlier chapter's own single-process simulation, where "order" was just whatever a `for` loop's iteration order happened to be, always identical run to run.
 
@@ -422,7 +786,9 @@ Chapter 21 continues Part 5 with GPUDirect RDMA: bypassing the host entirely. Se
 
 **4.** The two queries are the compile-time macro `MPIX_CUDA_AWARE_SUPPORT` (fixed when Open MPI itself was built) and the runtime function `MPIX_Query_cuda_support()` (evaluated when the program actually runs). Relying on just a version number would not be reliable because CUDA-aware support is a real, separate *build-time configuration choice* (`--with-cuda`) that a given package maintainer may or may not have enabled for any particular version -- this chapter's own real, current Open MPI build is proof: a perfectly modern, perfectly functional install that still answers `0` to both real queries, because apt's own generic package was never built with that flag.
 
-**5.** `cudaMalloc()`/`cudaMemcpy()` depend on a real CUDA-capable device, which this environment has never had, so they fail exactly the way every device-touching call in this book has failed since Chapter 3. `MPI_Send()`/`MPI_Recv()` depend only on the real, installed Open MPI runtime and real host memory (the `hostBuf` array) -- neither of which needs a GPU at all. The two failing calls and the two succeeding calls are testing two completely independent real systems; one being honestly broken (no device) says nothing about whether the other (real host-to-host MPI) works, and it demonstrably does.
+**5.** MPI can move host-resident buffers without a GPU. CUDA allocation and copies separately require a usable CUDA device. Check each operation and only pass device pointers directly to an MPI build whose CUDA-awareness support and execution path are established; otherwise use checked host staging.
+
+The [2026-11-17 H100 execution record](../validation-h100.md) covers two GPUs connected by local NV18. It distinguishes numerical checks, API probes and other executions; a successful exit alone does not establish GPU algorithm correctness.
 
 **6.** The two pieces of evidence are: (a) `ompi_info`'s own real `"MPI extensions:"` line, which lists exactly `affinity, cuda, pcollreq` for this installed build, with no extension named `ftmpi`; and (b) grepping the real installed `mpi-ext.h` header directly for the symbol names `MPIX_Comm_revoke`/`MPIX_Comm_shrink`, which are genuinely absent from the file. The real historical reason is a version/timeline fact, not a defect: ULFM was integrated into Open MPI's own master branch in early 2020 and into stable releases starting with version 5.0, while this environment's real, apt-installed Open MPI is version 4.1.6 -- built and released before that merge point.
 

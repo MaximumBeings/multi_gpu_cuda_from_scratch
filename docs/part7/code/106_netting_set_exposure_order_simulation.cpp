@@ -15,7 +15,7 @@
 // netting sets of contracts which are jointly collateralized," and "the
 // CVA of the bank can then be computed as the sum of its CVAs
 // restricted to each netting set." This ordering is not a stylistic
-// choice: max(0, x) is a convex function, so for any two real numbers,
+// choice: max(0, x) is subadditive: for any two real numbers,
 // max(0, a+b) <= max(0, a) + max(0, b) always (a real, provable
 // inequality, not merely typically true) -- netting FIRST, then
 // flooring the NET result at zero, can never produce a LARGER exposure
@@ -88,7 +88,7 @@ int main() {
     printf("Overall reduction from netting: %.2f%%\n",
            100.0 * (1.0 - totalNetted / totalGross));
     printf("Cases where netted exposure exceeded gross exposure: %d "
-           "(the real convexity inequality max(0,a+b) <= max(0,a)+max(0,b) "
+           "(the positive-part subadditivity inequality max(0,a+b) <= max(0,a)+max(0,b) "
            "predicts this must always be zero).\n\n", violations);
 
     printf("This confirms, by direct simulation rather than assumption, "

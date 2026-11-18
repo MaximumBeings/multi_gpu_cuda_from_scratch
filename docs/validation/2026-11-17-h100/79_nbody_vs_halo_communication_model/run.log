@@ -1,0 +1,13 @@
+$ /home/ubuntu/codex-multigpu-audit-20261117/multi-gpu-audit/artifacts/h100-reviewed-20261117/79_nbody_vs_halo_communication_model/example
+N=5000000 bodies (Burtscher & Pingali's own real cited scale), 32 bytes/body (this chapter's own stated assumption) -> total dataset = 152.59 MiB
+
+P      N-body all-gather MiB/GPU    Ch16 halo-exchange MiB/GPU  
+------------------------------------------------------------------
+2      76.29                        0.50                        
+4      114.44                       0.50                        
+8      133.51                       0.50                        
+16     143.05                       0.50                        
+32     147.82                       0.50                        
+64     150.20                       0.50                        
+
+As P grows, N-body's own per-GPU all-gather volume APPROACHES the FULL dataset size (152.59 MiB) and never drops below it by much -- every GPU still needs every body's data, every step. Chapter 16's own halo-exchange volume stayed FLAT at a fixed boundary size regardless of P, because a stencil update only ever reads immediately adjacent cells. Adding more GPUs leaves Chapter 16's own per-GPU communication flat; for this chapter's own all-pairs N-body case it makes each GPU's receive volume GROW toward the full dataset.

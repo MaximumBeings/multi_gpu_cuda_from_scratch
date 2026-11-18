@@ -1,0 +1,26 @@
+$ /home/ubuntu/codex-eight-gpu-audit-20261117/multi-gpu-audit/artifacts/a100-eight-20261117/74_ring_allreduce_communication_cost_model/example
+ResNet-50 fp32 gradient buffer: K = 102228128 bytes (97.49 MiB)
+
+N      rounds     ring: 2(N-1)/N*K (MiB)   naive: 2(N-1)*K (GiB)    ratio     
+-------------------------------------------------------------------------
+2      2          97.49                    0.190                    2.0      x
+4      6          146.24                   0.571                    4.0      x
+8      14         170.61                   1.333                    8.0      x
+16     30         182.80                   2.856                    16.0     x
+32     62         188.89                   5.903                    32.0     x
+64     126        191.94                   11.996                   64.0     x
+128    254        193.46                   24.183                   128.0    x
+256    510        194.22                   48.556                   256.0    x
+
+As N grows, 2(N-1)/N -> 2 (a CONSTANT): at N=256 each rank's ring traffic
+is only 1.9922x the N=2 case, while the naive busiest-rank traffic at N=256
+is 255x the N=2 case -- this is the real, quantified reason every framework
+cited in this chapter (NCCL, Horovod, PyTorch DDP) settled on ring-style collectives
+for multi-GPU gradient synchronization, not the naive gather/broadcast shape.
+
+--- What real measurements report for a ring-style collective at
+    this same scale (cited, not computed by this program) ---
+Horovod, TCP, 1->128 GPUs, Inception V3 and ResNet-101: measured 88% scaling efficiency.
+Horovod, RDMA, same setup: measured >90% scaling efficiency on both models.
+PyTorch DDP, NCCL, overlapping communication with backward computation: measured 38.0% (ResNet) / 35.2% (BERT) speedup over not overlapping.
+None of these three percentages are outputs of this program's own formula -- they are independently measured results this chapter cites to show the formula's real-world consequence.

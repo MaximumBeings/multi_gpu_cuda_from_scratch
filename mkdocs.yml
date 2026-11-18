@@ -1,6 +1,9 @@
 site_name: Multi-GPU Programming in CUDA C++ -- Under Development
 site_description: From Peer-to-Peer Memory to Distributed Training Across the Cluster
 site_author: Oluwaseyi Awoga
+site_url: https://maximumbeings.github.io/multi_gpu_cuda_from_scratch/
+repo_url: https://github.com/MaximumBeings/multi_gpu_cuda_from_scratch
+repo_name: MaximumBeings/multi_gpu_cuda_from_scratch
 copyright: Copyright &copy; 2026 Oluwaseyi Awoga
 
 theme:
@@ -58,6 +61,8 @@ plugins:
 nav:
   - Home: index.md
   - Getting Started: getting-started.md
+  - A100 Execution Validation: validation-a100.md
+  - H100 Execution Validation: validation-h100.md
   - "Part 0 -- Why Multi-GPU, and the Hardware Underneath It":
       - "1. Why One GPU Is Not Enough": part0/01-why-one-gpu-is-not-enough.md
       - "2. Multi-GPU Hardware Topology: PCIe, NVLink, and NVSwitch": part0/02-multi-gpu-hardware-topology.md
@@ -117,3 +122,6 @@ nav:
 
 extra:
   social: []
+
+extra_css:
+  - stylesheets/illustrations.css

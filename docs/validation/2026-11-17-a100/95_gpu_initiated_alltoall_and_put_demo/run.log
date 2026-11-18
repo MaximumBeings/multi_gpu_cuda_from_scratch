@@ -1,0 +1,34 @@
+$ /usr/mpi/gcc/openmpi-4.1.7rc1/bin/mpirun --oversubscribe -np 8 /home/ubuntu/codex-eight-gpu-audit-20261117/multi-gpu-audit/artifacts/a100-eight-20261117/95_gpu_initiated_alltoall_and_put_demo/example
+[LOG_CAT_SBGP] libnuma.so: cannot open shared object file: No such file or directory
+[LOG_CAT_SBGP] Failed to dlopen libnuma.so. Fallback to GROUP_BY_SOCKET manual.
+[LOG_CAT_SBGP] libnuma.so: cannot open shared object file: No such file or directory
+[LOG_CAT_SBGP] Failed to dlopen libnuma.so. Fallback to GROUP_BY_SOCKET manual.
+[LOG_CAT_SBGP] libnuma.so: cannot open shared object file: No such file or directory
+[LOG_CAT_SBGP] Failed to dlopen libnuma.so. Fallback to GROUP_BY_SOCKET manual.
+[LOG_CAT_SBGP] libnuma.so: cannot open shared object file: No such file or directory
+[LOG_CAT_SBGP] Failed to dlopen libnuma.so. Fallback to GROUP_BY_SOCKET manual.
+[LOG_CAT_SBGP] libnuma.so: cannot open shared object file: No such file or directory
+[LOG_CAT_SBGP] Failed to dlopen libnuma.so. Fallback to GROUP_BY_SOCKET manual.
+[LOG_CAT_SBGP] libnuma.so: cannot open shared object file: No such file or directory
+[LOG_CAT_SBGP] Failed to dlopen libnuma.so. Fallback to GROUP_BY_SOCKET manual.
+[LOG_CAT_SBGP] libnuma.so: cannot open shared object file: No such file or directory
+[LOG_CAT_SBGP] Failed to dlopen libnuma.so. Fallback to GROUP_BY_SOCKET manual.
+[LOG_CAT_SBGP] libnuma.so: cannot open shared object file: No such file or directory
+[LOG_CAT_SBGP] Failed to dlopen libnuma.so. Fallback to GROUP_BY_SOCKET manual.
+PE 5 all-to-all: checked 8 source elements, errors=0
+PE 1 all-to-all: checked 8 source elements, errors=0
+PE 4 all-to-all: checked 8 source elements, errors=0
+PE 6 all-to-all: checked 8 source elements, errors=0
+PE 0 all-to-all: checked 8 source elements, errors=0
+PE 7 all-to-all: checked 8 source elements, errors=0
+PE 3 all-to-all: checked 8 source elements, errors=0
+PE 2 all-to-all: checked 8 source elements, errors=0
+PE 2 ring put: received=778 expected=778
+PE 7 ring put: received=783 expected=783
+PE 4 ring put: received=780 expected=780
+PE 0 ring put: received=784 expected=784
+PE 6 ring put: received=782 expected=782
+PE 3 ring put: received=779 expected=779
+PE 5 ring put: received=781 expected=781
+PE 1 ring put: received=777 expected=777
+VALIDATION PASS: 8 PEs, errors=0

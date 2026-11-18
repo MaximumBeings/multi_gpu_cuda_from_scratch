@@ -1,5 +1,15 @@
 # Chapter 16: Domain Decomposition for Scientific Computing: Halo Exchange and Distributed Stencils
 
+<!-- execution:provenance -->
+!!! info "Execution provenance"
+
+    Current execution blocks identify the tested source hash, hardware dataset, commands and captured output. References elsewhere on this page to a device-less environment describe the original authoring context. Historical output is superseded by the current record. Displayed output omits the runner command header and trims trailing line whitespace; raw logs remain exact. A host simulation or API validation has its stated scope; neither alone establishes a numerical multi-GPU workload or measured performance.
+
+
+<!-- mgpu:opener:start -->
+[![Chapter 16: Domain Decomposition for Scientific Computing: Halo Exchange and Distributed Stencils](../images/chapter-openers/16.svg)](../images/chapter-openers/16.svg)
+<!-- mgpu:opener:end -->
+
 **What you will understand by the end of this chapter:**
 
 - Why this chapter splits something fundamentally different from every chapter since Chapter 12: not a batch of independent samples, not a model's layers, not a single matrix multiply, but a literal physical grid -- the discretized space a scientific simulation runs over.
@@ -40,6 +50,10 @@ Chapters 12-15 split something ABSTRACT:        This chapter splits something PH
 ```
 
 ## 16.1 Domain Decomposition: Splitting the Grid Itself
+
+<!-- mgpu:figure-1:start -->
+[![Interiors belong to ranks; halos mirror neighbors](../images/technical/ch16/1-halo.svg)](../images/technical/ch16/1-halo.svg)
+<!-- mgpu:figure-1:end -->
 
 ### Intuition
 
@@ -172,7 +186,87 @@ int main() {
 }
 ```
 
+<!-- execution:start:a100:45_domain_decomposition_row_range.cu -->
+> **Current execution — 2026-11-17-a100: API/host demonstration (exit-only).** UTC (program start): `2026-11-18T00:02:36.605381+00:00`. Source SHA-256: `1a658cfb964f0cd32da7592f287d1bd4b4a529042afe7d7a276056f4ac839ba2`.
+
+[Exact tested source](../validation/2026-11-17-a100/45_domain_decomposition_row_range/45_domain_decomposition_row_range.cu) · [Compiler log](../validation/2026-11-17-a100/45_domain_decomposition_row_range/compile.log) · [Execution log](../validation/2026-11-17-a100/45_domain_decomposition_row_range/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+nvcc -std=c++17 -O2 -arch=sm_80 45_domain_decomposition_row_range.cu -o ./example
+./example
+```
+
+<details markdown="1"><summary>Captured current-source output</summary>
+
+```text
+cudaGetDeviceCount(): 8 device(s).
+
+Partitioning a 16 x 8 grid's rows across this book's own real deviceCount (8):
+  rank 0: rows [0, 2)
+  rank 1: rows [2, 4)
+  rank 2: rows [4, 6)
+  rank 3: rows [6, 8)
+  rank 4: rows [8, 10)
+  rank 5: rows [10, 12)
+  rank 6: rows [12, 14)
+  rank 7: rows [14, 16)
+  (8 device(s) -- nothing to print above.)
+
+The same formula, hypothetically, with world size 4:
+  rank 0: rows [0, 4)  above: domain boundary (fixed value)  below: rank below (real halo)
+  rank 1: rows [4, 8)  above: rank above (real halo)         below: rank below (real halo)
+  rank 2: rows [8, 12)  above: rank above (real halo)         below: rank below (real halo)
+  rank 3: rows [12, 16)  above: rank above (real halo)         below: domain boundary (fixed value)
+
+Five-point stencil (interior update): new(i,j) = 0.25 * (old(i-1,j) + old(i+1,j) + old(i,j-1) + old(i,j+1))
+The top row of every rank's own strip needs old(i-1,j) from the rank ABOVE it; the bottom row needs old(i+1,j) from the rank BELOW it. Neither value lives on this rank.
+```
+
+</details>
+<!-- execution:end:a100:45_domain_decomposition_row_range.cu -->
+
+
+<!-- execution:start:h100:45_domain_decomposition_row_range.cu -->
+> **Current execution — 2026-11-17-h100: API/host demonstration (exit-only).** UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`. Source SHA-256: `1a658cfb964f0cd32da7592f287d1bd4b4a529042afe7d7a276056f4ac839ba2`.
+
+[Exact tested source](../validation/2026-11-17-h100/45_domain_decomposition_row_range/45_domain_decomposition_row_range.cu) · [Compiler log](../validation/2026-11-17-h100/45_domain_decomposition_row_range/compile.log) · [Execution log](../validation/2026-11-17-h100/45_domain_decomposition_row_range/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+nvcc -std=c++17 -O2 -arch=sm_90 45_domain_decomposition_row_range.cu -o ./example
+./example
+```
+
+<details markdown="1"><summary>Captured current-source output</summary>
+
+```text
+cudaGetDeviceCount(): 2 device(s).
+
+Partitioning a 16 x 8 grid's rows across this book's own real deviceCount (2):
+  rank 0: rows [0, 8)
+  rank 1: rows [8, 16)
+  (2 device(s) -- nothing to print above.)
+
+The same formula, hypothetically, with world size 4:
+  rank 0: rows [0, 4)  above: domain boundary (fixed value)  below: rank below (real halo)
+  rank 1: rows [4, 8)  above: rank above (real halo)         below: rank below (real halo)
+  rank 2: rows [8, 12)  above: rank above (real halo)         below: rank below (real halo)
+  rank 3: rows [12, 16)  above: rank above (real halo)         below: domain boundary (fixed value)
+
+Five-point stencil (interior update): new(i,j) = 0.25 * (old(i-1,j) + old(i+1,j) + old(i,j-1) + old(i,j+1))
+The top row of every rank's own strip needs old(i-1,j) from the rank ABOVE it; the bottom row needs old(i+1,j) from the rank BELOW it. Neither value lives on this rank.
+```
+
+</details>
+<!-- execution:end:h100:45_domain_decomposition_row_range.cu -->
+
+
 Genuinely compiled with a real `nvcc` and genuinely run. Locked output, deterministic across repeated runs:
+
+<details markdown="1"><summary>Historical authoring output — superseded by the current execution above</summary>
 
 ```
 cudaGetDeviceCount(): 0 device(s).
@@ -190,12 +284,18 @@ Five-point stencil (interior update): new(i,j) = 0.25 * (old(i-1,j) + old(i+1,j)
 The top row of every rank's own strip needs old(i-1,j) from the rank ABOVE it; the bottom row needs old(i+1,j) from the rank BELOW it. Neither value lives on this rank.
 ```
 
+</details>
+
 Four ranks split the grid's 16 real rows into four genuinely computed, equal, 4-row bands -- the same host arithmetic Chapter 12 and Chapter 13 both used, now partitioning physical space instead of a batch or a stack of layers. What the printed table adds, that neither of those earlier chapters needed, is a classification of *both sides* of every rank's own band: a real neighboring rank, or the domain's own physical edge. Rank 0 and rank 3 each have exactly one side that is a fixed boundary condition, never a transfer; ranks 1 and 2 have two real neighbors, one on each side. The five-point stencil formula makes clear why this distinction has to be tracked precisely: every interior row's update reads a specific neighboring row, and for the rows at the top and bottom of a rank's own band, that neighboring row does not live on this rank at all.
 
 !!! warning "[COMMON TRAP] Assuming a grid row-strip is independent of its neighbors, the way a data-parallel batch shard is"
     Chapter 12's batch shards are deliberately independent: rank 0's samples and rank 1's samples never interact with each other except at a periodic all-reduce boundary, and between those boundaries each rank runs entirely on its own. It's tempting to assume domain decomposition works the same way, since the partitioning arithmetic above looks identical. It doesn't. A grid row-strip's *interior* rows are independent within a single iteration, but its *boundary* rows -- the top and bottom row of every rank's own band -- depend on a neighboring rank's data on every single iteration, not periodically. Skip the exchange for even one iteration and every rank's boundary rows silently compute from stale data forever after; there is no equivalent of Chapter 12's "average the gradients every N steps" flexibility here. Section 16.2 builds the transfer that has to run, without exception, before every stencil update.
 
 ## 16.2 Halo Exchange: A Genuinely New Communication Pattern
+
+<!-- mgpu:figure-2:start -->
+[![Boundary readiness gates the next update](../images/technical/ch16/2-handoff.svg)](../images/technical/ch16/2-handoff.svg)
+<!-- mgpu:figure-2:end -->
 
 ### Intuition
 
@@ -225,87 +325,131 @@ Halo exchange (this chapter):               Ring all-reduce (Chapter 9):
 Building the exchange itself means guarding a real `cudaMemcpyPeer()` call with the same above/below classification Section 16.1 computed: a rank sends its topmost interior row to the rank above it (filling that rank's bottom halo) only if a rank above genuinely exists, and its bottommost interior row to the rank below it (filling that rank's top halo) only if a rank below genuinely exists. Get either guard wrong and the call either targets a device that was never meant to receive anything, or silently skips an exchange a real neighbor was depending on.
 
 ```cpp
-// Chapter 16: Domain Decomposition for Scientific Computing --
-// Halo Exchange and Distributed Stencils
+// Chapter 16: checked nearest-neighbor halo transfers on 2--4 real GPUs.
 // 46_halo_exchange.cu
-//
-// Halo exchange is a genuinely new communication pattern for this
-// book: nearest-neighbor only. Not root-based like Chapter 8's
-// broadcast/reduce, not a repeating ring like Chapter 9's all-reduce,
-// not every-pair-to-every-pair like Chapter 10's all-to-all -- each
-// rank talks to at most TWO other ranks (the rank directly above it
-// and the rank directly below it in the row-strip decomposition
-// Section 16.1 built), and every rank that isn't at the physical edge
-// of the domain does this EVERY iteration, not once at setup. The
-// transfer mechanism itself is not new: it's the same real
-// cudaMemcpyPeer() Chapter 5 introduced and Chapter 13 reused for
-// activation handoff, now carrying one row of a grid's halo instead.
-// Genuinely compiled with a real nvcc and genuinely run.
 #include <cstdio>
+#include <vector>
+#include <algorithm>
 #include <cuda_runtime.h>
-
+#define CUDA(call) do { cudaError_t status = (call); if (status != cudaSuccess) { \
+    fprintf(stderr, "%s: %s\n", #call, cudaGetErrorString(status)); \
+    return status == cudaErrorNoDevice || status == cudaErrorInsufficientDriver ? 2 : 1; } } while (0)
+constexpr int ROWS = 3, COLS = 11;
+constexpr double EDGE = -99.0, POISON = -777.0;
+static double value(int iteration, int rank, int row, int column) {
+    return double(iteration * 10000 + rank * 1000 + row * COLS + column) / 8.0;
+}
 int main() {
-    int deviceCount = 0;
-    cudaGetDeviceCount(&deviceCount);
-    printf("cudaGetDeviceCount(): %d device(s).\n", deviceCount);
-
-    const int GRID_COLS = 8;
-    const size_t ROW_BYTES = GRID_COLS * sizeof(double);
-    const int WORLD_SIZE = 4;
-
-    printf("\nHalo exchange for a %d-way row-strip decomposition. Each "
-           "rank exchanges exactly one row (%zu bytes) with each real "
-           "neighbor it has -- never with a rank two or more strips "
-           "away, and never wrapping around the way Chapter 9's ring "
-           "does (rank 0 and rank %d are the physical TOP and BOTTOM "
-           "edges of the domain, not neighbors of each other).\n\n",
-           WORLD_SIZE, ROW_BYTES, WORLD_SIZE - 1);
-
-    double* haloBuf = nullptr; // never successfully allocated -- deviceCount is 0
-
-    for (int rank = 0; rank < WORLD_SIZE; ++rank) {
-        printf("rank %d:\n", rank);
-
-        // Send this rank's TOPMOST interior row up, to fill the rank
-        // ABOVE's bottom halo -- only if a rank above genuinely exists.
-        // The trap this guards against: calling cudaMemcpyPeer with a
-        // destination device of -1 for rank 0, which is not a missing
-        // peer, it is the physical edge of the domain.
-        if (rank > 0) {
-            cudaError_t eUp = cudaMemcpyPeer(haloBuf, rank - 1, haloBuf, rank, ROW_BYTES);
-            printf("  send top row    -> rank %d (fills rank %d's bottom halo): %s (code %d)\n",
-                   rank - 1, rank - 1, cudaGetErrorString(eUp), (int)eUp);
-        } else {
-            printf("  top edge is the domain boundary -- fixed value, no transfer\n");
+    int count = 0;
+    CUDA(cudaGetDeviceCount(&count));
+    if (count < 2) { printf("BLOCKED: requires 2 GPUs; found %d.\n", count); return 2; }
+    const int world = std::min(count, 4);
+    const size_t row_bytes = COLS * sizeof(double), bytes = (ROWS + 2) * row_bytes;
+    std::vector<double*> grids(world, nullptr);
+    for (int rank = 0; rank < world; ++rank) {
+        CUDA(cudaSetDevice(rank));
+        CUDA(cudaMalloc(&grids[rank], bytes));
+    }
+    for (int iteration = 0; iteration < 3; ++iteration) {
+        // Poison every internal halo each generation, and vary all interior data.
+        for (int rank = 0; rank < world; ++rank) {
+            std::vector<double> input((ROWS + 2) * COLS, POISON);
+            for (int row = 1; row <= ROWS; ++row)
+                for (int col = 0; col < COLS; ++col) input[row * COLS + col] = value(iteration, rank, row, col);
+            if (rank == 0) std::fill(input.begin(), input.begin() + COLS, EDGE);
+            if (rank == world - 1) std::fill(input.end() - COLS, input.end(), EDGE);
+            CUDA(cudaSetDevice(rank));
+            CUDA(cudaMemcpy(grids[rank], input.data(), bytes, cudaMemcpyHostToDevice));
         }
-
-        // Send this rank's BOTTOMMOST interior row down, to fill the
-        // rank BELOW's top halo -- only if a rank below genuinely
-        // exists.
-        if (rank < WORLD_SIZE - 1) {
-            cudaError_t eDown = cudaMemcpyPeer(haloBuf, rank + 1, haloBuf, rank, ROW_BYTES);
-            printf("  send bottom row -> rank %d (fills rank %d's top halo):    %s (code %d)\n",
-                   rank + 1, rank + 1, cudaGetErrorString(eDown), (int)eDown);
-        } else {
-            printf("  bottom edge is the domain boundary -- fixed value, no transfer\n");
+        for (int rank = 0; rank < world; ++rank) {
+            CUDA(cudaSetDevice(rank));
+            if (rank > 0) CUDA(cudaMemcpyPeer(grids[rank-1] + (ROWS+1)*COLS, rank-1,
+                                            grids[rank] + COLS, rank, row_bytes));
+            if (rank + 1 < world) CUDA(cudaMemcpyPeer(grids[rank+1], rank+1,
+                                                     grids[rank] + ROWS*COLS, rank, row_bytes));
+        }
+        // One host controls all phase submissions: wait-all before validation.
+        for (int rank = 0; rank < world; ++rank) {
+            CUDA(cudaSetDevice(rank));
+            CUDA(cudaDeviceSynchronize());
+        }
+        for (int rank = 0; rank < world; ++rank) {
+            std::vector<double> output((ROWS + 2) * COLS);
+            CUDA(cudaSetDevice(rank));
+            CUDA(cudaMemcpy(output.data(), grids[rank], bytes, cudaMemcpyDeviceToHost));
+            for (int row = 0; row < ROWS + 2; ++row) for (int col = 0; col < COLS; ++col) {
+                double expected = row == 0 ? (rank == 0 ? EDGE : value(iteration, rank-1, ROWS, col))
+                    : row == ROWS+1 ? (rank == world-1 ? EDGE : value(iteration, rank+1, 1, col))
+                    : value(iteration, rank, row, col);
+                if (output[row*COLS+col] != expected) {
+                    fprintf(stderr, "FAIL: generation %d rank %d row %d col %d got %.9g expected %.9g\n",
+                            iteration, rank, row, col, output[row*COLS+col], expected);
+                    return 1;
+                }
+            }
         }
     }
-
-    printf("\nEvery cudaMemcpyPeer() call above reports the same honest "
-           "cudaErrorNoDevice this book's every real device-touching call "
-           "has reported since Chapter 3 -- these are real transfer "
-           "attempts, on a real API, guarded by real boundary checks, not "
-           "illustrative pseudocode. Section 16.3 checks what these "
-           "exchanges are actually FOR: whether a domain-decomposed "
-           "stencil update, refreshed by exchanges like these every "
-           "iteration, computes the exact same thing a single, unsplit "
-           "domain would.\n");
-
+    for (int rank = 0; rank < world; ++rank) {
+        CUDA(cudaSetDevice(rank));
+        CUDA(cudaFree(grids[rank]));
+    }
+    printf("PASS: %d GPUs, 3 halo generations; all interior/halo/boundary values verified.\n", world);
+    printf("Scope: halo transport and boundary preservation, not a stencil-kernel benchmark.\n");
     return 0;
 }
 ```
 
-Genuinely compiled with a real `nvcc` and genuinely run. Locked output, deterministic across repeated runs:
+<!-- execution:start:a100:46_halo_exchange.cu -->
+> **Current execution — 2026-11-17-a100: Numerical/transport validation (recorded scope).** UTC (program start): `2026-11-18T00:02:40.503380+00:00`. Source SHA-256: `b42cfd48dd942f176fdaa604f43a16dce4d5d1cf9c5dc59c320e0c4b9a72e1bb`.
+
+[Exact tested source](../validation/2026-11-17-a100/46_halo_exchange/46_halo_exchange.cu) · [Compiler log](../validation/2026-11-17-a100/46_halo_exchange/compile.log) · [Execution log](../validation/2026-11-17-a100/46_halo_exchange/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+nvcc -std=c++17 -O2 -arch=sm_80 46_halo_exchange.cu -o ./example
+./example
+```
+
+<details markdown="1"><summary>Captured current-source output</summary>
+
+```text
+PASS: 4 GPUs, 3 halo generations; all interior/halo/boundary values verified.
+Scope: halo transport and boundary preservation, not a stencil-kernel benchmark.
+```
+
+</details>
+<!-- execution:end:a100:46_halo_exchange.cu -->
+
+
+<!-- execution:start:h100:46_halo_exchange.cu -->
+> **Current execution — 2026-11-17-h100: Numerical/transport validation (recorded scope).** UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`. Source SHA-256: `b42cfd48dd942f176fdaa604f43a16dce4d5d1cf9c5dc59c320e0c4b9a72e1bb`.
+
+[Exact tested source](../validation/2026-11-17-h100/46_halo_exchange/46_halo_exchange.cu) · [Compiler log](../validation/2026-11-17-h100/46_halo_exchange/compile.log) · [Execution log](../validation/2026-11-17-h100/46_halo_exchange/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+nvcc -std=c++17 -O2 -arch=sm_90 46_halo_exchange.cu -o ./example
+./example
+```
+
+<details markdown="1"><summary>Captured current-source output</summary>
+
+```text
+PASS: 2 GPUs, 3 halo generations; all interior/halo/boundary values verified.
+Scope: halo transport and boundary preservation, not a stencil-kernel benchmark.
+```
+
+</details>
+<!-- execution:end:h100:46_halo_exchange.cu -->
+
+
+**Historical authoring transcript (earlier diagnostic source).** The current listing uses real per-device allocations, nonuniform payloads, an independent readback oracle and checked failure exits. The current source was compiled and executed in the dated H100 suite; use the linked record for its numerical, API-probe or other-execution scope.
+
+The [2026-11-17 H100 execution record](../validation-h100.md) covers two GPUs connected by local NV18. It distinguishes numerical checks, API probes and other executions; a successful exit alone does not establish GPU algorithm correctness.
+
+<details markdown="1"><summary>Historical authoring output — superseded by the current execution above</summary>
 
 ```
 cudaGetDeviceCount(): 0 device(s).
@@ -328,7 +472,9 @@ rank 3:
 Every cudaMemcpyPeer() call above reports the same honest cudaErrorNoDevice this book's every real device-touching call has reported since Chapter 3 -- these are real transfer attempts, on a real API, guarded by real boundary checks, not illustrative pseudocode. Section 16.3 checks what these exchanges are actually FOR: whether a domain-decomposed stencil update, refreshed by exchanges like these every iteration, computes the exact same thing a single, unsplit domain would.
 ```
 
-Every rank in the middle of the decomposition makes exactly two calls per iteration -- one up, one send down -- and every rank at either edge of the physical domain makes exactly one, skipping the side that borders a fixed boundary condition rather than a device. Six real `cudaMemcpyPeer()` calls happen across the whole 4-rank decomposition per iteration (rank 0 sends down, rank 1 sends up and down, rank 2 sends up and down, rank 3 sends up), each honestly reporting the same `cudaErrorNoDevice` (code 100) this book has reported since Chapter 3. That count -- not `WORLD_SIZE * (WORLD_SIZE - 1)`, which is what an all-to-all pattern like Chapter 10's would need, and not a fixed number independent of `WORLD_SIZE`, which is what a root-based broadcast would need -- is itself evidence that this pattern is genuinely different: it grows with the number of *shared boundaries* (`WORLD_SIZE - 1` of them, each exchanged in both directions), not with the total number of device pairs.
+</details>
+
+For a linear decomposition with P ranks, exchanging both directions across each of P−1 internal boundaries requires 2(P−1) directed transfers per iteration. The current File 46 checks actual halo values on two H100 GPUs. The four-rank illustration is a modeled schedule, not a claim that four physical GPUs were tested.
 
 !!! warning "[COMMON TRAP] Treating halo exchange like Chapter 9's ring, wraparound included"
     Chapter 9's ring all-reduce deliberately wraps around: device `N-1` exchanges with device `0` as if they were adjacent, because for summing a value that every device needs, it doesn't matter which device is "first" or "last" -- the ring is a communication topology chosen for the algorithm, not a reflection of physical adjacency. A row-strip domain decomposition's two end ranks are not adjacent in that sense; they are the literal top and bottom edges of a physical domain, and connecting them the way a ring would means telling the simulation that the space wraps around -- which is only correct if the problem being modeled is genuinely periodic (an actual torus-shaped domain, for instance). For the plate-with-a-hot-edge problem this chapter builds, wrapping rank 0's halo to rank 3 would silently feed the plate's hot top edge into its cold bottom edge's neighbor calculation, corrupting the result while producing no error at all -- exactly the kind of silent, plausible-looking wrong answer this book has tried to avoid throughout.
@@ -451,15 +597,17 @@ std::vector<double> decomposedRun() {
     std::vector<std::vector<double>> nextLocal = local;
     auto at = [&](std::vector<double>& g, int i, int j) -> double& { return g[i * C + j]; };
 
-    // Fixed boundary conditions set once. Order matters at the four
-    // corner cells, where a row boundary and a column boundary
-    // overlap: the reference above sets row boundaries first, then
-    // column boundaries, so column boundary values win at the
-    // corners. Matching that exact order here is required for Part
-    // A's exact `==` check to pass -- setting them in the opposite
-    // order is a real, easy-to-make bug (it was the first version of
-    // this file's own bug: corners silently ended up on the wrong
-    // boundary value).
+    // Fixed boundary conditions set once: left/right columns on every
+    // rank's own rows, and the domain's physical top/bottom edges on
+    // rank 0's/rank (WORLD_SIZE-1)'s outer halo row.
+    // Order matters at the four corner cells, where a row boundary and
+    // a column boundary overlap: the reference below sets row
+    // boundaries first, then column boundaries, so column boundary
+    // values win at the corners. Matching that exact order here is
+    // required for Part A's exact `==` check to pass -- setting them
+    // in the opposite order is a real, easy-to-make bug (it was the
+    // first version of this file's own bug: corners silently ended up
+    // on the wrong boundary value).
     for (int r = 0; r < WORLD_SIZE; ++r) {
         for (int j = 0; j < C; ++j) {
             if (r == 0) at(local[r], 0, j) = TOP_BOUNDARY;                       // domain's top edge
@@ -606,7 +754,103 @@ int main() {
 }
 ```
 
+<!-- execution:start:a100:47_stencil_decomposition_simulation.cpp -->
+> **Current execution — 2026-11-17-a100: Host program/model (exit-only).** UTC (program start): `2026-11-18T00:02:45.998006+00:00`. Source SHA-256: `a0d34ac294fecc35f366126991089e39149573b79054af11f5318894e08f9885`.
+
+[Exact tested source](../validation/2026-11-17-a100/47_stencil_decomposition_simulation/47_stencil_decomposition_simulation.cpp) · [Compiler log](../validation/2026-11-17-a100/47_stencil_decomposition_simulation/compile.log) · [Execution log](../validation/2026-11-17-a100/47_stencil_decomposition_simulation/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+g++ -std=c++17 -O2 47_stencil_decomposition_simulation.cpp -o ./example
+./example
+```
+
+<details markdown="1"><summary>Captured current-source output</summary>
+
+```text
+Part A: domain-decomposed vs. unsplit Jacobi stencil, 30 iterations, 16 x 8 interior grid, 4-way row-strip decomposition (4 rows/rank).
+
+Sample interior cell values (row, col are 1-indexed into the 16 x 8 interior):
+  (row  1, col 4): unsplit = 75.112944216675984   decomposed = 75.112944216675984   bit-identical
+  (row  4, col 4): unsplit = 23.531589206336115   decomposed = 23.531589206336115   bit-identical
+  (row  8, col 4): unsplit = 2.6290237654413451   decomposed = 2.6290237654413451   bit-identical
+  (row 12, col 4): unsplit = 0.121397771948485   decomposed = 0.121397771948485   bit-identical
+  (row 16, col 4): unsplit = 0.0017304024518540947   decomposed = 0.0017304024518540947   bit-identical
+
+0 of 180 total grid cells (including fixed boundary cells) mismatched between the unsplit reference and the 4-way domain-decomposed run: PASS (bit-identical)
+
+This is Chapter 13's own structural argument, showing up again in a completely different setting: a stencil update reads a FIXED set of neighbor values and applies the SAME arithmetic regardless of which device happens to store each operand. Splitting the grid into row-strips only relocates WHERE each cell's data lives; halo exchange delivers the exact same bit pattern a neighboring cell would have held in an unsplit array. No operation's order changes, and -- unlike Chapter 14's row-parallel combine, which really does sum partial results in a different order -- no reduction happens here at all, so exact `==` is a valid check, not merely a convenient one.
+
+Part B: data moved per iteration -- halo exchange vs. giving every rank the whole domain every iteration.
+
+  this chapter's own grid: 16 x 8 interior grid, 4-way decomposition
+    halo exchange (Section 16.2):        48 elements/iteration
+    full-domain replication every iter:  512 elements/iteration
+    halo exchange moves 10.7x less data
+
+  a more realistic grid: 1024 x 1024 interior grid, 8-way decomposition
+    halo exchange (Section 16.2):        14336 elements/iteration
+    full-domain replication every iter:  8388608 elements/iteration
+    halo exchange moves 585.1x less data
+
+Halo-exchange traffic scales with each rank's BOUNDARY -- its perimeter, GRID_COLS elements per shared edge -- while full-domain replication scales with the entire domain's VOLUME, every rank re-receiving every cell every iteration. This is exactly the "surface/volume behavior" William Gropp's own halo-exchange lecture names as the reason domain decomposition communicates only what changed at a boundary, not the whole state.
+```
+
+</details>
+<!-- execution:end:a100:47_stencil_decomposition_simulation.cpp -->
+
+
+<!-- execution:start:h100:47_stencil_decomposition_simulation.cpp -->
+> **Current execution — 2026-11-17-h100: Host program/model (exit-only).** UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`. Source SHA-256: `a0d34ac294fecc35f366126991089e39149573b79054af11f5318894e08f9885`.
+
+[Exact tested source](../validation/2026-11-17-h100/47_stencil_decomposition_simulation/47_stencil_decomposition_simulation.cpp) · [Compiler log](../validation/2026-11-17-h100/47_stencil_decomposition_simulation/compile.log) · [Execution log](../validation/2026-11-17-h100/47_stencil_decomposition_simulation/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+g++ -std=c++17 -O2 47_stencil_decomposition_simulation.cpp -o ./example
+./example
+```
+
+<details markdown="1"><summary>Captured current-source output</summary>
+
+```text
+Part A: domain-decomposed vs. unsplit Jacobi stencil, 30 iterations, 16 x 8 interior grid, 4-way row-strip decomposition (4 rows/rank).
+
+Sample interior cell values (row, col are 1-indexed into the 16 x 8 interior):
+  (row  1, col 4): unsplit = 75.112944216675984   decomposed = 75.112944216675984   bit-identical
+  (row  4, col 4): unsplit = 23.531589206336115   decomposed = 23.531589206336115   bit-identical
+  (row  8, col 4): unsplit = 2.6290237654413451   decomposed = 2.6290237654413451   bit-identical
+  (row 12, col 4): unsplit = 0.121397771948485   decomposed = 0.121397771948485   bit-identical
+  (row 16, col 4): unsplit = 0.0017304024518540947   decomposed = 0.0017304024518540947   bit-identical
+
+0 of 180 total grid cells (including fixed boundary cells) mismatched between the unsplit reference and the 4-way domain-decomposed run: PASS (bit-identical)
+
+This is Chapter 13's own structural argument, showing up again in a completely different setting: a stencil update reads a FIXED set of neighbor values and applies the SAME arithmetic regardless of which device happens to store each operand. Splitting the grid into row-strips only relocates WHERE each cell's data lives; halo exchange delivers the exact same bit pattern a neighboring cell would have held in an unsplit array. No operation's order changes, and -- unlike Chapter 14's row-parallel combine, which really does sum partial results in a different order -- no reduction happens here at all, so exact `==` is a valid check, not merely a convenient one.
+
+Part B: data moved per iteration -- halo exchange vs. giving every rank the whole domain every iteration.
+
+  this chapter's own grid: 16 x 8 interior grid, 4-way decomposition
+    halo exchange (Section 16.2):        48 elements/iteration
+    full-domain replication every iter:  512 elements/iteration
+    halo exchange moves 10.7x less data
+
+  a more realistic grid: 1024 x 1024 interior grid, 8-way decomposition
+    halo exchange (Section 16.2):        14336 elements/iteration
+    full-domain replication every iter:  8388608 elements/iteration
+    halo exchange moves 585.1x less data
+
+Halo-exchange traffic scales with each rank's BOUNDARY -- its perimeter, GRID_COLS elements per shared edge -- while full-domain replication scales with the entire domain's VOLUME, every rank re-receiving every cell every iteration. This is exactly the "surface/volume behavior" William Gropp's own halo-exchange lecture names as the reason domain decomposition communicates only what changed at a boundary, not the whole state.
+```
+
+</details>
+<!-- execution:end:h100:47_stencil_decomposition_simulation.cpp -->
+
+
 Genuinely compiled with `g++ -ffp-contract=off` (see Chapter 14's toolchain finding) and genuinely run, re-verified identical on both this book's real toolchains. Locked output, deterministic across repeated runs:
+
+<details markdown="1"><summary>Historical authoring output — superseded by the current execution above</summary>
 
 ```
 Part A: domain-decomposed vs. unsplit Jacobi stencil, 30 iterations, 16 x 8 interior grid, 4-way row-strip decomposition (4 rows/rank).
@@ -636,6 +880,8 @@ Part B: data moved per iteration -- halo exchange vs. giving every rank the whol
 
 Halo-exchange traffic scales with each rank's BOUNDARY -- its perimeter, GRID_COLS elements per shared edge -- while full-domain replication scales with the entire domain's VOLUME, every rank re-receiving every cell every iteration. This is exactly the "surface/volume behavior" William Gropp's own halo-exchange lecture names as the reason domain decomposition communicates only what changed at a boundary, not the whole state.
 ```
+
+</details>
 
 Every one of the 180 cells in the reassembled grid -- interior points and fixed boundary cells alike -- matches the unsplit reference exactly, to the last bit, after 30 real Jacobi iterations. That result didn't come free: getting it required setting the four corner cells' boundary conditions in the *same order* in both code paths, since a cell where a row boundary and a column boundary overlap depends on which one was written last. That's not a floating-point subtlety like Chapter 14's FMA-contraction finding -- it's a plain logic-ordering bug, and it's exactly the kind of thing domain decomposition code has to get right at every one of a real grid's edges and corners, not just its interior. Part B's count answers the cost question directly: for this chapter's own small grid, halo exchange moves roughly 11 times less data per iteration than replicating the whole domain to every device would; at a more realistic 1024x1024 grid split 8 ways, that gap widens to nearly 600 times less. The reason is structural, not incidental -- a rank's halo is proportional to the *length of its shared boundary* with a neighbor, while full replication is proportional to the *entire domain's area*. Every additional row a grid has costs a halo exchange nothing at all, as long as the number of columns stays fixed; it costs full replication one more full row, on every device, every iteration.
 

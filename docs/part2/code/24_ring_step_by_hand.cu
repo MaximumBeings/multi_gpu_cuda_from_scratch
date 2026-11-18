@@ -1,47 +1,29 @@
-// Chapter 9: Ring All-Reduce -- The Algorithm Behind Every Multi-GPU
-// Training Job
 // 24_ring_step_by_hand.cu
-//
-// ONE ring step: every device, symmetrically, sends its current chunk
-// to its ring-neighbor (i+1)%N. Unlike Section 9.1's reduce/broadcast
-// loops, there is no root here -- every device runs the identical
-// operation. Each buffer is allocated with its own device made
-// current first (Chapter 3's rule), so srcPtr genuinely lives on
-// device i and dstPtr on device next. Genuinely compiled with a real
-// nvcc and genuinely run.
+// Checked teaching implementation; serial host scheduling favors clarity, not speed.
 #include <cstdio>
+#include <vector>
+#include <algorithm>
 #include <cuda_runtime.h>
-
+#define CUDA(call) do { cudaError_t status = (call); if (status != cudaSuccess) { \
+ fprintf(stderr,"%s: %s\n",#call,cudaGetErrorString(status)); \
+ return status==cudaErrorNoDevice || status==cudaErrorInsufficientDriver ? 2 : 1; } } while(0)
+static int pattern(int rank, int i) { return rank*1000+i*3+i%7; }
 int main() {
-    int deviceCount = 0;
-    cudaGetDeviceCount(&deviceCount);
-    printf("cudaGetDeviceCount(): %d device(s).\n", deviceCount);
-
-    const size_t CHUNK_BYTES = sizeof(int);
-
-    int stepTransfers = 0;
-    for (int i = 0; i < deviceCount; ++i) {
-        int next = (i + 1) % deviceCount;
-        void* srcPtr = nullptr;
-        void* dstPtr = nullptr;
-        cudaSetDevice(i);     // sender's chunk lives on device i
-        cudaError_t eAllocSrc = cudaMalloc(&srcPtr, CHUNK_BYTES);
-        cudaSetDevice(next);  // receiver's slot lives on device next
-        cudaError_t eAllocDst = cudaMalloc(&dstPtr, CHUNK_BYTES);
-        cudaError_t eCopy = cudaMemcpyPeer(dstPtr, next, srcPtr, i, CHUNK_BYTES);
-        printf("Ring step, cudaMemcpyPeer(dst=dev%d, src=dev%d): %s (code %d)\n",
-               next, i, cudaGetErrorString(eCopy), (int)eCopy);
-        if (eCopy == cudaSuccess) ++stepTransfers;
-        if (eAllocDst == cudaSuccess) cudaFree(dstPtr);  // next is current
-        cudaSetDevice(i);
-        if (eAllocSrc == cudaSuccess) cudaFree(srcPtr);
-    }
-
-    printf("\n%d of %d device(s) completed this ring step. On real hardware,\n"
-           "every device performs exactly one cudaMemcpyPeer of exactly one\n"
-           "chunk per step -- the same amount of work, every step, no matter\n"
-           "how many devices are in the ring, and no device singled out.\n",
-           stepTransfers, deviceCount);
-
-    return 0;
+ int count=0; CUDA(cudaGetDeviceCount(&count));
+ if(count<2){printf("BLOCKED: requires 2 GPUs; found %d.\n",count);return 2;}
+ const int world=std::min(count,4), CHUNK=33;
+ const int n=CHUNK, out_n=CHUNK;
+ const size_t bytes=n*sizeof(int), out_bytes=out_n*sizeof(int);
+ std::vector<int*> send(world,nullptr),receive(world,nullptr);
+ for(int rank=0;rank<world;++rank){
+  CUDA(cudaSetDevice(rank));CUDA(cudaMalloc(&send[rank],bytes));CUDA(cudaMalloc(&receive[rank],out_bytes));
+  std::vector<int> input(n);for(int i=0;i<n;++i)input[i]=pattern(rank,i);
+  CUDA(cudaMemcpy(send[rank],input.data(),bytes,cudaMemcpyHostToDevice));CUDA(cudaMemset(receive[rank],0xff,out_bytes));
+ }
+ for(int src=0;src<world;++src){int dst=(src+1)%world;CUDA(cudaSetDevice(dst));CUDA(cudaMemcpyPeer(receive[dst],dst,send[src],src,bytes));}
+ for(int rank=0;rank<world;++rank){CUDA(cudaSetDevice(rank));CUDA(cudaDeviceSynchronize());}
+ for(int rank=0;rank<world;++rank){std::vector<int> output(out_n);CUDA(cudaSetDevice(rank));CUDA(cudaMemcpy(output.data(),receive[rank],out_bytes,cudaMemcpyDeviceToHost));for(int i=0;i<out_n;++i){int expected=pattern((rank+world-1)%world,i);if(output[i]!=expected){fprintf(stderr,"FAIL rank %d output[%d]: %d expected %d\n",rank,i,output[i],expected);return 1;}}}
+ for(int rank=0;rank<world;++rank){CUDA(cudaSetDevice(rank));CUDA(cudaFree(send[rank]));CUDA(cudaFree(receive[rank]));}
+ printf("PASS: one ring step (distinct send/receive storage) on %d GPUs, all nonuniform output values checked.\n",world);
+ return 0;
 }

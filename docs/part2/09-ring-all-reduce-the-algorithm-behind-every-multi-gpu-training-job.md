@@ -1,5 +1,15 @@
 # Chapter 9: Ring All-Reduce: The Algorithm Behind Every Multi-GPU Training Job
 
+<!-- execution:provenance -->
+!!! info "Execution provenance"
+
+    Current execution blocks identify the tested source hash, hardware dataset, commands and captured output. References elsewhere on this page to a device-less environment describe the original authoring context. Historical output is superseded by the current record. Displayed output omits the runner command header and trims trailing line whitespace; raw logs remain exact. A host simulation or API validation has its stated scope; neither alone establishes a numerical multi-GPU workload or measured performance.
+
+
+<!-- mgpu:opener:start -->
+[![Chapter 9: Ring All-Reduce: The Algorithm Behind Every Multi-GPU Training Job](../images/chapter-openers/09.svg)](../images/chapter-openers/09.svg)
+<!-- mgpu:opener:end -->
+
 **What you will understand by the end of this chapter:**
 
 - Why all-reduce -- every device ending up with the *same* combined result, not just one root -- is a genuinely different goal from Chapter 8's reduce, and why the simplest way to get there (chain Chapter 8's two collectives together) concentrates all the real work on a single central hub.
@@ -46,6 +56,10 @@ RING (this chapter):
 
 ## 9.1 The Naive Baseline: Reduce-to-Root, Then Broadcast
 
+<!-- mgpu:figure-1:start -->
+[![The baseline concentrates communication](../images/technical/ch09/1-hub.svg)](../images/technical/ch09/1-hub.svg)
+<!-- mgpu:figure-1:end -->
+
 ### Intuition
 
 The most direct way to make every device hold the same combined result is to not invent anything new at all: run Chapter 8's reduce to get the correct sum onto one root device, then run Chapter 8's broadcast to send that root's result to everyone else. This is completely correct -- every device really does end up with the right answer -- and it's the natural first thing to reach for. Its cost is concentrated in one central hub per phase: something has to receive everyone's data during the reduce phase, and then the root has to turn around and send the result to everyone else during the broadcast phase. In the textbook version of this star, the root device is the hub for both phases. In this section's by-hand code, which has no device kernel to sum on-GPU, the reduce phase's hub is actually the *host*: every device -- the root included -- copies its full buffer down to host memory, the host sums them, and writes the one result back up to the root, which then broadcasts it. Either way, every other device only ever sends once and receives once.
@@ -55,96 +69,89 @@ The most direct way to make every device hold the same combined result is to not
 The code below is literally Section 8.2's reduce loop followed by Section 8.1's broadcast loop, with one connecting step in between: the host-computed sum has to be written back onto the root device before it can be broadcast from there, since the accumulation itself happened on the host, not on any device. Nothing about either loop changes from Chapter 8 (including Chapter 3's rule of calling `cudaSetDevice()` before each device's own allocation) -- what's new here is only that they're run back-to-back, on the same buffer, which is exactly what turns "a reduce" and "a broadcast" into "an all-reduce." Be precise about the data path this produces: `N` device-to-host copies converge on the host, one host-to-device copy goes to the root, and `N-1` peer copies leave the root. The real bottleneck of the reduce phase is the host (and its PCIe link), not the root device.
 
 ```cpp
-// Chapter 9: Ring All-Reduce -- The Algorithm Behind Every Multi-GPU
-// Training Job
 // 23_naive_allreduce.cu
-//
-// The naive baseline: reduce every device's buffer to a host
-// accumulator (Chapter 8, Section 8.2), write the result back onto
-// the root device, then broadcast it out to every other device
-// (Chapter 8, Section 8.1). Note the actual data path: the reduce
-// phase funnels EVERY device's buffer (the root's included) through
-// the HOST, and only the broadcast phase is centered on the root
-// device. cudaSetDevice() is called before every per-device
-// operation (Chapter 3's rule). Genuinely compiled with a real nvcc
-// and genuinely run.
+// Checked teaching implementation; serial host scheduling favors clarity, not speed.
 #include <cstdio>
+#include <vector>
+#include <algorithm>
 #include <cuda_runtime.h>
-
+#define CUDA(call) do { cudaError_t status = (call); if (status != cudaSuccess) { \
+ fprintf(stderr,"%s: %s\n",#call,cudaGetErrorString(status)); \
+ return status==cudaErrorNoDevice || status==cudaErrorInsufficientDriver ? 2 : 1; } } while(0)
+static int pattern(int rank, int i) { return rank*1000+i*3+i%7; }
 int main() {
-    int deviceCount = 0;
-    cudaGetDeviceCount(&deviceCount);
-    printf("cudaGetDeviceCount(): %d device(s).\n", deviceCount);
-
-    const int ROOT = 0;
-    const size_t N_INTS = 4;
-    const size_t BYTES = N_INTS * sizeof(int);
-
-    // Phase 1: reduce every device's buffer to a host accumulator,
-    // exactly like Chapter 8, Section 8.2. The hub of this phase is
-    // the host: it receives one full buffer from every device.
-    long long accumulator[N_INTS] = {0, 0, 0, 0};
-    int hostStaging[N_INTS];
-    int devicesReduced = 0;
-    for (int src = 0; src < deviceCount; ++src) {
-        void* devPtr = nullptr;
-        cudaSetDevice(src);  // every per-device call below targets src
-        cudaError_t eAlloc = cudaMalloc(&devPtr, BYTES);
-        cudaError_t eCopy = cudaMemcpy(hostStaging, devPtr, BYTES, cudaMemcpyDeviceToHost);
-        printf("Reduce phase, cudaMemcpy(device %d -> host): %s (code %d)\n",
-               src, cudaGetErrorString(eCopy), (int)eCopy);
-        if (eCopy == cudaSuccess) {
-            for (size_t i = 0; i < N_INTS; ++i) accumulator[i] += hostStaging[i];
-            ++devicesReduced;
-        }
-        if (eAlloc == cudaSuccess) cudaFree(devPtr);
-    }
-
-    // Phase 2: write the reduced result back onto the root device, then
-    // broadcast it to every other device -- exactly like Chapter 8,
-    // Section 8.1. Only after this phase does every device hold the
-    // SAME reduced value; this two-phase, hub-centered round trip
-    // (host hub for the reduce, root hub for the broadcast) is the
-    // "naive" all-reduce this chapter improves on.
-    int hostResult[N_INTS];
-    for (size_t i = 0; i < N_INTS; ++i) hostResult[i] = (int)accumulator[i];
-
-    void* rootPtr = nullptr;
-    cudaSetDevice(ROOT);  // the result buffer lives on the root
-    cudaError_t eAllocRoot = cudaMalloc(&rootPtr, BYTES);
-    cudaError_t eWriteRoot = cudaMemcpy(rootPtr, hostResult, BYTES, cudaMemcpyHostToDevice);
-    printf("Broadcast phase, cudaMemcpy(host result -> root device): %s (code %d)\n",
-           cudaGetErrorString(eWriteRoot), (int)eWriteRoot);
-
-    int broadcastCount = 0;
-    for (int dst = 0; dst < deviceCount; ++dst) {
-        if (dst == ROOT) continue;
-        void* dstPtr = nullptr;
-        cudaSetDevice(dst);  // allocate dst's buffer ON device dst
-        cudaError_t eAllocDst = cudaMalloc(&dstPtr, BYTES);
-        cudaError_t eCopy = cudaMemcpyPeer(dstPtr, dst, rootPtr, ROOT, BYTES);
-        printf("Broadcast phase, cudaMemcpyPeer(dst=dev%d, src=root): %s (code %d)\n",
-               dst, cudaGetErrorString(eCopy), (int)eCopy);
-        if (eCopy == cudaSuccess) ++broadcastCount;
-        if (eAllocDst == cudaSuccess) cudaFree(dstPtr);
-    }
-
-    printf("\nReduced %d device(s) through the host, then broadcast reached\n"
-           "%d non-root device(s). Each phase of this all-reduce funnels\n"
-           "everything through ONE hub: the HOST receives every device's\n"
-           "full buffer during the reduce phase, and the ROOT device sends a\n"
-           "full buffer to every other device during the broadcast phase --\n"
-           "while every other device only ever sends once and receives once.\n"
-           "Section 9.3 puts counted numbers on this star-shaped imbalance.\n",
-           devicesReduced, broadcastCount);
-
-    cudaSetDevice(ROOT);  // free the root's buffer with the root current
-    if (eAllocRoot == cudaSuccess) cudaFree(rootPtr);
-    return 0;
+ int count=0; CUDA(cudaGetDeviceCount(&count));
+ if(count<2){printf("BLOCKED: requires 2 GPUs; found %d.\n",count);return 2;}
+ const int world=std::min(count,4), CHUNK=33;
+ const int n=257, out_n=257;
+ const size_t bytes=n*sizeof(int), out_bytes=out_n*sizeof(int);
+ std::vector<int*> send(world,nullptr),receive(world,nullptr);
+ for(int rank=0;rank<world;++rank){
+  CUDA(cudaSetDevice(rank));CUDA(cudaMalloc(&send[rank],bytes));CUDA(cudaMalloc(&receive[rank],out_bytes));
+  std::vector<int> input(n);for(int i=0;i<n;++i)input[i]=pattern(rank,i);
+  CUDA(cudaMemcpy(send[rank],input.data(),bytes,cudaMemcpyHostToDevice));CUDA(cudaMemset(receive[rank],0xff,out_bytes));
+ }
+ std::vector<int> sum(n,0), staging(n);
+ for(int rank=0;rank<world;++rank){CUDA(cudaSetDevice(rank));CUDA(cudaMemcpy(staging.data(),send[rank],bytes,cudaMemcpyDeviceToHost));for(int i=0;i<n;++i)sum[i]+=staging[i];}
+ CUDA(cudaSetDevice(0));CUDA(cudaMemcpy(receive[0],sum.data(),out_bytes,cudaMemcpyHostToDevice));
+ for(int dst=1;dst<world;++dst){CUDA(cudaSetDevice(dst));CUDA(cudaMemcpyPeer(receive[dst],dst,receive[0],0,out_bytes));}
+ for(int rank=0;rank<world;++rank){CUDA(cudaSetDevice(rank));CUDA(cudaDeviceSynchronize());}
+ for(int rank=0;rank<world;++rank){std::vector<int> output(out_n);CUDA(cudaSetDevice(rank));CUDA(cudaMemcpy(output.data(),receive[rank],out_bytes,cudaMemcpyDeviceToHost));for(int i=0;i<out_n;++i){int expected=1000*world*(world-1)/2+world*(i*3+i%7);if(output[i]!=expected){fprintf(stderr,"FAIL rank %d output[%d]: %d expected %d\n",rank,i,output[i],expected);return 1;}}}
+ for(int rank=0;rank<world;++rank){CUDA(cudaSetDevice(rank));CUDA(cudaFree(send[rank]));CUDA(cudaFree(receive[rank]));}
+ printf("PASS: naive host-reduce plus peer-broadcast all-reduce on %d GPUs, all nonuniform output values checked.\n",world);
+ return 0;
 }
 ```
 
-Genuinely compiled with a real `nvcc` and genuinely run. Locked output, deterministic across repeated runs:
+<!-- execution:start:a100:23_naive_allreduce.cu -->
+> **Current execution — 2026-11-17-a100: Numerical/transport validation (recorded scope).** UTC (program start): `2026-11-18T00:01:20.304652+00:00`. Source SHA-256: `f5544339121bb2e49bb8fd519650811b79ab49543007222374435d50b1c7dbe5`.
+
+[Exact tested source](../validation/2026-11-17-a100/23_naive_allreduce/23_naive_allreduce.cu) · [Compiler log](../validation/2026-11-17-a100/23_naive_allreduce/compile.log) · [Execution log](../validation/2026-11-17-a100/23_naive_allreduce/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+nvcc -std=c++17 -O2 -arch=sm_80 23_naive_allreduce.cu -o ./example
+./example
+```
+
+<details markdown="1"><summary>Captured current-source output</summary>
+
+```text
+PASS: naive host-reduce plus peer-broadcast all-reduce on 4 GPUs, all nonuniform output values checked.
+```
+
+</details>
+<!-- execution:end:a100:23_naive_allreduce.cu -->
+
+
+<!-- execution:start:h100:23_naive_allreduce.cu -->
+> **Current execution — 2026-11-17-h100: Numerical/transport validation (recorded scope).** UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`. Source SHA-256: `f5544339121bb2e49bb8fd519650811b79ab49543007222374435d50b1c7dbe5`.
+
+[Exact tested source](../validation/2026-11-17-h100/23_naive_allreduce/23_naive_allreduce.cu) · [Compiler log](../validation/2026-11-17-h100/23_naive_allreduce/compile.log) · [Execution log](../validation/2026-11-17-h100/23_naive_allreduce/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+nvcc -std=c++17 -O2 -arch=sm_90 23_naive_allreduce.cu -o ./example
+./example
+```
+
+<details markdown="1"><summary>Captured current-source output</summary>
+
+```text
+PASS: naive host-reduce plus peer-broadcast all-reduce on 2 GPUs, all nonuniform output values checked.
+```
+
+</details>
+<!-- execution:end:h100:23_naive_allreduce.cu -->
+
+
+**Current-source scope:** Real device buffers implement naive host-reduce plus peer-broadcast all-reduce; integer reference checks every output. Host-staged reductions deliberately use CPU arithmetic and are not GPU reduction kernels. The current source was compiled and executed in the dated H100 suite; use the linked record for its numerical, API-probe or other-execution scope. The output below is retained from the earlier authoring diagnostic and is not evidence for this replacement source.
+
+The [2026-11-17 H100 execution record](../validation-h100.md) covers two GPUs connected by local NV18. It distinguishes numerical checks, API probes and other executions; a successful exit alone does not establish GPU algorithm correctness.
+
+<details markdown="1"><summary>Historical authoring output — superseded by the current execution above</summary>
 
 ```
 cudaGetDeviceCount(): 0 device(s).
@@ -159,12 +166,20 @@ while every other device only ever sends once and receives once.
 Section 9.3 puts counted numbers on this star-shaped imbalance.
 ```
 
-With zero devices reported, both phases have nothing real to move, and the one call that *can* still be attempted -- writing the host's (all-zero) result onto a root device that doesn't exist -- fails with the same honest `cudaErrorNoDevice` this book has reported since Chapter 1. What this section verifies genuinely is the real, compiled call sequence the naive approach actually uses; Section 9.3 is where this book puts a number on exactly how lopsided that star-shaped workload is.
+</details>
+
+File 23 checks the actual transported data and host-accumulated result on the H100 pair. Its star-shaped schedule remains a teaching baseline; the simulation below explores its workload distribution separately from measured GPU correctness.
+
+The [2026-11-17 H100 execution record](../validation-h100.md) covers two GPUs connected by local NV18. It distinguishes numerical checks, API probes and other executions; a successful exit alone does not establish GPU algorithm correctness.
 
 !!! warning "[COMMON TRAP] Assuming the hub's extra work is 'fine' because it's still just one loop iteration more per call site"
     Reading Section 9.1's code, the root device's special handling looks like a small, local detail -- one extra `cudaMemcpy()` call, one `continue` statement skipping it in the broadcast loop. What that framing hides is that the hubs' *total* data movement scales with the number of devices in the group: the host receives a full buffer from every device during the reduce phase, and the root sends a full buffer to every other device during the broadcast phase. As the device count grows, the hubs' workload grows right along with it, while every other device's workload stays flat at "one buffer sent, one buffer received." Section 9.3 turns this into an exact ratio rather than an intuition.
 
 ## 9.2 Ring All-Reduce: Every Device Talks Only to Its Neighbor
+
+<!-- mgpu:figure-2:start -->
+[![Two phases complete a ring all-reduce](../images/technical/ch09/2-ring.svg)](../images/technical/ch09/2-ring.svg)
+<!-- mgpu:figure-2:end -->
 
 ### Intuition
 
@@ -187,56 +202,86 @@ from Section 9.1's star pattern.
 ```
 
 ```cpp
-// Chapter 9: Ring All-Reduce -- The Algorithm Behind Every Multi-GPU
-// Training Job
 // 24_ring_step_by_hand.cu
-//
-// ONE ring step: every device, symmetrically, sends its current chunk
-// to its ring-neighbor (i+1)%N. Unlike Section 9.1's reduce/broadcast
-// loops, there is no root here -- every device runs the identical
-// operation. Each buffer is allocated with its own device made
-// current first (Chapter 3's rule), so srcPtr genuinely lives on
-// device i and dstPtr on device next. Genuinely compiled with a real
-// nvcc and genuinely run.
+// Checked teaching implementation; serial host scheduling favors clarity, not speed.
 #include <cstdio>
+#include <vector>
+#include <algorithm>
 #include <cuda_runtime.h>
-
+#define CUDA(call) do { cudaError_t status = (call); if (status != cudaSuccess) { \
+ fprintf(stderr,"%s: %s\n",#call,cudaGetErrorString(status)); \
+ return status==cudaErrorNoDevice || status==cudaErrorInsufficientDriver ? 2 : 1; } } while(0)
+static int pattern(int rank, int i) { return rank*1000+i*3+i%7; }
 int main() {
-    int deviceCount = 0;
-    cudaGetDeviceCount(&deviceCount);
-    printf("cudaGetDeviceCount(): %d device(s).\n", deviceCount);
-
-    const size_t CHUNK_BYTES = sizeof(int);
-
-    int stepTransfers = 0;
-    for (int i = 0; i < deviceCount; ++i) {
-        int next = (i + 1) % deviceCount;
-        void* srcPtr = nullptr;
-        void* dstPtr = nullptr;
-        cudaSetDevice(i);     // sender's chunk lives on device i
-        cudaError_t eAllocSrc = cudaMalloc(&srcPtr, CHUNK_BYTES);
-        cudaSetDevice(next);  // receiver's slot lives on device next
-        cudaError_t eAllocDst = cudaMalloc(&dstPtr, CHUNK_BYTES);
-        cudaError_t eCopy = cudaMemcpyPeer(dstPtr, next, srcPtr, i, CHUNK_BYTES);
-        printf("Ring step, cudaMemcpyPeer(dst=dev%d, src=dev%d): %s (code %d)\n",
-               next, i, cudaGetErrorString(eCopy), (int)eCopy);
-        if (eCopy == cudaSuccess) ++stepTransfers;
-        if (eAllocDst == cudaSuccess) cudaFree(dstPtr);  // next is current
-        cudaSetDevice(i);
-        if (eAllocSrc == cudaSuccess) cudaFree(srcPtr);
-    }
-
-    printf("\n%d of %d device(s) completed this ring step. On real hardware,\n"
-           "every device performs exactly one cudaMemcpyPeer of exactly one\n"
-           "chunk per step -- the same amount of work, every step, no matter\n"
-           "how many devices are in the ring, and no device singled out.\n",
-           stepTransfers, deviceCount);
-
-    return 0;
+ int count=0; CUDA(cudaGetDeviceCount(&count));
+ if(count<2){printf("BLOCKED: requires 2 GPUs; found %d.\n",count);return 2;}
+ const int world=std::min(count,4), CHUNK=33;
+ const int n=CHUNK, out_n=CHUNK;
+ const size_t bytes=n*sizeof(int), out_bytes=out_n*sizeof(int);
+ std::vector<int*> send(world,nullptr),receive(world,nullptr);
+ for(int rank=0;rank<world;++rank){
+  CUDA(cudaSetDevice(rank));CUDA(cudaMalloc(&send[rank],bytes));CUDA(cudaMalloc(&receive[rank],out_bytes));
+  std::vector<int> input(n);for(int i=0;i<n;++i)input[i]=pattern(rank,i);
+  CUDA(cudaMemcpy(send[rank],input.data(),bytes,cudaMemcpyHostToDevice));CUDA(cudaMemset(receive[rank],0xff,out_bytes));
+ }
+ for(int src=0;src<world;++src){int dst=(src+1)%world;CUDA(cudaSetDevice(dst));CUDA(cudaMemcpyPeer(receive[dst],dst,send[src],src,bytes));}
+ for(int rank=0;rank<world;++rank){CUDA(cudaSetDevice(rank));CUDA(cudaDeviceSynchronize());}
+ for(int rank=0;rank<world;++rank){std::vector<int> output(out_n);CUDA(cudaSetDevice(rank));CUDA(cudaMemcpy(output.data(),receive[rank],out_bytes,cudaMemcpyDeviceToHost));for(int i=0;i<out_n;++i){int expected=pattern((rank+world-1)%world,i);if(output[i]!=expected){fprintf(stderr,"FAIL rank %d output[%d]: %d expected %d\n",rank,i,output[i],expected);return 1;}}}
+ for(int rank=0;rank<world;++rank){CUDA(cudaSetDevice(rank));CUDA(cudaFree(send[rank]));CUDA(cudaFree(receive[rank]));}
+ printf("PASS: one ring step (distinct send/receive storage) on %d GPUs, all nonuniform output values checked.\n",world);
+ return 0;
 }
 ```
 
-Genuinely compiled with a real `nvcc` and genuinely run. Locked output, deterministic across repeated runs:
+<!-- execution:start:a100:24_ring_step_by_hand.cu -->
+> **Current execution — 2026-11-17-a100: Numerical/transport validation (recorded scope).** UTC (program start): `2026-11-18T00:01:25.748466+00:00`. Source SHA-256: `56eb9fa1d22abfcbb7b7022a76d3cc429e2665fdbc836427dbc6795a92f97137`.
+
+[Exact tested source](../validation/2026-11-17-a100/24_ring_step_by_hand/24_ring_step_by_hand.cu) · [Compiler log](../validation/2026-11-17-a100/24_ring_step_by_hand/compile.log) · [Execution log](../validation/2026-11-17-a100/24_ring_step_by_hand/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+nvcc -std=c++17 -O2 -arch=sm_80 24_ring_step_by_hand.cu -o ./example
+./example
+```
+
+<details markdown="1"><summary>Captured current-source output</summary>
+
+```text
+PASS: one ring step (distinct send/receive storage) on 4 GPUs, all nonuniform output values checked.
+```
+
+</details>
+<!-- execution:end:a100:24_ring_step_by_hand.cu -->
+
+
+<!-- execution:start:h100:24_ring_step_by_hand.cu -->
+> **Current execution — 2026-11-17-h100: Numerical/transport validation (recorded scope).** UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`. Source SHA-256: `56eb9fa1d22abfcbb7b7022a76d3cc429e2665fdbc836427dbc6795a92f97137`.
+
+[Exact tested source](../validation/2026-11-17-h100/24_ring_step_by_hand/24_ring_step_by_hand.cu) · [Compiler log](../validation/2026-11-17-h100/24_ring_step_by_hand/compile.log) · [Execution log](../validation/2026-11-17-h100/24_ring_step_by_hand/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+nvcc -std=c++17 -O2 -arch=sm_90 24_ring_step_by_hand.cu -o ./example
+./example
+```
+
+<details markdown="1"><summary>Captured current-source output</summary>
+
+```text
+PASS: one ring step (distinct send/receive storage) on 2 GPUs, all nonuniform output values checked.
+```
+
+</details>
+<!-- execution:end:h100:24_ring_step_by_hand.cu -->
+
+
+**Current-source scope:** Real device buffers implement one ring step (distinct send/receive storage); integer reference checks every output. Host-staged reductions deliberately use CPU arithmetic and are not GPU reduction kernels. The current source was compiled and executed in the dated H100 suite; use the linked record for its numerical, API-probe or other-execution scope. The output below is retained from the earlier authoring diagnostic and is not evidence for this replacement source.
+
+The [2026-11-17 H100 execution record](../validation-h100.md) covers two GPUs connected by local NV18. It distinguishes numerical checks, API probes and other executions; a successful exit alone does not establish GPU algorithm correctness.
+
+<details markdown="1"><summary>Historical authoring output — superseded by the current execution above</summary>
 
 ```
 cudaGetDeviceCount(): 0 device(s).
@@ -247,16 +292,26 @@ chunk per step -- the same amount of work, every step, no matter
 how many devices are in the ring, and no device singled out.
 ```
 
-With zero devices, the loop has nothing to iterate over, and the honest result is zero completed transfers -- the same correct degradation this book has shown for every loop-over-devices pattern since Chapter 4. What this section verifies is the real, single-step call pattern; Section 9.3 runs that same pattern `2*(N-1)` times in simulation and checks the result it actually produces.
+</details>
+
+File 24 checks the actual ring transport and its resulting data on two H100 GPUs. The simulation below extends the modeled round structure to other rank counts; those simulated cases are not additional hardware executions.
+
+The [2026-11-17 H100 execution record](../validation-h100.md) covers two GPUs connected by local NV18. It distinguishes numerical checks, API probes and other executions; a successful exit alone does not establish GPU algorithm correctness.
 
 !!! warning "[COMMON TRAP] Thinking one ring step alone constitutes a complete all-reduce"
     A single step like the one in this section's code only moves each device's chunk one hop around the ring -- it does not, by itself, sum anything across every device, and it certainly doesn't leave every device with the same final answer. The scatter-reduce phase needs `N-1` such steps just to get one fully-reduced chunk to its "owner" device, and the all-gather phase needs `N-1` more to spread each owner's completed chunk back out to everyone. One step is the algorithm's atomic building block, not the algorithm.
 
 ## 9.3 Verifying Correctness and the Real Data-Volume Advantage
 
+<!-- mgpu:figure-3:start -->
+[![Chunk ownership changes between phases](../images/technical/ch09/3-chunks.svg)](../images/technical/ch09/3-chunks.svg)
+<!-- mgpu:figure-3:end -->
+
 ### Intuition
 
-Neither Section 9.1 nor 9.2 could check a result on this machine -- both, correctly, ran down to zero real devices. The actual claims worth checking are algorithmic: does the two-phase ring pattern really produce the correct sum, identically, at every device? And is the workload really spread evenly, in a way that can be stated as an exact number rather than just "seems more balanced"? Both are checkable with this book's host-side simulation technique, exactly as Chapter 8 already established as Part 2's primary verification tool.
+The preceding GPU examples now have numerical H100 checks. The host simulation adds independent arithmetic and message-pattern checks across modeled rank counts and measures modeled workload distribution; it does not measure physical-link bandwidth or validate scheduling at those other rank counts.
+
+The [2026-11-17 H100 execution record](../validation-h100.md) covers two GPUs connected by local NV18. It distinguishes numerical checks, API probes and other executions; a successful exit alone does not establish GPU algorithm correctness.
 
 ### Background
 
@@ -385,7 +440,71 @@ int main() {
 }
 ```
 
+<!-- execution:start:a100:25_ring_allreduce_simulation.cpp -->
+> **Current execution — 2026-11-17-a100: Host program/model (exit-only).** UTC (program start): `2026-11-18T00:01:31.143084+00:00`. Source SHA-256: `df47049aefe87153ff0b4d0aa159a8109ae12c4d23ef95face231ffc5b5d8de4`.
+
+[Exact tested source](../validation/2026-11-17-a100/25_ring_allreduce_simulation/25_ring_allreduce_simulation.cpp) · [Compiler log](../validation/2026-11-17-a100/25_ring_allreduce_simulation/compile.log) · [Execution log](../validation/2026-11-17-a100/25_ring_allreduce_simulation/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+g++ -std=c++17 -O2 25_ring_allreduce_simulation.cpp -o ./example
+./example
+```
+
+<details markdown="1"><summary>Captured current-source output</summary>
+
+```text
+Independent reference (sum of all 4 devices' chunks): 100 104 108 112
+
+After 6 ring steps (scatter-reduce + all-gather), all 4 devices hold the reference sum: PASS
+
+Data-volume comparison for this exact problem (N=4 devices, 4 elements/device):
+  Naive hub's traffic (closed form): 24 elements (bottleneck)
+  Naive non-hub device's traffic:   8 elements
+  Ring: EVERY device's traffic:      12 elements (counted; all devices equal: PASS)
+  Ring: elements SENT per device:    6 = Gibiansky's 2(N-1)K/N = 6
+  Ratio (naive hub / ring device):   2.00x -- equals N/2 exactly.
+```
+
+</details>
+<!-- execution:end:a100:25_ring_allreduce_simulation.cpp -->
+
+
+<!-- execution:start:h100:25_ring_allreduce_simulation.cpp -->
+> **Current execution — 2026-11-17-h100: Host program/model (exit-only).** UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`. Source SHA-256: `df47049aefe87153ff0b4d0aa159a8109ae12c4d23ef95face231ffc5b5d8de4`.
+
+[Exact tested source](../validation/2026-11-17-h100/25_ring_allreduce_simulation/25_ring_allreduce_simulation.cpp) · [Compiler log](../validation/2026-11-17-h100/25_ring_allreduce_simulation/compile.log) · [Execution log](../validation/2026-11-17-h100/25_ring_allreduce_simulation/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+g++ -std=c++17 -O2 25_ring_allreduce_simulation.cpp -o ./example
+./example
+```
+
+<details markdown="1"><summary>Captured current-source output</summary>
+
+```text
+Independent reference (sum of all 4 devices' chunks): 100 104 108 112
+
+After 6 ring steps (scatter-reduce + all-gather), all 4 devices hold the reference sum: PASS
+
+Data-volume comparison for this exact problem (N=4 devices, 4 elements/device):
+  Naive hub's traffic (closed form): 24 elements (bottleneck)
+  Naive non-hub device's traffic:   8 elements
+  Ring: EVERY device's traffic:      12 elements (counted; all devices equal: PASS)
+  Ring: elements SENT per device:    6 = Gibiansky's 2(N-1)K/N = 6
+  Ratio (naive hub / ring device):   2.00x -- equals N/2 exactly.
+```
+
+</details>
+<!-- execution:end:h100:25_ring_allreduce_simulation.cpp -->
+
+
 Genuinely compiled with `g++` and genuinely run. Locked output, deterministic across repeated runs:
+
+<details markdown="1"><summary>Historical authoring output — superseded by the current execution above</summary>
 
 ```
 Independent reference (sum of all 4 devices' chunks): 100 104 108 112 
@@ -399,6 +518,8 @@ Data-volume comparison for this exact problem (N=4 devices, 4 elements/device):
   Ring: elements SENT per device:    6 = Gibiansky's 2(N-1)K/N = 6
   Ratio (naive hub / ring device):   2.00x -- equals N/2 exactly.
 ```
+
+</details>
 
 The correctness check passes: every device genuinely ends up holding the same, correctly-summed buffer, verified against a reference computed completely independently of the ring algorithm's own logic. The data-volume comparison then makes Section 9.1's Common Trap concrete: for this N=4 example, the naive approach's hub moves exactly 2x as much data as *any single device* in the ring does -- and per Gibiansky's own description, "the total amount of data transferred to and from every GPU is `2(N−1)K/N` which, crucially, is independent of the number of GPUs" (with `K` as the full buffer size). Note the factor of two between that formula and this section's "12 elements": Gibiansky's `2(N−1)K/N` counts each element once per hop -- equivalently, what each GPU *sends* (which equals what it receives) -- giving `2*3*4/4 = 6` here, exactly the counted "SENT per device" line. This section's traffic figure counts *both* directions (sent + received) for every device, naive and ring alike, so it is exactly double Gibiansky's figure; the ratio between the two algorithms is unaffected, because both sides are counted on the same basis. Either way, this means the ring's *per-device* load stays bounded as `N` grows, while the naive approach's hub keeps absorbing more and more of the total traffic as more devices join.
 

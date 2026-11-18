@@ -1,84 +1,26 @@
-// Chapter 12: Data Parallelism -- Replicated Model, Sharded Data
 // 33_replica_setup.cu
-//
-// Data parallelism needs exactly two things set up before any
-// training step can run: every device holding an IDENTICAL copy of
-// the model's initial weights, and every device holding a DIFFERENT
-// slice of the global batch. The first needs a real collective
-// (ncclBroadcast, genuinely called below); the second needs no
-// device at all -- it's just arithmetic over indices, so this
-// section can genuinely succeed even here. Genuinely compiled with
-// a real nvcc, genuinely linked against a real libnccl, and
-// genuinely run.
+// Real 2--4 GPU teaching workload with independent nonuniform reference checks.
 #include <cstdio>
-#include <nccl.h>
+#include <vector>
+#include <algorithm>
+#include <cmath>
 #include <cuda_runtime.h>
+#include <nccl.h>
+#define CUDA(call) do {cudaError_t e=(call);if(e!=cudaSuccess){fprintf(stderr,"%s: %s\n",#call,cudaGetErrorString(e));return e==cudaErrorNoDevice||e==cudaErrorInsufficientDriver?2:1;}}while(0)
+#define NCCL(call) do {ncclResult_t e=(call);if(e!=ncclSuccess){fprintf(stderr,"%s: %s\n",#call,ncclGetErrorString(e));return 1;}}while(0)
 
-// Splits a global batch into `worldSize` equal, non-overlapping
-// shards, and returns device `rank`'s own [start, end) range. This
-// is pure host-side index arithmetic -- no device, no CUDA call, no
-// NCCL call. It genuinely succeeds no matter how many real devices
-// exist, because it doesn't need any.
-void computeShard(int globalBatchSize, int worldSize, int rank, int* start, int* end) {
-    int perDevice = globalBatchSize / worldSize; // assumes an even split
-    *start = rank * perDevice;
-    *end = *start + perDevice;
-}
+int main(){
+ int count=0;CUDA(cudaGetDeviceCount(&count));if(count<2){printf("BLOCKED: requires 2 GPUs; found %d.\n",count);return 2;}
+ const int world=std::min(count,4), n=257;
+ std::vector<ncclComm_t> comm(world,nullptr);NCCL(ncclCommInitAll(comm.data(),world,nullptr));
+ std::vector<cudaStream_t> stream(world,nullptr);std::vector<float*> input(world,nullptr),output(world,nullptr);
+ for(int rank=0;rank<world;++rank){CUDA(cudaSetDevice(rank));CUDA(cudaStreamCreate(&stream[rank]));CUDA(cudaMalloc(&input[rank],n*sizeof(float)));CUDA(cudaMalloc(&output[rank],n*sizeof(float)));std::vector<float> values(n);
+ for(int i=0;i<n;++i)values[i]=rank==0?float((i*17)%251-125)/8.0f:-777.0f;
+ CUDA(cudaMemcpy(input[rank],values.data(),n*sizeof(float),cudaMemcpyHostToDevice));CUDA(cudaMemset(output[rank],0xff,n*sizeof(float)));}
+ NCCL(ncclGroupStart());for(int rank=0;rank<world;++rank){CUDA(cudaSetDevice(rank));NCCL(ncclBroadcast(input[rank],output[rank],n,ncclFloat,0,comm[rank],stream[rank]));}NCCL(ncclGroupEnd());
+ for(int rank=0;rank<world;++rank){CUDA(cudaSetDevice(rank));CUDA(cudaStreamSynchronize(stream[rank]));std::vector<float> got(n);CUDA(cudaMemcpy(got.data(),output[rank],n*sizeof(float),cudaMemcpyDeviceToHost));
+ for(int i=0;i<n;++i){float expected=float((i*17)%251-125)/8.0f;if(!std::isfinite(got[i])||std::fabs(got[i]-expected)>1e-5f){fprintf(stderr,"FAIL rank %d output[%d] got %.9g expected %.9g\n",rank,i,got[i],expected);return 1;}}}
 
-int main() {
-    int deviceCount = 0;
-    cudaGetDeviceCount(&deviceCount);
-    printf("cudaGetDeviceCount(): %d device(s).\n", deviceCount);
-
-    const int GLOBAL_BATCH = 16;
-
-    // This book's own real deviceCount is 0, so there is genuinely
-    // nothing to shard across -- but the shard formula itself runs
-    // and reports that honestly, exactly like every device-count loop
-    // in this book since Chapter 4.
-    printf("\nSharding a global batch of %d across this book's own real "
-           "deviceCount (%d):\n", GLOBAL_BATCH, deviceCount);
-    for (int rank = 0; rank < deviceCount; ++rank) {
-        int start, end;
-        computeShard(GLOBAL_BATCH, deviceCount, rank, &start, &end);
-        printf("  rank %d: samples [%d, %d)\n", rank, start, end);
-    }
-    printf("  (%d device(s) -- nothing to print above.)\n", deviceCount);
-
-    // Hypothetically, if there WERE 4 devices: every rank gets a
-    // different, non-overlapping, equal-sized slice of the same
-    // global batch -- this is genuinely computed, not illustrative
-    // pseudocode.
-    const int HYPOTHETICAL_WORLD_SIZE = 4;
-    printf("\nThe same formula, hypothetically, with world size %d:\n", HYPOTHETICAL_WORLD_SIZE);
-    for (int rank = 0; rank < HYPOTHETICAL_WORLD_SIZE; ++rank) {
-        int start, end;
-        computeShard(GLOBAL_BATCH, HYPOTHETICAL_WORLD_SIZE, rank, &start, &end);
-        printf("  rank %d: samples [%d, %d)\n", rank, start, end);
-    }
-
-    // Splitting the DATA needs no device. Making every replica start
-    // from the SAME weights does -- that's a real collective, exactly
-    // the way Horovod's own hvd.BroadcastGlobalVariablesHook or this
-    // book's own Chapter 8 broadcast enforces it, rather than assuming
-    // it. Attempted here with the real ncclBroadcast() this book
-    // linked against in Chapter 11.
-    // No communicator can be created on this machine (Chapter 11), so
-    // the handle is literally NULL; NCCL rejects it up front
-    // (NCCL_DEBUG=WARN: "Broadcast : comm argument is NULL").
-    ncclComm_t comm = nullptr;
-    cudaStream_t stream = nullptr;
-    float* weights = nullptr;
-    const size_t WEIGHT_COUNT = 4;
-
-    ncclResult_t eBcast = ncclBroadcast(weights, weights, WEIGHT_COUNT, ncclFloat, 0, comm, stream);
-    printf("\nncclBroadcast(root=0, initial weights -> every replica): %s (code %d)\n",
-           ncclGetErrorString(eBcast), (int)eBcast);
-
-    printf("\nSharding data is arithmetic this chapter can genuinely run;\n"
-           "broadcasting weights is a real collective this chapter can only\n"
-           "genuinely attempt. Section 12.2 covers the other real collective\n"
-           "data parallelism needs every step after that: averaging gradients.\n");
-
-    return 0;
+ for(int rank=0;rank<world;++rank){CUDA(cudaSetDevice(rank));CUDA(cudaStreamDestroy(stream[rank]));CUDA(cudaFree(input[rank]));CUDA(cudaFree(output[rank]));NCCL(ncclCommDestroy(comm[rank]));}
+ printf("PASS: replica initial-weight broadcast on %d GPUs; all reference values checked.\n",world);return 0;
 }

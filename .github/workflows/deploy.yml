@@ -1,0 +1,28 @@
+name: Verify and deploy book
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install -r requirements.txt -r tools/illustrations/requirements.txt
+      - name: Verify execution evidence
+        run: python3 tools/verify_execution.py
+      - name: Verify illustrations
+        run: python3 tools/illustrations/validate.py
+      - name: Build documentation strictly
+        run: mkdocs build --strict
+      - name: Check internal links and anchors
+        run: python3 tools/verify_site_links.py
+      - name: Publish verified site
+        run: mkdocs gh-deploy --force

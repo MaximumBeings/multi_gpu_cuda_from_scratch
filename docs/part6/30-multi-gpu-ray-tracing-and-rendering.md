@@ -1,3 +1,15 @@
+# Chapter 30: Multi-GPU Ray Tracing and Rendering
+
+<!-- execution:provenance -->
+!!! info "Execution provenance"
+
+    Current execution blocks identify the tested source hash, hardware dataset, commands and captured output. References elsewhere on this page to a device-less environment describe the original authoring context. Historical output is superseded by the current record. Displayed output omits the runner command header and trims trailing line whitespace; raw logs remain exact. A host simulation or API validation has its stated scope; neither alone establishes a numerical multi-GPU workload or measured performance.
+
+
+<!-- mgpu:opener:start -->
+[![Chapter 30: Multi-GPU Ray Tracing and Rendering](../images/chapter-openers/30.svg)](../images/chapter-openers/30.svg)
+<!-- mgpu:opener:end -->
+
 **What you will understand after reading this chapter:** why rendering an image across multiple GPUs is, in its clean case, a fundamentally different distributed-systems problem from every earlier case study in this book -- one that needs no communication at all during computation -- and exactly two real reasons that clean case breaks down in production: uneven per-tile cost, and scenes too large for one device's memory.
 
 **What you need to know first:** Chapter 16's row-strip domain decomposition (as the contrasting case); Chapter 18's real weighted load-balancing technique; Chapter 24's real capacity/decomposition reasoning for data too large for one device.
@@ -21,6 +33,10 @@ Every prior Part 6 chapter:              This chapter's clean case:
 ```
 
 ## 30.1 The Clean Case: Zero Communication During Rendering
+
+<!-- mgpu:figure-1:start -->
+[![Independent image tiles need no per-ray collective](../images/technical/ch30/1-tiles.svg)](../images/technical/ch30/1-tiles.svg)
+<!-- mgpu:figure-1:end -->
 
 ### Intuition
 
@@ -158,12 +174,102 @@ int main() {
 }
 ```
 
+<!-- execution:start:a100:87_independent_tile_rendering_correctness_simulation.cpp -->
+> **Current execution — 2026-11-17-a100: Host program/model (exit-only).** UTC (program start): `2026-11-18T00:05:27.722258+00:00`. Source SHA-256: `15ac1dd53540576d85be53eaf6d7465d53be23d9caa2eaf0ef39e28c2f5dace8`.
+
+[Exact tested source](../validation/2026-11-17-a100/87_independent_tile_rendering_correctness_simulation/87_independent_tile_rendering_correctness_simulation.cpp) · [Compiler log](../validation/2026-11-17-a100/87_independent_tile_rendering_correctness_simulation/compile.log) · [Execution log](../validation/2026-11-17-a100/87_independent_tile_rendering_correctness_simulation/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+g++ -std=c++17 -O2 87_independent_tile_rendering_correctness_simulation.cpp -o ./example
+./example
+```
+
+<details markdown="1"><summary>Captured current-source output</summary>
+
+```text
+Reference (single-process) 16x12 render, 2-circle scene ('.'=background, '1'/'2'=circle color, nearest hit wins):
+
+................
+................
+.....1..........
+...11111...2....
+...11111.22222..
+..1111111222222.
+...111112222222.
+...1111122222222
+.....1..2222222.
+........2222222.
+.........22222..
+...........2....
+
+P      rows/rank              assembled image EXACT match?
+1      12                     YES
+2      6                      YES
+3      4                      YES
+4      3                      YES
+6      2                      YES
+12     1                      YES
+```
+
+</details>
+<!-- execution:end:a100:87_independent_tile_rendering_correctness_simulation.cpp -->
+
+
+<!-- execution:start:h100:87_independent_tile_rendering_correctness_simulation.cpp -->
+> **Current execution — 2026-11-17-h100: Host program/model (exit-only).** UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`. Source SHA-256: `15ac1dd53540576d85be53eaf6d7465d53be23d9caa2eaf0ef39e28c2f5dace8`.
+
+[Exact tested source](../validation/2026-11-17-h100/87_independent_tile_rendering_correctness_simulation/87_independent_tile_rendering_correctness_simulation.cpp) · [Compiler log](../validation/2026-11-17-h100/87_independent_tile_rendering_correctness_simulation/compile.log) · [Execution log](../validation/2026-11-17-h100/87_independent_tile_rendering_correctness_simulation/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+g++ -std=c++17 -O2 87_independent_tile_rendering_correctness_simulation.cpp -o ./example
+./example
+```
+
+<details markdown="1"><summary>Captured current-source output</summary>
+
+```text
+Reference (single-process) 16x12 render, 2-circle scene ('.'=background, '1'/'2'=circle color, nearest hit wins):
+
+................
+................
+.....1..........
+...11111...2....
+...11111.22222..
+..1111111222222.
+...111112222222.
+...1111122222222
+.....1..2222222.
+........2222222.
+.........22222..
+...........2....
+
+P      rows/rank              assembled image EXACT match?
+1      12                     YES
+2      6                      YES
+3      4                      YES
+4      3                      YES
+6      2                      YES
+12     1                      YES
+```
+
+</details>
+<!-- execution:end:h100:87_independent_tile_rendering_correctness_simulation.cpp -->
+
+
 Compile and run:
+
+<details markdown="1"><summary>Historical authoring output — superseded by the current execution above</summary>
 
 ```
 g++ -O2 87_independent_tile_rendering_correctness_simulation.cpp -o 87_independent_tile_rendering_correctness_simulation
 ./87_independent_tile_rendering_correctness_simulation
 ```
+
+</details>
 
 ```text
 Reference (single-process) 16x12 render, 2-circle scene ('.'=background, '1'/'2'=circle color, nearest hit wins):
@@ -205,6 +311,10 @@ Chapter 16 / Chapter 29's tiles:            This chapter's tiles:
     Section 30.1's own model is deliberately the *simplest possible* rendering case: a fixed scene fully known to every rank in advance, with no cross-pixel dependency whatsoever. Real production renderers routinely violate one or both of those assumptions -- Section 30.2 shows real per-tile cost varying enough to matter, and Section 30.3 shows a real, cited case where the scene itself does not fit on one device. "Rendering has no communication" is true only as long as the working set fits on every device and no pixel's color depends on another pixel's result; neither assumption is guaranteed at production scale.
 
 ## 30.2 A Real Complication: Uneven Per-Tile Cost
+
+<!-- mgpu:figure-2:start -->
+[![Tile cost is not proportional to tile count](../images/technical/ch30/2-weighted.svg)](../images/technical/ch30/2-weighted.svg)
+<!-- mgpu:figure-2:end -->
 
 ### Intuition
 
@@ -330,12 +440,148 @@ int main() {
 }
 ```
 
+<!-- execution:start:a100:88_rendering_comm_and_load_balance_model.cpp -->
+> **Current execution — 2026-11-17-a100: Host program/model (exit-only).** UTC (program start): `2026-11-18T00:05:27.995353+00:00`. Source SHA-256: `439295acd50f70c692cb1aeaaf059da93244ca7b4e2c3cb0c34e713d1f55a332`.
+
+[Exact tested source](../validation/2026-11-17-a100/88_rendering_comm_and_load_balance_model/88_rendering_comm_and_load_balance_model.cpp) · [Compiler log](../validation/2026-11-17-a100/88_rendering_comm_and_load_balance_model/compile.log) · [Execution log](../validation/2026-11-17-a100/88_rendering_comm_and_load_balance_model/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+g++ -std=c++17 -O2 88_rendering_comm_and_load_balance_model.cpp -o ./example
+./example
+```
+
+<details markdown="1"><summary>Captured current-source output</summary>
+
+```text
+--- Total communication volume vs. earlier Part 6 chapters ---
+Every case study since Ch24 pays a communication cost that GROWS with the number of computational steps taken (SUMMA rounds, ring all-reduce steps, TP/PP rounds, all-gather steps, BFS levels, Jacobi iterations). This chapter's own clean case pays a FIXED cost -- the final image size -- exactly ONCE, regardless of how much internal computation (ray bounces, samples per pixel) produced that image.
+
+steps      earlier chapters: cost grows   this chapter: cost stays fixed
+1          16                             192
+10         160                            192
+100        1600                           192
+1000       16000                          192
+
+At 1000 steps, an earlier chapter's own per-step cost model would have paid out 16000 total units of communication; this chapter's own model pays the SAME 192 units whether the render took 1 internal step or 1000 -- because nothing about internal ray computation touches another rank's data.
+
+--- The real complication: uneven per-tile rendering cost ---
+NVIDIA's own real Omniverse RTX renderer documentation: "automatically balances the amount of total path tracing work to be performed by each GPU." This illustrative model (NOT measured data) assigns each of this chapter's own 12 image rows a rendering-cost WEIGHT reflecting how many ray-object tests that row's pixels actually need (rows near the two circles from Section 30.1 cost more than empty background rows):
+
+row    cost weight
+0      1
+1      1
+2      3
+3      5
+4      6
+5      7
+6      6
+7      7
+8      4
+9      3
+10     2
+11     1
+Total weight: 46
+
+Naive EQUAL row split across P=4 ranks (3 rows each):
+rank     rows           total weight
+0        0-2            5
+1        3-5            18
+2        6-8            17
+3        9-11           6
+Slowest rank's weight: 18 out of total 46 -- the render's total time is bounded by this SLOWEST rank, exactly Chapter 18's own real load-imbalance finding, here caused by SCENE CONTENT rather than device capability.
+
+Chapter 18's own real weighted-sharding technique applied to rows instead of devices -- greedily assign rows to whichever rank currently has the SMALLEST accumulated weight:
+rank     rows assigned            total weight
+0        0,4,8,11                 12
+1        1,5,9                    11
+2        2,6,10                   11
+3        3,7                      12
+
+Slowest rank's weight after rebalancing: 12 (down from 18) -- a 1.50x reduction in the slowest rank's load, achieved with UNEQUAL row counts per rank but more balanced TOTAL weight, exactly Chapter 18's own real point that equal SHARE COUNT and equal WORK are different things.
+```
+
+</details>
+<!-- execution:end:a100:88_rendering_comm_and_load_balance_model.cpp -->
+
+
+<!-- execution:start:h100:88_rendering_comm_and_load_balance_model.cpp -->
+> **Current execution — 2026-11-17-h100: Host program/model (exit-only).** UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`. Source SHA-256: `439295acd50f70c692cb1aeaaf059da93244ca7b4e2c3cb0c34e713d1f55a332`.
+
+[Exact tested source](../validation/2026-11-17-h100/88_rendering_comm_and_load_balance_model/88_rendering_comm_and_load_balance_model.cpp) · [Compiler log](../validation/2026-11-17-h100/88_rendering_comm_and_load_balance_model/compile.log) · [Execution log](../validation/2026-11-17-h100/88_rendering_comm_and_load_balance_model/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+g++ -std=c++17 -O2 88_rendering_comm_and_load_balance_model.cpp -o ./example
+./example
+```
+
+<details markdown="1"><summary>Captured current-source output</summary>
+
+```text
+--- Total communication volume vs. earlier Part 6 chapters ---
+Every case study since Ch24 pays a communication cost that GROWS with the number of computational steps taken (SUMMA rounds, ring all-reduce steps, TP/PP rounds, all-gather steps, BFS levels, Jacobi iterations). This chapter's own clean case pays a FIXED cost -- the final image size -- exactly ONCE, regardless of how much internal computation (ray bounces, samples per pixel) produced that image.
+
+steps      earlier chapters: cost grows   this chapter: cost stays fixed
+1          16                             192
+10         160                            192
+100        1600                           192
+1000       16000                          192
+
+At 1000 steps, an earlier chapter's own per-step cost model would have paid out 16000 total units of communication; this chapter's own model pays the SAME 192 units whether the render took 1 internal step or 1000 -- because nothing about internal ray computation touches another rank's data.
+
+--- The real complication: uneven per-tile rendering cost ---
+NVIDIA's own real Omniverse RTX renderer documentation: "automatically balances the amount of total path tracing work to be performed by each GPU." This illustrative model (NOT measured data) assigns each of this chapter's own 12 image rows a rendering-cost WEIGHT reflecting how many ray-object tests that row's pixels actually need (rows near the two circles from Section 30.1 cost more than empty background rows):
+
+row    cost weight
+0      1
+1      1
+2      3
+3      5
+4      6
+5      7
+6      6
+7      7
+8      4
+9      3
+10     2
+11     1
+Total weight: 46
+
+Naive EQUAL row split across P=4 ranks (3 rows each):
+rank     rows           total weight
+0        0-2            5
+1        3-5            18
+2        6-8            17
+3        9-11           6
+Slowest rank's weight: 18 out of total 46 -- the render's total time is bounded by this SLOWEST rank, exactly Chapter 18's own real load-imbalance finding, here caused by SCENE CONTENT rather than device capability.
+
+Chapter 18's own real weighted-sharding technique applied to rows instead of devices -- greedily assign rows to whichever rank currently has the SMALLEST accumulated weight:
+rank     rows assigned            total weight
+0        0,4,8,11                 12
+1        1,5,9                    11
+2        2,6,10                   11
+3        3,7                      12
+
+Slowest rank's weight after rebalancing: 12 (down from 18) -- a 1.50x reduction in the slowest rank's load, achieved with UNEQUAL row counts per rank but more balanced TOTAL weight, exactly Chapter 18's own real point that equal SHARE COUNT and equal WORK are different things.
+```
+
+</details>
+<!-- execution:end:h100:88_rendering_comm_and_load_balance_model.cpp -->
+
+
 Compile and run:
+
+<details markdown="1"><summary>Historical authoring output — superseded by the current execution above</summary>
 
 ```
 g++ -O2 88_rendering_comm_and_load_balance_model.cpp -o 88_rendering_comm_and_load_balance_model
 ./88_rendering_comm_and_load_balance_model
 ```
+
+</details>
 
 ```text
 --- Total communication volume vs. earlier Part 6 chapters ---
@@ -423,7 +669,7 @@ A real, cited SIGGRAPH 2022 paper makes this concrete at genuine production scal
 // strips). This section presents the real complication that reintroduces
 // genuine cross-device communication DURING rendering: a real, cited
 // SIGGRAPH 2022 paper -- Fouladi, Shacklett, Poms, Arora, Ozdemir,
-// Raghavan, Hanrahan, Fatahalian & Winston, "R2E2: Low-Latency Path
+// Raghavan, Hanrahan, Fatahalian & Winstein, "R2E2: Low-Latency Path
 // Tracing of Terabyte-Scale Scenes using Thousands of Cloud CPUs," ACM
 // Transactions on Graphics 41(4), Article 76, 2022 -- describes real
 // production scenes "with up to a terabyte of geometry and texture data
@@ -493,12 +739,88 @@ int main() {
 }
 ```
 
+<!-- execution:start:a100:89_out_of_core_scene_scale_model.cpp -->
+> **Current execution — 2026-11-17-a100: Host program/model (exit-only).** UTC (program start): `2026-11-18T00:05:28.266372+00:00`. Source SHA-256: `12580a6e363dab5a75f52da9206f2a89a9ee722e3cee9e195c7a0ad7b72c813b`.
+
+[Exact tested source](../validation/2026-11-17-a100/89_out_of_core_scene_scale_model/89_out_of_core_scene_scale_model.cpp) · [Compiler log](../validation/2026-11-17-a100/89_out_of_core_scene_scale_model/compile.log) · [Execution log](../validation/2026-11-17-a100/89_out_of_core_scene_scale_model/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+g++ -std=c++17 -O2 89_out_of_core_scene_scale_model.cpp -o ./example
+./example
+```
+
+<details markdown="1"><summary>Captured current-source output</summary>
+
+```text
+--- R2E2's own real scale problem ---
+Real cited fact: "scenes with up to a terabyte of geometry and texture data (where as little as 1/250th of the scene can fit on any one node)" -- Fouladi et al., SIGGRAPH 2022.
+
+total scene size         per-node capacity    nodes needed (this chapter's own model)
+100 GB (illustrative)    0.40                 250
+500 GB (illustrative)    2.00                 250
+1024 GB = 1 TB (R2E2 cited) 4.10                 250
+
+At R2E2's own real terabyte scale, roughly 250 nodes are needed just to HOLD the scene data -- this is now a genuine data DECOMPOSITION problem, structurally the same kind of problem Chapter 24 solved for a matrix too large for one device's memory, not the zero-communication case Section 30.1 built.
+
+--- Why this reintroduces communication DURING rendering ---
+Section 30.1's own simulation worked because every pixel's ray test needed ONLY the fixed scene description and that pixel's own coordinates -- and the whole scene fit in that simulation's own memory. Once the scene itself is partitioned across nodes (because no single node can hold it), a ray that would need to test against geometry owned by ANOTHER node must either fetch that geometry or forward the ray's own state to the node that owns it -- a real per-ray communication requirement Section 30.1's clean model never had to pay.
+
+--- Real payoff, cited ---
+R2E2's own real reported results against a single-machine in-memory baseline (pbrt-treelet): "R2E2 is 3.5-7.8x faster than pbrt-treelet's single-machine in-memory path tracer," with scene loading itself "4.9x (Moana-XL) and 2.9x (Terrace) faster." The real headline finding: "R2E2 completes the entire path tracing job before pbrt-treelet begins tracing a single ray" for most of their tested configurations -- because the single-machine baseline cannot even START until the whole scene has been paged in from disk, while R2E2's own distributed approach never needs the whole scene on any one node at all.
+```
+
+</details>
+<!-- execution:end:a100:89_out_of_core_scene_scale_model.cpp -->
+
+
+<!-- execution:start:h100:89_out_of_core_scene_scale_model.cpp -->
+> **Current execution — 2026-11-17-h100: Host program/model (exit-only).** UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`. Source SHA-256: `12580a6e363dab5a75f52da9206f2a89a9ee722e3cee9e195c7a0ad7b72c813b`.
+
+[Exact tested source](../validation/2026-11-17-h100/89_out_of_core_scene_scale_model/89_out_of_core_scene_scale_model.cpp) · [Compiler log](../validation/2026-11-17-h100/89_out_of_core_scene_scale_model/compile.log) · [Execution log](../validation/2026-11-17-h100/89_out_of_core_scene_scale_model/run.log). Compile exit: `0`; run exit: `0`.
+
+Commands below use local source/binary names; raw logs retain host paths. Execute in a scratch directory containing the downloaded source.
+
+```bash
+g++ -std=c++17 -O2 89_out_of_core_scene_scale_model.cpp -o ./example
+./example
+```
+
+<details markdown="1"><summary>Captured current-source output</summary>
+
+```text
+--- R2E2's own real scale problem ---
+Real cited fact: "scenes with up to a terabyte of geometry and texture data (where as little as 1/250th of the scene can fit on any one node)" -- Fouladi et al., SIGGRAPH 2022.
+
+total scene size         per-node capacity    nodes needed (this chapter's own model)
+100 GB (illustrative)    0.40                 250
+500 GB (illustrative)    2.00                 250
+1024 GB = 1 TB (R2E2 cited) 4.10                 250
+
+At R2E2's own real terabyte scale, roughly 250 nodes are needed just to HOLD the scene data -- this is now a genuine data DECOMPOSITION problem, structurally the same kind of problem Chapter 24 solved for a matrix too large for one device's memory, not the zero-communication case Section 30.1 built.
+
+--- Why this reintroduces communication DURING rendering ---
+Section 30.1's own simulation worked because every pixel's ray test needed ONLY the fixed scene description and that pixel's own coordinates -- and the whole scene fit in that simulation's own memory. Once the scene itself is partitioned across nodes (because no single node can hold it), a ray that would need to test against geometry owned by ANOTHER node must either fetch that geometry or forward the ray's own state to the node that owns it -- a real per-ray communication requirement Section 30.1's clean model never had to pay.
+
+--- Real payoff, cited ---
+R2E2's own real reported results against a single-machine in-memory baseline (pbrt-treelet): "R2E2 is 3.5-7.8x faster than pbrt-treelet's single-machine in-memory path tracer," with scene loading itself "4.9x (Moana-XL) and 2.9x (Terrace) faster." The real headline finding: "R2E2 completes the entire path tracing job before pbrt-treelet begins tracing a single ray" for most of their tested configurations -- because the single-machine baseline cannot even START until the whole scene has been paged in from disk, while R2E2's own distributed approach never needs the whole scene on any one node at all.
+```
+
+</details>
+<!-- execution:end:h100:89_out_of_core_scene_scale_model.cpp -->
+
+
 Compile and run:
+
+<details markdown="1"><summary>Historical authoring output — superseded by the current execution above</summary>
 
 ```
 g++ -O2 89_out_of_core_scene_scale_model.cpp -o 89_out_of_core_scene_scale_model
 ./89_out_of_core_scene_scale_model
 ```
+
+</details>
 
 ```text
 --- R2E2's own real scale problem ---
