@@ -1,0 +1,101 @@
+[
+  {
+    "source": "docs/part7/code/96_prefill_vs_decode_cost_model.cpp",
+    "number": 96,
+    "archived_sha256": "2a19ddbfe875f70de98aca323fd86485c15d0714ddac0d0b07ce292c5b487b9c",
+    "current_sha256": "c8c50f0009153ac6179a699d95fd51108e30de5e3ebda36a0a19b16c9bc0cbb7",
+    "page": "docs/part7/33-disaggregated-llm-inference.md",
+    "compile_command": [
+      "/usr/bin/clang++",
+      "-std=c++17",
+      "-O2",
+      "-Wall",
+      "-Wextra",
+      "-Werror",
+      "/Users/oluwaseyiawoga/Documents/Resume_2026/multi_gpu_cuda_from_scratch/docs/part7/code/96_prefill_vs_decode_cost_model.cpp",
+      "-o",
+      "/private/tmp/96_prefill_vs_decode_cost_model-20261119-review"
+    ],
+    "compile": {
+      "started_utc": "2026-11-19T15:11:53.690942+00:00",
+      "finished_utc": "2026-11-19T15:11:53.937585+00:00",
+      "exit_code": 0,
+      "log_sha256": "2fcb381d60551ffe6f30779c822c4b6df121493e9f7dafba9623a3b755e7b2ca"
+    },
+    "run_command": [
+      "/private/tmp/96_prefill_vs_decode_cost_model-20261119-review"
+    ],
+    "run": {
+      "started_utc": "2026-11-19T15:11:53.938160+00:00",
+      "finished_utc": "2026-11-19T15:11:54.136692+00:00",
+      "exit_code": 0,
+      "log_sha256": "14ab2d0c5a8d36181a465cf9f4bf88bb1098b1c3b050dad070c428f546013545"
+    }
+  },
+  {
+    "source": "docs/part7/code/113_distributed_tree_building_sequential_reduction_model.cpp",
+    "number": 113,
+    "archived_sha256": "57d2fd0668f7f24e778257a726ac97281327514f231692fd84b5fcbda86bf6dd",
+    "current_sha256": "18e5e05c417bbf13800cd371a4f27936b95770336011b21791e37b03bbd84479",
+    "page": "docs/part7/38-real-time-fraud-detection-at-payment-scale.md",
+    "compile_command": [
+      "/usr/bin/clang++",
+      "-std=c++17",
+      "-O2",
+      "-Wall",
+      "-Wextra",
+      "-Werror",
+      "/Users/oluwaseyiawoga/Documents/Resume_2026/multi_gpu_cuda_from_scratch/docs/part7/code/113_distributed_tree_building_sequential_reduction_model.cpp",
+      "-o",
+      "/private/tmp/113_distributed_tree_building_sequential_reduction_model-20261119-review"
+    ],
+    "compile": {
+      "started_utc": "2026-11-19T15:11:54.139274+00:00",
+      "finished_utc": "2026-11-19T15:11:54.205374+00:00",
+      "exit_code": 0,
+      "log_sha256": "55c2370c0d0b2b35ba581306aec305bae62ccb6a5f88f22198a5d850fb173426"
+    },
+    "run_command": [
+      "/private/tmp/113_distributed_tree_building_sequential_reduction_model-20261119-review"
+    ],
+    "run": {
+      "started_utc": "2026-11-19T15:11:54.206481+00:00",
+      "finished_utc": "2026-11-19T15:11:54.321540+00:00",
+      "exit_code": 0,
+      "log_sha256": "f406e2845ece28eb3674a994925aab203e3148d1e929fbd7aae891abd9f8c55a"
+    }
+  },
+  {
+    "source": "docs/appendix/code/137_zero_stage_memory_model.cpp",
+    "number": 137,
+    "archived_sha256": "b502e695c6f4cbce805c540c253e71b7aa78992cfbef3558aba2e1aa85f28bf7",
+    "current_sha256": "de11d07097ce18f89496894fabe8074a32c60c2de75b31b33b7c2d8bd15bfcd8",
+    "page": "docs/appendix/f-pytorch-distributed-and-deepspeed-to-cpp-rosetta-stone.md",
+    "compile_command": [
+      "/usr/bin/clang++",
+      "-std=c++17",
+      "-O2",
+      "-Wall",
+      "-Wextra",
+      "-Werror",
+      "/Users/oluwaseyiawoga/Documents/Resume_2026/multi_gpu_cuda_from_scratch/docs/appendix/code/137_zero_stage_memory_model.cpp",
+      "-o",
+      "/private/tmp/137_zero_stage_memory_model-20261119-review"
+    ],
+    "compile": {
+      "started_utc": "2026-11-19T15:11:54.322580+00:00",
+      "finished_utc": "2026-11-19T15:11:54.425476+00:00",
+      "exit_code": 0,
+      "log_sha256": "04d5c7bc7c4e2cb502a5317c20976c28edc91cd0d0c361d4973ded0669ae567b"
+    },
+    "run_command": [
+      "/private/tmp/137_zero_stage_memory_model-20261119-review"
+    ],
+    "run": {
+      "started_utc": "2026-11-19T15:11:54.425775+00:00",
+      "finished_utc": "2026-11-19T15:11:54.554269+00:00",
+      "exit_code": 0,
+      "log_sha256": "8aedbdc3b78f912a3b659a7ea943751ee57568c0540a783d787f3e0ee7dbe6f0"
+    }
+  }
+]

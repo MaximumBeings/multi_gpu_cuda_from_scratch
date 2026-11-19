@@ -1,0 +1,1 @@
+$ /usr/bin/clang++ -std=c++17 -O2 -Wall -Wextra -Werror /Users/oluwaseyiawoga/Documents/Resume_2026/multi_gpu_cuda_from_scratch/docs/part7/code/96_prefill_vs_decode_cost_model.cpp -o /private/tmp/96_prefill_vs_decode_cost_model-20261119-review

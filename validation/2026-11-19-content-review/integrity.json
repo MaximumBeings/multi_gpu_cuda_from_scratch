@@ -1,0 +1,17 @@
+{
+  "dataset": "2026-11-19-content-review",
+  "summary_sha256": "da7ceadc5f6b6cad56e9e5828760cde777f2099b3fa1b07b822d4c01f9fceacf",
+  "files": {
+    "113_distributed_tree_building_sequential_reduction_model/113_distributed_tree_building_sequential_reduction_model.cpp": "18e5e05c417bbf13800cd371a4f27936b95770336011b21791e37b03bbd84479",
+    "113_distributed_tree_building_sequential_reduction_model/compile.log": "55c2370c0d0b2b35ba581306aec305bae62ccb6a5f88f22198a5d850fb173426",
+    "113_distributed_tree_building_sequential_reduction_model/run.log": "f406e2845ece28eb3674a994925aab203e3148d1e929fbd7aae891abd9f8c55a",
+    "137_zero_stage_memory_model/137_zero_stage_memory_model.cpp": "de11d07097ce18f89496894fabe8074a32c60c2de75b31b33b7c2d8bd15bfcd8",
+    "137_zero_stage_memory_model/compile.log": "04d5c7bc7c4e2cb502a5317c20976c28edc91cd0d0c361d4973ded0669ae567b",
+    "137_zero_stage_memory_model/run.log": "8aedbdc3b78f912a3b659a7ea943751ee57568c0540a783d787f3e0ee7dbe6f0",
+    "96_prefill_vs_decode_cost_model/96_prefill_vs_decode_cost_model.cpp": "c8c50f0009153ac6179a699d95fd51108e30de5e3ebda36a0a19b16c9bc0cbb7",
+    "96_prefill_vs_decode_cost_model/compile.log": "2fcb381d60551ffe6f30779c822c4b6df121493e9f7dafba9623a3b755e7b2ca",
+    "96_prefill_vs_decode_cost_model/run.log": "14ab2d0c5a8d36181a465cf9f4bf88bb1098b1c3b050dad070c428f546013545",
+    "results.json": "07dfc6e564569c60832db68c9b37ce6ea6fc7e31ec8b36b28f4f19f1f587d1c8",
+    "system.json": "ce40a8850b192af3a18dc9849fba55c3e1cc3976829a058e4a140de04b748a0b"
+  }
+}

@@ -69,6 +69,9 @@ static int producer(int fd) {
     CUDA(cudaMalloc(&memory, COUNT * sizeof(float)));
 
     CUDA(cudaMemcpy(memory, input.data(), COUNT * sizeof(float), cudaMemcpyHostToDevice));
+    // A pageable H2D cudaMemcpy may return before device DMA completes.
+    // Complete the producer write before publishing a handle to another context.
+    CUDA(cudaDeviceSynchronize());
     Handles handles{};
     CUDA(cudaIpcGetMemHandle(&handles.memory, memory));
 
