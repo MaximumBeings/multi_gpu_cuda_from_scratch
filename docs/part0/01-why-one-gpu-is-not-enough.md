@@ -7,8 +7,8 @@
 **What you will understand by the end of this chapter:**
 
 - Why "not enough" hides two genuinely different failures — running out of memory and running out of time — and why the fix for one is not automatically the fix for the other.
-- How to compute, exactly, how much device memory training a model actually costs, using the real mixed-precision Adam breakdown every production training stack uses.
-- How to compute, exactly, how much total arithmetic training a model costs, using the same compute formula real scaling-law research uses to plan training runs.
+- How to account for persistent training state under a stated mixed-precision Adam storage convention, then budget separately for activations, temporary buffers and runtime allocations.
+- How to calculate a training-compute estimate from the scaling-law approximation C ≈ 6ND and distinguish that estimate from an exact operation count or measured runtime.
 - What a single real CUDA Runtime API call can honestly tell you about the machine you're running on, even before a second device is ever involved.
 
 **What you need to know first:**
@@ -57,7 +57,7 @@ Picture packing a moving truck. There are two completely different ways to fail.
 
 During training, four kinds of data compete for space in a GPU's memory: the model's **parameters**, the **gradients** produced by backpropagation (one value per parameter), the **optimizer state** Adam keeps to smooth out those gradients, and the **activations** kept from the forward pass so backpropagation has something to differentiate. The first three scale purely with parameter count and can be added up exactly. The fourth scales with batch size and sequence length as well, and is workload-dependent rather than a fixed multiple of model size — a real cost, called out here rather than folded into a number that would overstate how precisely it's known.
 
-For parameters, gradients, and optimizer state, the accounting is exact. Rajbhandari et al.'s ZeRO paper (SC'20) gives the standard mixed-precision Adam breakdown: an fp16 copy of the parameters and the gradients (2 bytes/parameter each), plus an fp32 copy of the parameters, the momentum, and the variance Adam tracks for numerical stability (4 bytes/parameter each):
+For the specified parameter, gradient and optimizer representations, the byte accounting is exact; other optimizers, precision conventions or offloading/sharding policies change the budget. Rajbhandari et al.'s ZeRO paper (SC'20) gives the standard mixed-precision Adam breakdown: an fp16 copy of the parameters and the gradients (2 bytes/parameter each), plus an fp32 copy of the parameters, the momentum, and the variance Adam tracks for numerical stability (4 bytes/parameter each):
 
 ```
 2 (fp16 params) + 2 (fp16 grads) + 4 (fp32 params) + 4 (momentum) + 4 (variance)
@@ -240,7 +240,7 @@ Kaplan et al.'s "Scaling Laws for Neural Language Models" (2020) give a compact 
 C ≈ 6 · N · D
 ```
 
-where `N` is the model's (non-embedding) parameter count, `D` is the number of training tokens, and the factor of 6 accounts for one forward pass and the (roughly twice as expensive) backward pass. This is the paper's own stated formula (`C ≈ 6NBS`, with batch size `B` times step count `S` equal to total tokens `D`), and it is a real, exactly-computable quantity once `N` and `D` are fixed — not a rough guess.
+where `N` is the model's (non-embedding) parameter count, `D` is the number of training tokens, and the factor of 6 accounts for one forward pass and the (roughly twice as expensive) backward pass. This is the paper's own stated formula (`C ≈ 6NBS`, with batch size `B` times step count `S` equal to total tokens `D`), and its arithmetic is reproducible once `N` and `D` are fixed. It remains an approximation to training work: attention’s sequence-length-dependent operations, the architecture and activation recomputation can change the actual count.
 
 ```cpp
 // Chapter 1: Why One GPU Is Not Enough

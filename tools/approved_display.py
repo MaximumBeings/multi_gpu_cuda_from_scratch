@@ -363,18 +363,6 @@ DISPLAY_EDITS = {'07_multi_device_loop_pattern.cu': [('    printf("The loop belo
                                        'direct RDMA model, not\n'
                                        '// new timing measurements. The staged path consists '
                                        'of\n')],
- '96_prefill_vs_decode_cost_model.cpp': [('// bandwidth." This file builds a small, '
-                                          'clearly-labeled ILLUSTRATIVE\n'
-                                          '// model of that same contrast (never a measured '
-                                          'benchmark -- this\n'
-                                          '// sandbox has no real GPU to benchmark on), grounded '
-                                          "in Chapter 1's own\n"
-                                          '// arithmetic-intensity framing, and then presents '
-                                          "DistServe's own real\n",
-                                          '// bandwidth." This is an illustrative '
-                                          'arithmetic-intensity model grounded\n'
-                                          "// in Chapter 1. It then presents DistServe's published "
-                                          'measurements -- its\n')],
  'hello_kernel.cu': [('    // deliberately left with an empty body -- this recipe exists to\n'
                       '    // prove nvcc alone can compile and link a .cu file with a real\n'
                       '    // __global__ kernel, not to exercise runtime kernel launch (this\n'

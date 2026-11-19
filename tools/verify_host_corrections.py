@@ -64,8 +64,10 @@ def verify(root=ROOT, current=None, recorded=None):
         if 'Corrected host model — November 18, 2026' not in page or f'../host-model-corrections.md#{row["number"]}' not in page:
             raise ValueError('Host model correction not disclosed beside historical output: '+rel)
         result[rel]=row['current_sha256']
+    from verify_content_corrections import verify as verify_content_corrections
+    result.update(verify_content_corrections(root, current, recorded))
     return result
 
 if __name__=='__main__':
     verify()
-    print('PASS: three exact corrected host models, immutable local compile/run logs, dates and visible corrections.')
+    print('PASS: six exact corrected host models, immutable local compile/run logs, dates and visible corrections.')

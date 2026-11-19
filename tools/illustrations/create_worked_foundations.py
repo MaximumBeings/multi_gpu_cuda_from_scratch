@@ -110,8 +110,8 @@ def chapter(n):
     elif n==7:
         d=Worked(k,'An IPC handle names shared storage; raw pointers do not travel','Exporter and importer are separate processes. One four-int allocation contains 16 bytes. Opaque handles are not drawn as numeric addresses.')
         d.payload('Exporter allocation: element indices 0..3',[7,11,13,17])
-        d.table(['Exporter','Control handoff','Importer'],[['Keep allocation alive','Send opaque memory/event handles','Open handles in supported context'],['Finish producing; record ready','Ready event dependency','Wait; read the same [7,11,13,17]'],['Wait for importer acknowledgement','Use finished','Close imported mapping'],['Free only after all imports close','Lifetime ends','No access after close/free']],[240,224,240])
-        d.note('The importer’s mapped address may differ. Kernel completion, imported mapping lifetime and handle transport are separate responsibilities.')
+        d.table(['Exporter','Control handoff','Importer'],[['Keep allocation alive','Send opaque memory/event handles','Open handles in supported context'],['Enqueue writes; record ready','Notify: record was issued','After notification: wait; read [7,11,13,17]'],['Wait for importer acknowledgement','Use finished','Close imported mapping'],['Free only after all imports close','Lifetime ends','No access after close/free']],[240,224,240])
+        d.note('Record the intended event generation before notifying the importer to enqueue its wait. An unrecorded event does not order the read. Mapping, completion and allocation lifetime are separate responsibilities.')
     elif n==8:
         d=Worked(k,'Broadcast chooses one input; reduce combines them','Four ranks, two int32 elements each. Root is communicator rank 2. All arithmetic here stays inside the int32 range.')
         d.table(['Rank','Input element 0','Input element 1'],[[str(r),str(r+1),str(10*(r+1))] for r in range(4)],[130,287,287])

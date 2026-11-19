@@ -512,7 +512,7 @@ g++ -O2 -ffp-contract=off -o 112_graph_partitioned_neighbor_fetch_correctness_si
 ./112_graph_partitioned_neighbor_fetch_correctness_simulation
 ```
 
-## 38.3 Distributed Tree-Building: Reductions That Cannot Be Overlapped
+## 38.3 Distributed Tree-Building: Parent Dependencies and Histogram Reductions
 
 <!-- mgpu:figure-3:start -->
 [![A tree level depends on a global statistic](../images/technical/ch38/3-tree.svg)](../images/technical/ch38/3-tree.svg)
@@ -520,7 +520,7 @@ g++ -O2 -ffp-contract=off -o 112_graph_partitioned_neighbor_fetch_correctness_si
 
 ### Intuition
 
-Once the GNN has produced its own embeddings, NVIDIA's own real pipeline hands them to XGBoost for the actual classification decision, and real production XGBoost training is itself distributed: "each process holds a shard of the embedding data," and "all GPUs collaborate on each tree (splits are computed across all shards simultaneously)." Picture a group of analysts jointly deciding, one yes-or-no question at a time, how to split a stack of case files into smaller and smaller piles -- every analyst has to see the answer to question one before anyone can even propose question two, because question two only makes sense once everyone agrees which pile they are now looking at. That is exactly why building one tree cannot be sped up by simply throwing more independent reductions at it in parallel: split k+1's own cross-shard reduction cannot even begin until split k's own reduction has finished and told every shard which half of the data it now owns.
+After the GNN produces embeddings, the cited pipeline trains a distributed XGBoost classifier: workers hold data shards and combine statistics needed for globally defined split decisions. Think of analysts sorting case files into a tree of piles. A child pile cannot be defined until its parent's split is chosen, but analysts can work on separate sibling piles together. Histogram preparation, reuse and communication batching can exploit that independence. The dependency is parent-to-descendant, not one universal sequential chain through every split node. The number of nodes alone does not determine the number or schedule of collectives; see [XGBoost's GPU histogram documentation](https://xgboost.readthedocs.io/en/stable/gpu/).
 
 !!! warning "[COMMON TRAP] Assuming a large reduction COUNT always means the same thing"
     A depth-six full binary tree has at most 63 internal split nodes, and 500 such trees have at most 31,500 split nodes. These are structural counts, not a measured number of MPI/NCCL calls. Histogram implementations can batch multiple nodes, cache histograms and derive a sibling by subtraction. Parent splits constrain descendants; independent sibling work can overlap. Successive boosting rounds usually depend on prior predictions, unlike independent date-statistic reductions.
@@ -543,89 +543,39 @@ Once the GNN has produced its own embeddings, NVIDIA's own real pipeline hands t
 File 113 counts potential internal split nodes for an illustrative full binary tree. It does not execute XGBoost or establish one collective per split. Read its captured reduction-count wording as this simplified model assumption; real operation counts depend on grow policy, pruning, histogram reuse, batching and the distributed implementation. See [XGBoost GPU memory/histogram documentation](https://xgboost.readthedocs.io/en/stable/gpu/).
 
 ```cpp
-// Chapter 38: Real-Time Fraud Detection at Payment Scale
-// 113_distributed_tree_building_sequential_reduction_model.cpp
-//
-// NVIDIA's own real Financial Fraud Training documentation describes
-// the SECOND stage of the real hybrid pipeline -- after the GNN's own
-// embeddings are produced, "each process holds a shard of the embedding
-// data," and the model built on top is a real, distributed XGBoost
-// ensemble: "All GPUs collaborate on each tree (splits are computed
-// across all shards simultaneously)." Chapter 36's own File 105 already
-// showed that repeating Chapter 9's own reduction T times, once per
-// independent observation date, costs exactly T times as much -- but
-// those T reductions were mutually INDEPENDENT, each one computable in
-// any order or even overlapped. Real distributed tree-building is not:
-// deciding WHERE to split a tree at depth d+1 requires the RESULT of
-// where it was split at depth d, so each of a tree's own splits must
-// wait for the previous one's own cross-shard reduction to finish
-// before the next can even be computed. XGBoost's own real documented
-// default is "max_depth=6" -- a real, specific, officially cited
-// default this file uses directly, not an invented number. The number
-// of trees in a real production ensemble is not fixed by any XGBoost
-// default, so this file uses a clearly-labeled illustrative production-
-// scale figure (500 trees) for that one input alone. This file computes
-// the total number of real cross-shard reductions a full ensemble
-// requires, and shows the real structural difference from Chapter 36's
-// own T-reductions story: these cannot be issued in parallel with one
-// another, because each one's own input depends on the previous one's
-// own output.
+// Chapter 38: a structural upper bound, not a count of XGBoost collectives.
+// No tree is trained. Independent siblings may overlap; descendants need parent splits.
 #include <cstdio>
-#include <cmath>
-
 int main() {
-    // Real cited XGBoost default (xgboost.readthedocs.io, official
-    // parameter reference): "max_depth" [default=6, type=int32].
-    int realMaxDepth = 6;
-
-    // Illustrative, clearly-labeled production-scale ensemble size --
-    // not an XGBoost default (XGBoost has none), a realistic illustrative
-    // choice for a production fraud-detection ensemble.
-    int illustrativeNumTrees = 500;
-
-    printf("Real cited XGBoost default: max_depth=%d (xgboost.readthedocs.io "
-           "official parameter reference).\n", realMaxDepth);
-    printf("Illustrative production-scale ensemble size (not an XGBoost "
-           "default -- XGBoost has none; chosen here as a realistic "
-           "illustrative figure): %d trees.\n\n", illustrativeNumTrees);
-
-    // A complete binary tree of max_depth levels has 2^0 + 2^1 + ... +
-    // 2^(maxDepth-1) = 2^maxDepth - 1 internal SPLIT nodes -- the
-    // maximum possible for a fully-grown tree at this real cited depth.
-    long long splitsPerTree = (1LL << realMaxDepth) - 1;
-    long long totalSplitsAllTrees = splitsPerTree * (long long)illustrativeNumTrees;
-
-    printf("Splits per tree at max_depth=%d (fully-grown complete binary "
-           "tree, 2^%d - 1): %lld\n", realMaxDepth, realMaxDepth, splitsPerTree);
-    printf("Total splits across all %d trees: %lld\n\n", illustrativeNumTrees,
-           totalSplitsAllTrees);
-
-    printf("Per NVIDIA's own real cited description, EVERY one of those "
-           "splits is itself a real cross-shard reduction (\"all GPUs "
-           "collaborate on each tree\") -- so this ensemble requires "
-           "%lld total real reductions.\n\n", totalSplitsAllTrees);
-
-    printf("Chapter 36's own File 105 found T=360 independent reductions "
-           "for a full XVA exposure profile -- independent because "
-           "date 5's own reduction never needed date 4's own result. "
-           "Here, the story is structurally different: within one tree, "
-           "split k+1 needs to know WHERE split k put its own boundary "
-           "before it can even decide which shard's own data to look at "
-           "next -- a real SEQUENTIAL dependency chain of depth %d per "
-           "tree, %d trees deep. The total reduction COUNT (%lld) is "
-           "large for the same reason Chapter 36's own T was large -- "
-           "an unchanged technique repeated many times -- but unlike "
-           "Chapter 36's own T independent reductions, these %d-deep "
-           "chains cannot be issued concurrently with each other WITHIN "
-           "one tree: each one's own real cross-shard reduction must "
-           "complete before the next split in that same tree can even be "
-           "computed. Only ACROSS different trees (if built independently "
-           "rather than in strict boosting sequence) is there room for "
-           "the kind of overlap Chapter 36's own T dates already had "
-           "throughout.\n", realMaxDepth, illustrativeNumTrees,
-           totalSplitsAllTrees, realMaxDepth);
+    constexpr int depth = 6; // XGBoost max_depth default; not necessarily attained.
+    constexpr int trees = 500; // Illustrative choice, not an API default.
+    constexpr long long splits = (1LL << depth) - 1;
+    constexpr long long total = splits * trees;
+    std::printf("XGBoost max_depth default: %d; illustrative ensemble: %d trees.\n", depth, trees);
+    std::printf("The native xgboost.train API defaults to 10 boosting rounds; this model selects 500 trees.\n");
+    std::printf("Full depth-six binary tree: at most %lld internal split nodes; ensemble: at most %lld.\n", splits, total);
+    std::printf("Node counts do not count MPI/NCCL calls: histograms may be batched, cached or derived by subtraction.\n");
+    std::printf("A root-to-leaf path has at most %d dependent splits. Independent siblings may overlap.\n", depth);
+    std::printf("Ordinary boosting rounds depend on prior predictions; rounds need not equal trees for every objective/configuration.\n");
+    if (splits != 63 || total != 31500) return 1;
+    std::printf("MODEL CHECK PASS: split-node bound and dependency scope; no training/performance claim\n");
     return 0;
 }
+```
+
+<!-- content-review:current:113_distributed_tree_building_sequential_reduction_model.cpp -->
+> **Corrected CPU model — November 19, 2026.** [Fresh local compile/run record](../content-review-2026-11-19.md#113) checks this exact source, SHA-256 `18e5e05c417bbf13800cd371a4f27936b95770336011b21791e37b03bbd84479`. The earlier hardware-host records below preserve the previous model and its output; they do not validate the revised model.
+
+**Current CPU sample output**
+
+```text
+XGBoost max_depth default: 6; illustrative ensemble: 500 trees.
+The native xgboost.train API defaults to 10 boosting rounds; this model selects 500 trees.
+Full depth-six binary tree: at most 63 internal split nodes; ensemble: at most 31500.
+Node counts do not count MPI/NCCL calls: histograms may be batched, cached or derived by subtraction.
+A root-to-leaf path has at most 6 dependent splits. Independent siblings may overlap.
+Ordinary boosting rounds depend on prior predictions; rounds need not equal trees for every objective/configuration.
+MODEL CHECK PASS: split-node bound and dependency scope; no training/performance claim
 ```
 
 <!-- execution:start:h100-rerun:113_distributed_tree_building_sequential_reduction_model.cpp -->
@@ -755,7 +705,7 @@ Chapter 39 turns to real-time healthcare, extending this book's own domain-decom
 3. NVIDIA's own real WholeGraph technique partitions the graph's node feature tensors across all GPUs, with "each GPU own[ing] a shard of node feature tensors" -- Chapter 16's own domain-decomposition idea, applied to a graph's nodes rather than a spatial grid's cells.
 4. It is "demand-driven" because which neighbors must be fetched, and whether that fetch is local or must cross a rank boundary, is decided fresh every training batch by which nodes happen to be randomly sampled as seeds -- unlike Chapter 16's own halo exchange, which trades the exact same fixed set of border cells with the exact same fixed neighbors on every single step, known in advance regardless of what the computation is currently doing.
 5. Because a feature fetch, whether local or remote, is pure RETRIEVAL of a value defined by a pure function of the neighbor's own node id -- it is never recomputed differently depending on which rank asks for it, and it is never combined with another rank's own partial value at fetch time. With no combination step at all, there is no floating-point associativity question for partitioning to disturb.
-6. File 113 uses XGBoost's own real, officially documented default, "max_depth=6" (from xgboost.readthedocs.io's own parameter reference). The 500-tree ensemble size is explicitly labeled illustrative because XGBoost itself has no default number of boosting rounds or trees -- that choice is left to whoever trains the model, so 500 is presented as a realistic illustrative production-scale figure, not something XGBoost itself specifies.
+6. File 113 uses the documented `max_depth=6` default and chooses 500 trees for the illustration. That chosen ensemble size is not an API default. Defaults depend on the interface: the [native Python `xgboost.train` API](https://xgboost.readthedocs.io/en/stable/python/python_api.html#xgboost.train) defaults to ten boosting rounds. Round count and tree count also depend on the objective and booster configuration; the model here assumes one tree per round.
 7. Date-wise statistics can be combined independently once their inputs exist. Within a tree, descendants depend on parent split decisions, but sibling histograms can be prepared together and communication can be batched. Neither split count nor depth alone gives the actual collective schedule.
 8. The model counts up to 31,500 internal split nodes across 500 full depth-six trees. It does not measure the number of cross-shard reductions. Real histogram algorithms can cache, derive and batch node statistics; independent sibling work can overlap, whereas successive boosting rounds normally depend on prior predictions.
 9. Chapter 4 built Universal Virtual Addressing from scratch as a way for GPU peer memory to be addressed as if it were local, without an explicit staged copy. Section 38.2's own real cited MAG240M benchmark article uses that exact same real idea, by its own real name, to let a graph's own node feature tensors be "instantiate[d]... such that it can be directly accessed by all the GPUs" during neighborhood sampling -- the same underlying real capability Chapter 4 introduced, now applied by NVIDIA's own real software to a completely different real workload many chapters later.

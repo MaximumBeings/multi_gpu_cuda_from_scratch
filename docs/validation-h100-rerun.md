@@ -15,7 +15,7 @@ Rows without a per-program timestamp explicitly use their recorded run-batch sta
 
 This dataset covers the captured hardware and single-node configurations. Host-only models validate their own modeled arithmetic, not real network performance. It does not establish multi-node behavior, failure recovery under physical faults, or benchmark throughput. H100 and A100 evidence are published separately. B200 execution is planned; no B200 results are published. A100 execution does not establish B200 compatibility or results.
 
-Three host-only models (98, 110 and 111) have since been corrected and [compiled and executed locally](host-model-corrections.md). The records below preserve the earlier source revisions and their actual outputs.
+Six host-only models have since been corrected and compiled/executed locally ([98, 110 and 111](host-model-corrections.md); [96, 113 and 137](content-review-2026-11-19.md#new-local-cpu-execution-records)). Example 17 has a producer-completion correction awaiting GPU revalidation. The records below preserve the earlier source revisions and their actual outputs.
 
 ## Captured system and supplemental checks
 

@@ -38,7 +38,7 @@
     {
       "page": "part1/07-cuda-inter-process-communication.md",
       "file": "worked/ch07.svg",
-      "sha256": "790bff3cb0c639f59225ee19b6b870bcec75829ee7caa46427795ad0fe712597"
+      "sha256": "44adec07d778d9ecdb24df2aae9adf4cf0aeaab6cb43b6b26ab4d6dc4f317516"
     },
     {
       "page": "part2/08-broadcast-and-reduce-the-first-two-collectives-by-hand.md",

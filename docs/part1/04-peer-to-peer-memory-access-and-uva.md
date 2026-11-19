@@ -373,7 +373,7 @@ Peer access enabled for 2 ordered pair(s) out of 2 device(s) checked. On real mu
 <!-- execution:end:h100:09_peer_access_setup.cu -->
 
 
-The current ordered-pair loop queries the actual H100 pair and enables supported peer routes with checked API results. Access is directional; enabling one direction does not grant the reverse direction. Capability queries establish permission, not achieved bandwidth.
+The current ordered-pair loop queries the actual H100 pair and enables supported peer routes with checked API results. Access is directional; enabling one direction does not grant the reverse direction. Capability queries report support; successful peer-access enabling grants permission. Neither operation measures achieved bandwidth.
 
 The [2026-11-17 H100 execution record](../validation-h100.md) covers two GPUs connected by local NV18. It distinguishes numerical checks, API probes and other executions; a successful exit alone does not establish GPU algorithm correctness.
 

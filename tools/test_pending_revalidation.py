@@ -14,7 +14,10 @@ class PendingTests(unittest.TestCase):
         rows = json.loads((ROOT/'docs/validation/2026-11-17-a100/results.json').read_text())
         recorded = {p['source']: p['sha256'] for p in rows}
         revisions = pending(ROOT, current, recorded)
-        self.assertEqual(len(revisions), 1)
+        self.assertEqual(set(revisions), {
+            "docs/part5/code/58_mpi_cuda_aware_query_and_fallback.cpp",
+            "docs/part1/code/17_ipc_mem_handle.cu",
+        })
         key = next(iter(revisions))
         with tempfile.TemporaryDirectory() as folder:
             bad = Path(folder)/'source.cpp'

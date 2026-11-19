@@ -7,7 +7,7 @@
 **What you will understand by the end of this chapter:**
 
 - How a real `ncclComm_t` communicator relates to the `deviceCount` loops this book has used since Chapter 3, and the two genuinely different ways a real `ncclCommInitAll()` call can honestly fail -- a malformed argument, rejected up front, versus a well-formed request that fails inside CUDA.
-- That five of this book's six hand-built collectives (Chapters 8-10) have a real, one-call NCCL equivalent in the NCCL 2.18.3 this book links against, while all-to-all there is built exactly the way Chapter 10 did: from grouped point-to-point transfers. (Newer NCCL, from 2.28, adds a dedicated `ncclAlltoAll()`.)
+- That five of this book's six hand-built collectives (Chapters 8-10) have a real, one-call NCCL equivalent in the NCCL 2.26.2 this book links against, while all-to-all there is built exactly the way Chapter 10 did: from grouped point-to-point transfers. (Newer NCCL, from 2.28, adds a dedicated `ncclAlltoAll()`.)
 - The one genuine algorithmic gap between what this book built and what NCCL does for real: ring all-reduce's round count grows linearly with the number of devices, and at large enough scale that stops being good enough -- which is exactly why NCCL added a second algorithm.
 
 **What you need to know first:**
@@ -35,7 +35,7 @@ This book's hand-built collectives (Ch8-10)         NCCL's real API (this chapte
   all-to-all:     direct cudaMemcpyPeer all-pairs  -->  ncclSend()/ncclRecv(),
                                                           all-pairs, grouped --
                                                           no dedicated call in
-                                                          2.18.3 (ncclAlltoAll()
+                                                          2.26.2 (ncclAlltoAll()
                                                           arrived in NCCL 2.28)
 ```
 
@@ -205,10 +205,10 @@ The [2026-11-17 H100 execution record](../validation-h100.md) covers two GPUs co
 
 ### Intuition
 
-Chapters 8 through 10 built six collectives by hand, one loop of `cudaMemcpyPeer()` or `cudaMemcpy()` calls at a time. Real NCCL packages five of those six as a single function call each -- the entire loop this book wrote out explicitly, hidden behind one name. The sixth, all-to-all, doesn't get that treatment in the NCCL 2.18.3 this book links against: there it's built from the same kind of point-to-point calls this book used, just NCCL's own `ncclSend()`/`ncclRecv()` instead of `cudaMemcpyPeer()`. That is a version-specific fact, not a permanent one: NCCL 2.28.3's release notes record "Added new host collective APIs: ncclAlltoAll, ncclScatter, and ncclGather," and the current collective-operations documentation includes `ncclAlltoAll`.
+Chapters 8 through 10 built six collectives by hand, one loop of `cudaMemcpyPeer()` or `cudaMemcpy()` calls at a time. Real NCCL packages five of those six as a single function call each -- the entire loop this book wrote out explicitly, hidden behind one name. The sixth, all-to-all, doesn't get that treatment in the NCCL 2.26.2 this book links against: there it's built from the same kind of point-to-point calls this book used, just NCCL's own `ncclSend()`/`ncclRecv()` instead of `cudaMemcpyPeer()`. That is a version-specific fact, not a permanent one: NCCL 2.28.3's release notes record "Added new host collective APIs: ncclAlltoAll, ncclScatter, and ncclGather," and the current collective-operations documentation includes `ncclAlltoAll`.
 
 ```text
-Chapter 8-10's six collectives, and their real NCCL 2.18.3 call:
+Chapter 8-10's six collectives, and their real NCCL 2.26.2 call:
 
   Ch8 8.1   --> ncclBroadcast()          Ch10 10.1 --> ncclAllGather()
   Ch8 8.2   --> ncclReduce()             Ch10 10.2 --> ncclReduceScatter()
@@ -344,8 +344,8 @@ API PROBE PASS: NULL-communicator rejection only, errors=0
 
 The API probe checks the documented rejection of invalid communicator handles. Real All-to-All communication uses matching sends and receives within a group, with every rank participating.
 
-!!! warning "[COMMON TRAP] Assuming the missing all-to-all call (in NCCL 2.18.3) means all-to-all is somehow a second-class operation in NCCL"
-    It would be easy to read "no dedicated call" as "NCCL doesn't really support this." Two things say otherwise. First, the gap is version-specific: NCCL 2.28 added a dedicated `ncclAlltoAll()`, so on a current NCCL the one-call form exists. Second, even in the 2.18.3 this book links against, NCCL's own documentation says otherwise: point-to-point `ncclSend()`/`ncclRecv()` calls "can be fused together with `ncclGroupStart()` and `ncclGroupEnd()` to form more complex communication patterns," and the documentation's own example for exactly this fusion is an all-to-all loop, line for line the same shape as this section's code. All-to-all is fully supported in 2.18.3 -- it's just supported there as a composition of two more primitive calls, the same way this book's own Chapter 10 built it as a composition of `cudaMemcpyPeer()` calls, rather than as one specially-named function.
+!!! warning "[COMMON TRAP] Assuming the missing all-to-all call (in NCCL 2.26.2) means all-to-all is somehow a second-class operation in NCCL"
+    It would be easy to read "no dedicated call" as "NCCL doesn't really support this." Two things say otherwise. First, the gap is version-specific: NCCL 2.28 added a dedicated `ncclAlltoAll()`, so on a current NCCL the one-call form exists. Second, even in the 2.26.2 this book links against, NCCL's own documentation says otherwise: point-to-point `ncclSend()`/`ncclRecv()` calls "can be fused together with `ncclGroupStart()` and `ncclGroupEnd()` to form more complex communication patterns," and the documentation's own example for exactly this fusion is an all-to-all loop, line for line the same shape as this section's code. All-to-all is fully supported in 2.26.2 -- it's just supported there as a composition of two more primitive calls, the same way this book's own Chapter 10 built it as a composition of `cudaMemcpyPeer()` calls, rather than as one specially-named function.
 
 ## 11.3 Ring vs. Tree: The Latency Problem Chapter 9 Never Had to Solve
 
@@ -563,8 +563,8 @@ NCCL supplies the collective semantics built by hand in Chapters 8–10 and choo
 ## Self-Check Questions
 
 1. What does `ncclGetVersion()` need that `ncclCommInitAll()` does, and why is a version query insufficient to establish successful communicator initialization?
-2. Section 11.1 shows two different NCCL error codes across four requests. Explain why `ndev=0` and `ndev=1` (each with a real `comms` array) fail with the *same* code, while a `NULL` `comms` pointer or `ndev=-1` fail with a different one -- and how `NCCL_DEBUG=WARN` lets you tell which argument was at fault.
-3. Match each of this book's six hand-built collectives (Chapters 8-10) to its one real NCCL call name from Section 11.2 -- for the one collective with no single matching call in NCCL 2.18.3, explain what it's built from instead, and what changed in NCCL 2.28.
+2. Current File 30 tests successful communicator construction/destruction for all visible devices and for one device, then deliberately passes a `NULL` communicator-array pointer and a negative device count. Which calls should succeed, which should return `ncclInvalidArgument`, and why does the successful initialization not establish numerical collective correctness?
+3. Match each of this book's six hand-built collectives (Chapters 8-10) to its one real NCCL call name from Section 11.2 -- for the one collective with no single matching call in NCCL 2.26.2, explain what it's built from instead, and what changed in NCCL 2.28.
 4. Section 11.2's all-to-all code wraps `ncclSend()`/`ncclRecv()` in `ncclGroupStart()`/`ncclGroupEnd()`. Per NCCL's own documented ordering guarantee, what's different about two calls inside that group targeting the SAME peer versus two calls targeting DIFFERENT peers?
 5. Quote the specific claim this chapter cites from NVIDIA's NCCL 2.4 announcement explaining why ring all-reduce alone isn't good enough at very large scale.
 6. Using Section 11.3's model, compute the ring-to-tree round-count ratio for N=1024, and explain in your own words why that ratio keeps growing as N grows, using the formulas the code actually computes.
@@ -581,11 +581,11 @@ Part 2 is complete. Part 3 turns to parallelization strategies -- starting with 
 
 The [2026-11-17 H100 execution record](../validation-h100.md) covers two GPUs connected by local NV18. It distinguishes numerical checks, API probes and other executions; a successful exit alone does not establish GPU algorithm correctness.
 
-**2.** Treat valid communicator construction and intentionally invalid pointer/count cases separately. Check return codes and diagnostics for the specific case being tested.
+**2.** With the required runtime and visible devices, both valid initialization cases should succeed and their communicators must be destroyed. The null output-array pointer and negative count are intentionally malformed and should return `ncclInvalidArgument`. These lifecycle checks do not transfer and independently verify collective payloads; numerical checks require initialized buffers, completed operations and reference comparisons.
 
 The [2026-11-17 H100 execution record](../validation-h100.md) covers two GPUs connected by local NV18. It distinguishes numerical checks, API probes and other executions; a successful exit alone does not establish GPU algorithm correctness.
 
-**3.** `ncclBroadcast()` <- Chapter 8, Section 8.1 (broadcast); `ncclReduce()` <- Chapter 8, Section 8.2 (reduce); `ncclAllReduce()` <- Chapter 9 (ring all-reduce); `ncclAllGather()` <- Chapter 10, Section 10.1 (all-gather); `ncclReduceScatter()` <- Chapter 10, Section 10.2 (reduce-scatter). All-to-all (Chapter 10, Section 10.3) has no single matching call in this installed NCCL version (2.18.3) -- it's built the same way this book built it, from repeated point-to-point transfers (`ncclSend()`/`ncclRecv()`) covering every ordered pair, fused into one operation with `ncclGroupStart()`/`ncclGroupEnd()`. NCCL 2.28 added a dedicated `ncclAlltoAll()`, so on a current NCCL it does have a one-call form.
+**3.** `ncclBroadcast()` <- Chapter 8, Section 8.1 (broadcast); `ncclReduce()` <- Chapter 8, Section 8.2 (reduce); `ncclAllReduce()` <- Chapter 9 (ring all-reduce); `ncclAllGather()` <- Chapter 10, Section 10.1 (all-gather); `ncclReduceScatter()` <- Chapter 10, Section 10.2 (reduce-scatter). All-to-all (Chapter 10, Section 10.3) has no single matching call in this installed NCCL version (2.26.2) -- it's built the same way this book built it, from repeated point-to-point transfers (`ncclSend()`/`ncclRecv()`) covering every ordered pair, fused into one operation with `ncclGroupStart()`/`ncclGroupEnd()`. NCCL 2.28 added a dedicated `ncclAlltoAll()`, so on a current NCCL it does have a one-call form.
 
 **4.** Per NCCL's own documented ordering guarantee, point-to-point calls within a group targeting the SAME peer execute in order -- so two sends to the same peer inside one group would still need to be issued in the correct relative order, or that peer would receive them in the wrong sequence. Calls targeting DIFFERENT peers have no such ordering requirement and can progress concurrently -- which is exactly why Section 11.2's all-to-all loop, issuing one send and one receive per peer, can safely fuse all of them into a single group without worrying about cross-peer ordering.
 
@@ -605,5 +605,5 @@ The [2026-11-17 H100 execution record](../validation-h100.md) covers two GPUs co
 - [NCCL User Guide — Communicator API (comms.html)](https://docs.nvidia.com/deeplearning/nccl/user-guide/docs/api/comms.html) -- the exact `ncclGetVersion()`, `ncclCommInitAll()`, and `ncclCommInitRank()` signatures and descriptions, including how rank count and device list determine a communicator clique's size.
 - [NCCL User Guide — Point-to-Point Communication (p2p.html)](https://docs.nvidia.com/deeplearning/nccl/user-guide/docs/usage/p2p.html) -- the documented `ncclSend()`/`ncclRecv()` pairing requirement, the `ncclGroupStart()`/`ncclGroupEnd()` fusion mechanism for building "more complex communication patterns," its own all-to-all code example, and the same-peer-vs-different-peer ordering guarantee.
 - [NCCL User Guide — Collective Operations (collectives.html)](https://docs.nvidia.com/deeplearning/nccl/user-guide/docs/usage/collectives.html) -- the real `ncclBroadcast()`, `ncclReduce()`, `ncclAllReduce()`, `ncclAllGather()`, and `ncclReduceScatter()` definitions matched against this book's own Chapters 8-10, and (in current versions) the dedicated `ncclAlltoAll`.
-- [NCCL Release Notes — NVIDIA](https://docs.nvidia.com/deeplearning/nccl/release-notes/index.html) -- NCCL 2.28.3: "Added new host collective APIs: ncclAlltoAll, ncclScatter, and ncclGather," which dates the end of the no-dedicated-all-to-all situation this chapter describes for 2.18.3.
-- Real `NCCL_DEBUG=WARN` output from the installed NCCL 2.18.3 (`misc/argcheck.cc`: "comms argument is NULL" / "comm argument is NULL"; `init.cc`: "Invalid device count requested" and "Cuda failure 'no CUDA-capable device is detected'") -- the evidence for every failure attribution in Sections 11.1 and 11.2.
+- [NCCL Release Notes — NVIDIA](https://docs.nvidia.com/deeplearning/nccl/release-notes/rel_2-28-3.html) -- NCCL 2.28.3: "Added new host collective APIs: ncclAlltoAll, ncclScatter, and ncclGather," which dates the end of the no-dedicated-all-to-all situation this chapter describes for 2.26.2.
+- [Recorded H100 stack and execution evidence](../validation-h100-rerun.md) -- NCCL 2.26.2 headers, the successful communicator-lifecycle probe and the deliberately invalid-argument probe. The earlier no-device diagnostics describe their historical environment, not a current communicator-initialization failure.

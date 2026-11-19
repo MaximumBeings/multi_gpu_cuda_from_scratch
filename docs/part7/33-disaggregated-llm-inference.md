@@ -61,21 +61,22 @@ Use a schematic request with prompt length S=8 tokens, L=2 layers, two KV heads,
 Picture two very different jobs at a print shop. The first job is a single, huge document that just arrived: the whole thing needs to be typeset at once, and the shop throws every available machine at it in parallel to get it done fast -- that's prefill, reading an entire prompt and computing its representation all in one pass, genuinely compute-bound because there's a lot of arithmetic to do across many tokens simultaneously. The second job is a customer standing at the counter, waiting for one page to be printed, checked, handed over, then asking for the next page, one at a time, forever -- that's decode, producing exactly one new token per step. It sounds like it should be the cheap job. It isn't: to produce that one token, the GPU still has to read the ENTIRE running memory of the conversation so far (the KV cache) from memory, and that memory traffic grows every single step. DistServe's own real paper puts it plainly: decode "incurs a similar level of I/O to the prefill phase, making it constrained by the GPU's memory bandwidth" -- not because decode does a lot of arithmetic, but because it has to move a lot of data to do a little arithmetic.
 
 !!! warning "[COMMON TRAP] Assuming 'one token per step' means decode is cheap"
-    It is tempting to look at prefill (processing hundreds or thousands of tokens) and decode (processing one token) and conclude decode must be the lightweight phase. File 96's own illustrative model shows the opposite mechanism at work: decode's FLOPs per step genuinely stay flat regardless of prompt length, but the BYTES it must move per step (reading the whole KV cache) grow exactly as fast as prefill's own compute does. A system that provisions decode GPUs assuming they're "doing less work" than prefill GPUs, without separately accounting for memory bandwidth, will bottleneck on exactly the resource it didn't plan for.
+    Producing one new token does not mean doing constant work. A single dense projection has approximately `2*d*d` decode FLOPs independent of context length N, but dense attention also computes query-key scores and a weighted value sum over that context. For simple multi-head attention with total head width d, those two operations add approximately `4*N*d` FLOPs, excluding softmax. Reading both BF16 K and V costs approximately `4*N*d` bytes. Model-weight reads and other layer operations are additional costs. File 96 separates these quantities; its projection count must not be interpreted as the entire layer. See [NVIDIA's attention arithmetic-intensity derivation](https://developer.nvidia.com/blog/co-designing-ai-model-attention-for-fast-interactive-long-context-inference/).
 
 ### Background
 
 ```text
-+----------------------------------------------------------+
-| PREFILL: N tokens, all at once                             |
-|   FLOPs  ~ N * d^2   (grows with prompt, parallel work)    |
-|   -> compute-bound                                         |
-+----------------------------------------------------------+
-| DECODE: 1 new token, but reads the WHOLE kv cache           |
-|   FLOPs/step ~ d^2        (flat, independent of N)          |
-|   bytes/step ~ N * d      (grows with N, same as prefill)   |
-|   -> memory-bandwidth-bound                                 |
-+----------------------------------------------------------+
++----------------------------------------------------------------+
+| One d-by-d projection, with multiply-add counted as two FLOPs:    |
+|   prefill N tokens: 2*N*d*d; decode one token: 2*d*d             |
++----------------------------------------------------------------+
+| Additional dense-attention work for one decode token (MHA):      |
+|   QK + probability-times-V: about 4*N*d FLOPs                    |
+|   BF16 K plus V cache reads: about 4*N*d bytes                   |
++----------------------------------------------------------------+
+| These are separate terms, not a complete transformer-layer      |
+| roofline. Batch size, KV-head sharing and weight reads matter.   |
++----------------------------------------------------------------+
 ```
 
 File 96 is an explicitly labeled illustrative arithmetic-intensity model, not a measured GPU benchmark. Its cited DistServe figures are external published measurements, distinct from this book’s own H100 execution results.
@@ -83,64 +84,49 @@ File 96 is an explicitly labeled illustrative arithmetic-intensity model, not a 
 The [2026-11-17 H100 execution record](../validation-h100.md) covers two GPUs connected by local NV18. It distinguishes numerical checks, API probes and other executions; a successful exit alone does not establish GPU algorithm correctness.
 
 ```cpp
-// Chapter 33: Disaggregated LLM Inference
-// 96_prefill_vs_decode_cost_model.cpp
-//
-// Chapter 26 already built multi-GPU LLM inference as a combination of
-// Chapter 14's tensor parallelism and Chapter 15's pipeline parallelism,
-// treating "run the model" as one uniform workload. Zhong et al.'s own
-// real DistServe paper ("DistServe: Disaggregating Prefill and Decoding
-// for Goodput-optimized Large Language Model Serving," arXiv:2401.09670,
-// USENIX OSDI 2024) makes the case that a single LLM inference request
-// is actually TWO very different workloads glued together: "the prefill
-// step deals with a new sequence, often comprising many tokens, and
-// processes these tokens concurrently... the prefill step tends to be
-// computation-bound," while, "in contrast, the decoding phase, despite
-// processing only one new token per step, incurs a similar level of I/O
-// to the prefill phase, making it constrained by the GPU's memory
-// bandwidth." This is an illustrative arithmetic-intensity model grounded
-// in Chapter 1. It then presents DistServe's published measurements -- its
-//
-//
-// cited numbers -- its "goodput" metric and its measured 4.48x/10.2x
-// improvement -- as real data, not something this book derived.
+// Chapter 33: projection and attention costs are separate terms.
+// Arithmetic illustration only: no transformer or GPU benchmark is executed.
 #include <cstdio>
-
+#include <initializer_list>
 int main() {
-    printf("Illustrative model (Chapter 1's arithmetic-intensity framing "
-           "applied to one transformer layer of hidden dimension d):\n");
-    printf("%-12s %-22s %-22s %-18s\n", "Prompt N", "Prefill FLOPs (~N*d^2)",
-           "Decode FLOPs/step (~d^2)", "Decode bytes/step (~N*d)");
-    long long d = 8192;  // illustrative hidden dimension
-    long long promptLens[] = {128, 512, 2048, 8192};
-    for (long long N : promptLens) {
-        long long prefillFlops = 2 * N * d * d;      // scales with N, parallel over tokens
-        long long decodeFlopsPerStep = 2 * d * d;    // ONE new token: independent of N
-        long long decodeBytesPerStep = N * d * 2;     // must still read the whole KV cache (bf16, 2 bytes)
-        printf("%-12lld %-22lld %-22lld %-18lld\n", N, prefillFlops, decodeFlopsPerStep, decodeBytesPerStep);
+    constexpr long long d = 8192;
+    std::printf("Illustrative single-layer MHA terms; multiply-add counts as 2 FLOPs.\n");
+    std::printf("One d-by-d projection: prefill=2*N*d*d; decode=2*d*d.\n");
+    std::printf("Dense decode attention QK+PV=4*N*d FLOPs; BF16 K+V cache=4*N*d bytes.\n");
+    std::printf("N projection_prefill_FLOPs projection_decode_FLOPs attention_decode_FLOPs KV_read_bytes\n");
+    for (long long n : {128LL, 512LL, 2048LL, 8192LL}) {
+        const long long prefill = 2*n*d*d, projection = 2*d*d;
+        const long long attention = 4*n*d, kv = 2*n*d*2;
+        std::printf("%lld %lld %lld %lld %lld\n", n, prefill, projection, attention, kv);
+        if (prefill != n*projection || attention != kv ||
+            (n == 128 && (attention != 4194304 || projection != 134217728))) return 1;
     }
-    printf("\nDecode's own FLOPs per step never grows with the prompt -- exactly "
-           "DistServe's own point that decode is 'despite processing only one new "
-           "token per step.' But decode's own BYTES MOVED per step (reading the "
-           "growing KV cache) grows exactly as fast as prefill's own compute does. "
-           "Arithmetic intensity (FLOPs per byte) therefore FALLS as the prompt "
-           "grows for decode, while prefill's stays roughly constant -- the real "
-           "reason decode is memory-bandwidth-bound and prefill is compute-bound, "
-           "the same distinction Chapter 1's own memory-wall discussion introduced.\n");
-
-    printf("\nDistServe's own real cited numbers (not derived by this book):\n");
-    printf("- Goodput, DistServe's own definition: \"the maximum request rate that "
-           "can be served adhering to the SLO attainment goal (say, 90%%) for each "
-           "GPU provisioned -- higher per-GPU goodput directly translates into "
-           "lower cost per query.\"\n");
-    printf("- Measured result: \"DistServe can serve 4.48x more requests or 10.2x "
-           "tighter SLO, compared to state-of-the-art systems, while staying "
-           "within latency constraints for >90%% of requests.\"\n");
-    printf("- Real KV cache size example cited in the same paper: \"the KV cache "
-           "size of a single 512-token request on OPT-66B is approximately "
-           "1.13GB\" -- Section 33.3 below uses this exact real number.\n");
+    std::printf("Attention work grows with context. These are selected terms, not total layer FLOPs or traffic.\n");
+    std::printf("For GQA/MQA, cache bytes=2*N*Hkv*Dh*element_bytes; attention work still depends on query heads.\n");
+    std::printf("Weights, other projections, MLPs, softmax, batch size and reuse must enter a full roofline model.\n");
+    std::printf("MODEL CHECK PASS: projection/attention separation and both K/V byte counts\n");
     return 0;
 }
+```
+
+<!-- content-review:current:96_prefill_vs_decode_cost_model.cpp -->
+> **Corrected CPU model — November 19, 2026.** [Fresh local compile/run record](../content-review-2026-11-19.md#96) checks this exact source, SHA-256 `c8c50f0009153ac6179a699d95fd51108e30de5e3ebda36a0a19b16c9bc0cbb7`. The earlier hardware-host records below preserve the previous model and its output; they do not validate the revised model.
+
+**Current CPU sample output**
+
+```text
+Illustrative single-layer MHA terms; multiply-add counts as 2 FLOPs.
+One d-by-d projection: prefill=2*N*d*d; decode=2*d*d.
+Dense decode attention QK+PV=4*N*d FLOPs; BF16 K+V cache=4*N*d bytes.
+N projection_prefill_FLOPs projection_decode_FLOPs attention_decode_FLOPs KV_read_bytes
+128 17179869184 134217728 4194304 4194304
+512 68719476736 134217728 16777216 16777216
+2048 274877906944 134217728 67108864 67108864
+8192 1099511627776 134217728 268435456 268435456
+Attention work grows with context. These are selected terms, not total layer FLOPs or traffic.
+For GQA/MQA, cache bytes=2*N*Hkv*Dh*element_bytes; attention work still depends on query heads.
+Weights, other projections, MLPs, softmax, batch size and reuse must enter a full roofline model.
+MODEL CHECK PASS: projection/attention separation and both K/V byte counts
 ```
 
 <!-- execution:start:h100-rerun:96_prefill_vs_decode_cost_model.cpp -->

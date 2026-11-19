@@ -523,8 +523,8 @@ Chapter 13's own File 36 re-derived the real 16-bytes-per-parameter mixed-precis
   +------------------------+----------------------------------------+
 
   stage 3's own 350 GB/replica is still bigger than one H100 SXM's 80 GB
-  -- ZeRO shrinks each replica's own copy; it does not, by itself,
-  replace Chapter 13's own model-parallel shard count.
+  -- this fixed 8-way, GPU-resident state budget does not fit.
+  More sharding ranks, model parallelism or offload change the budget.
 ```
 
 DeepSpeed's own documentation (`deepspeed.readthedocs.io`) describes each stage directly, and the wording draws the line this section's diagram makes visual. Stage 1 (`Pos`): "The optimizer states (e.g., for Adam optimizer, 32-bit weights, and the first, and second moment estimates) are partitioned across the processes, so that each process updates only its partition" -- the same fp32 parameter copy, momentum, and variance that make up 12 of Chapter 13's own 16 bytes per parameter. Stage 2 (`Pos+g`): "The reduced 16-bit gradients for updating the model weights are also partitioned such that each process retains only the gradients corresponding to its portion of the optimizer states" -- adding the 2-byte fp16 gradient to what's sharded. Stage 3 (`Pos+g+p`): "The 16-bit model parameters are partitioned across the processes. ZeRO-3 will automatically collect and partition them during the forward and backward passes" -- the final 2-byte fp16 parameter copy, leaving nothing of the 16 bytes unsharded. Each stage is a real, documented value of `DeepSpeedZeroConfig`'s own `stage` field (1, 2, or 3), set inside a `zero_optimization` configuration dict.
@@ -532,7 +532,7 @@ DeepSpeed's own documentation (`deepspeed.readthedocs.io`) describes each stage 
 Because DeepSpeed's own documentation states exactly which of Chapter 13's 16 bytes each stage shards, the per-GPU memory formula for N-way sharding follows directly: stage 1 leaves the 4 unsharded bytes (fp16 parameter and fp16 gradient) untouched and divides the remaining 12 bytes by N; stage 2 leaves only the 2 unsharded fp16-parameter bytes and divides the remaining 14 by N; stage 3 divides the full 16 bytes by N. Section F.3's own code below checks this derived formula against the ZeRO paper's (Rajbhandari et al., SC'20) own published 7.5-billion-parameter, 64-way worked example -- 31.4 GB, 16.6 GB, and 1.9 GB for the three stages -- before trusting it on Chapter 13's own GPT-3 figure.
 
 !!! warning "[COMMON TRAP] Treating ZeRO as a replacement for Chapter 13's model parallelism"
-    It is tempting to read "ZeRO shards a model's memory across GPUs" and conclude it does the same job as Chapter 13's own layer-splitting model parallelism, just with a different name. It doesn't. Chapter 13 splits the model's actual *computation* -- different devices hold and compute different layers, communicating activations between them. ZeRO shards *storage* of a training state every replica in a data-parallel group would otherwise redundantly hold in full, while every replica still computes the SAME complete forward and backward pass, temporarily reconstructing (via a real all-gather, DeepSpeed's own stage-3 mechanism) whichever shard of parameters or optimizer state the current step actually needs. The two are complementary, not competing: Section F.3's own numbers show ZeRO stage 3 shrinking GPT-3's 2800 GB/replica figure down to 350 GB/replica across an 8-way data-parallel group -- still larger than one H100 SXM's 80 GB, meaning a model at this scale genuinely needs Chapter 13's model parallelism AND ZeRO-style sharding together, exactly the combination real large-model training uses.
+    ZeRO shards persistent training state across a data-parallel group; tensor/pipeline parallelism partitions model computation. They can be combined, but this example does not prove that both are mandatory. With the declared 16-byte state model, eight-way ZeRO-3 leaves `2800/8=350` decimal GB per rank, exceeding an 80 GB device before activations and temporary buffers. Options include a larger sharding group, tensor/pipeline parallelism or supported state offload. For example, 36-way sharding gives about 77.8 GB of persistent state per rank, which still leaves inadequate headroom for many real training configurations. A complete budget must include parameter gathers, live activations, communication buffers, workspaces and allocator overhead. See [DeepSpeed's memory estimators](https://deepspeed.readthedocs.io/en/stable/memory.html) and [ZeRO-3 CPU/NVMe offload documentation](https://deepspeed.readthedocs.io/en/latest/zero3.html). The corrected model below states these alternatives explicitly; earlier execution records preserve its previous closing claim.
 
 ### Code and Verification
 
@@ -540,22 +540,10 @@ Because DeepSpeed's own documentation states exactly which of Chapter 13's 16 by
 // Appendix F: From PyTorch Distributed and DeepSpeed to C++: A Rosetta Stone
 // 137_zero_stage_memory_model.cpp
 //
-// Chapter 13's own File 36 re-derived the real 16-bytes-per-parameter
-// mixed-precision Adam breakdown (Rajbhandari et al., ZeRO, SC'20; 2
-// bytes fp16 param + 2 bytes fp16 grad + 4 bytes fp32 param + 4 bytes
-// fp32 momentum + 4 bytes fp32 variance) and asked how many DEVICES a
-// model's training state must be split across to exist at all. That
-// question is Chapter 13's own model-PARALLEL question -- splitting the
-// model's actual layers, computed by DIFFERENT devices. DeepSpeed's
-// ZeRO asks a genuinely different question: across N DATA-parallel
-// REPLICAS (Chapter 12's own kind of replica, where every device still
-// computes the SAME full model on different data), how much of each
-// replica's OWN copy of the training state can be sharded away, since
-// every replica needs the state only transiently, not permanently. The
-// two mechanisms are not the same thing wearing two names -- this file
-// keeps them honestly separate, and derives ZeRO's own real published
-// stage 1/2/3 formulas directly from Chapter 13's own 16-byte
-// breakdown, replacing none of Chapter 13's numbers.
+// Persistent-state arithmetic for the declared 16-byte mixed-precision Adam model.
+// ZeRO shards state across data-parallel ranks; model parallelism partitions
+// computation. A fixed eight-way state budget does not prove both are mandatory.
+// Activations, parameter gathers, workspaces and allocator overhead are excluded.
 //
 // Compile: g++ -std=c++17 -Wall -Wextra -O2 137_zero_stage_memory_model.cpp -o 137_zero_stage_memory_model
 // Run:     ./137_zero_stage_memory_model
@@ -627,18 +615,68 @@ int main() {
     printf("%-24s %14.1f\n", "ZeRO stage 2 (Pos+g)", stage2(8.0) * psiGPT3 / 1e9);
     printf("%-24s %14.1f\n", "ZeRO stage 3 (Pos+g+p)", stage3(8.0) * psiGPT3 / 1e9);
 
-    printf("\nnote what ZeRO does NOT change: Chapter 13's own model-parallel shard\n");
-    printf("count (35 H100 SXM GPUs, from its own File 36) answers a different question\n");
-    printf("-- how many devices must COOPERATE to hold one copy at all -- and ZeRO stage\n");
-    printf("3's own %.1f GB/replica figure above is still larger than one H100 SXM's 80\n", stage3(8.0) * psiGPT3 / 1e9);
-    printf("GB, meaning GPT-3 at this size needs BOTH: Chapter 13's model parallelism to\n");
-    printf("split the model itself, and ZeRO-style sharding within each data-parallel\n");
-    printf("replica group -- exactly the combination real large-model training uses, and\n");
-    printf("exactly why DeepSpeed documents ZeRO stage 3 alongside, not instead of,\n");
-    printf("model-parallel/tensor-parallel splitting.\n");
-
+    const double eightWayGB = stage3(8.0) * psiGPT3 / 1e9;
+    const double thirtySixWayGB = stage3(36.0) * psiGPT3 / 1e9;
+    printf("\nFixed eight-way ZeRO-3 persistent state: %.1f GB/rank; exceeds an 80 GB device.\n", eightWayGB);
+    printf("Larger ZeRO groups, tensor/pipeline parallelism or supported state offload are alternatives.\n");
+    printf("A 36-way group gives %.3f GB/rank of persistent state only, not a complete memory budget.\n", thirtySixWayGB);
+    printf("Include activations, live parameter gathers, communication buffers and temporary workspaces.\n");
+    if (std::fabs(eightWayGB - 350.0) > 1e-10 ||
+        std::fabs(thirtySixWayGB - 77.77777777777777) > 1e-10) return 1;
+    printf("MODEL CHECK PASS: declared ZeRO state formulas; no universal parallelism requirement\n");
     return 0;
 }
+```
+
+<!-- content-review:current:137_zero_stage_memory_model.cpp -->
+> **Corrected CPU model — November 19, 2026.** [Fresh local compile/run record](../content-review-2026-11-19.md#137) checks this exact source, SHA-256 `de11d07097ce18f89496894fabe8074a32c60c2de75b31b33b7c2d8bd15bfcd8`. The earlier hardware-host records below preserve the previous model and its output; they do not validate the revised model.
+
+**Current CPU sample output**
+
+```text
+=== Section F.3: DeepSpeed's ZeRO stages, derived from Chapter 13's own
+    16-bytes-per-parameter breakdown, not a new formula ===
+
+Chapter 13's own real per-parameter breakdown (mixed-precision Adam):
+  2 bytes fp16 parameter   + 2 bytes fp16 gradient   = 4 bytes  (unsharded by Pos/Pos+g)
+  4 bytes fp32 parameter + 4 bytes momentum + 4 bytes variance = 12 bytes  (DeepSpeed's own "optimizer states")
+  total: 16 bytes/parameter, exactly Chapter 13's own already-locked figure
+
+DeepSpeed's own real documented stages (deepspeed.readthedocs.io, quoted):
+  stage 1 (Pos):     "optimizer states...are partitioned across the
+                      processes, so that each process updates only its
+                      partition"
+  stage 2 (Pos+g):   "the reduced 16-bit gradients...are also partitioned
+                      such that each process retains only the gradients
+                      corresponding to its portion of the optimizer states"
+  stage 3 (Pos+g+p): "the 16-bit model parameters are partitioned across
+                      the processes. ZeRO-3 will automatically collect and
+                      partition them during the forward and backward
+                      passes"
+  config: DeepSpeedZeroConfig's own "stage" field, 1/2/3, inside the
+  zero_optimization dict -- a real, documented config key, not renamed here.
+
+self-consistency check against the ZeRO paper's own published 7.5B-param,
+Nd=64 worked example (31.4 / 16.6 / 1.9 GB):
+  Pos     = 31.4 GB
+  Pos+g   = 16.6 GB
+  Pos+g+p = 1.9 GB
+  matches published figures: PASS
+
+applying the SAME validated formula to Chapter 13's own GPT-3 figure,
+sharded across Chapter 12's own REPLICAS=8 data-parallel group:
+
+configuration                GB/replica
+no ZeRO (Ch13 baseline)          2800.0
+ZeRO stage 1 (Pos)                962.5
+ZeRO stage 2 (Pos+g)              656.2
+ZeRO stage 3 (Pos+g+p)            350.0
+
+Fixed eight-way ZeRO-3 persistent state: 350.0 GB/rank; exceeds an 80 GB device.
+Larger ZeRO groups, tensor/pipeline parallelism or supported state offload are alternatives.
+A 36-way group gives 77.778 GB/rank of persistent state only, not a complete memory budget.
+Include activations, live parameter gathers, communication buffers and temporary workspaces.
+MODEL CHECK PASS: declared ZeRO state formulas; no universal parallelism requirement
 ```
 
 <!-- execution:start:h100-rerun:137_zero_stage_memory_model.cpp -->
@@ -863,7 +901,7 @@ Sections F.1 through F.3 built and verified three of these mappings directly. Th
 | PyTorch Distributed / DeepSpeed concept | What this book actually builds/uses | Where it is built |
 |---|---|---|
 | `torch.distributed`'s five collectives (`broadcast`, `reduce`, `all_reduce`, `all_gather`, `reduce_scatter`) | the matching real NCCL call, hand-built first | Chapters 8-10, Appendix C.1, Section F.1 |
-| `torch.distributed.all_to_all` | fused `ncclSend`/`ncclRecv` inside `ncclGroupStart()`/`ncclGroupEnd()` (no dedicated NCCL call either) | Chapter 10 10.3, Appendix C.1 |
+| `torch.distributed.all_to_all` | grouped `ncclSend`/`ncclRecv` in the tested NCCL 2.26.2 environment; NCCL 2.28.3 added a dedicated `ncclAlltoAll` API ([release notes](https://docs.nvidia.com/deeplearning/nccl/release-notes/rel_2-28-3.html)) | Chapter 10 10.3, Appendix C.1 |
 | `torch.distributed.send`/`recv`/`isend`/`irecv` | `ncclSend()`/`ncclRecv()`, with the same per-peer FIFO ordering guarantee | Chapter 11, Appendix C.2 |
 | `torch.nn.parallel.DistributedDataParallel` | replica synchronization + bucketed gradient all-reduce/averaging (implementation dependent) | Chapter 12, Section F.2 |
 | DeepSpeed ZeRO stages 1/2/3 | data-parallel-replica memory sharding, derived from the 16-bytes/parameter formula | Chapter 13 (formula), Section F.3 (staging) |

@@ -122,7 +122,11 @@ def main():
     args = parser.parse_args()
     root = args.root.resolve()
     public = root / 'docs/validation'
-    directories = [public / args.dataset] if args.dataset else sorted(p.parent for p in public.glob('*/integrity.json') if p.parent.name != '2026-11-18-host-corrections')
+    # Partial CPU correction datasets have their own strict inventories and
+    # verifiers, invoked by verify_host_corrections for every full dataset.
+    cpu_datasets = {'2026-11-18-host-corrections', '2026-11-19-content-review'}
+    directories = [public / args.dataset] if args.dataset else sorted(
+        p.parent for p in public.glob('*/integrity.json') if p.parent.name not in cpu_datasets)
     if not directories:
         print('FAIL: no published execution dataset exists.')
         return 1

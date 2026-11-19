@@ -1,22 +1,10 @@
 // Appendix F: From PyTorch Distributed and DeepSpeed to C++: A Rosetta Stone
 // 137_zero_stage_memory_model.cpp
 //
-// Chapter 13's own File 36 re-derived the real 16-bytes-per-parameter
-// mixed-precision Adam breakdown (Rajbhandari et al., ZeRO, SC'20; 2
-// bytes fp16 param + 2 bytes fp16 grad + 4 bytes fp32 param + 4 bytes
-// fp32 momentum + 4 bytes fp32 variance) and asked how many DEVICES a
-// model's training state must be split across to exist at all. That
-// question is Chapter 13's own model-PARALLEL question -- splitting the
-// model's actual layers, computed by DIFFERENT devices. DeepSpeed's
-// ZeRO asks a genuinely different question: across N DATA-parallel
-// REPLICAS (Chapter 12's own kind of replica, where every device still
-// computes the SAME full model on different data), how much of each
-// replica's OWN copy of the training state can be sharded away, since
-// every replica needs the state only transiently, not permanently. The
-// two mechanisms are not the same thing wearing two names -- this file
-// keeps them honestly separate, and derives ZeRO's own real published
-// stage 1/2/3 formulas directly from Chapter 13's own 16-byte
-// breakdown, replacing none of Chapter 13's numbers.
+// Persistent-state arithmetic for the declared 16-byte mixed-precision Adam model.
+// ZeRO shards state across data-parallel ranks; model parallelism partitions
+// computation. A fixed eight-way state budget does not prove both are mandatory.
+// Activations, parameter gathers, workspaces and allocator overhead are excluded.
 //
 // Compile: g++ -std=c++17 -Wall -Wextra -O2 137_zero_stage_memory_model.cpp -o 137_zero_stage_memory_model
 // Run:     ./137_zero_stage_memory_model
@@ -88,15 +76,14 @@ int main() {
     printf("%-24s %14.1f\n", "ZeRO stage 2 (Pos+g)", stage2(8.0) * psiGPT3 / 1e9);
     printf("%-24s %14.1f\n", "ZeRO stage 3 (Pos+g+p)", stage3(8.0) * psiGPT3 / 1e9);
 
-    printf("\nnote what ZeRO does NOT change: Chapter 13's own model-parallel shard\n");
-    printf("count (35 H100 SXM GPUs, from its own File 36) answers a different question\n");
-    printf("-- how many devices must COOPERATE to hold one copy at all -- and ZeRO stage\n");
-    printf("3's own %.1f GB/replica figure above is still larger than one H100 SXM's 80\n", stage3(8.0) * psiGPT3 / 1e9);
-    printf("GB, meaning GPT-3 at this size needs BOTH: Chapter 13's model parallelism to\n");
-    printf("split the model itself, and ZeRO-style sharding within each data-parallel\n");
-    printf("replica group -- exactly the combination real large-model training uses, and\n");
-    printf("exactly why DeepSpeed documents ZeRO stage 3 alongside, not instead of,\n");
-    printf("model-parallel/tensor-parallel splitting.\n");
-
+    const double eightWayGB = stage3(8.0) * psiGPT3 / 1e9;
+    const double thirtySixWayGB = stage3(36.0) * psiGPT3 / 1e9;
+    printf("\nFixed eight-way ZeRO-3 persistent state: %.1f GB/rank; exceeds an 80 GB device.\n", eightWayGB);
+    printf("Larger ZeRO groups, tensor/pipeline parallelism or supported state offload are alternatives.\n");
+    printf("A 36-way group gives %.3f GB/rank of persistent state only, not a complete memory budget.\n", thirtySixWayGB);
+    printf("Include activations, live parameter gathers, communication buffers and temporary workspaces.\n");
+    if (std::fabs(eightWayGB - 350.0) > 1e-10 ||
+        std::fabs(thirtySixWayGB - 77.77777777777777) > 1e-10) return 1;
+    printf("MODEL CHECK PASS: declared ZeRO state formulas; no universal parallelism requirement\n");
     return 0;
 }

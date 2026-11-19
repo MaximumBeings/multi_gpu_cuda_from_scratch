@@ -61,7 +61,7 @@ An exporter process owns an IPC-exportable device allocation containing four int
 
 2. The importer opens it with cudaIpcOpenMemHandle. Use the returned local pointer; do not assume its numeric virtual address equals the exporter’s pointer.
 
-3. Coordinate production and consumption. An IPC event must be created with cudaEventInterprocess | cudaEventDisableTiming; export/open its handle and wait on the relevant recorded generation.
+3. Coordinate production and consumption. Create the IPC event with cudaEventInterprocess | cudaEventDisableTiming. The exporter enqueues the writes and cudaEventRecord, then notifies the importer that this generation has been recorded. Only after that notification does the importer enqueue cudaStreamWaitEvent and its read. Handle exchange alone does not ensure an event has been recorded; waiting on an unrecorded event can act as a no-op. The event may still be pending when the wait is enqueued. See [CUDA event-wait semantics](https://docs.nvidia.com/cuda/archive/12.8.0/cuda-runtime-api/group__CUDART__EVENT.html).
 
 4. After consumption completes, the importer closes its mapping with cudaIpcCloseMemHandle. Only after all users are finished may the exporter free the original allocation.
 
@@ -186,6 +186,9 @@ static int producer(int fd) {
     CUDA(cudaMalloc(&memory, COUNT * sizeof(float)));
 
     CUDA(cudaMemcpy(memory, input.data(), COUNT * sizeof(float), cudaMemcpyHostToDevice));
+    // A pageable H2D cudaMemcpy may return before device DMA completes.
+    // Complete the producer write before publishing a handle to another context.
+    CUDA(cudaDeviceSynchronize());
     Handles handles{};
     CUDA(cudaIpcGetMemHandle(&handles.memory, memory));
 
@@ -228,7 +231,12 @@ int main() {
 }
 ```
 
+> **GPU revalidation pending:** the producer now calls checked `cudaDeviceSynchronize()` before publishing the memory handle. Pageable host-to-device `cudaMemcpy` may return before the final DMA completes; transporting a handle does not signal payload readiness. The earlier passing runs below tested the previous revision. Current source SHA-256: `0a6c761e152bb3d0015b3f96bfb93cf7fa61764b90cde1f23aafdf11539a6388`.
+
 <!-- execution:start:h100-rerun:17_ipc_mem_handle.cu -->
+> **GPU revalidation pending:** the producer now calls checked `cudaDeviceSynchronize()` before publishing the memory handle. Pageable host-to-device `cudaMemcpy` may return before the final DMA completes; transporting a handle does not signal payload readiness. The earlier passing runs below tested the previous revision. Current source SHA-256: `0a6c761e152bb3d0015b3f96bfb93cf7fa61764b90cde1f23aafdf11539a6388`.
+
+
 > **Compiled and executed — 2026-11-18-h100: Numerical/transport validation (recorded scope).** Hardware: 2 H100 GPUs. Executed UTC: `2026-11-18T11:21:01.930044+00:00`.
 
 <!-- execution:metadata Source SHA-256: fc4bd504bca901310ce7d63d5c62facc6b5093bb53c7ca06864026ce83df4ee5; recorded UTC (program start): 2026-11-18T11:21:01.064167+00:00 -->
@@ -253,6 +261,9 @@ PASS: two-process IPC memory, 4096 nonuniform values checked.
 
 
 <!-- execution:start:a100:17_ipc_mem_handle.cu -->
+> **GPU revalidation pending:** the producer now calls checked `cudaDeviceSynchronize()` before publishing the memory handle. Pageable host-to-device `cudaMemcpy` may return before the final DMA completes; transporting a handle does not signal payload readiness. The earlier passing runs below tested the previous revision. Current source SHA-256: `0a6c761e152bb3d0015b3f96bfb93cf7fa61764b90cde1f23aafdf11539a6388`.
+
+
 > **Compiled and executed — 2026-11-17-a100: Numerical/transport validation (recorded scope).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:01:00.171741+00:00`.
 
 <!-- execution:metadata Source SHA-256: fc4bd504bca901310ce7d63d5c62facc6b5093bb53c7ca06864026ce83df4ee5; recorded UTC (program start): 2026-11-18T00:00:58.753373+00:00 -->
@@ -278,6 +289,9 @@ PASS: two-process IPC memory, 4096 nonuniform values checked.
 
 
 <!-- execution:start:h100:17_ipc_mem_handle.cu -->
+> **GPU revalidation pending:** the producer now calls checked `cudaDeviceSynchronize()` before publishing the memory handle. Pageable host-to-device `cudaMemcpy` may return before the final DMA completes; transporting a handle does not signal payload readiness. The earlier passing runs below tested the previous revision. Current source SHA-256: `0a6c761e152bb3d0015b3f96bfb93cf7fa61764b90cde1f23aafdf11539a6388`.
+
+
 > **Compiled and executed — 2026-11-17-h100: Numerical/transport validation (recorded scope).** Hardware: 2 H100 GPUs. Execution record UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`.
 
 <!-- execution:metadata Source SHA-256: fc4bd504bca901310ce7d63d5c62facc6b5093bb53c7ca06864026ce83df4ee5; recorded UTC (run-batch start; per-program time unrecorded): 2026-11-17T23:48:18.967387+00:00 -->
@@ -748,7 +762,7 @@ Both checks pass, and the second one is the point of this whole section: no `tra
 
 ## Chapter Summary
 
-A device pointer's numeric value only means anything within the address space of the process that owns it, so sharing device memory across processes needs a dedicated, driver-issued handle -- `cudaIpcGetMemHandle()` to export a lightweight, non-copying token, and `cudaIpcOpenMemHandle()` in the importing process to turn that token into a locally valid pointer, with the documentation's own strict warning that skipping `cudaIpcCloseMemHandle()` before the exporter frees the memory is undefined behavior (Section 7.1). Sharing an event across the same boundary uses the identical export/open pattern, but only works for events created with `cudaEventInterprocess` (which itself requires `cudaEventDisableTiming`) specified up front at creation time, not added afterward (Section 7.2). Because no real second process can be run here, Section 7.3 verified the one property that actually defines IPC memory sharing -- that the importer's and exporter's views are the same physical memory, not independently-updated copies -- using this book's host-side simulation technique, confirming a mutation made through one reference is instantly visible through the other with no transfer call involved at all. This completes Part 1: Chapters 4 through 7 took data and synchronization from "within one process, across devices" (Chapter 4: permission for devices to reach each other's memory) to "moving data and coordinating between those devices" (Chapters 5-6) to "between processes" (Chapter 7). Part 2 starts building actual collective communication patterns -- broadcast and reduce, by hand -- on top of everything Part 1 established.
+A device pointer's numeric value only means anything within the address space of the process that owns it, so sharing device memory across processes needs a dedicated, driver-issued handle -- `cudaIpcGetMemHandle()` to export a lightweight, non-copying token, and `cudaIpcOpenMemHandle()` in the importing process to turn that token into a locally valid pointer, with the documentation's own strict warning that skipping `cudaIpcCloseMemHandle()` before the exporter frees the memory is undefined behavior (Section 7.1). Sharing an event across the same boundary uses the identical export/open pattern, but only works for events created with `cudaEventInterprocess` (which itself requires `cudaEventDisableTiming`) specified up front at creation time, not added afterward (Section 7.2). The recorded two-process programs exercise real memory-handle import and checked payload access; the event variant also exercises an imported event, with its producer completed before handle publication. Section 7.3 separately models shared-storage aliasing: mutating one host reference changes the other because both refer to the same buffer. That host model does not establish GPU visibility or synchronization by itself. This completes Part 1: Chapters 4 through 7 took data and synchronization from "within one process, across devices" (Chapter 4: permission for devices to reach each other's memory) to "moving data and coordinating between those devices" (Chapters 5-6) to "between processes" (Chapter 7). Part 2 starts building actual collective communication patterns -- broadcast and reduce, by hand -- on top of everything Part 1 established.
 
 ## Self-Check Questions
 
@@ -787,6 +801,6 @@ Part 2 begins with Chapter 8: broadcast and reduce, the first two collective com
 
 **Sources cited in this chapter:**
 
-- [CUDA Runtime API — Device Management (`cudaIpcGetMemHandle`)](https://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__DEVICE.html) -- the "lightweight operation" wording and the current platform restriction (unified addressing, Linux and Windows, Windows limited to TCC mode); the same text appears in the CUDA 12.0 toolkit's `cuda_runtime_api.h` header this book compiles against.
+- [CUDA Runtime API — Device Management (`cudaIpcGetMemHandle`)](https://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__DEVICE.html) -- allocation export/import semantics. The recorded examples use CUDA 12.8 on Linux; consult the current Programming Guide below for legacy IPC platform restrictions rather than treating older header comments as the current platform contract.
 - [CUDA IPC — NVIDIA Programming Guide](https://docs.nvidia.com/cuda/cuda-programming-guide/04-special-topics/inter-process-communication.html) -- the per-context-per-process open constraint, the `cudaIpcCloseMemHandle()` cleanup requirement, and the documented undefined-behavior warning.
 - [CUDA Runtime API — Event Management (`cudaEventCreateWithFlags`)](https://docs.nvidia.com/cuda/archive/12.4.1/cuda-runtime-api/group__CUDART__EVENT.html) -- the exact `cudaEventInterprocess`/`cudaEventDisableTiming` flag requirement for interprocess events.

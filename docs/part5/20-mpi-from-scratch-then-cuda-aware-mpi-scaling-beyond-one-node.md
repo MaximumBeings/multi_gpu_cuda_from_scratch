@@ -320,14 +320,14 @@ Every value above is exact and deterministic: rank *i* always sends `i*100` and 
 
 ### Intuition
 
-"CUDA-aware MPI" means an MPI implementation can accept a raw device pointer directly inside `MPI_Send()`/`MPI_Recv()` and move the data GPU-to-GPU itself -- no `cudaMemcpy()` staging through host memory at all, the opposite of Chapter 5's own two-step fallback. Whether any *particular* MPI build actually has this is not something to assume from the version number or the vendor name -- it is a real, queryable fact, in two independent ways: a compile-time macro (`MPIX_CUDA_AWARE_SUPPORT`, baked in when Open MPI itself was built) and a runtime function (`MPIX_Query_cuda_support()`), which could in principle answer differently across otherwise-identical nodes of a real heterogeneous cluster. Getting this wrong -- assuming "yes" and handing a device pointer to a non-CUDA-aware build -- is a real, documented misuse with undefined results, exactly the kind of undefined behavior this book has declined to simulate since Chapter 7's own IPC chapter. The safe, correct pattern is to ask first, and fall back to Chapter 5's own staged transfer when the answer is "no."
+"CUDA-aware MPI" means a supporting MPI operation accepts a CUDA device buffer without requiring the application to stage it explicitly through host memory. It does not guarantee a direct GPU-to-GPU transport: the library may use CUDA IPC, GPUDirect RDMA or internal host staging. For example, [Open MPI’s OFI documentation](https://docs.open-mpi.org/en/v5.0.7/tuning-apps/networking/cuda.html#ofi-support-for-cuda) explicitly describes copying GPU buffers to host buffers when no CUDA-capable provider is available. Whether any *particular* MPI build actually has this is not something to assume from the version number or the vendor name -- it is a real, queryable fact, in two independent ways: a compile-time macro (`MPIX_CUDA_AWARE_SUPPORT`, baked in when Open MPI itself was built) and a runtime function (`MPIX_Query_cuda_support()`), which could in principle answer differently across otherwise-identical nodes of a real heterogeneous cluster. Getting this wrong -- assuming "yes" and handing a device pointer to a non-CUDA-aware build -- is a real, documented misuse with undefined results, exactly the kind of undefined behavior this book has declined to simulate since Chapter 7's own IPC chapter. The safe, correct pattern is to ask first, and fall back to Chapter 5's own staged transfer when the answer is "no."
 
 ```text
 CUDA-aware MPI (if MPIX_Query_cuda_support()==1):    NOT CUDA-aware (this build, ==0):
 
   rank 0: MPI_Send(devicePtr, ...)                     rank 0: cudaMemcpy(hostBuf, devicePtr, D2H)
-  -> MPI itself moves data GPU-to-GPU,                         MPI_Send(hostBuf, ...)
-     directly, no host staging needed                          (Ch5's own staged-transfer pattern)
+  -> MPI handles the device buffer;                          MPI_Send(hostBuf, ...)
+     its transport may stage internally                       (Ch5's own staged-transfer pattern)
   rank 1: MPI_Recv(devicePtr, ...)                     rank 1: MPI_Recv(hostBuf, ...)
   -> arrives already on the receiving GPU                      cudaMemcpy(devicePtr, hostBuf, H2D)
 ```
@@ -442,7 +442,7 @@ VALIDATION PASS: host-staged MPI, 2 ranks, 4096 values/rank, errors=0
 
 <!-- execution:end:h100-rerun:58_mpi_cuda_aware_query_and_fallback.cpp -->
 
-> **Pending GPU revalidation:** the listing above corrects an uninitialized staging buffer and adds rank-to-GPU binding, checked APIs, and a 4096-value receive oracle. The dated execution records below belong to the earlier source and do not validate this corrected version.
+> **Correction verified on November 18:** the corrected listing passed the two-H100 numerical rerun and memory check, including all 4096 received values per rank. That current-source record appears above. The older A100 and H100 records below cover their archived revisions, as their correction notices explain.
 
 
 <!-- execution:start:a100:58_mpi_cuda_aware_query_and_fallback.cpp -->

@@ -1,0 +1,1 @@
+$ /usr/bin/clang++ -std=c++17 -O2 -Wall -Wextra -Werror /Users/oluwaseyiawoga/Documents/Resume_2026/multi_gpu_cuda_from_scratch/docs/part7/code/113_distributed_tree_building_sequential_reduction_model.cpp -o /private/tmp/113_distributed_tree_building_sequential_reduction_model-20261119-review

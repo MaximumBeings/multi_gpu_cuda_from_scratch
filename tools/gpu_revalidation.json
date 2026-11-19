@@ -8,5 +8,12 @@
     "oracle_values_per_rank": 4096,
     "archived_sha256": "516c7b932f5994492accfb5674fca28c5ef8694544fa0baf324dc96e71309010",
     "dataset": "2026-11-18-h100"
+  },
+  {
+    "source": "docs/part1/code/17_ipc_mem_handle.cu",
+    "archived_sha256": "fc4bd504bca901310ce7d63d5c62facc6b5093bb53c7ca06864026ce83df4ee5",
+    "current_sha256": "0a6c761e152bb3d0015b3f96bfb93cf7fa61764b90cde1f23aafdf11539a6388",
+    "status": "pending_gpu_revalidation",
+    "reason": "Finish pageable host-to-device DMA in producer context before publishing CUDA IPC memory handle. Old successful transfers did not establish the required cross-process happens-before dependency."
   }
 ]
