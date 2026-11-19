@@ -1,0 +1,4 @@
+$ nvidia-smi --query-gpu=index,name,uuid,driver_version --format=csv
+index, name, uuid, driver_version
+0, NVIDIA H100 80GB HBM3, GPU-610e96a4-c1f5-1b82-3d12-788e61020da2, 580.105.08
+1, NVIDIA H100 80GB HBM3, GPU-2712078d-8293-d97d-7122-4601c5d7e628, 580.105.08

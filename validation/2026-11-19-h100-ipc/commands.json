@@ -1,0 +1,487 @@
+[
+  {
+    "name": "gpu",
+    "command": [
+      "nvidia-smi",
+      "--query-gpu=index,name,uuid,driver_version",
+      "--format=csv"
+    ],
+    "environment": {},
+    "started_utc": "2026-11-19T15:34:12.522282+00:00",
+    "finished_utc": "2026-11-19T15:34:12.554077+00:00",
+    "exit_code": 0,
+    "timed_out": false,
+    "log": "gpu.log",
+    "log_sha256": "ed6fccd473a934eb81eb4e91b9f4de87a538f2e62b37c2400d3f705bacc4489e"
+  },
+  {
+    "name": "topology",
+    "command": [
+      "nvidia-smi",
+      "topo",
+      "-m"
+    ],
+    "environment": {},
+    "started_utc": "2026-11-19T15:34:12.554312+00:00",
+    "finished_utc": "2026-11-19T15:34:12.668113+00:00",
+    "exit_code": 0,
+    "timed_out": false,
+    "log": "topology.log",
+    "log_sha256": "c1262dd90034c09202f4665451c0cf06b6efdb4ae8de8ff452245aed65eccff8"
+  },
+  {
+    "name": "nvcc",
+    "command": [
+      "nvcc",
+      "--version"
+    ],
+    "environment": {},
+    "started_utc": "2026-11-19T15:34:12.668494+00:00",
+    "finished_utc": "2026-11-19T15:34:12.671994+00:00",
+    "exit_code": 0,
+    "timed_out": false,
+    "log": "nvcc.log",
+    "log_sha256": "7665bd15fcd06506c52a5d04eee5de90155154bae8b6d47be529739c301865fe"
+  },
+  {
+    "name": "gcc",
+    "command": [
+      "gcc",
+      "--version"
+    ],
+    "environment": {},
+    "started_utc": "2026-11-19T15:34:12.672196+00:00",
+    "finished_utc": "2026-11-19T15:34:12.673587+00:00",
+    "exit_code": 0,
+    "timed_out": false,
+    "log": "gcc.log",
+    "log_sha256": "ee1e60607d894e688c7313dfe2f785dba22121f6a26bb1cb8e32bc527a9a16cd"
+  },
+  {
+    "name": "os",
+    "command": [
+      "cat",
+      "/etc/os-release"
+    ],
+    "environment": {},
+    "started_utc": "2026-11-19T15:34:12.673769+00:00",
+    "finished_utc": "2026-11-19T15:34:12.675140+00:00",
+    "exit_code": 0,
+    "timed_out": false,
+    "log": "os.log",
+    "log_sha256": "5ee0476e8067af88029ddc687779db37a3c7891e26d74d58c5ab7e98eb16fc3e"
+  },
+  {
+    "name": "kernel",
+    "command": [
+      "uname",
+      "-r"
+    ],
+    "environment": {},
+    "started_utc": "2026-11-19T15:34:12.675318+00:00",
+    "finished_utc": "2026-11-19T15:34:12.676735+00:00",
+    "exit_code": 0,
+    "timed_out": false,
+    "log": "kernel.log",
+    "log_sha256": "4c2aafbb5f2284fdcd3ab9c7f5f399e6a9f34542b3ce4340c8435c8275830da6"
+  },
+  {
+    "name": "sanitizer-version",
+    "command": [
+      "compute-sanitizer",
+      "--version"
+    ],
+    "environment": {},
+    "started_utc": "2026-11-19T15:34:12.676923+00:00",
+    "finished_utc": "2026-11-19T15:34:12.692594+00:00",
+    "exit_code": 0,
+    "timed_out": false,
+    "log": "sanitizer-version.log",
+    "log_sha256": "d46486acb8bd3b6393bde6e566ea9d20b8e66c11a80f157d1e8f6bcc161b435f"
+  },
+  {
+    "name": "compile",
+    "command": [
+      "nvcc",
+      "-std=c++17",
+      "-O2",
+      "-arch=sm_90",
+      "17_ipc_mem_handle.cu",
+      "-o",
+      "example"
+    ],
+    "environment": {},
+    "started_utc": "2026-11-19T15:34:12.720447+00:00",
+    "finished_utc": "2026-11-19T15:34:13.885726+00:00",
+    "exit_code": 0,
+    "timed_out": false,
+    "log": "compile.log",
+    "log_sha256": "8dd1f0e7ab1abf9a7ed7542ad02d63141eed1b6078d0a819c2edf70dffaed435"
+  },
+  {
+    "name": "forward-01",
+    "command": [
+      "./example"
+    ],
+    "environment": {
+      "CUDA_VISIBLE_DEVICES": "GPU-610e96a4-c1f5-1b82-3d12-788e61020da2,GPU-2712078d-8293-d97d-7122-4601c5d7e628",
+      "CUDA_DEVICE_ORDER": "PCI_BUS_ID"
+    },
+    "started_utc": "2026-11-19T15:34:13.886174+00:00",
+    "finished_utc": "2026-11-19T15:34:15.502026+00:00",
+    "exit_code": 0,
+    "timed_out": false,
+    "log": "forward-01.log",
+    "log_sha256": "905e0a31b2088f3cde1500d5faeed5f0eba4e6231ca5b6d45923f1ab390d3c63"
+  },
+  {
+    "name": "forward-02",
+    "command": [
+      "./example"
+    ],
+    "environment": {
+      "CUDA_VISIBLE_DEVICES": "GPU-610e96a4-c1f5-1b82-3d12-788e61020da2,GPU-2712078d-8293-d97d-7122-4601c5d7e628",
+      "CUDA_DEVICE_ORDER": "PCI_BUS_ID"
+    },
+    "started_utc": "2026-11-19T15:34:15.502455+00:00",
+    "finished_utc": "2026-11-19T15:34:16.116933+00:00",
+    "exit_code": 0,
+    "timed_out": false,
+    "log": "forward-02.log",
+    "log_sha256": "905e0a31b2088f3cde1500d5faeed5f0eba4e6231ca5b6d45923f1ab390d3c63"
+  },
+  {
+    "name": "forward-03",
+    "command": [
+      "./example"
+    ],
+    "environment": {
+      "CUDA_VISIBLE_DEVICES": "GPU-610e96a4-c1f5-1b82-3d12-788e61020da2,GPU-2712078d-8293-d97d-7122-4601c5d7e628",
+      "CUDA_DEVICE_ORDER": "PCI_BUS_ID"
+    },
+    "started_utc": "2026-11-19T15:34:16.117384+00:00",
+    "finished_utc": "2026-11-19T15:34:16.731904+00:00",
+    "exit_code": 0,
+    "timed_out": false,
+    "log": "forward-03.log",
+    "log_sha256": "905e0a31b2088f3cde1500d5faeed5f0eba4e6231ca5b6d45923f1ab390d3c63"
+  },
+  {
+    "name": "forward-04",
+    "command": [
+      "./example"
+    ],
+    "environment": {
+      "CUDA_VISIBLE_DEVICES": "GPU-610e96a4-c1f5-1b82-3d12-788e61020da2,GPU-2712078d-8293-d97d-7122-4601c5d7e628",
+      "CUDA_DEVICE_ORDER": "PCI_BUS_ID"
+    },
+    "started_utc": "2026-11-19T15:34:16.732362+00:00",
+    "finished_utc": "2026-11-19T15:34:17.346872+00:00",
+    "exit_code": 0,
+    "timed_out": false,
+    "log": "forward-04.log",
+    "log_sha256": "905e0a31b2088f3cde1500d5faeed5f0eba4e6231ca5b6d45923f1ab390d3c63"
+  },
+  {
+    "name": "forward-05",
+    "command": [
+      "./example"
+    ],
+    "environment": {
+      "CUDA_VISIBLE_DEVICES": "GPU-610e96a4-c1f5-1b82-3d12-788e61020da2,GPU-2712078d-8293-d97d-7122-4601c5d7e628",
+      "CUDA_DEVICE_ORDER": "PCI_BUS_ID"
+    },
+    "started_utc": "2026-11-19T15:34:17.347387+00:00",
+    "finished_utc": "2026-11-19T15:34:17.961911+00:00",
+    "exit_code": 0,
+    "timed_out": false,
+    "log": "forward-05.log",
+    "log_sha256": "905e0a31b2088f3cde1500d5faeed5f0eba4e6231ca5b6d45923f1ab390d3c63"
+  },
+  {
+    "name": "forward-06",
+    "command": [
+      "./example"
+    ],
+    "environment": {
+      "CUDA_VISIBLE_DEVICES": "GPU-610e96a4-c1f5-1b82-3d12-788e61020da2,GPU-2712078d-8293-d97d-7122-4601c5d7e628",
+      "CUDA_DEVICE_ORDER": "PCI_BUS_ID"
+    },
+    "started_utc": "2026-11-19T15:34:17.962376+00:00",
+    "finished_utc": "2026-11-19T15:34:18.576841+00:00",
+    "exit_code": 0,
+    "timed_out": false,
+    "log": "forward-06.log",
+    "log_sha256": "905e0a31b2088f3cde1500d5faeed5f0eba4e6231ca5b6d45923f1ab390d3c63"
+  },
+  {
+    "name": "forward-07",
+    "command": [
+      "./example"
+    ],
+    "environment": {
+      "CUDA_VISIBLE_DEVICES": "GPU-610e96a4-c1f5-1b82-3d12-788e61020da2,GPU-2712078d-8293-d97d-7122-4601c5d7e628",
+      "CUDA_DEVICE_ORDER": "PCI_BUS_ID"
+    },
+    "started_utc": "2026-11-19T15:34:18.577250+00:00",
+    "finished_utc": "2026-11-19T15:34:19.191780+00:00",
+    "exit_code": 0,
+    "timed_out": false,
+    "log": "forward-07.log",
+    "log_sha256": "905e0a31b2088f3cde1500d5faeed5f0eba4e6231ca5b6d45923f1ab390d3c63"
+  },
+  {
+    "name": "forward-08",
+    "command": [
+      "./example"
+    ],
+    "environment": {
+      "CUDA_VISIBLE_DEVICES": "GPU-610e96a4-c1f5-1b82-3d12-788e61020da2,GPU-2712078d-8293-d97d-7122-4601c5d7e628",
+      "CUDA_DEVICE_ORDER": "PCI_BUS_ID"
+    },
+    "started_utc": "2026-11-19T15:34:19.192212+00:00",
+    "finished_utc": "2026-11-19T15:34:19.806726+00:00",
+    "exit_code": 0,
+    "timed_out": false,
+    "log": "forward-08.log",
+    "log_sha256": "905e0a31b2088f3cde1500d5faeed5f0eba4e6231ca5b6d45923f1ab390d3c63"
+  },
+  {
+    "name": "forward-09",
+    "command": [
+      "./example"
+    ],
+    "environment": {
+      "CUDA_VISIBLE_DEVICES": "GPU-610e96a4-c1f5-1b82-3d12-788e61020da2,GPU-2712078d-8293-d97d-7122-4601c5d7e628",
+      "CUDA_DEVICE_ORDER": "PCI_BUS_ID"
+    },
+    "started_utc": "2026-11-19T15:34:19.807193+00:00",
+    "finished_utc": "2026-11-19T15:34:20.421687+00:00",
+    "exit_code": 0,
+    "timed_out": false,
+    "log": "forward-09.log",
+    "log_sha256": "905e0a31b2088f3cde1500d5faeed5f0eba4e6231ca5b6d45923f1ab390d3c63"
+  },
+  {
+    "name": "forward-10",
+    "command": [
+      "./example"
+    ],
+    "environment": {
+      "CUDA_VISIBLE_DEVICES": "GPU-610e96a4-c1f5-1b82-3d12-788e61020da2,GPU-2712078d-8293-d97d-7122-4601c5d7e628",
+      "CUDA_DEVICE_ORDER": "PCI_BUS_ID"
+    },
+    "started_utc": "2026-11-19T15:34:20.422100+00:00",
+    "finished_utc": "2026-11-19T15:34:21.036618+00:00",
+    "exit_code": 0,
+    "timed_out": false,
+    "log": "forward-10.log",
+    "log_sha256": "905e0a31b2088f3cde1500d5faeed5f0eba4e6231ca5b6d45923f1ab390d3c63"
+  },
+  {
+    "name": "forward-memcheck",
+    "command": [
+      "compute-sanitizer",
+      "--tool",
+      "memcheck",
+      "--target-processes",
+      "all",
+      "--error-exitcode",
+      "3",
+      "./example"
+    ],
+    "environment": {
+      "CUDA_VISIBLE_DEVICES": "GPU-610e96a4-c1f5-1b82-3d12-788e61020da2,GPU-2712078d-8293-d97d-7122-4601c5d7e628",
+      "CUDA_DEVICE_ORDER": "PCI_BUS_ID"
+    },
+    "started_utc": "2026-11-19T15:34:21.037084+00:00",
+    "finished_utc": "2026-11-19T15:34:23.905233+00:00",
+    "exit_code": 0,
+    "timed_out": false,
+    "log": "forward-memcheck.log",
+    "log_sha256": "9b936401d6cdc14123a3a4853c498cd038299fd02df92ddc3ff6cf5147f46e31"
+  },
+  {
+    "name": "reverse-01",
+    "command": [
+      "./example"
+    ],
+    "environment": {
+      "CUDA_VISIBLE_DEVICES": "GPU-2712078d-8293-d97d-7122-4601c5d7e628,GPU-610e96a4-c1f5-1b82-3d12-788e61020da2",
+      "CUDA_DEVICE_ORDER": "PCI_BUS_ID"
+    },
+    "started_utc": "2026-11-19T15:34:23.905820+00:00",
+    "finished_utc": "2026-11-19T15:34:24.520365+00:00",
+    "exit_code": 0,
+    "timed_out": false,
+    "log": "reverse-01.log",
+    "log_sha256": "905e0a31b2088f3cde1500d5faeed5f0eba4e6231ca5b6d45923f1ab390d3c63"
+  },
+  {
+    "name": "reverse-02",
+    "command": [
+      "./example"
+    ],
+    "environment": {
+      "CUDA_VISIBLE_DEVICES": "GPU-2712078d-8293-d97d-7122-4601c5d7e628,GPU-610e96a4-c1f5-1b82-3d12-788e61020da2",
+      "CUDA_DEVICE_ORDER": "PCI_BUS_ID"
+    },
+    "started_utc": "2026-11-19T15:34:24.520888+00:00",
+    "finished_utc": "2026-11-19T15:34:25.135446+00:00",
+    "exit_code": 0,
+    "timed_out": false,
+    "log": "reverse-02.log",
+    "log_sha256": "905e0a31b2088f3cde1500d5faeed5f0eba4e6231ca5b6d45923f1ab390d3c63"
+  },
+  {
+    "name": "reverse-03",
+    "command": [
+      "./example"
+    ],
+    "environment": {
+      "CUDA_VISIBLE_DEVICES": "GPU-2712078d-8293-d97d-7122-4601c5d7e628,GPU-610e96a4-c1f5-1b82-3d12-788e61020da2",
+      "CUDA_DEVICE_ORDER": "PCI_BUS_ID"
+    },
+    "started_utc": "2026-11-19T15:34:25.135921+00:00",
+    "finished_utc": "2026-11-19T15:34:25.750447+00:00",
+    "exit_code": 0,
+    "timed_out": false,
+    "log": "reverse-03.log",
+    "log_sha256": "905e0a31b2088f3cde1500d5faeed5f0eba4e6231ca5b6d45923f1ab390d3c63"
+  },
+  {
+    "name": "reverse-04",
+    "command": [
+      "./example"
+    ],
+    "environment": {
+      "CUDA_VISIBLE_DEVICES": "GPU-2712078d-8293-d97d-7122-4601c5d7e628,GPU-610e96a4-c1f5-1b82-3d12-788e61020da2",
+      "CUDA_DEVICE_ORDER": "PCI_BUS_ID"
+    },
+    "started_utc": "2026-11-19T15:34:25.750891+00:00",
+    "finished_utc": "2026-11-19T15:34:26.365423+00:00",
+    "exit_code": 0,
+    "timed_out": false,
+    "log": "reverse-04.log",
+    "log_sha256": "905e0a31b2088f3cde1500d5faeed5f0eba4e6231ca5b6d45923f1ab390d3c63"
+  },
+  {
+    "name": "reverse-05",
+    "command": [
+      "./example"
+    ],
+    "environment": {
+      "CUDA_VISIBLE_DEVICES": "GPU-2712078d-8293-d97d-7122-4601c5d7e628,GPU-610e96a4-c1f5-1b82-3d12-788e61020da2",
+      "CUDA_DEVICE_ORDER": "PCI_BUS_ID"
+    },
+    "started_utc": "2026-11-19T15:34:26.365898+00:00",
+    "finished_utc": "2026-11-19T15:34:26.980465+00:00",
+    "exit_code": 0,
+    "timed_out": false,
+    "log": "reverse-05.log",
+    "log_sha256": "905e0a31b2088f3cde1500d5faeed5f0eba4e6231ca5b6d45923f1ab390d3c63"
+  },
+  {
+    "name": "reverse-06",
+    "command": [
+      "./example"
+    ],
+    "environment": {
+      "CUDA_VISIBLE_DEVICES": "GPU-2712078d-8293-d97d-7122-4601c5d7e628,GPU-610e96a4-c1f5-1b82-3d12-788e61020da2",
+      "CUDA_DEVICE_ORDER": "PCI_BUS_ID"
+    },
+    "started_utc": "2026-11-19T15:34:26.980996+00:00",
+    "finished_utc": "2026-11-19T15:34:27.595498+00:00",
+    "exit_code": 0,
+    "timed_out": false,
+    "log": "reverse-06.log",
+    "log_sha256": "905e0a31b2088f3cde1500d5faeed5f0eba4e6231ca5b6d45923f1ab390d3c63"
+  },
+  {
+    "name": "reverse-07",
+    "command": [
+      "./example"
+    ],
+    "environment": {
+      "CUDA_VISIBLE_DEVICES": "GPU-2712078d-8293-d97d-7122-4601c5d7e628,GPU-610e96a4-c1f5-1b82-3d12-788e61020da2",
+      "CUDA_DEVICE_ORDER": "PCI_BUS_ID"
+    },
+    "started_utc": "2026-11-19T15:34:27.595960+00:00",
+    "finished_utc": "2026-11-19T15:34:28.210475+00:00",
+    "exit_code": 0,
+    "timed_out": false,
+    "log": "reverse-07.log",
+    "log_sha256": "905e0a31b2088f3cde1500d5faeed5f0eba4e6231ca5b6d45923f1ab390d3c63"
+  },
+  {
+    "name": "reverse-08",
+    "command": [
+      "./example"
+    ],
+    "environment": {
+      "CUDA_VISIBLE_DEVICES": "GPU-2712078d-8293-d97d-7122-4601c5d7e628,GPU-610e96a4-c1f5-1b82-3d12-788e61020da2",
+      "CUDA_DEVICE_ORDER": "PCI_BUS_ID"
+    },
+    "started_utc": "2026-11-19T15:34:28.210997+00:00",
+    "finished_utc": "2026-11-19T15:34:28.825496+00:00",
+    "exit_code": 0,
+    "timed_out": false,
+    "log": "reverse-08.log",
+    "log_sha256": "905e0a31b2088f3cde1500d5faeed5f0eba4e6231ca5b6d45923f1ab390d3c63"
+  },
+  {
+    "name": "reverse-09",
+    "command": [
+      "./example"
+    ],
+    "environment": {
+      "CUDA_VISIBLE_DEVICES": "GPU-2712078d-8293-d97d-7122-4601c5d7e628,GPU-610e96a4-c1f5-1b82-3d12-788e61020da2",
+      "CUDA_DEVICE_ORDER": "PCI_BUS_ID"
+    },
+    "started_utc": "2026-11-19T15:34:28.826020+00:00",
+    "finished_utc": "2026-11-19T15:34:29.440515+00:00",
+    "exit_code": 0,
+    "timed_out": false,
+    "log": "reverse-09.log",
+    "log_sha256": "905e0a31b2088f3cde1500d5faeed5f0eba4e6231ca5b6d45923f1ab390d3c63"
+  },
+  {
+    "name": "reverse-10",
+    "command": [
+      "./example"
+    ],
+    "environment": {
+      "CUDA_VISIBLE_DEVICES": "GPU-2712078d-8293-d97d-7122-4601c5d7e628,GPU-610e96a4-c1f5-1b82-3d12-788e61020da2",
+      "CUDA_DEVICE_ORDER": "PCI_BUS_ID"
+    },
+    "started_utc": "2026-11-19T15:34:29.441001+00:00",
+    "finished_utc": "2026-11-19T15:34:30.055484+00:00",
+    "exit_code": 0,
+    "timed_out": false,
+    "log": "reverse-10.log",
+    "log_sha256": "905e0a31b2088f3cde1500d5faeed5f0eba4e6231ca5b6d45923f1ab390d3c63"
+  },
+  {
+    "name": "reverse-memcheck",
+    "command": [
+      "compute-sanitizer",
+      "--tool",
+      "memcheck",
+      "--target-processes",
+      "all",
+      "--error-exitcode",
+      "3",
+      "./example"
+    ],
+    "environment": {
+      "CUDA_VISIBLE_DEVICES": "GPU-2712078d-8293-d97d-7122-4601c5d7e628,GPU-610e96a4-c1f5-1b82-3d12-788e61020da2",
+      "CUDA_DEVICE_ORDER": "PCI_BUS_ID"
+    },
+    "started_utc": "2026-11-19T15:34:30.055965+00:00",
+    "finished_utc": "2026-11-19T15:34:32.673147+00:00",
+    "exit_code": 0,
+    "timed_out": false,
+    "log": "reverse-memcheck.log",
+    "log_sha256": "9b936401d6cdc14123a3a4853c498cd038299fd02df92ddc3ff6cf5147f46e31"
+  }
+]
