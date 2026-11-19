@@ -1,0 +1,14 @@
+{
+  "OPAL_PREFIX": "/home/ubuntu/book-b200-20261119/mpi/usr",
+  "PATH": "/home/ubuntu/book-b200-20261119/mpi/usr/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin",
+  "NVSHMEM_HOME": "/home/ubuntu/book-b200-20261119/deps/lib/python3.12/site-packages/nvidia/nvshmem",
+  "NVSHMEM_LIB": "/home/ubuntu/book-b200-20261119/deps/lib/python3.12/site-packages/nvidia/nvshmem/lib",
+  "NVSHMEM_BOOTSTRAP": "MPI",
+  "CUDA_HOME": "/usr",
+  "CUDA_INCDIR": "/usr/include",
+  "CUDA_LIBDIR": "/usr/lib/x86_64-linux-gnu",
+  "LD_LIBRARY_PATH": "/home/ubuntu/book-b200-20261119/deps/lib/python3.12/site-packages/nvidia/nvshmem/lib:/home/ubuntu/book-b200-20261119/mpi/usr/lib/x86_64-linux-gnu:/home/ubuntu/book-b200-20261119/mpi/usr/lib/x86_64-linux-gnu/openmpi/lib:/usr/lib/x86_64-linux-gnu",
+  "CUDA_DEVICE_ORDER": "PCI_BUS_ID",
+  "OMPI_MCA_btl": "self,vader,tcp",
+  "OMPI_MCA_pml": "ob1"
+}

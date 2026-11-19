@@ -1,0 +1,1 @@
+$ nvcc -std=c++17 -O2 -arch=sm_100 -rdc=true /home/ubuntu/book-b200-20261119/docs/appendix/code/130_cooperative_multi_device.cu -o /home/ubuntu/book-b200-20261119/results/part-2/130_cooperative_multi_device/example -lcudadevrt

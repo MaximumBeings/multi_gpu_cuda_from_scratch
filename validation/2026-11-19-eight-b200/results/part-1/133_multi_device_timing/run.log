@@ -1,0 +1,13 @@
+$ /home/ubuntu/book-b200-20261119/results/part-1/133_multi_device_timing/example
+GPU 0 local stream duration: 0.055392 ms
+GPU 1 local stream duration: 0.049440 ms
+GPU 2 local stream duration: 0.035232 ms
+GPU 3 local stream duration: 0.037536 ms
+GPU 4 local stream duration: 0.032800 ms
+GPU 5 local stream duration: 0.030080 ms
+GPU 6 local stream duration: 0.028416 ms
+GPU 7 local stream duration: 0.025600 ms
+Maximum local duration: 0.055392 ms (GPU clocks are not a shared timeline)
+Host launch-to-all-complete: 0.491911 ms (includes submission and completion waits)
+Independent kernels only; this is not a collective bandwidth benchmark.
+VALIDATION PASS: errors=0

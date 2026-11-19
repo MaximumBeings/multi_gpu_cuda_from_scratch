@@ -1,0 +1,1 @@
+$ nvcc -std=c++17 -O2 -arch=sm_100 /home/ubuntu/book-b200-20261119/docs/appendix/code/hello_kernel.cu -o /home/ubuntu/book-b200-20261119/results/part-2/hello_kernel/example

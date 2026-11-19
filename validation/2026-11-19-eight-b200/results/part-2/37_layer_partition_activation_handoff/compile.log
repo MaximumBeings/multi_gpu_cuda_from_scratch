@@ -1,0 +1,1 @@
+$ nvcc -std=c++17 -O2 -arch=sm_100 /home/ubuntu/book-b200-20261119/docs/part3/code/37_layer_partition_activation_handoff.cu -o /home/ubuntu/book-b200-20261119/results/part-2/37_layer_partition_activation_handoff/example

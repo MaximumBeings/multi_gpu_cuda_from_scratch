@@ -1,0 +1,1 @@
+$ nvcc -std=c++17 -O2 -arch=sm_100 /home/ubuntu/book-b200-20261119/docs/part5/code/61_gpudirect_rdma_query.cu -o /home/ubuntu/book-b200-20261119/results/part-2/61_gpudirect_rdma_query/example

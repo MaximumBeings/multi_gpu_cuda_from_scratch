@@ -1,0 +1,1 @@
+$ nvcc -std=c++17 -O2 -arch=sm_100 /home/ubuntu/book-b200-20261119/docs/part0/code/05_peer_access_query.cu -o /home/ubuntu/book-b200-20261119/results/part-2/05_peer_access_query/example

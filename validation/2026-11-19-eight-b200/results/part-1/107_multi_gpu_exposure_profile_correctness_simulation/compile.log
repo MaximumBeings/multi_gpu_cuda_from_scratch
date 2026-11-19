@@ -1,0 +1,1 @@
+$ g++ -std=c++17 -O2 /home/ubuntu/book-b200-20261119/docs/part7/code/107_multi_gpu_exposure_profile_correctness_simulation.cpp -o /home/ubuntu/book-b200-20261119/results/part-1/107_multi_gpu_exposure_profile_correctness_simulation/example

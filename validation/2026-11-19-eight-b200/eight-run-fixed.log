@@ -1,0 +1,77 @@
+$ ./eight-gpu-check
+EIGHT_GPU_CORRECTNESS_AUDIT: visible=8 required=8 NCCL=22602
+No oversubscription. Using distinct CUDA-visible ordinals 0..7; record physical topology separately.
+Correctness only: no bandwidth/latency/saturation claim. Capability does not prove NVLink.
+GPU 0: NVIDIA B200 CC=10.0 memory_bytes=191503138816
+GPU 1: NVIDIA B200 CC=10.0 memory_bytes=191503138816
+GPU 2: NVIDIA B200 CC=10.0 memory_bytes=191503138816
+GPU 3: NVIDIA B200 CC=10.0 memory_bytes=191503138816
+GPU 4: NVIDIA B200 CC=10.0 memory_bytes=191503138816
+GPU 5: NVIDIA B200 CC=10.0 memory_bytes=191503138816
+GPU 6: NVIDIA B200 CC=10.0 memory_bytes=191503138816
+GPU 7: NVIDIA B200 CC=10.0 memory_bytes=191503138816
+PEER_COPY 0->1: PASS; accessor 1 can access owner 0: YES; errors=0
+PEER_COPY 0->2: PASS; accessor 2 can access owner 0: YES; errors=0
+PEER_COPY 0->3: PASS; accessor 3 can access owner 0: YES; errors=0
+PEER_COPY 0->4: PASS; accessor 4 can access owner 0: YES; errors=0
+PEER_COPY 0->5: PASS; accessor 5 can access owner 0: YES; errors=0
+PEER_COPY 0->6: PASS; accessor 6 can access owner 0: YES; errors=0
+PEER_COPY 0->7: PASS; accessor 7 can access owner 0: YES; errors=0
+PEER_COPY 1->0: PASS; accessor 0 can access owner 1: YES; errors=0
+PEER_COPY 1->2: PASS; accessor 2 can access owner 1: YES; errors=0
+PEER_COPY 1->3: PASS; accessor 3 can access owner 1: YES; errors=0
+PEER_COPY 1->4: PASS; accessor 4 can access owner 1: YES; errors=0
+PEER_COPY 1->5: PASS; accessor 5 can access owner 1: YES; errors=0
+PEER_COPY 1->6: PASS; accessor 6 can access owner 1: YES; errors=0
+PEER_COPY 1->7: PASS; accessor 7 can access owner 1: YES; errors=0
+PEER_COPY 2->0: PASS; accessor 0 can access owner 2: YES; errors=0
+PEER_COPY 2->1: PASS; accessor 1 can access owner 2: YES; errors=0
+PEER_COPY 2->3: PASS; accessor 3 can access owner 2: YES; errors=0
+PEER_COPY 2->4: PASS; accessor 4 can access owner 2: YES; errors=0
+PEER_COPY 2->5: PASS; accessor 5 can access owner 2: YES; errors=0
+PEER_COPY 2->6: PASS; accessor 6 can access owner 2: YES; errors=0
+PEER_COPY 2->7: PASS; accessor 7 can access owner 2: YES; errors=0
+PEER_COPY 3->0: PASS; accessor 0 can access owner 3: YES; errors=0
+PEER_COPY 3->1: PASS; accessor 1 can access owner 3: YES; errors=0
+PEER_COPY 3->2: PASS; accessor 2 can access owner 3: YES; errors=0
+PEER_COPY 3->4: PASS; accessor 4 can access owner 3: YES; errors=0
+PEER_COPY 3->5: PASS; accessor 5 can access owner 3: YES; errors=0
+PEER_COPY 3->6: PASS; accessor 6 can access owner 3: YES; errors=0
+PEER_COPY 3->7: PASS; accessor 7 can access owner 3: YES; errors=0
+PEER_COPY 4->0: PASS; accessor 0 can access owner 4: YES; errors=0
+PEER_COPY 4->1: PASS; accessor 1 can access owner 4: YES; errors=0
+PEER_COPY 4->2: PASS; accessor 2 can access owner 4: YES; errors=0
+PEER_COPY 4->3: PASS; accessor 3 can access owner 4: YES; errors=0
+PEER_COPY 4->5: PASS; accessor 5 can access owner 4: YES; errors=0
+PEER_COPY 4->6: PASS; accessor 6 can access owner 4: YES; errors=0
+PEER_COPY 4->7: PASS; accessor 7 can access owner 4: YES; errors=0
+PEER_COPY 5->0: PASS; accessor 0 can access owner 5: YES; errors=0
+PEER_COPY 5->1: PASS; accessor 1 can access owner 5: YES; errors=0
+PEER_COPY 5->2: PASS; accessor 2 can access owner 5: YES; errors=0
+PEER_COPY 5->3: PASS; accessor 3 can access owner 5: YES; errors=0
+PEER_COPY 5->4: PASS; accessor 4 can access owner 5: YES; errors=0
+PEER_COPY 5->6: PASS; accessor 6 can access owner 5: YES; errors=0
+PEER_COPY 5->7: PASS; accessor 7 can access owner 5: YES; errors=0
+PEER_COPY 6->0: PASS; accessor 0 can access owner 6: YES; errors=0
+PEER_COPY 6->1: PASS; accessor 1 can access owner 6: YES; errors=0
+PEER_COPY 6->2: PASS; accessor 2 can access owner 6: YES; errors=0
+PEER_COPY 6->3: PASS; accessor 3 can access owner 6: YES; errors=0
+PEER_COPY 6->4: PASS; accessor 4 can access owner 6: YES; errors=0
+PEER_COPY 6->5: PASS; accessor 5 can access owner 6: YES; errors=0
+PEER_COPY 6->7: PASS; accessor 7 can access owner 6: YES; errors=0
+PEER_COPY 7->0: PASS; accessor 0 can access owner 7: YES; errors=0
+PEER_COPY 7->1: PASS; accessor 1 can access owner 7: YES; errors=0
+PEER_COPY 7->2: PASS; accessor 2 can access owner 7: YES; errors=0
+PEER_COPY 7->3: PASS; accessor 3 can access owner 7: YES; errors=0
+PEER_COPY 7->4: PASS; accessor 4 can access owner 7: YES; errors=0
+PEER_COPY 7->5: PASS; accessor 5 can access owner 7: YES; errors=0
+PEER_COPY 7->6: PASS; accessor 6 can access owner 7: YES; errors=0
+ALL_PEER_PAIRS: PASS; pairs=56; values_checked=229544; errors=0
+ALL_REDUCE: PASS; 32792 values checked across 8 ranks; errors=0
+ALL_GATHER: PASS; 33088 values checked across 8 ranks; errors=0
+REDUCE_SCATTER: PASS; 4136 values checked across 8 ranks; errors=0
+GROUPED_ALL_TO_ALL: PASS; 16448 values checked across 8 ranks; errors=0
+HALO_GENERATION_1: PASS; 8264 values checked across 8 ranks; errors=0
+HALO_GENERATION_2: PASS; 8264 values checked across 8 ranks; errors=0
+HALO_GENERATION_3: PASS; 8264 values checked across 8 ranks; errors=0
+EIGHT_GPU_AUDIT: PASS; numerical_errors=0; cleanup=PASS

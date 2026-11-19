@@ -1,0 +1,9 @@
+executed_unverified docs/appendix/code/121_multi_gpu_stack_version_check.cpp
+executed_unverified docs/appendix/code/hello_mpi.cpp
+validation_pass docs/part5/code/58_mpi_cuda_aware_query_and_fallback.cpp
+validation_pass docs/part5/code/63_nvshmem_init_single_pe.cu
+validation_pass docs/part5/code/67_nccl_captured_in_graph.cu
+{
+  "executed_unverified": 2,
+  "validation_pass": 3
+}

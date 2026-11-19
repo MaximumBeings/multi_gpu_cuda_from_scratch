@@ -1,0 +1,13 @@
+$ /home/ubuntu/book-b200-20261119/results/part-1/96_prefill_vs_decode_cost_model/example
+Illustrative single-layer MHA terms; multiply-add counts as 2 FLOPs.
+One d-by-d projection: prefill=2*N*d*d; decode=2*d*d.
+Dense decode attention QK+PV=4*N*d FLOPs; BF16 K+V cache=4*N*d bytes.
+N projection_prefill_FLOPs projection_decode_FLOPs attention_decode_FLOPs KV_read_bytes
+128 17179869184 134217728 4194304 4194304
+512 68719476736 134217728 16777216 16777216
+2048 274877906944 134217728 67108864 67108864
+8192 1099511627776 134217728 268435456 268435456
+Attention work grows with context. These are selected terms, not total layer FLOPs or traffic.
+For GQA/MQA, cache bytes=2*N*Hkv*Dh*element_bytes; attention work still depends on query heads.
+Weights, other projections, MLPs, softmax, batch size and reuse must enter a full roofline model.
+MODEL CHECK PASS: projection/attention separation and both K/V byte counts

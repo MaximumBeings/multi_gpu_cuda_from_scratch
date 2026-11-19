@@ -1,0 +1,1 @@
+$ g++ -std=c++17 -O2 /home/ubuntu/book-b200-20261119/docs/part2/code/25_ring_allreduce_simulation.cpp -o /home/ubuntu/book-b200-20261119/results/part-2/25_ring_allreduce_simulation/example

@@ -1,0 +1,2 @@
+$ mpicc -std=c11 -O2 /home/ubuntu/book-b200-20261119/docs/appendix/code/138_collective_order_deadlock.c -o /home/ubuntu/book-b200-20261119/results/part-2/138_collective_order_deadlock/example
+mpicc: error while loading shared libraries: libopen-pal.so.40: cannot open shared object file: No such file or directory

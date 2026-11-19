@@ -1,0 +1,2 @@
+$ ./eight-gpu-check
+[Errno 2] No such file or directory: './eight-gpu-check'

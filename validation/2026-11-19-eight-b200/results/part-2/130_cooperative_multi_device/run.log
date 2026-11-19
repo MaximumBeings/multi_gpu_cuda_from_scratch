@@ -1,0 +1,10 @@
+$ /home/ubuntu/book-b200-20261119/results/part-2/130_cooperative_multi_device/example
+device 0: cooperative=1 deprecated multi-device capability=1
+device 1: cooperative=1 deprecated multi-device capability=1
+device 2: cooperative=1 deprecated multi-device capability=1
+device 3: cooperative=1 deprecated multi-device capability=1
+device 4: cooperative=1 deprecated multi-device capability=1
+device 5: cooperative=1 deprecated multi-device capability=1
+device 6: cooperative=1 deprecated multi-device capability=1
+device 7: cooperative=1 deprecated multi-device capability=1
+API PROBE PASS: capability queries only, errors=0

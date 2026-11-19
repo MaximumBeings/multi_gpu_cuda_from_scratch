@@ -1,0 +1,9 @@
+Get:1 http://archive.ubuntu.com/ubuntu noble/universe amd64 libhwloc15 amd64 2.10.0-1build1 [172 kB]
+Get:2 http://archive.ubuntu.com/ubuntu noble/universe amd64 libopenmpi-dev amd64 4.1.6-7ubuntu2 [864 kB]
+Get:3 http://archive.ubuntu.com/ubuntu noble/universe amd64 libopenmpi3t64 amd64 4.1.6-7ubuntu2 [2563 kB]
+Get:4 http://archive.ubuntu.com/ubuntu noble/universe amd64 libpmix2t64 amd64 5.0.1-4.1build1 [697 kB]
+Get:5 http://archive.ubuntu.com/ubuntu noble/universe amd64 openmpi-bin amd64 4.1.6-7ubuntu2 [114 kB]
+Get:6 http://archive.ubuntu.com/ubuntu noble-updates/main amd64 libevent-core-2.1-7t64 amd64 2.1.12-stable-9ubuntu2.2 [91.9 kB]
+Get:7 http://archive.ubuntu.com/ubuntu noble-updates/main amd64 libevent-pthreads-2.1-7t64 amd64 2.1.12-stable-9ubuntu2.2 [7988 B]
+Get:8 http://archive.ubuntu.com/ubuntu noble-updates/universe amd64 libmunge2 amd64 0.5.15-4ubuntu0.1 [14.8 kB]
+Fetched 4525 kB in 0s (9777 kB/s)

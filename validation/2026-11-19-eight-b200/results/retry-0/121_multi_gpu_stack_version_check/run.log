@@ -1,0 +1,87 @@
+$ /home/ubuntu/book-b200-20261119/mpi/usr/bin/mpirun --oversubscribe -np 8 /home/ubuntu/book-b200-20261119/results/retry-0/121_multi_gpu_stack_version_check/example
+--------------------------------------------------------------------------
+Sorry!  You were supposed to get help about:
+    unavailable
+But I couldn't open the help file:
+    /usr/lib/x86_64-linux-gnu/pmix2/share/pmix/help-pcompress.txt: No such file or directory.  Sorry!
+--------------------------------------------------------------------------
+=== NCCL (collective communication) ===
+NCCL_MAJOR = 2, NCCL_MINOR = 26, NCCL_PATCH = 2 (NCCL_VERSION_CODE = 22602)
+
+=== Open MPI (host-side process launch and messaging) ===
+OMPI_MAJOR_VERSION = 4, OMPI_MINOR_VERSION = 1, OMPI_RELEASE_VERSION = 6
+
+=== NVSHMEM (GPU-initiated one-sided communication) ===
+NVSHMEM version macros not defined -- non_abi/nvshmem_version.h was not found. Add -I<NVSHMEM_DIR>/include, where NVSHMEM_DIR is printed by: python3 -c "import nvidia.nvshmem; print(list(nvidia.nvshmem.__path__)[0])"
+
+self-check: this program compiled and ran, which by itself confirms nccl.h and mpi.h were both found on this system's own include path -- a well-formed documented result either way, matching this book's own Appendix pattern.
+=== NCCL (collective communication) ===
+NCCL_MAJOR = 2, NCCL_MINOR = 26, NCCL_PATCH = 2 (NCCL_VERSION_CODE = 22602)
+
+=== Open MPI (host-side process launch and messaging) ===
+OMPI_MAJOR_VERSION = 4, OMPI_MINOR_VERSION = 1, OMPI_RELEASE_VERSION = 6
+
+=== NVSHMEM (GPU-initiated one-sided communication) ===
+NVSHMEM version macros not defined -- non_abi/nvshmem_version.h was not found. Add -I<NVSHMEM_DIR>/include, where NVSHMEM_DIR is printed by: python3 -c "import nvidia.nvshmem; print(list(nvidia.nvshmem.__path__)[0])"
+
+self-check: this program compiled and ran, which by itself confirms nccl.h and mpi.h were both found on this system's own include path -- a well-formed documented result either way, matching this book's own Appendix pattern.
+=== NCCL (collective communication) ===
+NCCL_MAJOR = 2, NCCL_MINOR = 26, NCCL_PATCH = 2 (NCCL_VERSION_CODE = 22602)
+
+=== Open MPI (host-side process launch and messaging) ===
+OMPI_MAJOR_VERSION = 4, OMPI_MINOR_VERSION = 1, OMPI_RELEASE_VERSION = 6
+
+=== NVSHMEM (GPU-initiated one-sided communication) ===
+NVSHMEM version macros not defined -- non_abi/nvshmem_version.h was not found. Add -I<NVSHMEM_DIR>/include, where NVSHMEM_DIR is printed by: python3 -c "import nvidia.nvshmem; print(list(nvidia.nvshmem.__path__)[0])"
+
+self-check: this program compiled and ran, which by itself confirms nccl.h and mpi.h were both found on this system's own include path -- a well-formed documented result either way, matching this book's own Appendix pattern.
+=== NCCL (collective communication) ===
+NCCL_MAJOR = 2, NCCL_MINOR = 26, NCCL_PATCH = 2 (NCCL_VERSION_CODE = 22602)
+
+=== Open MPI (host-side process launch and messaging) ===
+OMPI_MAJOR_VERSION = 4, OMPI_MINOR_VERSION = 1, OMPI_RELEASE_VERSION = 6
+
+=== NVSHMEM (GPU-initiated one-sided communication) ===
+NVSHMEM version macros not defined -- non_abi/nvshmem_version.h was not found. Add -I<NVSHMEM_DIR>/include, where NVSHMEM_DIR is printed by: python3 -c "import nvidia.nvshmem; print(list(nvidia.nvshmem.__path__)[0])"
+
+self-check: this program compiled and ran, which by itself confirms nccl.h and mpi.h were both found on this system's own include path -- a well-formed documented result either way, matching this book's own Appendix pattern.
+=== NCCL (collective communication) ===
+NCCL_MAJOR = 2, NCCL_MINOR = 26, NCCL_PATCH = 2 (NCCL_VERSION_CODE = 22602)
+
+=== Open MPI (host-side process launch and messaging) ===
+OMPI_MAJOR_VERSION = 4, OMPI_MINOR_VERSION = 1, OMPI_RELEASE_VERSION = 6
+
+=== NVSHMEM (GPU-initiated one-sided communication) ===
+NVSHMEM version macros not defined -- non_abi/nvshmem_version.h was not found. Add -I<NVSHMEM_DIR>/include, where NVSHMEM_DIR is printed by: python3 -c "import nvidia.nvshmem; print(list(nvidia.nvshmem.__path__)[0])"
+
+self-check: this program compiled and ran, which by itself confirms nccl.h and mpi.h were both found on this system's own include path -- a well-formed documented result either way, matching this book's own Appendix pattern.
+=== NCCL (collective communication) ===
+NCCL_MAJOR = 2, NCCL_MINOR = 26, NCCL_PATCH = 2 (NCCL_VERSION_CODE = 22602)
+
+=== Open MPI (host-side process launch and messaging) ===
+OMPI_MAJOR_VERSION = 4, OMPI_MINOR_VERSION = 1, OMPI_RELEASE_VERSION = 6
+
+=== NVSHMEM (GPU-initiated one-sided communication) ===
+NVSHMEM version macros not defined -- non_abi/nvshmem_version.h was not found. Add -I<NVSHMEM_DIR>/include, where NVSHMEM_DIR is printed by: python3 -c "import nvidia.nvshmem; print(list(nvidia.nvshmem.__path__)[0])"
+
+self-check: this program compiled and ran, which by itself confirms nccl.h and mpi.h were both found on this system's own include path -- a well-formed documented result either way, matching this book's own Appendix pattern.
+=== NCCL (collective communication) ===
+NCCL_MAJOR = 2, NCCL_MINOR = 26, NCCL_PATCH = 2 (NCCL_VERSION_CODE = 22602)
+
+=== Open MPI (host-side process launch and messaging) ===
+OMPI_MAJOR_VERSION = 4, OMPI_MINOR_VERSION = 1, OMPI_RELEASE_VERSION = 6
+
+=== NVSHMEM (GPU-initiated one-sided communication) ===
+NVSHMEM version macros not defined -- non_abi/nvshmem_version.h was not found. Add -I<NVSHMEM_DIR>/include, where NVSHMEM_DIR is printed by: python3 -c "import nvidia.nvshmem; print(list(nvidia.nvshmem.__path__)[0])"
+
+self-check: this program compiled and ran, which by itself confirms nccl.h and mpi.h were both found on this system's own include path -- a well-formed documented result either way, matching this book's own Appendix pattern.
+=== NCCL (collective communication) ===
+NCCL_MAJOR = 2, NCCL_MINOR = 26, NCCL_PATCH = 2 (NCCL_VERSION_CODE = 22602)
+
+=== Open MPI (host-side process launch and messaging) ===
+OMPI_MAJOR_VERSION = 4, OMPI_MINOR_VERSION = 1, OMPI_RELEASE_VERSION = 6
+
+=== NVSHMEM (GPU-initiated one-sided communication) ===
+NVSHMEM version macros not defined -- non_abi/nvshmem_version.h was not found. Add -I<NVSHMEM_DIR>/include, where NVSHMEM_DIR is printed by: python3 -c "import nvidia.nvshmem; print(list(nvidia.nvshmem.__path__)[0])"
+
+self-check: this program compiled and ran, which by itself confirms nccl.h and mpi.h were both found on this system's own include path -- a well-formed documented result either way, matching this book's own Appendix pattern.

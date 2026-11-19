@@ -1,0 +1,32 @@
+[
+  {
+    "name": "eight-compile-fixed",
+    "command": [
+      "nvcc",
+      "-std=c++17",
+      "-O2",
+      "-arch=sm_100",
+      "tools/validate_eight_gpus.cu",
+      "-lnccl",
+      "-Xcompiler=-pthread",
+      "-o",
+      "eight-gpu-check"
+    ],
+    "exit_code": 0,
+    "timed_out": false,
+    "seconds": 1.5174255959999527,
+    "started_utc": "2026-11-19T21:56:10.332221+00:00",
+    "finished_utc": "2026-11-19T21:56:11.849651+00:00"
+  },
+  {
+    "name": "eight-run-fixed",
+    "command": [
+      "./eight-gpu-check"
+    ],
+    "exit_code": 0,
+    "timed_out": false,
+    "seconds": 25.677567150000073,
+    "started_utc": "2026-11-19T21:56:11.849784+00:00",
+    "finished_utc": "2026-11-19T21:56:37.527355+00:00"
+  }
+]

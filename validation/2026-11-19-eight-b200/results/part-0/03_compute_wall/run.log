@@ -1,0 +1,9 @@
+$ /home/ubuntu/book-b200-20261119/results/part-0/03_compute_wall/example
+Total training compute (C = 6*N*D): 3.150e+23 FLOPs
+N (parameters, approx.):            1.750e+11
+D (tokens):                         3.000e+11
+H100 SXM peak dense BF16/FP16:       9.890e+14 FLOP/s
+
+GPU-days on a single H100 at 100% of peak (ideal, unreachable in practice): 3686.4
+GPU-days on a single H100 at an assumed 50% of peak (illustrative MFU, not measured):   7372.8
+Same total compute spread across 1024 such GPUs at the assumed 50% MFU: 7.20 days

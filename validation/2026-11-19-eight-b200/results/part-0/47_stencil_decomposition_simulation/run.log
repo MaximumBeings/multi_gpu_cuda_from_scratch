@@ -1,0 +1,27 @@
+$ /home/ubuntu/book-b200-20261119/results/part-0/47_stencil_decomposition_simulation/example
+Part A: domain-decomposed vs. unsplit Jacobi stencil, 30 iterations, 16 x 8 interior grid, 4-way row-strip decomposition (4 rows/rank).
+
+Sample interior cell values (row, col are 1-indexed into the 16 x 8 interior):
+  (row  1, col 4): unsplit = 75.112944216675984   decomposed = 75.112944216675984   bit-identical
+  (row  4, col 4): unsplit = 23.531589206336115   decomposed = 23.531589206336115   bit-identical
+  (row  8, col 4): unsplit = 2.6290237654413451   decomposed = 2.6290237654413451   bit-identical
+  (row 12, col 4): unsplit = 0.121397771948485   decomposed = 0.121397771948485   bit-identical
+  (row 16, col 4): unsplit = 0.0017304024518540947   decomposed = 0.0017304024518540947   bit-identical
+
+0 of 180 total grid cells (including fixed boundary cells) mismatched between the unsplit reference and the 4-way domain-decomposed run: PASS (bit-identical)
+
+This is Chapter 13's own structural argument, showing up again in a completely different setting: a stencil update reads a FIXED set of neighbor values and applies the SAME arithmetic regardless of which device happens to store each operand. Splitting the grid into row-strips only relocates WHERE each cell's data lives; halo exchange delivers the exact same bit pattern a neighboring cell would have held in an unsplit array. No operation's order changes, and -- unlike Chapter 14's row-parallel combine, which really does sum partial results in a different order -- no reduction happens here at all, so exact `==` is a valid check, not merely a convenient one.
+
+Part B: data moved per iteration -- halo exchange vs. giving every rank the whole domain every iteration.
+
+  this chapter's own grid: 16 x 8 interior grid, 4-way decomposition
+    halo exchange (Section 16.2):        48 elements/iteration
+    full-domain replication every iter:  512 elements/iteration
+    halo exchange moves 10.7x less data
+
+  a more realistic grid: 1024 x 1024 interior grid, 8-way decomposition
+    halo exchange (Section 16.2):        14336 elements/iteration
+    full-domain replication every iter:  8388608 elements/iteration
+    halo exchange moves 585.1x less data
+
+Halo-exchange traffic scales with each rank's BOUNDARY -- its perimeter, GRID_COLS elements per shared edge -- while full-domain replication scales with the entire domain's VOLUME, every rank re-receiving every cell every iteration. This is exactly the "surface/volume behavior" William Gropp's own halo-exchange lecture names as the reason domain decomposition communicates only what changed at a boundary, not the whole state.

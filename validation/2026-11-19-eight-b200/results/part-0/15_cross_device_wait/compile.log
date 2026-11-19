@@ -1,0 +1,1 @@
+$ nvcc -std=c++17 -O2 -arch=sm_100 /home/ubuntu/book-b200-20261119/docs/part1/code/15_cross_device_wait.cu -o /home/ubuntu/book-b200-20261119/results/part-0/15_cross_device_wait/example

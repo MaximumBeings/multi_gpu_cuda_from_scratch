@@ -1,0 +1,1 @@
+$ nvcc -std=c++17 -O2 -arch=sm_100 /home/ubuntu/book-b200-20261119/docs/part4/code/49_nccl_allreduce_as_barrier.cu -o /home/ubuntu/book-b200-20261119/results/part-2/49_nccl_allreduce_as_barrier/example -lnccl

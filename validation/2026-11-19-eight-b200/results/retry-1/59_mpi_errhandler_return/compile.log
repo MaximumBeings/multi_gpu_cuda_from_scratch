@@ -1,0 +1,1 @@
+$ mpicc -std=c11 -O2 /home/ubuntu/book-b200-20261119/docs/part5/code/59_mpi_errhandler_return.c -o /home/ubuntu/book-b200-20261119/results/retry-1/59_mpi_errhandler_return/example

@@ -1,0 +1,1 @@
+$ g++ -std=c++17 -O2 /home/ubuntu/book-b200-20261119/docs/part7/code/106_netting_set_exposure_order_simulation.cpp -o /home/ubuntu/book-b200-20261119/results/part-0/106_netting_set_exposure_order_simulation/example

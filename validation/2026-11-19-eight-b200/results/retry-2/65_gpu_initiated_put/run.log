@@ -1,0 +1,50 @@
+$ /home/ubuntu/book-b200-20261119/mpi/usr/bin/mpirun --oversubscribe -np 8 /home/ubuntu/book-b200-20261119/results/retry-2/65_gpu_initiated_put/example
+--------------------------------------------------------------------------
+Sorry!  You were supposed to get help about:
+    unavailable
+But I couldn't open the help file:
+    /usr/lib/x86_64-linux-gnu/pmix2/share/pmix/help-pcompress.txt: No such file or directory.  Sorry!
+--------------------------------------------------------------------------
+libibverbs: Warning: couldn't load driver 'libvmw_pvrdma-rdmav34.so': libvmw_pvrdma-rdmav34.so: cannot open shared object file: No such file or directory
+libibverbs: Warning: couldn't load driver 'libvmw_pvrdma-rdmav34.so': libvmw_pvrdma-rdmav34.so: cannot open shared object file: No such file or directory
+libibverbs: Warning: couldn't load driver 'libvmw_pvrdma-rdmav34.so': libvmw_pvrdma-rdmav34.so: cannot open shared object file: No such file or directory
+libibverbs: Warning: couldn't load driver 'libvmw_pvrdma-rdmav34.so': libvmw_pvrdma-rdmav34.so: cannot open shared object file: No such file or directory
+libibverbs: Warning: couldn't load driver 'libvmw_pvrdma-rdmav34.so': libvmw_pvrdma-rdmav34.so: cannot open shared object file: No such file or directory
+libibverbs: Warning: couldn't load driver 'libvmw_pvrdma-rdmav34.so': libvmw_pvrdma-rdmav34.so: cannot open shared object file: No such file or directory
+libibverbs: Warning: couldn't load driver 'libvmw_pvrdma-rdmav34.so': libvmw_pvrdma-rdmav34.so: cannot open shared object file: No such file or directory
+libibverbs: Warning: couldn't load driver 'libvmw_pvrdma-rdmav34.so': libvmw_pvrdma-rdmav34.so: cannot open shared object file: No such file or directory
+--------------------------------------------------------------------------
+WARNING: No preset parameters were found for the device that Open MPI
+detected:
+
+  Local host:            167-17-99-119
+  Device name:           mlx5_0
+  Device vendor ID:      0x02c9
+  Device vendor part ID: 4126
+
+Default device parameters will be used, which may result in lower
+performance.  You can edit any of the files specified by the
+btl_openib_device_param_files MCA parameter to set values for your
+device.
+
+NOTE: You can turn off this warning by setting the MCA parameter
+      btl_openib_warn_no_device_params_found to 0.
+--------------------------------------------------------------------------
+--------------------------------------------------------------------------
+WARNING: There was an error initializing an OpenFabrics device.
+
+  Local host:   167-17-99-119
+  Local device: mlx5_1
+--------------------------------------------------------------------------
+[167-17-99-119:11151] 15 more processes have sent help message help-mpi-btl-openib.txt / no device params found
+[167-17-99-119:11151] Set MCA parameter "orte_base_help_aggregate" to 0 to see all help / error messages
+[167-17-99-119:11151] 7 more processes have sent help message help-mpi-btl-openib.txt / error in device init
+PE 2 ring put: received=778 expected=778
+PE 3 ring put: received=779 expected=779
+PE 4 ring put: received=780 expected=780
+PE 5 ring put: received=781 expected=781
+PE 6 ring put: received=782 expected=782
+PE 7 ring put: received=783 expected=783
+PE 0 ring put: received=784 expected=784
+VALIDATION PASS: 8 PEs, errors=0
+PE 1 ring put: received=777 expected=777

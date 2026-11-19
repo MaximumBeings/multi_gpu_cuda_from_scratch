@@ -1,0 +1,2 @@
+$ /home/ubuntu/book-b200-20261119/results/part-1/24_ring_step_by_hand/example
+PASS: one ring step (distinct send/receive storage) on 4 GPUs, all nonuniform output values checked.

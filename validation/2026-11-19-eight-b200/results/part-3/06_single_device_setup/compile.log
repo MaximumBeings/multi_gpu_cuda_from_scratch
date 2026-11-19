@@ -1,0 +1,1 @@
+$ nvcc -std=c++17 -O2 -arch=sm_100 /home/ubuntu/book-b200-20261119/docs/part0/code/06_single_device_setup.cu -o /home/ubuntu/book-b200-20261119/results/part-3/06_single_device_setup/example

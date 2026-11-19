@@ -1,0 +1,8 @@
+$ /home/ubuntu/book-b200-20261119/results/part-3/06_single_device_setup/example
+cudaSetDevice(0)             no error (code 0)
+cudaMalloc                   no error (code 0)
+cudaMemcpy H2D               no error (code 0)
+kernel launch                no error (code 0)
+cudaDeviceSynchronize        no error (code 0)
+cudaMemcpy D2H               no error (code 0)
+Result: 1 2 3 4 5 6 7 8 

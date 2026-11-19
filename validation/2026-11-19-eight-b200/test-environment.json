@@ -1,0 +1,10 @@
+{
+  "NVSHMEM_HOME": "/home/ubuntu/book-b200-20261119/deps/lib/python3.12/site-packages/nvidia/nvshmem",
+  "NVSHMEM_LIB": "/home/ubuntu/book-b200-20261119/deps/lib/python3.12/site-packages/nvidia/nvshmem/lib",
+  "NVSHMEM_BOOTSTRAP": "MPI",
+  "CUDA_HOME": "/usr",
+  "CUDA_INCDIR": "/usr/include",
+  "CUDA_LIBDIR": "/usr/lib/x86_64-linux-gnu",
+  "LD_LIBRARY_PATH": "/home/ubuntu/book-b200-20261119/deps/lib/python3.12/site-packages/nvidia/nvshmem/lib:/usr/lib/x86_64-linux-gnu",
+  "CUDA_DEVICE_ORDER": "PCI_BUS_ID"
+}

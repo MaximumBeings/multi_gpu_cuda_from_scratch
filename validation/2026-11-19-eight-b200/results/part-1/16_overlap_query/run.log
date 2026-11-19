@@ -1,0 +1,3 @@
+$ /home/ubuntu/book-b200-20261119/results/part-1/16_overlap_query/example
+device 0: asyncEngineCount=4 concurrentKernels=1
+API PROBE PASS: capability queries only, no overlap benchmark, errors=0

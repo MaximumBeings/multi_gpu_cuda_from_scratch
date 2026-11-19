@@ -1,0 +1,10 @@
+Collecting nvidia-nvshmem-cu12==3.8.0
+  Downloading nvidia_nvshmem_cu12-3.8.0-py3-none-manylinux2014_x86_64.manylinux_2_17_x86_64.whl.metadata (2.2 kB)
+Collecting nvidia-cuda-cccl-cu12 (from nvidia-nvshmem-cu12==3.8.0)
+  Downloading nvidia_cuda_cccl_cu12-12.9.27-py3-none-manylinux2014_x86_64.manylinux_2_17_x86_64.whl.metadata (1.7 kB)
+Downloading nvidia_nvshmem_cu12-3.8.0-py3-none-manylinux2014_x86_64.manylinux_2_17_x86_64.whl (280.8 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 280.8/280.8 MB 28.7 MB/s eta 0:00:00
+Downloading nvidia_cuda_cccl_cu12-12.9.27-py3-none-manylinux2014_x86_64.manylinux_2_17_x86_64.whl (3.2 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 3.2/3.2 MB 106.3 MB/s eta 0:00:00
+Installing collected packages: nvidia-cuda-cccl-cu12, nvidia-nvshmem-cu12
+Successfully installed nvidia-cuda-cccl-cu12-12.9.27 nvidia-nvshmem-cu12-3.8.0

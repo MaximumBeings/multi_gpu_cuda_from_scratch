@@ -1,0 +1,2 @@
+$ /home/ubuntu/book-b200-20261119/results/part-1/12_staged_host_transfer/example
+PASS: 4096 nonuniform values verified through explicit pinned-host staging.

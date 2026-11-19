@@ -1,0 +1,5 @@
+$ /home/ubuntu/book-b200-20261119/results/part-1/08_pointer_attributes/example
+cudaPointerGetAttributes(ordinary stack array): no error (code 0)
+  type=0 device=-1
+cudaMalloc: no error (code 0)
+cudaPointerGetAttributes(device ptr): no error

@@ -1,0 +1,12 @@
+Traceback (most recent call last):
+  File "/home/ubuntu/book-b200-20261119/run-b200-book.py", line 13, in <module>
+    rows=v.inventory();assert len(rows)==145
+         ^^^^^^^^^^^^^
+  File "/home/ubuntu/book-b200-20261119/tools/validate_examples.py", line 48, in inventory
+    text=p.read_text();headers=re.findall(r'^\s*#\s*include\s*[<"]([^>\"]+)',text,re.M)
+         ^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/pathlib.py", line 1030, in read_text
+    return f.read()
+           ^^^^^^^^
+  File "<frozen codecs>", line 322, in decode
+UnicodeDecodeError: 'utf-8' codec can't decode byte 0xa3 in position 45: invalid start byte

@@ -1,0 +1,2 @@
+$ /home/ubuntu/book-b200-20261119/results/part-1/40_row_parallel_allreduce/example
+PASS: row-parallel partial GEMM plus NCCL AllReduce on 4 GPUs; all reference values checked.

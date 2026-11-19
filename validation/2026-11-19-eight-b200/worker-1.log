@@ -1,0 +1,42 @@
+dependency_blocked docs/appendix/code/121_multi_gpu_stack_version_check.cpp
+executed_unverified docs/appendix/code/125_quiz_ghost_cell_trap.cpp
+validation_pass docs/appendix/code/129_graph_exec_update.cu
+validation_pass docs/appendix/code/133_multi_device_timing.cu
+executed_unverified docs/appendix/code/137_zero_stage_memory_model.cpp
+executed_unverified docs/appendix/code/hello_host.cpp
+dependency_blocked docs/appendix/code/hello_nvshmem.cu
+executed_unverified docs/part0/code/04_topology_bandwidth_model.cpp
+executed_unverified docs/part1/code/08_pointer_attributes.cu
+validation_pass docs/part1/code/12_staged_host_transfer.cu
+api_probe_pass docs/part1/code/16_overlap_query.cu
+validation_pass docs/part2/code/20_broadcast_by_hand.cu
+validation_pass docs/part2/code/24_ring_step_by_hand.cu
+validation_pass docs/part2/code/28_alltoall_by_hand.cu
+executed_unverified docs/part2/code/32_ring_vs_tree_model.cpp
+executed_unverified docs/part3/code/36_model_shard_memory_model.cpp
+validation_pass docs/part3/code/40_row_parallel_allreduce.cu
+executed_unverified docs/part3/code/44_bubble_and_pipelined_correctness.cpp
+executed_unverified docs/part4/code/48_per_device_sync_is_not_a_barrier.cu
+executed_unverified docs/part4/code/52_weighted_shard_partition.cpp
+executed_unverified docs/part4/code/56_backup_workers_simulation.cpp
+dependency_blocked docs/part5/code/60_hybrid_mpi_nccl_bootstrap.cpp
+dependency_blocked docs/part5/code/64_nvshmem_mpi_bootstrap.cu
+api_probe_pass docs/part5/code/68_host_node_and_multi_process_graphs.cu
+dependency_blocked docs/part6/code/72_bucketed_gradient_allreduce.cu
+executed_unverified docs/part6/code/76_tp_pp_scale_cost_model.cpp
+executed_unverified docs/part6/code/80_barnes_hut_complexity_crossover_model.cpp
+executed_unverified docs/part6/code/84_distributed_jacobi_correctness_simulation.cpp
+executed_unverified docs/part6/code/88_rendering_comm_and_load_balance_model.cpp
+executed_unverified docs/part6/code/92_var_percentile_and_allgather_cost_model.cpp
+executed_unverified docs/part7/code/103_distributed_fft_transpose_correctness_simulation.cpp
+executed_unverified docs/part7/code/107_multi_gpu_exposure_profile_correctness_simulation.cpp
+executed_unverified docs/part7/code/111_gnn_embedding_fraud_accuracy_model.cpp
+executed_unverified docs/part7/code/115_embarrassingly_parallel_genomics_correctness_simulation.cpp
+executed_unverified docs/part7/code/119_forward_projection_communication_wall_cost_model.cpp
+executed_unverified docs/part7/code/96_prefill_vs_decode_cost_model.cpp
+{
+  "api_probe_pass": 2,
+  "dependency_blocked": 5,
+  "executed_unverified": 22,
+  "validation_pass": 7
+}

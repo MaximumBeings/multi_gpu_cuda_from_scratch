@@ -1,0 +1,8 @@
+$ /home/ubuntu/book-b200-20261119/results/part-3/113_distributed_tree_building_sequential_reduction_model/example
+XGBoost max_depth default: 6; illustrative ensemble: 500 trees.
+The native xgboost.train API defaults to 10 boosting rounds; this model selects 500 trees.
+Full depth-six binary tree: at most 63 internal split nodes; ensemble: at most 31500.
+Node counts do not count MPI/NCCL calls: histograms may be batched, cached or derived by subtraction.
+A root-to-leaf path has at most 6 dependent splits. Independent siblings may overlap.
+Ordinary boosting rounds depend on prior predictions; rounds need not equal trees for every objective/configuration.
+MODEL CHECK PASS: split-node bound and dependency scope; no training/performance claim

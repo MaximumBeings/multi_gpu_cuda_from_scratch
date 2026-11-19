@@ -1,0 +1,1 @@
+$ nvcc -std=c++17 -O2 -arch=sm_100 /home/ubuntu/book-b200-20261119/docs/part4/code/51_heterogeneous_capability_query.cu -o /home/ubuntu/book-b200-20261119/results/part-0/51_heterogeneous_capability_query/example

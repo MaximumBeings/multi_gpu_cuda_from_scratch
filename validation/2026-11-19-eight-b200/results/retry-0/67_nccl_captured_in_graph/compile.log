@@ -1,0 +1,1 @@
+$ nvcc -std=c++17 -O2 -arch=sm_100 -ccbin mpicxx /home/ubuntu/book-b200-20261119/docs/part5/code/67_nccl_captured_in_graph.cu -o /home/ubuntu/book-b200-20261119/results/retry-0/67_nccl_captured_in_graph/example -lnccl

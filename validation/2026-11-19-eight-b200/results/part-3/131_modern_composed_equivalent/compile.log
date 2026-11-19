@@ -1,0 +1,1 @@
+$ nvcc -std=c++17 -O2 -arch=sm_100 /home/ubuntu/book-b200-20261119/docs/appendix/code/131_modern_composed_equivalent.cu -o /home/ubuntu/book-b200-20261119/results/part-3/131_modern_composed_equivalent/example

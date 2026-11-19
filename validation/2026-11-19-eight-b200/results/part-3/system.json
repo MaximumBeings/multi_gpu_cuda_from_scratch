@@ -1,0 +1,69 @@
+{
+  "utc": "2026-11-19T21:53:21.228044+00:00",
+  "arch": "sm_100",
+  "execute": true,
+  "mpi_ranks": 8,
+  "CUDA_HOME": "/usr",
+  "CUDA_INCDIR": "/usr/include",
+  "CUDA_LIBDIR": "/usr/lib/x86_64-linux-gnu",
+  "NVSHMEM_HOME": "/home/ubuntu/book-b200-20261119/deps/lib/python3.12/site-packages/nvidia/nvshmem",
+  "NVSHMEM_LIB": "/home/ubuntu/book-b200-20261119/deps/lib/python3.12/site-packages/nvidia/nvshmem/lib",
+  "host": "167-17-99-119",
+  "uname": {
+    "exit_code": 0,
+    "timed_out": false,
+    "seconds": 0.0018432559999723708,
+    "started_utc": "2026-11-19T21:53:21.228071+00:00",
+    "finished_utc": "2026-11-19T21:53:21.229915+00:00"
+  },
+  "git": {
+    "exit_code": 128,
+    "timed_out": false,
+    "seconds": 0.0017099579999921843,
+    "started_utc": "2026-11-19T21:53:21.229932+00:00",
+    "finished_utc": "2026-11-19T21:53:21.231642+00:00"
+  },
+  "git-status": {
+    "exit_code": 128,
+    "timed_out": false,
+    "seconds": 0.0014971990000276492,
+    "started_utc": "2026-11-19T21:53:21.231655+00:00",
+    "finished_utc": "2026-11-19T21:53:21.233153+00:00"
+  },
+  "nvcc": {
+    "exit_code": 0,
+    "timed_out": false,
+    "seconds": 0.0035163330000500537,
+    "started_utc": "2026-11-19T21:53:21.233164+00:00",
+    "finished_utc": "2026-11-19T21:53:21.236680+00:00"
+  },
+  "mpi": {
+    "exit_code": 127,
+    "timed_out": false,
+    "seconds": 0.0015553929999896354,
+    "started_utc": "2026-11-19T21:53:21.236690+00:00",
+    "finished_utc": "2026-11-19T21:53:21.238246+00:00"
+  },
+  "gpus": {
+    "exit_code": 0,
+    "timed_out": false,
+    "seconds": 0.3144172069999627,
+    "started_utc": "2026-11-19T21:53:21.238256+00:00",
+    "finished_utc": "2026-11-19T21:53:21.552675+00:00"
+  },
+  "topology": {
+    "exit_code": 0,
+    "timed_out": false,
+    "seconds": 5.377221888999998,
+    "started_utc": "2026-11-19T21:53:21.552706+00:00",
+    "finished_utc": "2026-11-19T21:53:26.929930+00:00"
+  },
+  "libraries": {
+    "exit_code": 0,
+    "timed_out": false,
+    "seconds": 0.008042504999991706,
+    "started_utc": "2026-11-19T21:53:26.929969+00:00",
+    "finished_utc": "2026-11-19T21:53:26.938012+00:00"
+  },
+  "visible_gpu_count": 8
+}

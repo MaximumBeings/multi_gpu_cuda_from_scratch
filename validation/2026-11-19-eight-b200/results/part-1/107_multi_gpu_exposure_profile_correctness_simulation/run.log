@@ -1,0 +1,19 @@
+$ /home/ubuntu/book-b200-20261119/results/part-1/107_multi_gpu_exposure_profile_correctness_simulation/example
+EPE vs. the same method's own P=1 result, 24 paths, 6 dates, P in {2,3,4,6,8,12,24} (42 (P, date) pairs per method):
+
+Combination method                             pairs differing  max |diff|    
+A incremental fold, continuous exposure        19               7.11e-15      
+B incremental fold, whole-cent integers        26               1.82e-12      
+C Ch31 two-pass local mean + (na*ma+nb*mb)/n   21               1.42e-14      
+D exact fixed-point (count, int64 sum)         0                0             
+
+Method D, per date (the EPE profile itself, and the largest difference from P=1 over every tested P):
+Date   EPE (P=1)        max |diff|    
+0      18.9762500000    0             
+1      26.7516666667    0             
+2      29.5337500000    0             
+3      26.2037500000    0             
+4      16.2587500000    0             
+5      38.2633333333    0             
+
+Method B rules out continuity as the cause: whole-cent integer exposures still give P-dependent means under the incremental fold, because mean + delta*nb/n rounds at every fold and the folds are grouped differently at each P. Method C is not immune either: its local means and the products na*ma each round, so the weighted combination still depends on grouping in general. Method D carries an exact integer sum, so the grouping across ranks cannot matter, and divides once at the end: the EPE is identical at every P. The cost is one rounding of each path's exposure to 2^-32 -- the same rounding at every P -- and a variance would need its own exact second pass. With T=360 dates per profile (Section 36.1), method D makes every date of the profile reproducible across GPU counts.

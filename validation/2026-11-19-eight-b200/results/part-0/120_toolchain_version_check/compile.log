@@ -1,0 +1,1 @@
+$ nvcc -std=c++17 -O2 -arch=sm_100 /home/ubuntu/book-b200-20261119/docs/appendix/code/120_toolchain_version_check.cu -o /home/ubuntu/book-b200-20261119/results/part-0/120_toolchain_version_check/example

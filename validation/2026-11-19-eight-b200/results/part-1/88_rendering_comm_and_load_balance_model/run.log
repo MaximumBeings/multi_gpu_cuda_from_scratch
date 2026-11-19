@@ -1,0 +1,46 @@
+$ /home/ubuntu/book-b200-20261119/results/part-1/88_rendering_comm_and_load_balance_model/example
+--- Total communication volume vs. earlier Part 6 chapters ---
+Every case study since Ch24 pays a communication cost that GROWS with the number of computational steps taken (SUMMA rounds, ring all-reduce steps, TP/PP rounds, all-gather steps, BFS levels, Jacobi iterations). This chapter's own clean case pays a FIXED cost -- the final image size -- exactly ONCE, regardless of how much internal computation (ray bounces, samples per pixel) produced that image.
+
+steps      earlier chapters: cost grows   this chapter: cost stays fixed
+1          16                             192                           
+10         160                            192                           
+100        1600                           192                           
+1000       16000                          192                           
+
+At 1000 steps, an earlier chapter's own per-step cost model would have paid out 16000 total units of communication; this chapter's own model pays the SAME 192 units whether the render took 1 internal step or 1000 -- because nothing about internal ray computation touches another rank's data.
+
+--- The real complication: uneven per-tile rendering cost ---
+NVIDIA's own real Omniverse RTX renderer documentation: "automatically balances the amount of total path tracing work to be performed by each GPU." This illustrative model (NOT measured data) assigns each of this chapter's own 12 image rows a rendering-cost WEIGHT reflecting how many ray-object tests that row's pixels actually need (rows near the two circles from Section 30.1 cost more than empty background rows):
+
+row    cost weight
+0      1         
+1      1         
+2      3         
+3      5         
+4      6         
+5      7         
+6      6         
+7      7         
+8      4         
+9      3         
+10     2         
+11     1         
+Total weight: 46
+
+Naive EQUAL row split across P=4 ranks (3 rows each):
+rank     rows           total weight
+0        0-2            5         
+1        3-5            18        
+2        6-8            17        
+3        9-11           6         
+Slowest rank's weight: 18 out of total 46 -- the render's total time is bounded by this SLOWEST rank, exactly Chapter 18's own real load-imbalance finding, here caused by SCENE CONTENT rather than device capability.
+
+Chapter 18's own real weighted-sharding technique applied to rows instead of devices -- greedily assign rows to whichever rank currently has the SMALLEST accumulated weight:
+rank     rows assigned            total weight
+0        0,4,8,11                 12        
+1        1,5,9                    11        
+2        2,6,10                   11        
+3        3,7                      12        
+
+Slowest rank's weight after rebalancing: 12 (down from 18) -- a 1.50x reduction in the slowest rank's load, achieved with UNEQUAL row counts per rank but more balanced TOTAL weight, exactly Chapter 18's own real point that equal SHARE COUNT and equal WORK are different things.

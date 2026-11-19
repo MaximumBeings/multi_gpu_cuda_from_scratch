@@ -1,0 +1,2 @@
+$ /home/ubuntu/book-b200-20261119/results/part-2/49_nccl_allreduce_as_barrier/example
+PASS: dummy-element AllReduce plus host completion wait on 4 GPUs; all reference values checked.

@@ -1,0 +1,11 @@
+$ /home/ubuntu/book-b200-20261119/results/part-2/25_ring_allreduce_simulation/example
+Independent reference (sum of all 4 devices' chunks): 100 104 108 112 
+
+After 6 ring steps (scatter-reduce + all-gather), all 4 devices hold the reference sum: PASS
+
+Data-volume comparison for this exact problem (N=4 devices, 4 elements/device):
+  Naive hub's traffic (closed form): 24 elements (bottleneck)
+  Naive non-hub device's traffic:   8 elements
+  Ring: EVERY device's traffic:      12 elements (counted; all devices equal: PASS)
+  Ring: elements SENT per device:    6 = Gibiansky's 2(N-1)K/N = 6
+  Ratio (naive hub / ring device):   2.00x -- equals N/2 exactly.

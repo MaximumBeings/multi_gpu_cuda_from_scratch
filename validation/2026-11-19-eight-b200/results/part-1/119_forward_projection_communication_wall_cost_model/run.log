@@ -1,0 +1,20 @@
+$ /home/ubuntu/book-b200-20261119/results/part-1/119_forward_projection_communication_wall_cost_model/example
+Illustrative, clearly-labeled model (reproducing the real cone-beam FP scaling SHAPE the paper describes, not real exact timings, which the paper does not publish for this specific case -- the 1-GPU compute constant below is tuned so this model's own crossover lands at the real cited P=17 threshold, for illustration, not because the paper states this exact number): 1-GPU compute time = 17.0s, fixed per-round ghost-cell communication time = 1.0s.
+
+GPUs       compute(s)        comm(s)   total=max(s)    speedup
+1              17.000          1.000         17.000      1.00x
+2               8.500          1.000          8.500      2.00x
+4               4.250          1.000          4.250      4.00x
+8               2.125          1.000          2.125      8.00x
+12              1.417          1.000          1.417     12.00x
+16              1.062          1.000          1.062     16.00x
+17              1.000          1.000          1.000     17.00x
+20              0.850          1.000          1.000     17.00x
+24              0.708          1.000          1.000     17.00x
+32              0.531          1.000          1.000     17.00x
+48              0.354          1.000          1.000     17.00x
+64              0.266          1.000          1.000     17.00x
+
+This illustrative model's own communication floor is first reached at P=17 GPUs (the first tested P where local compute time drops to or below the fixed per-round communication time) -- by this file's own deliberate tuning choice, the same P the real cited cone-beam finding names: "with 17 or more GPUs, we hardly see any improvement in the execution time as it is dominated by the communication time." The MATCH at P=17 is a property of this file's own chosen illustrative constant, not a claim that the real paper published a 17-second 1-GPU compute time -- what is real is the qualitative SHAPE this model reproduces from first principles: shrinking compute against a fixed communication floor.
+
+This file's own idealized max() model plateaus PERFECTLY flat past P=17 (speedup stays exactly 17.00x forever after) -- an honest simplification, not a claim about the real paper's own exact behavior. The real paper's own more careful finding is slightly softer than a perfectly hard wall: "Although the network communication negatively impacts the scaling, the execution time keeps decreasing when more GPUs are added" -- real execution time still creeps down past 17 GPUs, just by an amount small enough that the paper itself calls it "hardly any improvement," not zero improvement. This file's own hard floor is still the right illustrative shape for the real underlying mechanism (a fixed communication cost that stops shrinking while compute keeps shrinking), and is a genuinely sharper real finding than Chapter 16's own halo overhead (which shrinks the RELATIVE benefit of more ranks but never fully erases it in that chapter's own model) or Chapter 34's own saturating all-to-all fraction (which approaches, but never reaches, 100%) -- here, a real, peer-reviewed, PUBLISHED result shows the marginal benefit of an additional real GPU can become close to negligible in practice, even though it never mathematically reaches exactly zero, once the fixed real communication cost per round approaches the shrinking real local compute cost it is competing against.

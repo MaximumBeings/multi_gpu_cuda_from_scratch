@@ -1,0 +1,19 @@
+$ /home/ubuntu/book-b200-20261119/results/part-0/39_column_parallel_linear/example
+cudaGetDeviceCount(): 8 device(s).
+
+Unsplit reference H = ReLU(X * A): [1.1000, 0.0000, 1.1000, 2.0000]
+rank 0 computes columns [0, 2) independently: [1.1000, 0.0000]
+rank 1 computes columns [2, 4) independently: [1.1000, 2.0000]
+
+Concatenating both ranks' independently-computed columns matches the unsplit reference exactly: PASS (bit-identical)
+
+Notice what this section did NOT need: no cudaMemcpyPeer(),
+no ncclBroadcast(), no ncclAllReduce() -- nothing beyond the
+device count query above. Splitting a GEMM's OUTPUT columns,
+followed by an elementwise nonlinearity, is the one shape of
+tensor-parallel split this book will show that needs no real
+collective at all, PROVIDED every device already holds an
+identical copy of X -- which itself had to get there via a
+real broadcast (Chapter 8, Chapter 12), before this section's
+code ever ran. Section 14.2 shows the very next GEMM in the
+same block, where that free ride ends.

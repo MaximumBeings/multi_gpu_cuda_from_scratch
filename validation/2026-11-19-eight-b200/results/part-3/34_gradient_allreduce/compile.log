@@ -1,0 +1,1 @@
+$ nvcc -std=c++17 -O2 -arch=sm_100 /home/ubuntu/book-b200-20261119/docs/part3/code/34_gradient_allreduce.cu -o /home/ubuntu/book-b200-20261119/results/part-3/34_gradient_allreduce/example -lnccl

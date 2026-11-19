@@ -1,0 +1,1 @@
+$ mpicxx -std=c++17 -O2 -I/usr/include -L/usr/lib/x86_64-linux-gnu -Wl,-rpath,/usr/lib/x86_64-linux-gnu /home/ubuntu/book-b200-20261119/docs/part5/code/58_mpi_cuda_aware_query_and_fallback.cpp -o /home/ubuntu/book-b200-20261119/results/retry-0/58_mpi_cuda_aware_query_and_fallback/example -lcudart

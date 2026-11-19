@@ -1,0 +1,2 @@
+$ nvcc -std=c++17 -O2 -arch=sm_100 tools/validate_eight_gpus.cu -lnccl -pthread -o eight-gpu-check
+nvcc fatal   : Unknown option '-pthread'

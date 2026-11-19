@@ -1,0 +1,11 @@
+$ /home/ubuntu/book-b200-20261119/results/part-0/99_embedding_capacity_and_parallelism_choice_model/example
+Per-GPU HBM: 80 GB (A100 80GB); one 8-GPU node in aggregate: 640 GB -- the 640 GB figure in HugeCTR's ETC documentation is this NODE aggregate, not a single-GPU capacity.
+Dense model size: 2.0 GB -- comfortably replicated on EVERY GPU regardless of GPU count (Chapter 12's data parallelism), since it is a small fraction of one GPU's 80 GB.
+
+Scenario                                           Total emb. (GB)  Fits 1 GPU?  GPUs (MP)      8-GPU nodes 
+Small catalog                                      50.0             YES          1              1           
+One 8x A100 node's aggregate (HugeCTR ETC doc)     640.0            NO           8              1           
+Production-scale                                   2048.0           NO           26             4           
+Terabyte-scale (10 TB)                             10240.0          NO           128            16          
+
+These GPU counts are LOWER bounds: they assume the whole 80 GB of every GPU holds embedding rows and nothing else. Pure data parallelism (replicate the WHOLE model on every GPU, Chapter 12's technique alone) only works for the first scenario -- a 10 TB table is 128x one GPU's memory, and 16x even a whole 8-GPU node's aggregate. That is exactly why HugeCTR's own real design shards the embeddings (Chapter 13's technique) while keeping the dense layers replicated (Chapter 12's technique) -- a genuine HYBRID of two techniques this book built separately, applied to two different PARTS of the same model rather than to the whole model uniformly.

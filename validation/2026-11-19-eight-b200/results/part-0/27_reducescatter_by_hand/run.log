@@ -1,0 +1,2 @@
+$ /home/ubuntu/book-b200-20261119/results/part-0/27_reducescatter_by_hand/example
+PASS: host-staged rank-ordered reduce-scatter on 4 GPUs, all nonuniform output values checked.
