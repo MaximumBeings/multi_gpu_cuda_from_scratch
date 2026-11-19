@@ -1,0 +1,15 @@
+{
+  "status": "PASS",
+  "source": "docs/part1/code/17_ipc_mem_handle.cu",
+  "source_sha256": "0a6c761e152bb3d0015b3f96bfb93cf7fa61764b90cde1f23aafdf11539a6388",
+  "arch": "sm_90",
+  "gpu_uuids": [
+    "GPU-610e96a4-c1f5-1b82-3d12-788e61020da2",
+    "GPU-2712078d-8293-d97d-7122-4601c5d7e628"
+  ],
+  "normal_runs": 20,
+  "memcheck_runs": 2,
+  "payload_values_per_run": 4096,
+  "scope": "Two local H100 GPUs; producer/consumer directions reversed using explicit UUIDs. No multi-node or performance claim.",
+  "finished_utc": "2026-11-19T15:34:32.673735+00:00"
+}

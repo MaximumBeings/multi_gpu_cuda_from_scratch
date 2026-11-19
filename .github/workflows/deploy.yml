@@ -22,6 +22,8 @@ jobs:
         run: python3 tools/test_approved_display.py
       - name: Reject unregistered pending source changes
         run: python3 tools/test_pending_revalidation.py
+      - name: Verify corrected IPC execution evidence
+        run: python3 tools/test_ipc_correction.py
       - name: Verify execution evidence
         run: python3 tools/verify_execution.py
       - name: Verify November 18 rerun claims

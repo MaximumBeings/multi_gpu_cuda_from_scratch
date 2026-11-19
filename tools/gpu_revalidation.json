@@ -13,7 +13,9 @@
     "source": "docs/part1/code/17_ipc_mem_handle.cu",
     "archived_sha256": "fc4bd504bca901310ce7d63d5c62facc6b5093bb53c7ca06864026ce83df4ee5",
     "current_sha256": "0a6c761e152bb3d0015b3f96bfb93cf7fa61764b90cde1f23aafdf11539a6388",
-    "status": "pending_gpu_revalidation",
-    "reason": "Finish pageable host-to-device DMA in producer context before publishing CUDA IPC memory handle. Old successful transfers did not establish the required cross-process happens-before dependency."
+    "status": "verified_gpu_revalidation",
+    "reason": "Producer device completion added before IPC handle publication; exact corrected source compiled and passed twenty full-payload runs plus two memchecks on two NV18-connected H100s, reversing physical producer/consumer roles.",
+    "dataset": "2026-11-19-h100-ipc",
+    "verified_notice": "Correction verified on November 19"
   }
 ]

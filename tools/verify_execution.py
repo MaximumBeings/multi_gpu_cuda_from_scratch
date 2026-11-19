@@ -86,7 +86,7 @@ def verify(root, public, docs=None, summary_text=None):
             errors.append(f'Expected one displayed execution block: {rel}')
             continue
         section = sections[0]
-        if rel in revisions and ((('GPU revalidation pending' if revisions[rel]['status'] == 'pending_gpu_revalidation' else 'Correction verified on November 18') not in section)
+        if rel in revisions and ((('GPU revalidation pending' if revisions[rel]['status'] == 'pending_gpu_revalidation' else revisions[rel].get('verified_notice', 'Correction verified on November 18')) not in section)
                 or revisions[rel]['current_sha256'] not in section):
             errors.append(f'Corrected source needs a visible pending notice and exact new hash: {rel}')
         if label in {'a100','h100-rerun'} and ('<details' in section or not any(title in section for title in ('**Sample output**', '**Actual sample output (excerpt)**'))):
@@ -124,9 +124,11 @@ def main():
     public = root / 'docs/validation'
     # Partial CPU correction datasets have their own strict inventories and
     # verifiers, invoked by verify_host_corrections for every full dataset.
-    cpu_datasets = {'2026-11-18-host-corrections', '2026-11-19-content-review'}
+    # The one-program IPC rerun is likewise checked by its dedicated verifier
+    # through pending_revalidation; it is not a full 145-program dataset.
+    partial_datasets = {'2026-11-18-host-corrections', '2026-11-19-content-review', '2026-11-19-h100-ipc'}
     directories = [public / args.dataset] if args.dataset else sorted(
-        p.parent for p in public.glob('*/integrity.json') if p.parent.name not in cpu_datasets)
+        p.parent for p in public.glob('*/integrity.json') if p.parent.name not in partial_datasets)
     if not directories:
         print('FAIL: no published execution dataset exists.')
         return 1

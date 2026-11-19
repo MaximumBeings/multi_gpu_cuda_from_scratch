@@ -1,0 +1,5 @@
+$ compute-sanitizer --tool memcheck --target-processes all --error-exitcode 3 ./example
+========= COMPUTE-SANITIZER
+Consumer: 4096 / 4096 exact payload values correct.
+PASS: two-process IPC memory, 4096 nonuniform values checked.
+========= ERROR SUMMARY: 0 errors

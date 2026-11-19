@@ -231,10 +231,23 @@ int main() {
 }
 ```
 
-> **GPU revalidation pending:** the producer now calls checked `cudaDeviceSynchronize()` before publishing the memory handle. Pageable host-to-device `cudaMemcpy` may return before the final DMA completes; transporting a handle does not signal payload readiness. The earlier passing runs below tested the previous revision. Current source SHA-256: `0a6c761e152bb3d0015b3f96bfb93cf7fa61764b90cde1f23aafdf11539a6388`.
+> **Correction verified on November 19:** this exact corrected IPC source (`0a6c761e152bb3d0015b3f96bfb93cf7fa61764b90cde1f23aafdf11539a6388`) passed 20 full-payload runs and two clean memchecks on two H100 GPUs, with physical roles reversed. [System, commands, execution dates and raw logs](../validation-h100-ipc.md). The earlier records below retain their own tested source revisions.
+
+<!-- ipc-revalidation:start -->
+**Current corrected-source sample output — November 19, 2026**
+
+Executed UTC: `2026-11-19T15:34:13.886174+00:00`; CUDA 12.8.93, driver 580.105.08, two H100 80GB HBM3 GPUs.
+
+```text
+Consumer: 4096 / 4096 exact payload values correct.
+PASS: two-process IPC memory, 4096 nonuniform values checked.
+```
+
+[Compile command, all 22 execution timestamps and memory-check outputs](../validation-h100-ipc.md#commands-and-captured-outputs).
+<!-- ipc-revalidation:end -->
 
 <!-- execution:start:h100-rerun:17_ipc_mem_handle.cu -->
-> **GPU revalidation pending:** the producer now calls checked `cudaDeviceSynchronize()` before publishing the memory handle. Pageable host-to-device `cudaMemcpy` may return before the final DMA completes; transporting a handle does not signal payload readiness. The earlier passing runs below tested the previous revision. Current source SHA-256: `0a6c761e152bb3d0015b3f96bfb93cf7fa61764b90cde1f23aafdf11539a6388`.
+> **Correction verified on November 19:** this exact corrected IPC source (`0a6c761e152bb3d0015b3f96bfb93cf7fa61764b90cde1f23aafdf11539a6388`) passed 20 full-payload runs and two clean memchecks on two H100 GPUs, with physical roles reversed. [System, commands, execution dates and raw logs](../validation-h100-ipc.md). The earlier records below retain their own tested source revisions.
 
 
 > **Compiled and executed — 2026-11-18-h100: Numerical/transport validation (recorded scope).** Hardware: 2 H100 GPUs. Executed UTC: `2026-11-18T11:21:01.930044+00:00`.
@@ -261,7 +274,7 @@ PASS: two-process IPC memory, 4096 nonuniform values checked.
 
 
 <!-- execution:start:a100:17_ipc_mem_handle.cu -->
-> **GPU revalidation pending:** the producer now calls checked `cudaDeviceSynchronize()` before publishing the memory handle. Pageable host-to-device `cudaMemcpy` may return before the final DMA completes; transporting a handle does not signal payload readiness. The earlier passing runs below tested the previous revision. Current source SHA-256: `0a6c761e152bb3d0015b3f96bfb93cf7fa61764b90cde1f23aafdf11539a6388`.
+> **Correction verified on November 19:** this exact corrected IPC source (`0a6c761e152bb3d0015b3f96bfb93cf7fa61764b90cde1f23aafdf11539a6388`) passed 20 full-payload runs and two clean memchecks on two H100 GPUs, with physical roles reversed. [System, commands, execution dates and raw logs](../validation-h100-ipc.md). The earlier records below retain their own tested source revisions.
 
 
 > **Compiled and executed — 2026-11-17-a100: Numerical/transport validation (recorded scope).** Hardware: 8 A100 GPUs. Executed UTC: `2026-11-18T00:01:00.171741+00:00`.
@@ -289,7 +302,7 @@ PASS: two-process IPC memory, 4096 nonuniform values checked.
 
 
 <!-- execution:start:h100:17_ipc_mem_handle.cu -->
-> **GPU revalidation pending:** the producer now calls checked `cudaDeviceSynchronize()` before publishing the memory handle. Pageable host-to-device `cudaMemcpy` may return before the final DMA completes; transporting a handle does not signal payload readiness. The earlier passing runs below tested the previous revision. Current source SHA-256: `0a6c761e152bb3d0015b3f96bfb93cf7fa61764b90cde1f23aafdf11539a6388`.
+> **Correction verified on November 19:** this exact corrected IPC source (`0a6c761e152bb3d0015b3f96bfb93cf7fa61764b90cde1f23aafdf11539a6388`) passed 20 full-payload runs and two clean memchecks on two H100 GPUs, with physical roles reversed. [System, commands, execution dates and raw logs](../validation-h100-ipc.md). The earlier records below retain their own tested source revisions.
 
 
 > **Compiled and executed — 2026-11-17-h100: Numerical/transport validation (recorded scope).** Hardware: 2 H100 GPUs. Execution record UTC (run-batch start; per-program time unrecorded): `2026-11-17T23:48:18.967387+00:00`.

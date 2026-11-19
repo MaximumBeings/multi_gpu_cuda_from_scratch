@@ -1,0 +1,1 @@
+$ nvcc -std=c++17 -O2 -arch=sm_90 17_ipc_mem_handle.cu -o example

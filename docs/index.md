@@ -24,7 +24,7 @@ A single-GPU CUDA book can treat "the GPU" as one honest unit of compute with on
 
 This book develops multi-GPU CUDA from device selection and transfers through collectives and parallelization strategies. Every program has dated H100 and A100 execution records. Host models explain the algorithms; numerical checks validate device results for the recorded workloads. Start with [Getting Started](getting-started.md).
 
-The staged-MPI correction (58) passed the November 18 two-H100 numerical rerun and memory check. Following the [November 19 content review](content-review-2026-11-19.md), 138 current sources match that H100 dataset and six corrected CPU models have separate local execution records ([November 18](host-model-corrections.md), [November 19](content-review-2026-11-19.md#new-local-cpu-execution-records)). Example 17 now completes its producer copy before IPC handoff; this one corrected GPU revision awaits a fresh run. Earlier records remain unchanged and identify their tested revisions.
+The staged-MPI correction (58) passed the November 18 two-H100 numerical rerun and memory check. Following the [November 19 content review](content-review-2026-11-19.md), **all 145 current sources have successful execution records:** 138 match the November 18 H100 dataset, six corrected CPU models have separate local records ([November 18](host-model-corrections.md), [November 19](content-review-2026-11-19.md#new-local-cpu-execution-records)), and the [corrected IPC example (17)](validation-h100-ipc.md) passed 20 full-payload runs and two memchecks on November 19. Earlier records remain unchanged and identify their tested revisions.
 
 ## What this book covers
 

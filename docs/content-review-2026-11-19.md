@@ -19,20 +19,20 @@ Three independent reviews covered chapters 1–40, Appendices B–G, worked exam
 | 36–39 | Correct credit-exposure direction, scope deployment/timing claims, and distinguish parent-child tree dependencies from independent sibling work. |
 | Appendix F | Qualify NCCL AlltoAll availability and show larger ZeRO groups/offload as alternatives to a fixed eight-way state budget. |
 
-## IPC producer completion requires a new GPU run
+## IPC producer completion — GPU rerun passed
 
-Example 17 now completes the producer’s host-to-device copy before publishing its memory handle to a separate CUDA context. CUDA permits a pageable host-to-device `cudaMemcpy` to return before the final device DMA completes. A pipe transfers the handle, not a CUDA completion dependency. The corrected source adds checked `cudaDeviceSynchronize()` before publication. Previous passing runs remain available unchanged; they tested the earlier revision. The new revision has **not** been GPU-rerun in this review.
+Example 17 now completes the producer’s host-to-device copy before publishing its memory handle to a separate CUDA context. CUDA permits a pageable host-to-device `cudaMemcpy` to return before the final device DMA completes. A pipe transfers the handle, not a CUDA completion dependency. The corrected source adds checked `cudaDeviceSynchronize()` before publication. Previous passing runs remain available unchanged; they tested the earlier revision. The corrected revision subsequently passed **20 full-payload executions and two clean memchecks** on a two-H100 host on November 19, 2026, with physical producer/consumer roles reversed. See the [complete system information, dates, commands and sample outputs](validation-h100-ipc.md).
 
 Source: [CUDA API synchronization behavior](https://docs.nvidia.com/cuda/archive/12.8.0/cuda-runtime-api/api-sync-behavior.html).
 
-On a suitable Linux host with two peer-accessible H100 GPUs, rerun the corrected source from the repository root into a fresh evidence directory:
+To reproduce the corrected-source check on another suitable Linux host with two peer-accessible H100 GPUs, run from the repository root into a fresh evidence directory:
 
 ```bash
 python3 tools/validate_examples.py --execute --arch sm_90 \
     --match 17_ipc_mem_handle --output artifacts/ipc-completion-rerun
 ```
 
-This is a rerun command, not an execution result. Inspect the per-example record and the full 4096-value payload check before marking the new revision validated.
+This reproduction command is distinct from the captured run linked above. Inspect your own per-example record and the full 4096-value payload check; the captured collector additionally reversed physical GPU roles and ran memcheck.
 
 
 ## New local CPU execution records

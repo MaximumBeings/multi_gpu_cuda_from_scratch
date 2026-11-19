@@ -2,7 +2,7 @@
 
 Dataset: **2026-11-17-a100**. All **145 archived source revisions compiled and executed with exit status zero**. The categories below describe evidence scope; an API probe or a host model is not a successful numerical GPU workload.
 
-The staged-MPI correction (58) passed the November 18 two-H100 numerical rerun and memory check. Following the [November 19 content review](content-review-2026-11-19.md), 138 current sources match that H100 dataset and six corrected CPU models have separate local execution records ([November 18](host-model-corrections.md), [November 19](content-review-2026-11-19.md#new-local-cpu-execution-records)). Example 17 now completes its producer copy before IPC handoff; this one corrected GPU revision awaits a fresh run. Earlier records remain unchanged and identify their tested revisions.
+The staged-MPI correction (58) passed the November 18 two-H100 numerical rerun and memory check. Following the [November 19 content review](content-review-2026-11-19.md), **all 145 current sources have successful execution records:** 138 match the November 18 H100 dataset, six corrected CPU models have separate local records ([November 18](host-model-corrections.md), [November 19](content-review-2026-11-19.md#new-local-cpu-execution-records)), and the [corrected IPC example (17)](validation-h100-ipc.md) passed 20 full-payload runs and two memchecks on November 19. Earlier records remain unchanged and identify their tested revisions.
 
 | Evidence category | Programs |
 | --- | ---: |

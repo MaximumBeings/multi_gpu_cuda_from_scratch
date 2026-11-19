@@ -24,6 +24,13 @@ def pending(root, current, recorded):
         if recorded.get(key) != before:
             raise ValueError('Pending correction differs from pinned revisions: ' + key)
         if row['status'] == 'verified_gpu_revalidation':
+            if key == 'docs/part1/code/17_ipc_mem_handle.cu':
+                from verify_ipc_correction import verify as verify_ipc_correction
+                checked = verify_ipc_correction(root)
+                if row['dataset'] != '2026-11-19-h100-ipc' or checked['source_sha256'] != after:
+                    raise ValueError('IPC correction differs from its successful GPU record')
+                result[key] = row
+                continue
             public = root/'docs/validation'/row['dataset']
             records = json.loads((public/'results.json').read_text())
             matches = [r for r in records if r['source'] == key]

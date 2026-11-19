@@ -1,0 +1,3 @@
+$ ./example
+Consumer: 4096 / 4096 exact payload values correct.
+PASS: two-process IPC memory, 4096 nonuniform values checked.

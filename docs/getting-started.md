@@ -12,7 +12,7 @@
 
 This book targets CUDA C++ compiled with `nvcc` for real NVIDIA GPU architectures -- the appropriate target must be selected per example -- plus MPI (OpenMPI or MPICH) for Part 5's multi-node material. A real multi-GPU machine with a matching driver is what you need to *run* the code in this book end to end; `nvcc` itself only needs a CUDA toolkit and will happily compile for architectures your current machine doesn't have, and host-only MPI programs can run as multiple local ranks without GPUs; CUDA-aware MPI examples still need CUDA devices.
 
-The staged-MPI correction (58) passed the November 18 two-H100 numerical rerun and memory check. Following the [November 19 content review](content-review-2026-11-19.md), 138 current sources match that H100 dataset and six corrected CPU models have separate local execution records ([November 18](host-model-corrections.md), [November 19](content-review-2026-11-19.md#new-local-cpu-execution-records)). Example 17 now completes its producer copy before IPC handoff; this one corrected GPU revision awaits a fresh run. Earlier records remain unchanged and identify their tested revisions.
+The staged-MPI correction (58) passed the November 18 two-H100 numerical rerun and memory check. Following the [November 19 content review](content-review-2026-11-19.md), **all 145 current sources have successful execution records:** 138 match the November 18 H100 dataset, six corrected CPU models have separate local records ([November 18](host-model-corrections.md), [November 19](content-review-2026-11-19.md#new-local-cpu-execution-records)), and the [corrected IPC example (17)](validation-h100-ipc.md) passed 20 full-payload runs and two memchecks on November 19. Earlier records remain unchanged and identify their tested revisions.
 
 Select a diagram to open its full-size SVG.
 
@@ -344,7 +344,7 @@ Open <http://127.0.0.1:8000> on the same machine. For a remote preview, keep the
 
 ## The honesty discipline this book follows
 
-The recorded versions of all 145 programs compiled and executed on the two-H100 and eight-A100 hosts; six later host-model corrections have separate local CPU execution records; the IPC completion correction in example 17 awaits a fresh GPU run. Current validation distinguishes numerical/transport checks, API checks and host models:
+The recorded versions of all 145 programs compiled and executed on the two-H100 and eight-A100 hosts; six later host-model corrections have separate local CPU execution records; the IPC completion correction in example 17 has a separate [November 19 H100 record](validation-h100-ipc.md). Current validation distinguishes numerical/transport checks, API checks and host models:
 
 - **Host programs and simulations** are compiled and executed as host programs. Their results check the modeled arithmetic and scheduling, not CUDA concurrency or physical links.
 - **GPU numerical checks** initialize data and compare actual device results with an explicit reference.
