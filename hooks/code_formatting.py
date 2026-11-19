@@ -1,5 +1,6 @@
 """Format displayed C/C++/CUDA listings; reject changes to lexical tokens."""
 from functools import lru_cache
+from importlib.util import find_spec
 from pathlib import Path
 import re
 import shutil
@@ -35,12 +36,21 @@ def lexical_signature(source):
 
 @lru_cache(maxsize=1)
 def executable():
-    path = shutil.which('clang-format')
+    # pip --user and isolated MkDocs installs need not expose their scripts on
+    # PATH. Prefer the wheel's own binary in the interpreter running this hook.
+    package = find_spec('clang_format')
+    bundled = (Path(package.origin).parent / 'data' / 'bin' / 'clang-format'
+               if package and package.origin else None)
+    path = str(bundled) if bundled and bundled.is_file() else shutil.which('clang-format')
     sibling = Path(sys.executable).parent / 'clang-format'
     if not path and sibling.is_file():
         path = str(sibling)
     if not path:
-        raise RuntimeError('Install the pinned requirements before building: clang-format is missing.')
+        raise RuntimeError(
+            'Install the pinned requirements in the Python environment running MkDocs: '
+            f'{sys.executable} -m pip install -r requirements.txt '
+            '-r tools/illustrations/requirements.txt; then use that interpreter with '
+            '-m mkdocs. clang-format is missing.')
     version = subprocess.run([path, '--version'], check=True, capture_output=True, text=True).stdout
     if 'version 19.1.7' not in version:
         raise RuntimeError('Code presentation requires clang-format 19.1.7, as pinned in requirements.txt.')

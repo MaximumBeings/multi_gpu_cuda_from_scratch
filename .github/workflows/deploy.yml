@@ -16,6 +16,8 @@ jobs:
         with:
           python-version: '3.12'
       - run: pip install -r requirements.txt -r tools/illustrations/requirements.txt
+      - name: Verify pinned formatter discovery
+        run: python3 tools/test_formatter_lookup.py
       - name: Verify approved documentation views
         run: python3 tools/test_approved_display.py
       - name: Reject unregistered pending source changes
