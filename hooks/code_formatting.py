@@ -52,7 +52,8 @@ def executable():
             '-r tools/illustrations/requirements.txt; then use that interpreter with '
             '-m mkdocs. clang-format is missing.')
     version = subprocess.run([path, '--version'], check=True, capture_output=True, text=True).stdout
-    if 'version 19.1.7' not in version:
+    reported = re.search(r'\bversion\s+(\S+)', version)
+    if not reported or reported[1] != '19.1.7':
         raise RuntimeError('Code presentation requires clang-format 19.1.7, as pinned in requirements.txt.')
     return path
 
