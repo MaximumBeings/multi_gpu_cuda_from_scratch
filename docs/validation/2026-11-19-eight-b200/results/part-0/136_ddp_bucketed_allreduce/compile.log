@@ -1,0 +1,1 @@
+$ nvcc -std=c++17 -O2 -arch=sm_100 /home/ubuntu/book-b200-20261119/docs/appendix/code/136_ddp_bucketed_allreduce.cu -o /home/ubuntu/book-b200-20261119/results/part-0/136_ddp_bucketed_allreduce/example -lnccl

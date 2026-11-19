@@ -1,0 +1,11 @@
+make: Entering directory '/home/ubuntu/book-b200-20261119/docs/appendix/code'
+g++ -std=c++17 -Wall -Wextra -O2 hello_host.cpp -o host_only
+nvcc -std=c++17 -arch=sm_100 hello_kernel.cu -o cuda_only
+nvcc -std=c++17 -arch=sm_100 -I/usr/include -L/usr/lib/x86_64-linux-gnu hello_nccl.cu -o cuda_nccl -lnccl
+mpicxx -std=c++17 -Wall -Wextra -DOMPI_SKIP_MPICXX -I/usr/include -L/usr/lib/x86_64-linux-gnu -Wl,-rpath,/usr/lib/x86_64-linux-gnu hello_mpi.cpp -o mpi_only -lcudart
+mkdir -p nvshmem_shim
+ln -sf /home/ubuntu/book-b200-20261119/deps/lib/python3.12/site-packages/nvidia/nvshmem/lib/libnvshmem_host.so.3 nvshmem_shim/libnvshmem_host.so
+nvcc -std=c++17 -arch=sm_100 -rdc=true -ccbin mpicxx \
+	-I/home/ubuntu/book-b200-20261119/deps/lib/python3.12/site-packages/nvidia/nvshmem/include -Lnvshmem_shim -L/home/ubuntu/book-b200-20261119/deps/lib/python3.12/site-packages/nvidia/nvshmem/lib \
+	hello_nvshmem.cu -o cuda_nvshmem_mpi -lnvshmem_host -lnvshmem_device -lcuda -lmpi
+make: Leaving directory '/home/ubuntu/book-b200-20261119/docs/appendix/code'

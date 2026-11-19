@@ -1,0 +1,31 @@
+$ /home/ubuntu/book-b200-20261119/results/part-2/41_tensor_parallel_mlp_simulation/example
+input (1.00, 2.00):
+  unsplit reference       = (2.1699999999999999, 2.3700000000000001)
+  tensor-parallel (2-way) = (2.1699999999999999, 2.3699999999999997)
+  differs in the last representable bit only (still correct to full display precision)
+input (-1.00, 0.50):
+  unsplit reference       = (0.35499999999999998, 0.40499999999999997)
+  tensor-parallel (2-way) = (0.35499999999999998, 0.40499999999999997)
+  bit-identical
+input (3.00, -2.00):
+  unsplit reference       = (0.54000000000000004, 0.72000000000000008)
+  tensor-parallel (2-way) = (0.54000000000000004, 0.72000000000000008)
+  bit-identical
+
+2 of 3 input(s) bit-identical between the unsplit reference and the 2-way tensor-parallel MLP block; every input matches to within 1e-09: PASS
+
+This is the real floating-point reassociation risk this book
+flagged back in Chapter 8's reduce, showing up empirically: summing
+two partial dot products, (a0+a1)+(b0+b1), is not guaranteed by IEEE
+754 to equal one accumulator visiting all four terms in order,
+a0+a1+b0+b1 -- even though both are the exact same real-number sum.
+Unlike Chapter 13's sequential relocation (always bit-identical,
+since no operation's order ever changed), a row-parallel GEMM's
+combine step is structurally the same kind of operation as Chapter 8's
+reduce, and inherits the exact same honest caveat -- correct,
+but not bit-for-bit, in general.
+
+Collectives needed for this 2-GEMM MLP block:
+  naive (synchronize after every GEMM):          2
+  Megatron-LM's column+row split (this chapter): 1
+Megatron-LM's own paper states this directly: this design "requires only a single all-reduce operation in the forward pass."

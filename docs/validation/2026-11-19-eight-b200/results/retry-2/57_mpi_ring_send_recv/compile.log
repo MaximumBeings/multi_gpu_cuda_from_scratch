@@ -1,0 +1,1 @@
+$ mpicc -std=c11 -O2 /home/ubuntu/book-b200-20261119/docs/part5/code/57_mpi_ring_send_recv.c -o /home/ubuntu/book-b200-20261119/results/retry-2/57_mpi_ring_send_recv/example

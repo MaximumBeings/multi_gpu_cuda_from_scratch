@@ -15,7 +15,7 @@ The staged-MPI correction (58) passed the November 18 two-H100 numerical rerun a
 
 Rows without a per-program timestamp explicitly use their recorded run-batch start UTC. Hardware and tool metadata remain attached to each original run; combining matching sources from reruns does not redate earlier executions.
 
-This dataset covers the captured hardware and single-node configurations. Host-only models validate their own modeled arithmetic, not real network performance. It does not establish multi-node behavior, failure recovery under physical faults, or benchmark throughput. H100 and A100 evidence are published separately. B200 execution is planned; no B200 results are published. A100 execution does not establish B200 compatibility or results.
+This dataset covers the captured hardware and single-node configurations. Host-only models validate their own modeled arithmetic, not real network performance. It does not establish multi-node behavior, failure recovery under physical faults, or benchmark throughput. H100 and A100 evidence are published separately. The [separate November 19 B200 results](validation-b200.md) record 142 completed executions and three NVSHMEM timeouts. This earlier architecture dataset does not establish B200 compatibility or results.
 
 Three host-only models (98, 110 and 111) have since been corrected and [compiled and executed locally](host-model-corrections.md). The records below preserve the earlier source revisions and their actual outputs.
 

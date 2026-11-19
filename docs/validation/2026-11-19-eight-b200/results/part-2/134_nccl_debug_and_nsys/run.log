@@ -1,0 +1,3 @@
+$ /home/ubuntu/book-b200-20261119/results/part-2/134_nccl_debug_and_nsys/example
+API PROBE PASS: errors=0; one-rank initialization and cleanup, no collective throughput measured.
+Set NCCL_DEBUG=INFO before starting the process; library logging is separate from application output.

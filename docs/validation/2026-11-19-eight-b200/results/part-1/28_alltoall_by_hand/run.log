@@ -1,0 +1,2 @@
+$ /home/ubuntu/book-b200-20261119/results/part-1/28_alltoall_by_hand/example
+PASS: destination-specific all-to-all on 4 GPUs, all nonuniform output values checked.

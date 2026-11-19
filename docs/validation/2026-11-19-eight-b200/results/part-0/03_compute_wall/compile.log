@@ -1,0 +1,1 @@
+$ g++ -std=c++17 -O2 /home/ubuntu/book-b200-20261119/docs/part0/code/03_compute_wall.cpp -o /home/ubuntu/book-b200-20261119/results/part-0/03_compute_wall/example

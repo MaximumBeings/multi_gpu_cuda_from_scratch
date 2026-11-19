@@ -1,0 +1,9 @@
+executed_unverified docs/appendix/code/138_collective_order_deadlock.c
+executed_unverified docs/part5/code/57_mpi_ring_send_recv.c
+executed_unverified docs/part5/code/60_hybrid_mpi_nccl_bootstrap.cpp
+runtime_timeout docs/part5/code/65_gpu_initiated_put.cu
+runtime_timeout docs/part7/code/95_gpu_initiated_alltoall_and_put_demo.cu
+{
+  "executed_unverified": 3,
+  "runtime_timeout": 2
+}

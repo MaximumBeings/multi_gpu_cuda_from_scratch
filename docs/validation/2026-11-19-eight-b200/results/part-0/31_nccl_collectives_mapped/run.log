@@ -1,0 +1,9 @@
+$ /home/ubuntu/book-b200-20261119/results/part-0/31_nccl_collectives_mapped/example
+Broadcast: invalid argument (run with NCCL_DEBUG=WARN for details) (expected invalid argument)
+Reduce: invalid argument (run with NCCL_DEBUG=WARN for details) (expected invalid argument)
+AllReduce: invalid argument (run with NCCL_DEBUG=WARN for details) (expected invalid argument)
+AllGather: invalid argument (run with NCCL_DEBUG=WARN for details) (expected invalid argument)
+ReduceScatter: invalid argument (run with NCCL_DEBUG=WARN for details) (expected invalid argument)
+Send: invalid argument (run with NCCL_DEBUG=WARN for details) (expected invalid argument)
+Recv: invalid argument (run with NCCL_DEBUG=WARN for details) (expected invalid argument)
+API PROBE PASS: NULL-communicator rejection only, errors=0

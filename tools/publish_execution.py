@@ -25,8 +25,18 @@ def sha(path):
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+def same_harness_with_build_comment_fix(current, captured):
+    """Allow only the documented nvcc host-flag correction, never code drift."""
+    old = b'-lnccl -pthread -o validate_eight_gpus'
+    new = b'-lnccl -Xcompiler=-pthread -o validate_eight_gpus'
+    before, after = captured.read_bytes(), current.read_bytes()
+    return after == before or (before.count(old) == 1 and after == before.replace(old, new, 1))
+
+
 def sources(root):
-    return {str(p.relative_to(root)): p for p in sorted(root.glob('docs/**/code/*')) if p.suffix in SUFFIXES}
+    # Only the book's top-level part/appendix trees are executable sources.
+    # Nested validation captures may contain identical archived code paths.
+    return {str(p.relative_to(root)): p for p in sorted(root.glob('docs/*/code/*')) if p.suffix in SUFFIXES}
 
 
 def strip_command(log):
@@ -107,7 +117,7 @@ def supplements(root, public, label=None):
         if Path(source_name).name != source_name or source_name != 'validate_eight_gpus.cu':
             raise ValueError('Unexpected eight-device source filename.')
         if (label != 'a100' or manifest.get('arch') != 'sm_80' or manifest.get('status') != 'PASS'
-                or sha(root / 'tools/validate_eight_gpus.cu') != manifest['source_sha256']
+                or not same_harness_with_build_comment_fix(root / 'tools/validate_eight_gpus.cu', folder / source_name)
                 or sha(folder / source_name) != manifest['source_sha256']):
             raise ValueError('Eight-device architecture, status or source provenance mismatch.')
         for stage in ('compile', 'run'):
@@ -300,7 +310,7 @@ def prepare(inputs, dataset, label, root, temporary):
     summary += [f'| {key} | {value} |' for key, value in sorted(counts.items())]
     summary += ['', f'[Execution manifest](validation/{dataset}/results.json) · [System records](validation/{dataset}/environments.json) · [Integrity inventory](validation/{dataset}/integrity.json). Each program’s chapter contains normalized commands, timestamp scope, source hash and captured output.', '',
                 'Rows without a per-program timestamp explicitly use their recorded run-batch start UTC. Hardware and tool metadata remain attached to each original run; combining matching sources from reruns does not redate earlier executions.', '',
-                'This dataset covers the captured hardware and single-node configurations. Host-only models validate their own modeled arithmetic, not real network performance. It does not establish multi-node behavior, failure recovery under physical faults, or benchmark throughput. H100 and A100 evidence are published separately. B200 execution is planned; no B200 results are published. A100 execution does not establish B200 compatibility or results.', '',
+                'This dataset covers the captured hardware and single-node configurations. Host-only models validate their own modeled arithmetic, not real network performance. It does not establish multi-node behavior, failure recovery under physical faults, or benchmark throughput. Architecture datasets are published separately. A successful run on one architecture does not establish compatibility or results on another.', '',
                 '## Programs', '', '| Source | Evidence category | UTC | Output |', '| --- | --- | --- | --- |']
     for row in records:
         filename = Path(row['source']).name

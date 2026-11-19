@@ -1,0 +1,273 @@
+[
+  {
+    "source": "docs/appendix/code/121_multi_gpu_stack_version_check.cpp",
+    "sha256": "add11655555eb6445b9dfb060870ef5d06fa7cb4f8de8816c3e06b81499e4147",
+    "number": 121,
+    "dependencies": [
+      "mpi",
+      "nccl"
+    ],
+    "pthread": false,
+    "cuda": false,
+    "has_main": true,
+    "minimum_gpus": 0,
+    "processes": 8,
+    "runtime_review": null,
+    "validation_oracle": "exit status only; numerical correctness unverified",
+    "timestamp_utc": "2026-11-19T21:55:28.171959+00:00",
+    "compile_command": [
+      "mpicxx",
+      "-std=c++17",
+      "-O2",
+      "/home/ubuntu/book-b200-20261119/docs/appendix/code/121_multi_gpu_stack_version_check.cpp",
+      "-o",
+      "/home/ubuntu/book-b200-20261119/results/retry-0/121_multi_gpu_stack_version_check/example",
+      "-lnccl"
+    ],
+    "compile": {
+      "exit_code": 0,
+      "timed_out": false,
+      "seconds": 0.21477693799999997,
+      "started_utc": "2026-11-19T21:55:28.172174+00:00",
+      "finished_utc": "2026-11-19T21:55:28.386953+00:00"
+    },
+    "compile_started_utc": "2026-11-19T21:55:28.172174+00:00",
+    "run_command": [
+      "/home/ubuntu/book-b200-20261119/mpi/usr/bin/mpirun",
+      "--oversubscribe",
+      "-np",
+      "8",
+      "/home/ubuntu/book-b200-20261119/results/retry-0/121_multi_gpu_stack_version_check/example"
+    ],
+    "run": {
+      "exit_code": 0,
+      "timed_out": false,
+      "seconds": 0.26467763799996646,
+      "started_utc": "2026-11-19T21:55:28.387033+00:00",
+      "finished_utc": "2026-11-19T21:55:28.651714+00:00"
+    },
+    "run_started_utc": "2026-11-19T21:55:28.387033+00:00",
+    "status": "executed_unverified",
+    "finished_utc": "2026-11-19T21:55:28.651817+00:00"
+  },
+  {
+    "source": "docs/appendix/code/hello_mpi.cpp",
+    "sha256": "7b7da37c388ddb4cc608825e0b136dfd437e296354b0f7504c6050b1ff3463ce",
+    "number": null,
+    "dependencies": [
+      "mpi"
+    ],
+    "pthread": false,
+    "cuda": true,
+    "has_main": true,
+    "minimum_gpus": 8,
+    "processes": 8,
+    "runtime_review": null,
+    "validation_oracle": "exit status only; numerical correctness unverified",
+    "timestamp_utc": "2026-11-19T21:55:28.651958+00:00",
+    "compile_command": [
+      "mpicxx",
+      "-std=c++17",
+      "-O2",
+      "-I/usr/include",
+      "-L/usr/lib/x86_64-linux-gnu",
+      "-Wl,-rpath,/usr/lib/x86_64-linux-gnu",
+      "/home/ubuntu/book-b200-20261119/docs/appendix/code/hello_mpi.cpp",
+      "-o",
+      "/home/ubuntu/book-b200-20261119/results/retry-0/hello_mpi/example",
+      "-lcudart"
+    ],
+    "compile": {
+      "exit_code": 0,
+      "timed_out": false,
+      "seconds": 0.5653481150000061,
+      "started_utc": "2026-11-19T21:55:28.652175+00:00",
+      "finished_utc": "2026-11-19T21:55:29.217527+00:00"
+    },
+    "compile_started_utc": "2026-11-19T21:55:28.652175+00:00",
+    "run_command": [
+      "/home/ubuntu/book-b200-20261119/mpi/usr/bin/mpirun",
+      "--oversubscribe",
+      "-np",
+      "8",
+      "/home/ubuntu/book-b200-20261119/results/retry-0/hello_mpi/example"
+    ],
+    "run": {
+      "exit_code": 0,
+      "timed_out": false,
+      "seconds": 5.777898270000037,
+      "started_utc": "2026-11-19T21:55:29.217645+00:00",
+      "finished_utc": "2026-11-19T21:55:34.995547+00:00"
+    },
+    "run_started_utc": "2026-11-19T21:55:29.217645+00:00",
+    "status": "executed_unverified",
+    "finished_utc": "2026-11-19T21:55:34.995702+00:00"
+  },
+  {
+    "source": "docs/part5/code/58_mpi_cuda_aware_query_and_fallback.cpp",
+    "sha256": "5d704c3b6f6289637b800a9eed5c479f4d6da99cf8b5fca1d70bef9c3539b754",
+    "number": 58,
+    "dependencies": [
+      "mpi"
+    ],
+    "pthread": false,
+    "cuda": true,
+    "has_main": true,
+    "minimum_gpus": 8,
+    "processes": 8,
+    "runtime_review": null,
+    "validation_oracle": "VALIDATION PASS, errors=0",
+    "timestamp_utc": "2026-11-19T21:55:34.995954+00:00",
+    "compile_command": [
+      "mpicxx",
+      "-std=c++17",
+      "-O2",
+      "-I/usr/include",
+      "-L/usr/lib/x86_64-linux-gnu",
+      "-Wl,-rpath,/usr/lib/x86_64-linux-gnu",
+      "/home/ubuntu/book-b200-20261119/docs/part5/code/58_mpi_cuda_aware_query_and_fallback.cpp",
+      "-o",
+      "/home/ubuntu/book-b200-20261119/results/retry-0/58_mpi_cuda_aware_query_and_fallback/example",
+      "-lcudart"
+    ],
+    "compile": {
+      "exit_code": 0,
+      "timed_out": false,
+      "seconds": 0.21484262500001705,
+      "started_utc": "2026-11-19T21:55:34.996228+00:00",
+      "finished_utc": "2026-11-19T21:55:35.211074+00:00"
+    },
+    "compile_started_utc": "2026-11-19T21:55:34.996228+00:00",
+    "run_command": [
+      "/home/ubuntu/book-b200-20261119/mpi/usr/bin/mpirun",
+      "--oversubscribe",
+      "-np",
+      "8",
+      "/home/ubuntu/book-b200-20261119/results/retry-0/58_mpi_cuda_aware_query_and_fallback/example"
+    ],
+    "run": {
+      "exit_code": 0,
+      "timed_out": false,
+      "seconds": 20.416246829999977,
+      "started_utc": "2026-11-19T21:55:35.211173+00:00",
+      "finished_utc": "2026-11-19T21:55:55.627425+00:00"
+    },
+    "run_started_utc": "2026-11-19T21:55:35.211173+00:00",
+    "status": "validation_pass",
+    "finished_utc": "2026-11-19T21:55:55.627712+00:00"
+  },
+  {
+    "source": "docs/part5/code/63_nvshmem_init_single_pe.cu",
+    "sha256": "6c7e2d2885a959761aa918b7e8e219304bc2037f006e964a181e6af2890e8aac",
+    "number": 63,
+    "dependencies": [
+      "mpi",
+      "nvshmem"
+    ],
+    "pthread": false,
+    "cuda": true,
+    "has_main": true,
+    "minimum_gpus": 2,
+    "processes": 1,
+    "runtime_review": null,
+    "validation_oracle": "VALIDATION PASS, errors=0",
+    "timestamp_utc": "2026-11-19T21:55:55.627961+00:00",
+    "compile_command": [
+      "nvcc",
+      "-std=c++17",
+      "-O2",
+      "-arch=sm_100",
+      "-ccbin",
+      "mpicxx",
+      "-rdc=true",
+      "-I/home/ubuntu/book-b200-20261119/deps/lib/python3.12/site-packages/nvidia/nvshmem/include",
+      "-L/home/ubuntu/book-b200-20261119/deps/lib/python3.12/site-packages/nvidia/nvshmem/lib",
+      "-Xlinker=-rpath=/home/ubuntu/book-b200-20261119/deps/lib/python3.12/site-packages/nvidia/nvshmem/lib",
+      "/home/ubuntu/book-b200-20261119/docs/part5/code/63_nvshmem_init_single_pe.cu",
+      "-o",
+      "/home/ubuntu/book-b200-20261119/results/retry-0/63_nvshmem_init_single_pe/example",
+      "-lnvshmem_host",
+      "-lnvshmem_device",
+      "-lcuda"
+    ],
+    "compile": {
+      "exit_code": 0,
+      "timed_out": false,
+      "seconds": 44.282819055999994,
+      "started_utc": "2026-11-19T21:55:55.628244+00:00",
+      "finished_utc": "2026-11-19T21:56:39.911067+00:00"
+    },
+    "compile_started_utc": "2026-11-19T21:55:55.628244+00:00",
+    "run_command": [
+      "/home/ubuntu/book-b200-20261119/mpi/usr/bin/mpirun",
+      "--oversubscribe",
+      "-np",
+      "1",
+      "/home/ubuntu/book-b200-20261119/results/retry-0/63_nvshmem_init_single_pe/example"
+    ],
+    "run": {
+      "exit_code": 0,
+      "timed_out": false,
+      "seconds": 19.159811504000004,
+      "started_utc": "2026-11-19T21:56:39.911184+00:00",
+      "finished_utc": "2026-11-19T21:56:59.071000+00:00"
+    },
+    "run_started_utc": "2026-11-19T21:56:39.911184+00:00",
+    "status": "validation_pass",
+    "finished_utc": "2026-11-19T21:56:59.071160+00:00"
+  },
+  {
+    "source": "docs/part5/code/67_nccl_captured_in_graph.cu",
+    "sha256": "1b95a0066781d7efbe953afc74ce9b98f79100a3657b814ad59cc34e4008172a",
+    "number": 67,
+    "dependencies": [
+      "mpi",
+      "nccl"
+    ],
+    "pthread": false,
+    "cuda": true,
+    "has_main": true,
+    "minimum_gpus": 8,
+    "processes": 8,
+    "runtime_review": null,
+    "validation_oracle": "VALIDATION PASS, errors=0",
+    "timestamp_utc": "2026-11-19T21:56:59.071435+00:00",
+    "compile_command": [
+      "nvcc",
+      "-std=c++17",
+      "-O2",
+      "-arch=sm_100",
+      "-ccbin",
+      "mpicxx",
+      "/home/ubuntu/book-b200-20261119/docs/part5/code/67_nccl_captured_in_graph.cu",
+      "-o",
+      "/home/ubuntu/book-b200-20261119/results/retry-0/67_nccl_captured_in_graph/example",
+      "-lnccl"
+    ],
+    "compile": {
+      "exit_code": 0,
+      "timed_out": false,
+      "seconds": 1.2170342340000389,
+      "started_utc": "2026-11-19T21:56:59.071704+00:00",
+      "finished_utc": "2026-11-19T21:57:00.288743+00:00"
+    },
+    "compile_started_utc": "2026-11-19T21:56:59.071704+00:00",
+    "run_command": [
+      "/home/ubuntu/book-b200-20261119/mpi/usr/bin/mpirun",
+      "--oversubscribe",
+      "-np",
+      "8",
+      "/home/ubuntu/book-b200-20261119/results/retry-0/67_nccl_captured_in_graph/example"
+    ],
+    "run": {
+      "exit_code": 0,
+      "timed_out": false,
+      "seconds": 19.166544469999963,
+      "started_utc": "2026-11-19T21:57:00.288861+00:00",
+      "finished_utc": "2026-11-19T21:57:19.455410+00:00"
+    },
+    "run_started_utc": "2026-11-19T21:57:00.288861+00:00",
+    "status": "validation_pass",
+    "finished_utc": "2026-11-19T21:57:19.455602+00:00"
+  }
+]

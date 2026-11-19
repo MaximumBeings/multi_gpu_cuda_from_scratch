@@ -372,3 +372,7 @@ This book assumes working knowledge of C++ (structs, templates, pointers, RAII) 
 ## Work through the setup before the larger examples
 
 The [worked setup example in Appendix A](appendix/a-installation-and-setup.md) separates host tools, device discovery, rank/device mapping and the first checked result. After setup, follow the numerical walkthrough in each chapter before copying its longer implementation. Preserve the exact compile command and compare complete results with the documented reference; a successful launch alone does not establish the intended multi-GPU computation.
+
+## Additional eight-B200 results
+
+The [November 19 B200 pass](validation-b200.md) compiled all 145 current programs; 142 completed and three eight-rank NVSHMEM cases timed out. The independent eight-device harness passed all 56 peer pairs, four collective patterns and three halo generations. This is separate from the earlier all-source H100 execution record and does not establish cross-node behavior or performance.

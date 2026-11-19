@@ -1,0 +1,1 @@
+$ g++ -std=c++17 -O2 /home/ubuntu/book-b200-20261119/docs/part6/code/75_tp_pp_combined_correctness_simulation.cpp -o /home/ubuntu/book-b200-20261119/results/part-0/75_tp_pp_combined_correctness_simulation/example

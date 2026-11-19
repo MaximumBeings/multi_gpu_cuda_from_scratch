@@ -1,0 +1,2 @@
+$ /home/ubuntu/book-b200-20261119/results/part-1/20_broadcast_by_hand/example
+PASS: broadcast on 4 GPUs, all nonuniform output values checked.

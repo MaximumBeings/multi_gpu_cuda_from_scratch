@@ -1,0 +1,27 @@
+$ /home/ubuntu/book-b200-20261119/results/part-3/50_barrier_consistency_simulation/example
+Part A: 4 ranks, heterogeneous arrival times 3/7/2/5 (rank 2 arrives first, rank 1 arrives last), each contributing to a shared checkpoint total. Independently computed reference total: 100.
+
+WITHOUT a barrier -- each rank reads immediately after its own write:
+  rank 0 (arrived at t=3): observed total = 40    STALE -- missing later contributions
+  rank 1 (arrived at t=7): observed total = 100   matches reference
+  rank 2 (arrived at t=2): observed total = 30    STALE -- missing later contributions
+  rank 3 (arrived at t=5): observed total = 80    STALE -- missing later contributions
+  1 of 4 ranks saw the correct, complete total.
+
+WITH a barrier -- every write finishes before any read:
+  rank 0: observed total = 100   matches reference
+  rank 1: observed total = 100   matches reference
+  rank 2: observed total = 100   matches reference
+  rank 3: observed total = 100   matches reference
+  4 of 4 ranks saw the correct, complete total: PASS
+
+Only the LAST rank to arrive (rank 1, at t=7) happened to see the correct total without a barrier -- purely because every other rank had already written by the time it read. That's not a guarantee, it's an accident of this particular arrival order; change which rank arrives LAST and a DIFFERENT rank would be the lucky one, while every other rank would see a stale value, silently, with no error raised anywhere. This is exactly the failure mode Chapter 16's own halo exchange had to guard against every iteration, generalized to any shared checkpoint, not just a grid's neighboring rows.
+
+Part B: a barrier's real communication cost, in rounds -- reusing Chapter 9's ring formula 2*(N-1) and Chapter 11's tree formula 2*ceil(log2(N)).
+
+N          ring rounds        tree rounds       
+4          6                  4                 
+8          14                 6                 
+35         68                 12                
+
+A barrier's payload is the smallest possible -- one element, not a real gradient tensor or activation -- but the ROUND COUNT above doesn't depend on payload size at all; it depends only on N, the number of ranks. A barrier is exactly as latency-expensive, per call, as any other AllReduce with the same N -- it is cheap in bytes moved, never in synchronization rounds paid. Calling one every iteration, for every one of Part 3's parallelization strategies, is a real, recurring cost, not a free correctness guarantee.

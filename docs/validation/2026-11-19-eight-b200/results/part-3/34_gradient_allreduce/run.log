@@ -1,0 +1,2 @@
+$ /home/ubuntu/book-b200-20261119/results/part-3/34_gradient_allreduce/example
+PASS: average and sum gradient AllReduce on 4 GPUs; all reference values checked.

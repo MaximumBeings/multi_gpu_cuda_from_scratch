@@ -1,0 +1,1 @@
+$ g++ -std=c++17 -O2 /home/ubuntu/book-b200-20261119/docs/appendix/code/137_zero_stage_memory_model.cpp -o /home/ubuntu/book-b200-20261119/results/part-1/137_zero_stage_memory_model/example

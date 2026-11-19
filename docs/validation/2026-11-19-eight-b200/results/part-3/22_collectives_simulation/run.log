@@ -1,0 +1,5 @@
+$ /home/ubuntu/book-b200-20261119/results/part-3/22_collectives_simulation/example
+Broadcast: all 4 devices hold an identical copy of the root's data: PASS
+Reduce (device order 0..3): result matches independent reference: PASS
+Reduce (device order 3..0): result matches independent reference: PASS
+Both accumulation orders produce the IDENTICAL result (true for integers; NOT guaranteed for floating point): PASS

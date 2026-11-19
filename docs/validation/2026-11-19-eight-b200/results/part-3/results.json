@@ -1,0 +1,1570 @@
+[
+  {
+    "source": "docs/appendix/code/123_quiz_ring_allreduce_phases.cpp",
+    "sha256": "de78a917a29312f29b7ee7ce0fb3405a64481c852426eeeb1072c31c0dda2e81",
+    "number": 123,
+    "dependencies": [],
+    "pthread": false,
+    "cuda": false,
+    "has_main": true,
+    "minimum_gpus": 0,
+    "processes": 1,
+    "runtime_review": null,
+    "validation_oracle": "exit status only; numerical correctness unverified",
+    "timestamp_utc": "2026-11-19T21:53:26.953604+00:00",
+    "compile_command": [
+      "g++",
+      "-std=c++17",
+      "-O2",
+      "/home/ubuntu/book-b200-20261119/docs/appendix/code/123_quiz_ring_allreduce_phases.cpp",
+      "-o",
+      "/home/ubuntu/book-b200-20261119/results/part-3/123_quiz_ring_allreduce_phases/example"
+    ],
+    "compile": {
+      "exit_code": 0,
+      "timed_out": false,
+      "seconds": 0.36575886599996466,
+      "started_utc": "2026-11-19T21:53:26.953843+00:00",
+      "finished_utc": "2026-11-19T21:53:27.319604+00:00"
+    },
+    "compile_started_utc": "2026-11-19T21:53:26.953843+00:00",
+    "run_command": [
+      "/home/ubuntu/book-b200-20261119/results/part-3/123_quiz_ring_allreduce_phases/example"
+    ],
+    "run": {
+      "exit_code": 0,
+      "timed_out": false,
+      "seconds": 0.0017777279999791062,
+      "started_utc": "2026-11-19T21:53:27.319644+00:00",
+      "finished_utc": "2026-11-19T21:53:27.321423+00:00"
+    },
+    "run_started_utc": "2026-11-19T21:53:27.319644+00:00",
+    "status": "executed_unverified",
+    "finished_utc": "2026-11-19T21:53:27.321477+00:00"
+  },
+  {
+    "source": "docs/appendix/code/127_nccl_point_to_point.cu",
+    "sha256": "77eda8517f9944b216c53328297c2b610295555cd52472baa1e3cdf361f42497",
+    "number": 127,
+    "dependencies": [
+      "nccl"
+    ],
+    "pthread": false,
+    "cuda": true,
+    "has_main": true,
+    "minimum_gpus": 2,
+    "processes": 1,
+    "runtime_review": null,
+    "validation_oracle": "VALIDATION PASS, errors=0",
+    "timestamp_utc": "2026-11-19T21:53:27.321601+00:00",
+    "compile_command": [
+      "nvcc",
+      "-std=c++17",
+      "-O2",
+      "-arch=sm_100",
+      "/home/ubuntu/book-b200-20261119/docs/appendix/code/127_nccl_point_to_point.cu",
+      "-o",
+      "/home/ubuntu/book-b200-20261119/results/part-3/127_nccl_point_to_point/example",
+      "-lnccl"
+    ],
+    "compile": {
+      "exit_code": 0,
+      "timed_out": false,
+      "seconds": 1.1166243860000122,
+      "started_utc": "2026-11-19T21:53:27.321788+00:00",
+      "finished_utc": "2026-11-19T21:53:28.438416+00:00"
+    },
+    "compile_started_utc": "2026-11-19T21:53:27.321788+00:00",
+    "run_command": [
+      "/home/ubuntu/book-b200-20261119/results/part-3/127_nccl_point_to_point/example"
+    ],
+    "run": {
+      "exit_code": 0,
+      "timed_out": false,
+      "seconds": 16.801978303,
+      "started_utc": "2026-11-19T21:53:28.438472+00:00",
+      "finished_utc": "2026-11-19T21:53:45.240455+00:00"
+    },
+    "run_started_utc": "2026-11-19T21:53:28.438472+00:00",
+    "status": "validation_pass",
+    "finished_utc": "2026-11-19T21:53:45.240706+00:00"
+  },
+  {
+    "source": "docs/appendix/code/131_modern_composed_equivalent.cu",
+    "sha256": "aec29136fb84fb03282c5159d44579632814ad5f51efc010a829c4483c2792da",
+    "number": 131,
+    "dependencies": [],
+    "pthread": false,
+    "cuda": true,
+    "has_main": true,
+    "minimum_gpus": 2,
+    "processes": 1,
+    "runtime_review": null,
+    "validation_oracle": "VALIDATION PASS, errors=0",
+    "timestamp_utc": "2026-11-19T21:53:45.240946+00:00",
+    "compile_command": [
+      "nvcc",
+      "-std=c++17",
+      "-O2",
+      "-arch=sm_100",
+      "/home/ubuntu/book-b200-20261119/docs/appendix/code/131_modern_composed_equivalent.cu",
+      "-o",
+      "/home/ubuntu/book-b200-20261119/results/part-3/131_modern_composed_equivalent/example"
+    ],
+    "compile": {
+      "exit_code": 0,
+      "timed_out": false,
+      "seconds": 2.1695095549999905,
+      "started_utc": "2026-11-19T21:53:45.241169+00:00",
+      "finished_utc": "2026-11-19T21:53:47.410683+00:00"
+    },
+    "compile_started_utc": "2026-11-19T21:53:45.241169+00:00",
+    "run_command": [
+      "/home/ubuntu/book-b200-20261119/results/part-3/131_modern_composed_equivalent/example"
+    ],
+    "run": {
+      "exit_code": 0,
+      "timed_out": false,
+      "seconds": 7.830669993000015,
+      "started_utc": "2026-11-19T21:53:47.410747+00:00",
+      "finished_utc": "2026-11-19T21:53:55.241420+00:00"
+    },
+    "run_started_utc": "2026-11-19T21:53:47.410747+00:00",
+    "status": "validation_pass",
+    "finished_utc": "2026-11-19T21:53:55.241583+00:00"
+  },
+  {
+    "source": "docs/appendix/code/135_torch_distributed_collectives_mapped.cu",
+    "sha256": "10e70990c1fdffe0d5c5bbb8e29dbd0bd152c283c4b8359c336f03f462620d51",
+    "number": 135,
+    "dependencies": [
+      "nccl"
+    ],
+    "pthread": false,
+    "cuda": true,
+    "has_main": true,
+    "minimum_gpus": 2,
+    "processes": 1,
+    "runtime_review": null,
+    "validation_oracle": "API PROBE PASS, errors=0 (API scope only)",
+    "timestamp_utc": "2026-11-19T21:53:55.241827+00:00",
+    "compile_command": [
+      "nvcc",
+      "-std=c++17",
+      "-O2",
+      "-arch=sm_100",
+      "/home/ubuntu/book-b200-20261119/docs/appendix/code/135_torch_distributed_collectives_mapped.cu",
+      "-o",
+      "/home/ubuntu/book-b200-20261119/results/part-3/135_torch_distributed_collectives_mapped/example",
+      "-lnccl"
+    ],
+    "compile": {
+      "exit_code": 0,
+      "timed_out": false,
+      "seconds": 0.9664640899999881,
+      "started_utc": "2026-11-19T21:53:55.242058+00:00",
+      "finished_utc": "2026-11-19T21:53:56.208527+00:00"
+    },
+    "compile_started_utc": "2026-11-19T21:53:55.242058+00:00",
+    "run_command": [
+      "/home/ubuntu/book-b200-20261119/results/part-3/135_torch_distributed_collectives_mapped/example"
+    ],
+    "run": {
+      "exit_code": 0,
+      "timed_out": false,
+      "seconds": 5.426669532000005,
+      "started_utc": "2026-11-19T21:53:56.208585+00:00",
+      "finished_utc": "2026-11-19T21:54:01.635259+00:00"
+    },
+    "run_started_utc": "2026-11-19T21:53:56.208585+00:00",
+    "status": "api_probe_pass",
+    "finished_utc": "2026-11-19T21:54:01.635401+00:00"
+  },
+  {
+    "source": "docs/appendix/code/139_stream_wait_enqueue_order.cu",
+    "sha256": "c1461e987bc84659aa73ab3f5c10d20f2f15f665775dd91c614adae3fdd995ea",
+    "number": 139,
+    "dependencies": [],
+    "pthread": false,
+    "cuda": true,
+    "has_main": true,
+    "minimum_gpus": 2,
+    "processes": 1,
+    "runtime_review": null,
+    "validation_oracle": "VALIDATION PASS, errors=0",
+    "timestamp_utc": "2026-11-19T21:54:01.635687+00:00",
+    "compile_command": [
+      "nvcc",
+      "-std=c++17",
+      "-O2",
+      "-arch=sm_100",
+      "/home/ubuntu/book-b200-20261119/docs/appendix/code/139_stream_wait_enqueue_order.cu",
+      "-o",
+      "/home/ubuntu/book-b200-20261119/results/part-3/139_stream_wait_enqueue_order/example"
+    ],
+    "compile": {
+      "exit_code": 0,
+      "timed_out": false,
+      "seconds": 0.6155014149999829,
+      "started_utc": "2026-11-19T21:54:01.635913+00:00",
+      "finished_utc": "2026-11-19T21:54:02.251418+00:00"
+    },
+    "compile_started_utc": "2026-11-19T21:54:01.635913+00:00",
+    "run_command": [
+      "/home/ubuntu/book-b200-20261119/results/part-3/139_stream_wait_enqueue_order/example"
+    ],
+    "run": {
+      "exit_code": 0,
+      "timed_out": false,
+      "seconds": 3.2213511779999635,
+      "started_utc": "2026-11-19T21:54:02.251475+00:00",
+      "finished_utc": "2026-11-19T21:54:05.472829+00:00"
+    },
+    "run_started_utc": "2026-11-19T21:54:02.251475+00:00",
+    "status": "validation_pass",
+    "finished_utc": "2026-11-19T21:54:05.472976+00:00"
+  },
+  {
+    "source": "docs/appendix/code/hello_mpi.cpp",
+    "sha256": "7b7da37c388ddb4cc608825e0b136dfd437e296354b0f7504c6050b1ff3463ce",
+    "number": null,
+    "dependencies": [
+      "mpi"
+    ],
+    "pthread": false,
+    "cuda": true,
+    "has_main": true,
+    "minimum_gpus": 8,
+    "processes": 8,
+    "runtime_review": null,
+    "validation_oracle": "exit status only; numerical correctness unverified",
+    "timestamp_utc": "2026-11-19T21:54:05.473249+00:00",
+    "compile_command": [
+      "mpicxx",
+      "-std=c++17",
+      "-O2",
+      "-I/usr/include",
+      "-L/usr/lib/x86_64-linux-gnu",
+      "-Wl,-rpath,/usr/lib/x86_64-linux-gnu",
+      "/home/ubuntu/book-b200-20261119/docs/appendix/code/hello_mpi.cpp",
+      "-o",
+      "/home/ubuntu/book-b200-20261119/results/part-3/hello_mpi/example",
+      "-lcudart"
+    ],
+    "compile": {
+      "exit_code": 127,
+      "timed_out": false,
+      "seconds": 0.0017869430000132525,
+      "started_utc": "2026-11-19T21:54:05.473478+00:00",
+      "finished_utc": "2026-11-19T21:54:05.475265+00:00"
+    },
+    "compile_started_utc": "2026-11-19T21:54:05.473478+00:00",
+    "status": "dependency_blocked",
+    "reason": "error while loading shared libraries",
+    "finished_utc": "2026-11-19T21:54:05.475481+00:00"
+  },
+  {
+    "source": "docs/part0/code/02_memory_wall.cpp",
+    "sha256": "a2ff2cb43ab47129401d4d1b916c527da97d8271196a249813fb57e3a3853b1b",
+    "number": 2,
+    "dependencies": [],
+    "pthread": false,
+    "cuda": false,
+    "has_main": true,
+    "minimum_gpus": 0,
+    "processes": 1,
+    "runtime_review": null,
+    "validation_oracle": "exit status only; numerical correctness unverified",
+    "timestamp_utc": "2026-11-19T21:54:05.475694+00:00",
+    "compile_command": [
+      "g++",
+      "-std=c++17",
+      "-O2",
+      "/home/ubuntu/book-b200-20261119/docs/part0/code/02_memory_wall.cpp",
+      "-o",
+      "/home/ubuntu/book-b200-20261119/results/part-3/02_memory_wall/example"
+    ],
+    "compile": {
+      "exit_code": 0,
+      "timed_out": false,
+      "seconds": 0.1141591130000279,
+      "started_utc": "2026-11-19T21:54:05.475861+00:00",
+      "finished_utc": "2026-11-19T21:54:05.590022+00:00"
+    },
+    "compile_started_utc": "2026-11-19T21:54:05.475861+00:00",
+    "run_command": [
+      "/home/ubuntu/book-b200-20261119/results/part-3/02_memory_wall/example"
+    ],
+    "run": {
+      "exit_code": 0,
+      "timed_out": false,
+      "seconds": 0.0017831440000009025,
+      "started_utc": "2026-11-19T21:54:05.590058+00:00",
+      "finished_utc": "2026-11-19T21:54:05.591842+00:00"
+    },
+    "run_started_utc": "2026-11-19T21:54:05.590058+00:00",
+    "status": "executed_unverified",
+    "finished_utc": "2026-11-19T21:54:05.591902+00:00"
+  },
+  {
+    "source": "docs/part0/code/06_single_device_setup.cu",
+    "sha256": "0a16e1d4b5d38ac9091b11d28b12db3a0c353d8dce75f782553003a2e602fe23",
+    "number": 6,
+    "dependencies": [],
+    "pthread": false,
+    "cuda": true,
+    "has_main": true,
+    "minimum_gpus": 2,
+    "processes": 1,
+    "runtime_review": null,
+    "validation_oracle": "exit status only; numerical correctness unverified",
+    "timestamp_utc": "2026-11-19T21:54:05.592155+00:00",
+    "compile_command": [
+      "nvcc",
+      "-std=c++17",
+      "-O2",
+      "-arch=sm_100",
+      "/home/ubuntu/book-b200-20261119/docs/part0/code/06_single_device_setup.cu",
+      "-o",
+      "/home/ubuntu/book-b200-20261119/results/part-3/06_single_device_setup/example"
+    ],
+    "compile": {
+      "exit_code": 0,
+      "timed_out": false,
+      "seconds": 0.61519252100004,
+      "started_utc": "2026-11-19T21:54:05.592330+00:00",
+      "finished_utc": "2026-11-19T21:54:06.207525+00:00"
+    },
+    "compile_started_utc": "2026-11-19T21:54:05.592330+00:00",
+    "run_command": [
+      "/home/ubuntu/book-b200-20261119/results/part-3/06_single_device_setup/example"
+    ],
+    "run": {
+      "exit_code": 0,
+      "timed_out": false,
+      "seconds": 2.319047884999975,
+      "started_utc": "2026-11-19T21:54:06.207578+00:00",
+      "finished_utc": "2026-11-19T21:54:08.526630+00:00"
+    },
+    "run_started_utc": "2026-11-19T21:54:06.207578+00:00",
+    "status": "executed_unverified",
+    "finished_utc": "2026-11-19T21:54:08.526744+00:00"
+  },
+  {
+    "source": "docs/part1/code/10_p2p_simulation.cpp",
+    "sha256": "8ef2739bea00136f3e1810c7e4d9bb37b7eb346f1d0876f53c99c58ee044aac4",
+    "number": 10,
+    "dependencies": [],
+    "pthread": false,
+    "cuda": false,
+    "has_main": true,
+    "minimum_gpus": 0,
+    "processes": 1,
+    "runtime_review": null,
+    "validation_oracle": "exit status only; numerical correctness unverified",
+    "timestamp_utc": "2026-11-19T21:54:08.527089+00:00",
+    "compile_command": [
+      "g++",
+      "-std=c++17",
+      "-O2",
+      "/home/ubuntu/book-b200-20261119/docs/part1/code/10_p2p_simulation.cpp",
+      "-o",
+      "/home/ubuntu/book-b200-20261119/results/part-3/10_p2p_simulation/example"
+    ],
+    "compile": {
+      "exit_code": 0,
+      "timed_out": false,
+      "seconds": 0.21457426999995732,
+      "started_utc": "2026-11-19T21:54:08.527309+00:00",
+      "finished_utc": "2026-11-19T21:54:08.741885+00:00"
+    },
+    "compile_started_utc": "2026-11-19T21:54:08.527309+00:00",
+    "run_command": [
+      "/home/ubuntu/book-b200-20261119/results/part-3/10_p2p_simulation/example"
+    ],
+    "run": {
+      "exit_code": 0,
+      "timed_out": false,
+      "seconds": 0.0017490689999704045,
+      "started_utc": "2026-11-19T21:54:08.741931+00:00",
+      "finished_utc": "2026-11-19T21:54:08.743680+00:00"
+    },
+    "run_started_utc": "2026-11-19T21:54:08.741931+00:00",
+    "status": "executed_unverified",
+    "finished_utc": "2026-11-19T21:54:08.743733+00:00"
+  },
+  {
+    "source": "docs/part1/code/14_event_basics.cu",
+    "sha256": "1141f20f7b822e6460546989f190bb3faf91d2fedb7ec31e06836cd71c6d1f11",
+    "number": 14,
+    "dependencies": [],
+    "pthread": false,
+    "cuda": true,
+    "has_main": true,
+    "minimum_gpus": 2,
+    "processes": 1,
+    "runtime_review": null,
+    "validation_oracle": "Checked event API lifecycle (no numerical kernel)",
+    "timestamp_utc": "2026-11-19T21:54:08.744020+00:00",
+    "compile_command": [
+      "nvcc",
+      "-std=c++17",
+      "-O2",
+      "-arch=sm_100",
+      "/home/ubuntu/book-b200-20261119/docs/part1/code/14_event_basics.cu",
+      "-o",
+      "/home/ubuntu/book-b200-20261119/results/part-3/14_event_basics/example"
+    ],
+    "compile": {
+      "exit_code": 0,
+      "timed_out": false,
+      "seconds": 0.5652074070000026,
+      "started_utc": "2026-11-19T21:54:08.744190+00:00",
+      "finished_utc": "2026-11-19T21:54:09.309400+00:00"
+    },
+    "compile_started_utc": "2026-11-19T21:54:08.744190+00:00",
+    "run_command": [
+      "/home/ubuntu/book-b200-20261119/results/part-3/14_event_basics/example"
+    ],
+    "run": {
+      "exit_code": 0,
+      "timed_out": false,
+      "seconds": 2.6699981460000117,
+      "started_utc": "2026-11-19T21:54:09.309447+00:00",
+      "finished_utc": "2026-11-19T21:54:11.979447+00:00"
+    },
+    "run_started_utc": "2026-11-19T21:54:09.309447+00:00",
+    "status": "api_probe_pass",
+    "finished_utc": "2026-11-19T21:54:11.979577+00:00"
+  },
+  {
+    "source": "docs/part1/code/18_ipc_event_handle.cu",
+    "sha256": "5ca751f5113e67325f9bae932f5e16777800d3202b844a28b4c80bf3afffbebf",
+    "number": 18,
+    "dependencies": [],
+    "pthread": false,
+    "cuda": true,
+    "has_main": true,
+    "minimum_gpus": 2,
+    "processes": 1,
+    "runtime_review": null,
+    "validation_oracle": "PASS: two-process IPC, 4096 nonuniform values checked",
+    "timestamp_utc": "2026-11-19T21:54:11.979952+00:00",
+    "compile_command": [
+      "nvcc",
+      "-std=c++17",
+      "-O2",
+      "-arch=sm_100",
+      "/home/ubuntu/book-b200-20261119/docs/part1/code/18_ipc_event_handle.cu",
+      "-o",
+      "/home/ubuntu/book-b200-20261119/results/part-3/18_ipc_event_handle/example"
+    ],
+    "compile": {
+      "exit_code": 0,
+      "timed_out": false,
+      "seconds": 0.8161579169999982,
+      "started_utc": "2026-11-19T21:54:11.980159+00:00",
+      "finished_utc": "2026-11-19T21:54:12.796321+00:00"
+    },
+    "compile_started_utc": "2026-11-19T21:54:11.980159+00:00",
+    "run_command": [
+      "/home/ubuntu/book-b200-20261119/results/part-3/18_ipc_event_handle/example"
+    ],
+    "run": {
+      "exit_code": 0,
+      "timed_out": false,
+      "seconds": 4.725278302999982,
+      "started_utc": "2026-11-19T21:54:12.796383+00:00",
+      "finished_utc": "2026-11-19T21:54:17.521665+00:00"
+    },
+    "run_started_utc": "2026-11-19T21:54:12.796383+00:00",
+    "status": "validation_pass",
+    "finished_utc": "2026-11-19T21:54:17.521789+00:00"
+  },
+  {
+    "source": "docs/part2/code/22_collectives_simulation.cpp",
+    "sha256": "d4ae2885d106db3e9db093ebcad90a1438c83d898eb8f87062a7c9dfc0a8acbb",
+    "number": 22,
+    "dependencies": [],
+    "pthread": false,
+    "cuda": false,
+    "has_main": true,
+    "minimum_gpus": 0,
+    "processes": 1,
+    "runtime_review": null,
+    "validation_oracle": "exit status only; numerical correctness unverified",
+    "timestamp_utc": "2026-11-19T21:54:17.522206+00:00",
+    "compile_command": [
+      "g++",
+      "-std=c++17",
+      "-O2",
+      "/home/ubuntu/book-b200-20261119/docs/part2/code/22_collectives_simulation.cpp",
+      "-o",
+      "/home/ubuntu/book-b200-20261119/results/part-3/22_collectives_simulation/example"
+    ],
+    "compile": {
+      "exit_code": 0,
+      "timed_out": false,
+      "seconds": 0.2644358889999694,
+      "started_utc": "2026-11-19T21:54:17.522420+00:00",
+      "finished_utc": "2026-11-19T21:54:17.786858+00:00"
+    },
+    "compile_started_utc": "2026-11-19T21:54:17.522420+00:00",
+    "run_command": [
+      "/home/ubuntu/book-b200-20261119/results/part-3/22_collectives_simulation/example"
+    ],
+    "run": {
+      "exit_code": 0,
+      "timed_out": false,
+      "seconds": 0.0017791559999977835,
+      "started_utc": "2026-11-19T21:54:17.786908+00:00",
+      "finished_utc": "2026-11-19T21:54:17.788687+00:00"
+    },
+    "run_started_utc": "2026-11-19T21:54:17.786908+00:00",
+    "status": "executed_unverified",
+    "finished_utc": "2026-11-19T21:54:17.788744+00:00"
+  },
+  {
+    "source": "docs/part2/code/26_allgather_by_hand.cu",
+    "sha256": "7aebce9afa5c1fae9a892659b95242e60185232d2a90cab7df1f6bb6fc159d90",
+    "number": 26,
+    "dependencies": [],
+    "pthread": false,
+    "cuda": true,
+    "has_main": true,
+    "minimum_gpus": 2,
+    "processes": 1,
+    "runtime_review": null,
+    "validation_oracle": "PASS: full reference values",
+    "timestamp_utc": "2026-11-19T21:54:17.789108+00:00",
+    "compile_command": [
+      "nvcc",
+      "-std=c++17",
+      "-O2",
+      "-arch=sm_100",
+      "/home/ubuntu/book-b200-20261119/docs/part2/code/26_allgather_by_hand.cu",
+      "-o",
+      "/home/ubuntu/book-b200-20261119/results/part-3/26_allgather_by_hand/example"
+    ],
+    "compile": {
+      "exit_code": 0,
+      "timed_out": false,
+      "seconds": 0.8656658250000078,
+      "started_utc": "2026-11-19T21:54:17.789289+00:00",
+      "finished_utc": "2026-11-19T21:54:18.654959+00:00"
+    },
+    "compile_started_utc": "2026-11-19T21:54:17.789289+00:00",
+    "run_command": [
+      "/home/ubuntu/book-b200-20261119/results/part-3/26_allgather_by_hand/example"
+    ],
+    "run": {
+      "exit_code": 0,
+      "timed_out": false,
+      "seconds": 5.777442240000028,
+      "started_utc": "2026-11-19T21:54:18.655016+00:00",
+      "finished_utc": "2026-11-19T21:54:24.432462+00:00"
+    },
+    "run_started_utc": "2026-11-19T21:54:18.655016+00:00",
+    "status": "validation_pass",
+    "finished_utc": "2026-11-19T21:54:24.432688+00:00"
+  },
+  {
+    "source": "docs/part2/code/30_nccl_comm_init.cu",
+    "sha256": "8727f9eeaaba6ddea198f70216798f22ba552ebeaf625453234128773ef4074b",
+    "number": 30,
+    "dependencies": [
+      "nccl"
+    ],
+    "pthread": false,
+    "cuda": true,
+    "has_main": true,
+    "minimum_gpus": 2,
+    "processes": 1,
+    "runtime_review": null,
+    "validation_oracle": "API PROBE PASS, errors=0 (API scope only)",
+    "timestamp_utc": "2026-11-19T21:54:24.433150+00:00",
+    "compile_command": [
+      "nvcc",
+      "-std=c++17",
+      "-O2",
+      "-arch=sm_100",
+      "/home/ubuntu/book-b200-20261119/docs/part2/code/30_nccl_comm_init.cu",
+      "-o",
+      "/home/ubuntu/book-b200-20261119/results/part-3/30_nccl_comm_init/example",
+      "-lnccl"
+    ],
+    "compile": {
+      "exit_code": 0,
+      "timed_out": false,
+      "seconds": 1.1168610839999928,
+      "started_utc": "2026-11-19T21:54:24.433367+00:00",
+      "finished_utc": "2026-11-19T21:54:25.550232+00:00"
+    },
+    "compile_started_utc": "2026-11-19T21:54:24.433367+00:00",
+    "run_command": [
+      "/home/ubuntu/book-b200-20261119/results/part-3/30_nccl_comm_init/example"
+    ],
+    "run": {
+      "exit_code": 0,
+      "timed_out": false,
+      "seconds": 15.502375345000019,
+      "started_utc": "2026-11-19T21:54:25.550287+00:00",
+      "finished_utc": "2026-11-19T21:54:41.052667+00:00"
+    },
+    "run_started_utc": "2026-11-19T21:54:25.550287+00:00",
+    "status": "api_probe_pass",
+    "finished_utc": "2026-11-19T21:54:41.052811+00:00"
+  },
+  {
+    "source": "docs/part3/code/34_gradient_allreduce.cu",
+    "sha256": "df562388a04106ea487942c8dd1569ba0d32279098ea79149c6e2c6406a0b8d8",
+    "number": 34,
+    "dependencies": [
+      "nccl"
+    ],
+    "pthread": false,
+    "cuda": true,
+    "has_main": true,
+    "minimum_gpus": 2,
+    "processes": 1,
+    "runtime_review": null,
+    "validation_oracle": "PASS: full reference values",
+    "timestamp_utc": "2026-11-19T21:54:41.053274+00:00",
+    "compile_command": [
+      "nvcc",
+      "-std=c++17",
+      "-O2",
+      "-arch=sm_100",
+      "/home/ubuntu/book-b200-20261119/docs/part3/code/34_gradient_allreduce.cu",
+      "-o",
+      "/home/ubuntu/book-b200-20261119/results/part-3/34_gradient_allreduce/example",
+      "-lnccl"
+    ],
+    "compile": {
+      "exit_code": 0,
+      "timed_out": false,
+      "seconds": 1.266850603000023,
+      "started_utc": "2026-11-19T21:54:41.053514+00:00",
+      "finished_utc": "2026-11-19T21:54:42.320369+00:00"
+    },
+    "compile_started_utc": "2026-11-19T21:54:41.053514+00:00",
+    "run_command": [
+      "/home/ubuntu/book-b200-20261119/results/part-3/34_gradient_allreduce/example"
+    ],
+    "run": {
+      "exit_code": 0,
+      "timed_out": false,
+      "seconds": 7.782113296000034,
+      "started_utc": "2026-11-19T21:54:42.320427+00:00",
+      "finished_utc": "2026-11-19T21:54:50.102544+00:00"
+    },
+    "run_started_utc": "2026-11-19T21:54:42.320427+00:00",
+    "status": "validation_pass",
+    "finished_utc": "2026-11-19T21:54:50.102682+00:00"
+  },
+  {
+    "source": "docs/part3/code/38_model_parallel_forward_simulation.cpp",
+    "sha256": "1df99e752e772f09b834b3c4fd73d73068cdb800f2166a316c033460894d7711",
+    "number": 38,
+    "dependencies": [],
+    "pthread": false,
+    "cuda": false,
+    "has_main": true,
+    "minimum_gpus": 0,
+    "processes": 1,
+    "runtime_review": null,
+    "validation_oracle": "exit status only; numerical correctness unverified",
+    "timestamp_utc": "2026-11-19T21:54:50.103172+00:00",
+    "compile_command": [
+      "g++",
+      "-std=c++17",
+      "-O2",
+      "/home/ubuntu/book-b200-20261119/docs/part3/code/38_model_parallel_forward_simulation.cpp",
+      "-o",
+      "/home/ubuntu/book-b200-20261119/results/part-3/38_model_parallel_forward_simulation/example"
+    ],
+    "compile": {
+      "exit_code": 0,
+      "timed_out": false,
+      "seconds": 0.164523121000002,
+      "started_utc": "2026-11-19T21:54:50.103393+00:00",
+      "finished_utc": "2026-11-19T21:54:50.267918+00:00"
+    },
+    "compile_started_utc": "2026-11-19T21:54:50.103393+00:00",
+    "run_command": [
+      "/home/ubuntu/book-b200-20261119/results/part-3/38_model_parallel_forward_simulation/example"
+    ],
+    "run": {
+      "exit_code": 0,
+      "timed_out": false,
+      "seconds": 0.0017199530000198138,
+      "started_utc": "2026-11-19T21:54:50.267954+00:00",
+      "finished_utc": "2026-11-19T21:54:50.269674+00:00"
+    },
+    "run_started_utc": "2026-11-19T21:54:50.267954+00:00",
+    "status": "executed_unverified",
+    "finished_utc": "2026-11-19T21:54:50.269728+00:00"
+  },
+  {
+    "source": "docs/part3/code/42_pipeline_schedule.cpp",
+    "sha256": "b6ebe70007adc7b7eea44a90cdf48c24744a894b71d5f387b6d02b02e879a5f5",
+    "number": 42,
+    "dependencies": [],
+    "pthread": false,
+    "cuda": false,
+    "has_main": true,
+    "minimum_gpus": 0,
+    "processes": 1,
+    "runtime_review": null,
+    "validation_oracle": "exit status only; numerical correctness unverified",
+    "timestamp_utc": "2026-11-19T21:54:50.270218+00:00",
+    "compile_command": [
+      "g++",
+      "-std=c++17",
+      "-O2",
+      "/home/ubuntu/book-b200-20261119/docs/part3/code/42_pipeline_schedule.cpp",
+      "-o",
+      "/home/ubuntu/book-b200-20261119/results/part-3/42_pipeline_schedule/example"
+    ],
+    "compile": {
+      "exit_code": 0,
+      "timed_out": false,
+      "seconds": 0.06386202599998114,
+      "started_utc": "2026-11-19T21:54:50.270390+00:00",
+      "finished_utc": "2026-11-19T21:54:50.334253+00:00"
+    },
+    "compile_started_utc": "2026-11-19T21:54:50.270390+00:00",
+    "run_command": [
+      "/home/ubuntu/book-b200-20261119/results/part-3/42_pipeline_schedule/example"
+    ],
+    "run": {
+      "exit_code": 0,
+      "timed_out": false,
+      "seconds": 0.001675692999981493,
+      "started_utc": "2026-11-19T21:54:50.334288+00:00",
+      "finished_utc": "2026-11-19T21:54:50.335964+00:00"
+    },
+    "run_started_utc": "2026-11-19T21:54:50.334288+00:00",
+    "status": "executed_unverified",
+    "finished_utc": "2026-11-19T21:54:50.336017+00:00"
+  },
+  {
+    "source": "docs/part3/code/46_halo_exchange.cu",
+    "sha256": "b42cfd48dd942f176fdaa604f43a16dce4d5d1cf9c5dc59c320e0c4b9a72e1bb",
+    "number": 46,
+    "dependencies": [],
+    "pthread": false,
+    "cuda": true,
+    "has_main": true,
+    "minimum_gpus": 2,
+    "processes": 1,
+    "runtime_review": null,
+    "validation_oracle": "PASS: full reference values",
+    "timestamp_utc": "2026-11-19T21:54:50.336408+00:00",
+    "compile_command": [
+      "nvcc",
+      "-std=c++17",
+      "-O2",
+      "-arch=sm_100",
+      "/home/ubuntu/book-b200-20261119/docs/part3/code/46_halo_exchange.cu",
+      "-o",
+      "/home/ubuntu/book-b200-20261119/results/part-3/46_halo_exchange/example"
+    ],
+    "compile": {
+      "exit_code": 0,
+      "timed_out": false,
+      "seconds": 0.8654249180000306,
+      "started_utc": "2026-11-19T21:54:50.336588+00:00",
+      "finished_utc": "2026-11-19T21:54:51.202016+00:00"
+    },
+    "compile_started_utc": "2026-11-19T21:54:50.336588+00:00",
+    "run_command": [
+      "/home/ubuntu/book-b200-20261119/results/part-3/46_halo_exchange/example"
+    ],
+    "run": {
+      "exit_code": 0,
+      "timed_out": false,
+      "seconds": 4.825096207999991,
+      "started_utc": "2026-11-19T21:54:51.202072+00:00",
+      "finished_utc": "2026-11-19T21:54:56.027172+00:00"
+    },
+    "run_started_utc": "2026-11-19T21:54:51.202072+00:00",
+    "status": "validation_pass",
+    "finished_utc": "2026-11-19T21:54:56.027307+00:00"
+  },
+  {
+    "source": "docs/part4/code/50_barrier_consistency_simulation.cpp",
+    "sha256": "5443cc0bbf8d2cd18346f7aa258f35c85df35f61613b0af99fd6c225596d2295",
+    "number": 50,
+    "dependencies": [],
+    "pthread": false,
+    "cuda": false,
+    "has_main": true,
+    "minimum_gpus": 0,
+    "processes": 1,
+    "runtime_review": null,
+    "validation_oracle": "exit status only; numerical correctness unverified",
+    "timestamp_utc": "2026-11-19T21:54:56.027868+00:00",
+    "compile_command": [
+      "g++",
+      "-std=c++17",
+      "-O2",
+      "/home/ubuntu/book-b200-20261119/docs/part4/code/50_barrier_consistency_simulation.cpp",
+      "-o",
+      "/home/ubuntu/book-b200-20261119/results/part-3/50_barrier_consistency_simulation/example"
+    ],
+    "compile": {
+      "exit_code": 0,
+      "timed_out": false,
+      "seconds": 0.21451809000001276,
+      "started_utc": "2026-11-19T21:54:56.028103+00:00",
+      "finished_utc": "2026-11-19T21:54:56.242623+00:00"
+    },
+    "compile_started_utc": "2026-11-19T21:54:56.028103+00:00",
+    "run_command": [
+      "/home/ubuntu/book-b200-20261119/results/part-3/50_barrier_consistency_simulation/example"
+    ],
+    "run": {
+      "exit_code": 0,
+      "timed_out": false,
+      "seconds": 0.0017672099999685997,
+      "started_utc": "2026-11-19T21:54:56.242667+00:00",
+      "finished_utc": "2026-11-19T21:54:56.244434+00:00"
+    },
+    "run_started_utc": "2026-11-19T21:54:56.242667+00:00",
+    "status": "executed_unverified",
+    "finished_utc": "2026-11-19T21:54:56.244497+00:00"
+  },
+  {
+    "source": "docs/part4/code/54_blocking_vs_nonblocking_comm.cu",
+    "sha256": "527cec6ac2cffe900da522d9e34f7d6362041294890831649623032560b81a18",
+    "number": 54,
+    "dependencies": [
+      "nccl"
+    ],
+    "pthread": false,
+    "cuda": true,
+    "has_main": true,
+    "minimum_gpus": 2,
+    "processes": 1,
+    "runtime_review": null,
+    "validation_oracle": "API PROBE PASS, errors=0 (API scope only)",
+    "timestamp_utc": "2026-11-19T21:54:56.244978+00:00",
+    "compile_command": [
+      "nvcc",
+      "-std=c++17",
+      "-O2",
+      "-arch=sm_100",
+      "/home/ubuntu/book-b200-20261119/docs/part4/code/54_blocking_vs_nonblocking_comm.cu",
+      "-o",
+      "/home/ubuntu/book-b200-20261119/results/part-3/54_blocking_vs_nonblocking_comm/example",
+      "-lnccl"
+    ],
+    "compile": {
+      "exit_code": 0,
+      "timed_out": false,
+      "seconds": 1.1669150620000437,
+      "started_utc": "2026-11-19T21:54:56.245167+00:00",
+      "finished_utc": "2026-11-19T21:54:57.412086+00:00"
+    },
+    "compile_started_utc": "2026-11-19T21:54:56.245167+00:00",
+    "run_command": [
+      "/home/ubuntu/book-b200-20261119/results/part-3/54_blocking_vs_nonblocking_comm/example"
+    ],
+    "run": {
+      "exit_code": 0,
+      "timed_out": false,
+      "seconds": 9.63659911100001,
+      "started_utc": "2026-11-19T21:54:57.412145+00:00",
+      "finished_utc": "2026-11-19T21:55:07.048748+00:00"
+    },
+    "run_started_utc": "2026-11-19T21:54:57.412145+00:00",
+    "status": "api_probe_pass",
+    "finished_utc": "2026-11-19T21:55:07.048885+00:00"
+  },
+  {
+    "source": "docs/part5/code/58_mpi_cuda_aware_query_and_fallback.cpp",
+    "sha256": "5d704c3b6f6289637b800a9eed5c479f4d6da99cf8b5fca1d70bef9c3539b754",
+    "number": 58,
+    "dependencies": [
+      "mpi"
+    ],
+    "pthread": false,
+    "cuda": true,
+    "has_main": true,
+    "minimum_gpus": 8,
+    "processes": 8,
+    "runtime_review": null,
+    "validation_oracle": "VALIDATION PASS, errors=0",
+    "timestamp_utc": "2026-11-19T21:55:07.049482+00:00",
+    "compile_command": [
+      "mpicxx",
+      "-std=c++17",
+      "-O2",
+      "-I/usr/include",
+      "-L/usr/lib/x86_64-linux-gnu",
+      "-Wl,-rpath,/usr/lib/x86_64-linux-gnu",
+      "/home/ubuntu/book-b200-20261119/docs/part5/code/58_mpi_cuda_aware_query_and_fallback.cpp",
+      "-o",
+      "/home/ubuntu/book-b200-20261119/results/part-3/58_mpi_cuda_aware_query_and_fallback/example",
+      "-lcudart"
+    ],
+    "compile": {
+      "exit_code": 127,
+      "timed_out": false,
+      "seconds": 0.0017208669999604354,
+      "started_utc": "2026-11-19T21:55:07.049736+00:00",
+      "finished_utc": "2026-11-19T21:55:07.051457+00:00"
+    },
+    "compile_started_utc": "2026-11-19T21:55:07.049736+00:00",
+    "status": "dependency_blocked",
+    "reason": "error while loading shared libraries",
+    "finished_utc": "2026-11-19T21:55:07.051523+00:00"
+  },
+  {
+    "source": "docs/part5/code/62_staged_vs_rdma_cost_model.cpp",
+    "sha256": "56b4b1a88020ba0b9246fe85a7c39e42370f6225fe23606527f59bf835cddbe1",
+    "number": 62,
+    "dependencies": [],
+    "pthread": false,
+    "cuda": false,
+    "has_main": true,
+    "minimum_gpus": 0,
+    "processes": 1,
+    "runtime_review": null,
+    "validation_oracle": "exit status only; numerical correctness unverified",
+    "timestamp_utc": "2026-11-19T21:55:07.051968+00:00",
+    "compile_command": [
+      "g++",
+      "-std=c++17",
+      "-O2",
+      "/home/ubuntu/book-b200-20261119/docs/part5/code/62_staged_vs_rdma_cost_model.cpp",
+      "-o",
+      "/home/ubuntu/book-b200-20261119/results/part-3/62_staged_vs_rdma_cost_model/example"
+    ],
+    "compile": {
+      "exit_code": 0,
+      "timed_out": false,
+      "seconds": 0.06371446299999661,
+      "started_utc": "2026-11-19T21:55:07.052130+00:00",
+      "finished_utc": "2026-11-19T21:55:07.115847+00:00"
+    },
+    "compile_started_utc": "2026-11-19T21:55:07.052130+00:00",
+    "run_command": [
+      "/home/ubuntu/book-b200-20261119/results/part-3/62_staged_vs_rdma_cost_model/example"
+    ],
+    "run": {
+      "exit_code": 0,
+      "timed_out": false,
+      "seconds": 0.0017454329999964102,
+      "started_utc": "2026-11-19T21:55:07.115882+00:00",
+      "finished_utc": "2026-11-19T21:55:07.117628+00:00"
+    },
+    "run_started_utc": "2026-11-19T21:55:07.115882+00:00",
+    "status": "executed_unverified",
+    "finished_utc": "2026-11-19T21:55:07.117683+00:00"
+  },
+  {
+    "source": "docs/part5/code/66_cross_device_graph_capture.cu",
+    "sha256": "15c5b1df7eab956645fdf841f40ca8a923706bcb746e8e83dc200231e4587e16",
+    "number": 66,
+    "dependencies": [],
+    "pthread": false,
+    "cuda": true,
+    "has_main": true,
+    "minimum_gpus": 2,
+    "processes": 1,
+    "runtime_review": null,
+    "validation_oracle": "VALIDATION PASS, errors=0",
+    "timestamp_utc": "2026-11-19T21:55:07.118147+00:00",
+    "compile_command": [
+      "nvcc",
+      "-std=c++17",
+      "-O2",
+      "-arch=sm_100",
+      "/home/ubuntu/book-b200-20261119/docs/part5/code/66_cross_device_graph_capture.cu",
+      "-o",
+      "/home/ubuntu/book-b200-20261119/results/part-3/66_cross_device_graph_capture/example"
+    ],
+    "compile": {
+      "exit_code": 0,
+      "timed_out": false,
+      "seconds": 0.6152094610000063,
+      "started_utc": "2026-11-19T21:55:07.118312+00:00",
+      "finished_utc": "2026-11-19T21:55:07.733525+00:00"
+    },
+    "compile_started_utc": "2026-11-19T21:55:07.118312+00:00",
+    "run_command": [
+      "/home/ubuntu/book-b200-20261119/results/part-3/66_cross_device_graph_capture/example"
+    ],
+    "run": {
+      "exit_code": 0,
+      "timed_out": false,
+      "seconds": 6.327895277999971,
+      "started_utc": "2026-11-19T21:55:07.733574+00:00",
+      "finished_utc": "2026-11-19T21:55:14.061473+00:00"
+    },
+    "run_started_utc": "2026-11-19T21:55:07.733574+00:00",
+    "status": "validation_pass",
+    "finished_utc": "2026-11-19T21:55:14.061627+00:00"
+  },
+  {
+    "source": "docs/part6/code/70_summa_correctness_simulation.cpp",
+    "sha256": "76c2840993d73fc22643a982b4aa1524a67b8fd1c2c125e1b3d1cc18fc6b4ac6",
+    "number": 70,
+    "dependencies": [],
+    "pthread": false,
+    "cuda": false,
+    "has_main": true,
+    "minimum_gpus": 0,
+    "processes": 1,
+    "runtime_review": null,
+    "validation_oracle": "exit status only; numerical correctness unverified",
+    "timestamp_utc": "2026-11-19T21:55:14.062257+00:00",
+    "compile_command": [
+      "g++",
+      "-std=c++17",
+      "-O2",
+      "/home/ubuntu/book-b200-20261119/docs/part6/code/70_summa_correctness_simulation.cpp",
+      "-o",
+      "/home/ubuntu/book-b200-20261119/results/part-3/70_summa_correctness_simulation/example"
+    ],
+    "compile": {
+      "exit_code": 0,
+      "timed_out": false,
+      "seconds": 0.41497276399996963,
+      "started_utc": "2026-11-19T21:55:14.062477+00:00",
+      "finished_utc": "2026-11-19T21:55:14.477453+00:00"
+    },
+    "compile_started_utc": "2026-11-19T21:55:14.062477+00:00",
+    "run_command": [
+      "/home/ubuntu/book-b200-20261119/results/part-3/70_summa_correctness_simulation/example"
+    ],
+    "run": {
+      "exit_code": 0,
+      "timed_out": false,
+      "seconds": 0.0017834369999718547,
+      "started_utc": "2026-11-19T21:55:14.477519+00:00",
+      "finished_utc": "2026-11-19T21:55:14.479302+00:00"
+    },
+    "run_started_utc": "2026-11-19T21:55:14.477519+00:00",
+    "status": "executed_unverified",
+    "finished_utc": "2026-11-19T21:55:14.479358+00:00"
+  },
+  {
+    "source": "docs/part6/code/74_ring_allreduce_communication_cost_model.cpp",
+    "sha256": "410e71b6b00891a96442bc2eea2c936568f02fc55b7cb028debb6415669b7c5e",
+    "number": 74,
+    "dependencies": [],
+    "pthread": false,
+    "cuda": false,
+    "has_main": true,
+    "minimum_gpus": 0,
+    "processes": 1,
+    "runtime_review": null,
+    "validation_oracle": "exit status only; numerical correctness unverified",
+    "timestamp_utc": "2026-11-19T21:55:14.479916+00:00",
+    "compile_command": [
+      "g++",
+      "-std=c++17",
+      "-O2",
+      "/home/ubuntu/book-b200-20261119/docs/part6/code/74_ring_allreduce_communication_cost_model.cpp",
+      "-o",
+      "/home/ubuntu/book-b200-20261119/results/part-3/74_ring_allreduce_communication_cost_model/example"
+    ],
+    "compile": {
+      "exit_code": 0,
+      "timed_out": false,
+      "seconds": 0.06392195900002662,
+      "started_utc": "2026-11-19T21:55:14.480104+00:00",
+      "finished_utc": "2026-11-19T21:55:14.544028+00:00"
+    },
+    "compile_started_utc": "2026-11-19T21:55:14.480104+00:00",
+    "run_command": [
+      "/home/ubuntu/book-b200-20261119/results/part-3/74_ring_allreduce_communication_cost_model/example"
+    ],
+    "run": {
+      "exit_code": 0,
+      "timed_out": false,
+      "seconds": 0.001905094999983703,
+      "started_utc": "2026-11-19T21:55:14.544063+00:00",
+      "finished_utc": "2026-11-19T21:55:14.545970+00:00"
+    },
+    "run_started_utc": "2026-11-19T21:55:14.544063+00:00",
+    "status": "executed_unverified",
+    "finished_utc": "2026-11-19T21:55:14.546050+00:00"
+  },
+  {
+    "source": "docs/part6/code/78_all_pairs_nbody_correctness_simulation.cpp",
+    "sha256": "bf686d8feaf3d7154c054b4543d0c79e6d06c328df4733a631055f75779af5f9",
+    "number": 78,
+    "dependencies": [],
+    "pthread": false,
+    "cuda": false,
+    "has_main": true,
+    "minimum_gpus": 0,
+    "processes": 1,
+    "runtime_review": null,
+    "validation_oracle": "exit status only; numerical correctness unverified",
+    "timestamp_utc": "2026-11-19T21:55:14.546589+00:00",
+    "compile_command": [
+      "g++",
+      "-std=c++17",
+      "-O2",
+      "/home/ubuntu/book-b200-20261119/docs/part6/code/78_all_pairs_nbody_correctness_simulation.cpp",
+      "-o",
+      "/home/ubuntu/book-b200-20261119/results/part-3/78_all_pairs_nbody_correctness_simulation/example"
+    ],
+    "compile": {
+      "exit_code": 0,
+      "timed_out": false,
+      "seconds": 0.2145853520000287,
+      "started_utc": "2026-11-19T21:55:14.546768+00:00",
+      "finished_utc": "2026-11-19T21:55:14.761356+00:00"
+    },
+    "compile_started_utc": "2026-11-19T21:55:14.546768+00:00",
+    "run_command": [
+      "/home/ubuntu/book-b200-20261119/results/part-3/78_all_pairs_nbody_correctness_simulation/example"
+    ],
+    "run": {
+      "exit_code": 0,
+      "timed_out": false,
+      "seconds": 0.0015944279999757782,
+      "started_utc": "2026-11-19T21:55:14.761395+00:00",
+      "finished_utc": "2026-11-19T21:55:14.762989+00:00"
+    },
+    "run_started_utc": "2026-11-19T21:55:14.761395+00:00",
+    "status": "executed_unverified",
+    "finished_utc": "2026-11-19T21:55:14.763042+00:00"
+  },
+  {
+    "source": "docs/part6/code/82_1d_partitioning_participant_count_model.cpp",
+    "sha256": "9d43dc8d00cf47d2b37e07974f8666ac9eed931e9419e9837505885a797320be",
+    "number": 82,
+    "dependencies": [],
+    "pthread": false,
+    "cuda": false,
+    "has_main": true,
+    "minimum_gpus": 0,
+    "processes": 1,
+    "runtime_review": null,
+    "validation_oracle": "exit status only; numerical correctness unverified",
+    "timestamp_utc": "2026-11-19T21:55:14.763581+00:00",
+    "compile_command": [
+      "g++",
+      "-std=c++17",
+      "-O2",
+      "/home/ubuntu/book-b200-20261119/docs/part6/code/82_1d_partitioning_participant_count_model.cpp",
+      "-o",
+      "/home/ubuntu/book-b200-20261119/results/part-3/82_1d_partitioning_participant_count_model/example"
+    ],
+    "compile": {
+      "exit_code": 0,
+      "timed_out": false,
+      "seconds": 0.0640188309999985,
+      "started_utc": "2026-11-19T21:55:14.763759+00:00",
+      "finished_utc": "2026-11-19T21:55:14.827779+00:00"
+    },
+    "compile_started_utc": "2026-11-19T21:55:14.763759+00:00",
+    "run_command": [
+      "/home/ubuntu/book-b200-20261119/results/part-3/82_1d_partitioning_participant_count_model/example"
+    ],
+    "run": {
+      "exit_code": 0,
+      "timed_out": false,
+      "seconds": 0.0016972050000276795,
+      "started_utc": "2026-11-19T21:55:14.827812+00:00",
+      "finished_utc": "2026-11-19T21:55:14.829509+00:00"
+    },
+    "run_started_utc": "2026-11-19T21:55:14.827812+00:00",
+    "status": "executed_unverified",
+    "finished_utc": "2026-11-19T21:55:14.829561+00:00"
+  },
+  {
+    "source": "docs/part6/code/86_jacobi_convergence_rate_model.cpp",
+    "sha256": "195cb07d6b6200b16d232f9da4c21918ef3ebec595286234e95f8236801058e9",
+    "number": 86,
+    "dependencies": [],
+    "pthread": false,
+    "cuda": false,
+    "has_main": true,
+    "minimum_gpus": 0,
+    "processes": 1,
+    "runtime_review": null,
+    "validation_oracle": "exit status only; numerical correctness unverified",
+    "timestamp_utc": "2026-11-19T21:55:14.830071+00:00",
+    "compile_command": [
+      "g++",
+      "-std=c++17",
+      "-O2",
+      "/home/ubuntu/book-b200-20261119/docs/part6/code/86_jacobi_convergence_rate_model.cpp",
+      "-o",
+      "/home/ubuntu/book-b200-20261119/results/part-3/86_jacobi_convergence_rate_model/example"
+    ],
+    "compile": {
+      "exit_code": 0,
+      "timed_out": false,
+      "seconds": 0.11422583000000941,
+      "started_utc": "2026-11-19T21:55:14.830254+00:00",
+      "finished_utc": "2026-11-19T21:55:14.944482+00:00"
+    },
+    "compile_started_utc": "2026-11-19T21:55:14.830254+00:00",
+    "run_command": [
+      "/home/ubuntu/book-b200-20261119/results/part-3/86_jacobi_convergence_rate_model/example"
+    ],
+    "run": {
+      "exit_code": 0,
+      "timed_out": false,
+      "seconds": 0.0018307619999973213,
+      "started_utc": "2026-11-19T21:55:14.944537+00:00",
+      "finished_utc": "2026-11-19T21:55:14.946369+00:00"
+    },
+    "run_started_utc": "2026-11-19T21:55:14.944537+00:00",
+    "status": "executed_unverified",
+    "finished_utc": "2026-11-19T21:55:14.946454+00:00"
+  },
+  {
+    "source": "docs/part6/code/90_independent_path_correctness_simulation.cpp",
+    "sha256": "6ae1e1b96c842c49da43d72be12a411fa20e5188b0ea4ad4a659d2ce12d64905",
+    "number": 90,
+    "dependencies": [],
+    "pthread": false,
+    "cuda": false,
+    "has_main": true,
+    "minimum_gpus": 0,
+    "processes": 1,
+    "runtime_review": null,
+    "validation_oracle": "exit status only; numerical correctness unverified",
+    "timestamp_utc": "2026-11-19T21:55:14.947023+00:00",
+    "compile_command": [
+      "g++",
+      "-std=c++17",
+      "-O2",
+      "/home/ubuntu/book-b200-20261119/docs/part6/code/90_independent_path_correctness_simulation.cpp",
+      "-o",
+      "/home/ubuntu/book-b200-20261119/results/part-3/90_independent_path_correctness_simulation/example"
+    ],
+    "compile": {
+      "exit_code": 0,
+      "timed_out": false,
+      "seconds": 0.2145790579999698,
+      "started_utc": "2026-11-19T21:55:14.947212+00:00",
+      "finished_utc": "2026-11-19T21:55:15.161793+00:00"
+    },
+    "compile_started_utc": "2026-11-19T21:55:14.947212+00:00",
+    "run_command": [
+      "/home/ubuntu/book-b200-20261119/results/part-3/90_independent_path_correctness_simulation/example"
+    ],
+    "run": {
+      "exit_code": 0,
+      "timed_out": false,
+      "seconds": 0.001676816999975017,
+      "started_utc": "2026-11-19T21:55:15.161829+00:00",
+      "finished_utc": "2026-11-19T21:55:15.163506+00:00"
+    },
+    "run_started_utc": "2026-11-19T21:55:15.161829+00:00",
+    "status": "executed_unverified",
+    "finished_utc": "2026-11-19T21:55:15.163560+00:00"
+  },
+  {
+    "source": "docs/part7/code/101_embedding_alltoall_comm_volume_cost_model.cpp",
+    "sha256": "80de05b7f2bf36a6fa3f138425fbce8b1d3b6b373ce2e200f8946faa80aa2933",
+    "number": 101,
+    "dependencies": [],
+    "pthread": false,
+    "cuda": false,
+    "has_main": true,
+    "minimum_gpus": 0,
+    "processes": 1,
+    "runtime_review": null,
+    "validation_oracle": "exit status only; numerical correctness unverified",
+    "timestamp_utc": "2026-11-19T21:55:15.164136+00:00",
+    "compile_command": [
+      "g++",
+      "-std=c++17",
+      "-O2",
+      "/home/ubuntu/book-b200-20261119/docs/part7/code/101_embedding_alltoall_comm_volume_cost_model.cpp",
+      "-o",
+      "/home/ubuntu/book-b200-20261119/results/part-3/101_embedding_alltoall_comm_volume_cost_model/example"
+    ],
+    "compile": {
+      "exit_code": 0,
+      "timed_out": false,
+      "seconds": 0.06396742900000163,
+      "started_utc": "2026-11-19T21:55:15.164320+00:00",
+      "finished_utc": "2026-11-19T21:55:15.228289+00:00"
+    },
+    "compile_started_utc": "2026-11-19T21:55:15.164320+00:00",
+    "run_command": [
+      "/home/ubuntu/book-b200-20261119/results/part-3/101_embedding_alltoall_comm_volume_cost_model/example"
+    ],
+    "run": {
+      "exit_code": 0,
+      "timed_out": false,
+      "seconds": 0.0017080379999470097,
+      "started_utc": "2026-11-19T21:55:15.228321+00:00",
+      "finished_utc": "2026-11-19T21:55:15.230030+00:00"
+    },
+    "run_started_utc": "2026-11-19T21:55:15.228321+00:00",
+    "status": "executed_unverified",
+    "finished_utc": "2026-11-19T21:55:15.230081+00:00"
+  },
+  {
+    "source": "docs/part7/code/105_exposure_profile_reduction_cost_model.cpp",
+    "sha256": "522f059b035f1a7608c79ee30dec0647868178dc8e74c737e645ff808f33c132",
+    "number": 105,
+    "dependencies": [],
+    "pthread": false,
+    "cuda": false,
+    "has_main": true,
+    "minimum_gpus": 0,
+    "processes": 1,
+    "runtime_review": null,
+    "validation_oracle": "exit status only; numerical correctness unverified",
+    "timestamp_utc": "2026-11-19T21:55:15.230663+00:00",
+    "compile_command": [
+      "g++",
+      "-std=c++17",
+      "-O2",
+      "/home/ubuntu/book-b200-20261119/docs/part7/code/105_exposure_profile_reduction_cost_model.cpp",
+      "-o",
+      "/home/ubuntu/book-b200-20261119/results/part-3/105_exposure_profile_reduction_cost_model/example"
+    ],
+    "compile": {
+      "exit_code": 0,
+      "timed_out": false,
+      "seconds": 0.06395373800000925,
+      "started_utc": "2026-11-19T21:55:15.230828+00:00",
+      "finished_utc": "2026-11-19T21:55:15.294783+00:00"
+    },
+    "compile_started_utc": "2026-11-19T21:55:15.230828+00:00",
+    "run_command": [
+      "/home/ubuntu/book-b200-20261119/results/part-3/105_exposure_profile_reduction_cost_model/example"
+    ],
+    "run": {
+      "exit_code": 0,
+      "timed_out": false,
+      "seconds": 0.001698741999973663,
+      "started_utc": "2026-11-19T21:55:15.294816+00:00",
+      "finished_utc": "2026-11-19T21:55:15.296516+00:00"
+    },
+    "run_started_utc": "2026-11-19T21:55:15.294816+00:00",
+    "status": "executed_unverified",
+    "finished_utc": "2026-11-19T21:55:15.296601+00:00"
+  },
+  {
+    "source": "docs/part7/code/109_gpudirect_rdma_market_data_projection_model.cpp",
+    "sha256": "4f9b52d2d3ad6c06e3f2856b2399fba8e5a10be06e28e8caf577e450fae6f3b0",
+    "number": 109,
+    "dependencies": [],
+    "pthread": false,
+    "cuda": false,
+    "has_main": true,
+    "minimum_gpus": 0,
+    "processes": 1,
+    "runtime_review": null,
+    "validation_oracle": "exit status only; numerical correctness unverified",
+    "timestamp_utc": "2026-11-19T21:55:15.297201+00:00",
+    "compile_command": [
+      "g++",
+      "-std=c++17",
+      "-O2",
+      "/home/ubuntu/book-b200-20261119/docs/part7/code/109_gpudirect_rdma_market_data_projection_model.cpp",
+      "-o",
+      "/home/ubuntu/book-b200-20261119/results/part-3/109_gpudirect_rdma_market_data_projection_model/example"
+    ],
+    "compile": {
+      "exit_code": 0,
+      "timed_out": false,
+      "seconds": 0.06410316599999533,
+      "started_utc": "2026-11-19T21:55:15.297381+00:00",
+      "finished_utc": "2026-11-19T21:55:15.361486+00:00"
+    },
+    "compile_started_utc": "2026-11-19T21:55:15.297381+00:00",
+    "run_command": [
+      "/home/ubuntu/book-b200-20261119/results/part-3/109_gpudirect_rdma_market_data_projection_model/example"
+    ],
+    "run": {
+      "exit_code": 0,
+      "timed_out": false,
+      "seconds": 0.001640453999982583,
+      "started_utc": "2026-11-19T21:55:15.361531+00:00",
+      "finished_utc": "2026-11-19T21:55:15.363172+00:00"
+    },
+    "run_started_utc": "2026-11-19T21:55:15.361531+00:00",
+    "status": "executed_unverified",
+    "finished_utc": "2026-11-19T21:55:15.363223+00:00"
+  },
+  {
+    "source": "docs/part7/code/113_distributed_tree_building_sequential_reduction_model.cpp",
+    "sha256": "18e5e05c417bbf13800cd371a4f27936b95770336011b21791e37b03bbd84479",
+    "number": 113,
+    "dependencies": [],
+    "pthread": false,
+    "cuda": false,
+    "has_main": true,
+    "minimum_gpus": 0,
+    "processes": 1,
+    "runtime_review": null,
+    "validation_oracle": "exit status only; numerical correctness unverified",
+    "timestamp_utc": "2026-11-19T21:55:15.363820+00:00",
+    "compile_command": [
+      "g++",
+      "-std=c++17",
+      "-O2",
+      "/home/ubuntu/book-b200-20261119/docs/part7/code/113_distributed_tree_building_sequential_reduction_model.cpp",
+      "-o",
+      "/home/ubuntu/book-b200-20261119/results/part-3/113_distributed_tree_building_sequential_reduction_model/example"
+    ],
+    "compile": {
+      "exit_code": 0,
+      "timed_out": false,
+      "seconds": 0.06387268499997845,
+      "started_utc": "2026-11-19T21:55:15.363985+00:00",
+      "finished_utc": "2026-11-19T21:55:15.427859+00:00"
+    },
+    "compile_started_utc": "2026-11-19T21:55:15.363985+00:00",
+    "run_command": [
+      "/home/ubuntu/book-b200-20261119/results/part-3/113_distributed_tree_building_sequential_reduction_model/example"
+    ],
+    "run": {
+      "exit_code": 0,
+      "timed_out": false,
+      "seconds": 0.0016426859999683074,
+      "started_utc": "2026-11-19T21:55:15.427892+00:00",
+      "finished_utc": "2026-11-19T21:55:15.429536+00:00"
+    },
+    "run_started_utc": "2026-11-19T21:55:15.427892+00:00",
+    "status": "executed_unverified",
+    "finished_utc": "2026-11-19T21:55:15.429619+00:00"
+  },
+  {
+    "source": "docs/part7/code/117_zslab_ghost_cell_correctness_simulation.cpp",
+    "sha256": "95402f1d4080bdd0fd8cd54ac19045540823020b195d04155987371408fa11c3",
+    "number": 117,
+    "dependencies": [],
+    "pthread": false,
+    "cuda": false,
+    "has_main": true,
+    "minimum_gpus": 0,
+    "processes": 1,
+    "runtime_review": null,
+    "validation_oracle": "exit status only; numerical correctness unverified",
+    "timestamp_utc": "2026-11-19T21:55:15.430256+00:00",
+    "compile_command": [
+      "g++",
+      "-std=c++17",
+      "-O2",
+      "/home/ubuntu/book-b200-20261119/docs/part7/code/117_zslab_ghost_cell_correctness_simulation.cpp",
+      "-o",
+      "/home/ubuntu/book-b200-20261119/results/part-3/117_zslab_ghost_cell_correctness_simulation/example"
+    ],
+    "compile": {
+      "exit_code": 0,
+      "timed_out": false,
+      "seconds": 0.11402184199999965,
+      "started_utc": "2026-11-19T21:55:15.430433+00:00",
+      "finished_utc": "2026-11-19T21:55:15.544456+00:00"
+    },
+    "compile_started_utc": "2026-11-19T21:55:15.430433+00:00",
+    "run_command": [
+      "/home/ubuntu/book-b200-20261119/results/part-3/117_zslab_ghost_cell_correctness_simulation/example"
+    ],
+    "run": {
+      "exit_code": 0,
+      "timed_out": false,
+      "seconds": 0.0015257379999980003,
+      "started_utc": "2026-11-19T21:55:15.544514+00:00",
+      "finished_utc": "2026-11-19T21:55:15.546040+00:00"
+    },
+    "run_started_utc": "2026-11-19T21:55:15.544514+00:00",
+    "status": "executed_unverified",
+    "finished_utc": "2026-11-19T21:55:15.546091+00:00"
+  },
+  {
+    "source": "docs/part7/code/94_normal_vs_lowlatency_kernel_cost_model.cpp",
+    "sha256": "34335d753cb7c58850cc4203491ecaf9656d3da978b285ebd9a05d2051efc098",
+    "number": 94,
+    "dependencies": [],
+    "pthread": false,
+    "cuda": false,
+    "has_main": true,
+    "minimum_gpus": 0,
+    "processes": 1,
+    "runtime_review": null,
+    "validation_oracle": "exit status only; numerical correctness unverified",
+    "timestamp_utc": "2026-11-19T21:55:15.546746+00:00",
+    "compile_command": [
+      "g++",
+      "-std=c++17",
+      "-O2",
+      "/home/ubuntu/book-b200-20261119/docs/part7/code/94_normal_vs_lowlatency_kernel_cost_model.cpp",
+      "-o",
+      "/home/ubuntu/book-b200-20261119/results/part-3/94_normal_vs_lowlatency_kernel_cost_model/example"
+    ],
+    "compile": {
+      "exit_code": 0,
+      "timed_out": false,
+      "seconds": 0.06385882699999001,
+      "started_utc": "2026-11-19T21:55:15.546930+00:00",
+      "finished_utc": "2026-11-19T21:55:15.610791+00:00"
+    },
+    "compile_started_utc": "2026-11-19T21:55:15.546930+00:00",
+    "run_command": [
+      "/home/ubuntu/book-b200-20261119/results/part-3/94_normal_vs_lowlatency_kernel_cost_model/example"
+    ],
+    "run": {
+      "exit_code": 0,
+      "timed_out": false,
+      "seconds": 0.001704293000045709,
+      "started_utc": "2026-11-19T21:55:15.610824+00:00",
+      "finished_utc": "2026-11-19T21:55:15.612530+00:00"
+    },
+    "run_started_utc": "2026-11-19T21:55:15.610824+00:00",
+    "status": "executed_unverified",
+    "finished_utc": "2026-11-19T21:55:15.612613+00:00"
+  },
+  {
+    "source": "docs/part7/code/98_kv_cache_handoff_transfer_cost_model.cpp",
+    "sha256": "cac5907c6d28de3b1410b790e7eedb3a9fef625db9f6557075f0248bc9a79ea7",
+    "number": 98,
+    "dependencies": [],
+    "pthread": false,
+    "cuda": false,
+    "has_main": true,
+    "minimum_gpus": 0,
+    "processes": 1,
+    "runtime_review": null,
+    "validation_oracle": "exit status only; numerical correctness unverified",
+    "timestamp_utc": "2026-11-19T21:55:15.613254+00:00",
+    "compile_command": [
+      "g++",
+      "-std=c++17",
+      "-O2",
+      "/home/ubuntu/book-b200-20261119/docs/part7/code/98_kv_cache_handoff_transfer_cost_model.cpp",
+      "-o",
+      "/home/ubuntu/book-b200-20261119/results/part-3/98_kv_cache_handoff_transfer_cost_model/example"
+    ],
+    "compile": {
+      "exit_code": 0,
+      "timed_out": false,
+      "seconds": 0.11411245099998268,
+      "started_utc": "2026-11-19T21:55:15.613437+00:00",
+      "finished_utc": "2026-11-19T21:55:15.727551+00:00"
+    },
+    "compile_started_utc": "2026-11-19T21:55:15.613437+00:00",
+    "run_command": [
+      "/home/ubuntu/book-b200-20261119/results/part-3/98_kv_cache_handoff_transfer_cost_model/example"
+    ],
+    "run": {
+      "exit_code": 0,
+      "timed_out": false,
+      "seconds": 0.0015658130000133497,
+      "started_utc": "2026-11-19T21:55:15.727584+00:00",
+      "finished_utc": "2026-11-19T21:55:15.729150+00:00"
+    },
+    "run_started_utc": "2026-11-19T21:55:15.727584+00:00",
+    "status": "executed_unverified",
+    "finished_utc": "2026-11-19T21:55:15.729202+00:00"
+  }
+]

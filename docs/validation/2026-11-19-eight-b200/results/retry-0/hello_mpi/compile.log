@@ -1,0 +1,1 @@
+$ mpicxx -std=c++17 -O2 -I/usr/include -L/usr/lib/x86_64-linux-gnu -Wl,-rpath,/usr/lib/x86_64-linux-gnu /home/ubuntu/book-b200-20261119/docs/appendix/code/hello_mpi.cpp -o /home/ubuntu/book-b200-20261119/results/retry-0/hello_mpi/example -lcudart

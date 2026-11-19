@@ -1,0 +1,1 @@
+$ nvcc -std=c++17 -O2 -arch=sm_100 tools/validate_eight_gpus.cu -lnccl -Xcompiler=-pthread -o eight-gpu-check

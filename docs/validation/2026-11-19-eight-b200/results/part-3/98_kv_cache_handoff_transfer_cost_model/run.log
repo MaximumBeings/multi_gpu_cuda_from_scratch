@@ -1,0 +1,7 @@
+$ /home/ubuntu/book-b200-20261119/results/part-3/98_kv_cache_handoff_transfer_cost_model/example
+Ideal one-way transfer bounds for 1.13 decimal GB:
+A100 NVLink: 300 GB/s one-way ceiling -> 3.767 ms
+800 Gbit/s InfiniBand: 100 GB/s line rate -> 11.300 ms
+Protocol overhead, topology, tensor-parallel sharding and contention change achieved latency.
+Overlap can hide work for other requests; this request still depends on its KV arrival.
+MODEL CHECK PASS: directional bandwidth arithmetic

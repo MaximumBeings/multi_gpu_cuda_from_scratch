@@ -1,0 +1,15 @@
+$ /home/ubuntu/book-b200-20261119/results/part-0/114_wgs_multi_gpu_motivation_model/example
+Real cited NVIDIA Clara Parabricks headline result:
+- "over 100x faster analysis of whole-genome sequencing (WGS) compared to CPU-only solutions"
+
+Real cited specific example (same source, a separate, more specific claim):
+- "Reduce germline analysis from ~16 hours to under 10 minutes on 4 NVIDIA RTX PRO 6000 Server Edition GPUs"
+
+Real cited CPU-only baseline: ~16 hours = 960 minutes.
+Real cited GPU-accelerated upper bound: under 10 minutes on 4 RTX PRO 6000 GPUs.
+
+Honest arithmetic on those two real cited numbers alone: since the real GPU-accelerated time is stated only as an upper bound ("under 10 minutes", not an exact figure), the MINIMUM speedup this specific real example implies is 96x (16 hours divided by exactly 10 minutes) -- the true real speedup could be higher if the actual run finished in under 10 minutes, but not lower.
+
+Cross-check against the separately cited ">100x" headline figure: a 96x minimum implied speedup is CONSISTENT (same order of magnitude) with a real headline claim of "over 100x" -- both cited numbers describe the same real order of magnitude, not two disconnected claims, which is what this cross-check is actually checking for (exact numeric agreement was never expected, since one figure is a general WGS-wide claim and the other is one specific germline pipeline example on specific hardware).
+
+This is the real, cited motivation for everything the rest of this chapter examines: genomics analysis at this real cited scale is not merely faster on a GPU, it is reorganized from an overnight batch job into something that can return a result inside a single clinical visit. Section 39.2 asks the real structural question this raises: what property of whole-genome analysis lets it reach that speedup using MULTIPLE GPUs at all, the same question this book asked of Chapter 16's stencil and Chapter 30's rendering, with a genuinely different real answer each time?

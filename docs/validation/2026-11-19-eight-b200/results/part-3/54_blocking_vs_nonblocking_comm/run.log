@@ -1,0 +1,2 @@
+$ /home/ubuntu/book-b200-20261119/results/part-3/54_blocking_vs_nonblocking_comm/example
+API PROBE PASS: one-rank nonblocking init/poll/abort only; no fault recovery tested, errors=0

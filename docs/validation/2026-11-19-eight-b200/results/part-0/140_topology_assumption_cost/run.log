@@ -1,0 +1,55 @@
+$ /home/ubuntu/book-b200-20261119/results/part-0/140_topology_assumption_cost/example
+=== Section G.3: assuming a topology class instead of querying it ===
+
+Chapter 4's own real idiom (File 9): cudaDeviceCanAccessPeer(&canAccess,
+i, j), checked for every ordered pair, BEFORE calling
+cudaDeviceEnablePeerAccess(). Chapter 5's own File 11/13 showed why
+skipping it never breaks CORRECTNESS -- cudaMemcpyPeer() falls back to a
+staged host copy transparently for any pair without enabled peer access.
+What it CAN silently break is a performance assumption baked into calling
+code that never re-queries the real topology for the deployment it is
+actually running on.
+
+Chapter 2/5's own three real topology classes for a device pair, and the
+real transfer time for 1.0 GB under each:
+
+actual topology class             real time (s)
+NVLink-wired pair (1 hop)              0.020000
+PCIe-only direct pair (1 hop)          0.031746
+no direct link (2-hop staged)          0.063492
+
+=== the silent cost of code that ASSUMED NVLink and never re-queried ===
+
+code that hardcodes the NVLink figure (a real, common shortcut when a
+number is copied from one cluster's own topology report into a capacity
+plan or a scheduling deadline) pays NO error and NO crash when deployed
+on a DIFFERENT pair's real topology -- cudaMemcpyPeer() still returns
+cudaSuccess either way -- only a silent multiple of the assumed number:
+
+actual topology at runtime        real time (s)    x assumed
+NVLink (assumption correct)            0.020000       1.0000
+PCIe-only direct                       0.031746       1.5873
+no direct link (staged)                0.063492       3.1746
+
+a schedule or capacity plan built around the NVLink number silently runs
+1.5873x slower than planned on a PCIe-only-direct pair, and 3.1746x slower on
+a pair with no direct link at all -- Chapter 2's own partial-mesh topology
+model already established that NOT every pair on a real multi-GPU machine
+shares the same link class, so this is not a hypothetical: two GPUs on the
+SAME machine can genuinely fall into different rows of this table.
+
+=== the real fix: query, don't assume ===
+
+Chapter 4's own File 9 sequence -- cudaDeviceCanAccessPeer() for the
+SPECIFIC pair actually in use, re-run on the actual deployment rather than
+hardcoded from a different one -- is the only way to know which row of
+this table applies BEFORE building a schedule or capacity plan around it.
+Real device attribute queries (Chapter 2's own cudaDeviceProp fields, and
+cudaDeviceGetP2PAttribute() for the specific link's own reported
+performance rank) are what genuinely observe the topology; nothing about
+cudaMemcpyPeer()'s own return code ever will.
+
+self-check: the three real topology classes are strictly ordered fastest-
+to-slowest (NVLink < PCIe-direct < staged, confirmed), and an NVLink-based
+assumption's own real slowdown strictly increases as the actual topology
+gets worse (confirmed): confirmed

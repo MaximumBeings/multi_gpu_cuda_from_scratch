@@ -1,0 +1,9 @@
+$ /home/ubuntu/book-b200-20261119/results/part-3/135_torch_distributed_collectives_mapped/example
+dist.broadcast           -> ncclBroadcast (CUDA/NCCL backend)
+dist.reduce              -> ncclReduce (CUDA/NCCL backend)
+dist.all_reduce          -> ncclAllReduce (CUDA/NCCL backend)
+dist.all_gather          -> ncclAllGather (CUDA/NCCL backend)
+dist.reduce_scatter      -> ncclReduceScatter (CUDA/NCCL backend)
+dist.isend / dist.irecv  -> ncclSend / ncclRecv (CUDA/NCCL backend)
+C++ linked NCCL: 2.26.2. A PyTorch installation may load a different NCCL build.
+API PROBE PASS: errors=0; semantic mapping and one-rank C++ setup, not a PyTorch execution test.

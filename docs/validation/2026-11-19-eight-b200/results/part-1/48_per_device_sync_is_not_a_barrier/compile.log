@@ -1,0 +1,1 @@
+$ nvcc -std=c++17 -O2 -arch=sm_100 /home/ubuntu/book-b200-20261119/docs/part4/code/48_per_device_sync_is_not_a_barrier.cu -o /home/ubuntu/book-b200-20261119/results/part-1/48_per_device_sync_is_not_a_barrier/example

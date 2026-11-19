@@ -1,0 +1,42 @@
+executed_unverified docs/appendix/code/123_quiz_ring_allreduce_phases.cpp
+validation_pass docs/appendix/code/127_nccl_point_to_point.cu
+validation_pass docs/appendix/code/131_modern_composed_equivalent.cu
+api_probe_pass docs/appendix/code/135_torch_distributed_collectives_mapped.cu
+validation_pass docs/appendix/code/139_stream_wait_enqueue_order.cu
+dependency_blocked docs/appendix/code/hello_mpi.cpp
+executed_unverified docs/part0/code/02_memory_wall.cpp
+executed_unverified docs/part0/code/06_single_device_setup.cu
+executed_unverified docs/part1/code/10_p2p_simulation.cpp
+api_probe_pass docs/part1/code/14_event_basics.cu
+validation_pass docs/part1/code/18_ipc_event_handle.cu
+executed_unverified docs/part2/code/22_collectives_simulation.cpp
+validation_pass docs/part2/code/26_allgather_by_hand.cu
+api_probe_pass docs/part2/code/30_nccl_comm_init.cu
+validation_pass docs/part3/code/34_gradient_allreduce.cu
+executed_unverified docs/part3/code/38_model_parallel_forward_simulation.cpp
+executed_unverified docs/part3/code/42_pipeline_schedule.cpp
+validation_pass docs/part3/code/46_halo_exchange.cu
+executed_unverified docs/part4/code/50_barrier_consistency_simulation.cpp
+api_probe_pass docs/part4/code/54_blocking_vs_nonblocking_comm.cu
+dependency_blocked docs/part5/code/58_mpi_cuda_aware_query_and_fallback.cpp
+executed_unverified docs/part5/code/62_staged_vs_rdma_cost_model.cpp
+validation_pass docs/part5/code/66_cross_device_graph_capture.cu
+executed_unverified docs/part6/code/70_summa_correctness_simulation.cpp
+executed_unverified docs/part6/code/74_ring_allreduce_communication_cost_model.cpp
+executed_unverified docs/part6/code/78_all_pairs_nbody_correctness_simulation.cpp
+executed_unverified docs/part6/code/82_1d_partitioning_participant_count_model.cpp
+executed_unverified docs/part6/code/86_jacobi_convergence_rate_model.cpp
+executed_unverified docs/part6/code/90_independent_path_correctness_simulation.cpp
+executed_unverified docs/part7/code/101_embedding_alltoall_comm_volume_cost_model.cpp
+executed_unverified docs/part7/code/105_exposure_profile_reduction_cost_model.cpp
+executed_unverified docs/part7/code/109_gpudirect_rdma_market_data_projection_model.cpp
+executed_unverified docs/part7/code/113_distributed_tree_building_sequential_reduction_model.cpp
+executed_unverified docs/part7/code/117_zslab_ghost_cell_correctness_simulation.cpp
+executed_unverified docs/part7/code/94_normal_vs_lowlatency_kernel_cost_model.cpp
+executed_unverified docs/part7/code/98_kv_cache_handoff_transfer_cost_model.cpp
+{
+  "api_probe_pass": 4,
+  "dependency_blocked": 2,
+  "executed_unverified": 22,
+  "validation_pass": 8
+}

@@ -1,0 +1,3 @@
+$ nvcc -std=c++17 -O2 -arch=sm_100 -ccbin mpicxx -rdc=true -I/home/ubuntu/book-b200-20261119/deps/lib/python3.12/site-packages/nvidia/nvshmem/include -L/home/ubuntu/book-b200-20261119/deps/lib/python3.12/site-packages/nvidia/nvshmem/lib -Xlinker=-rpath=/home/ubuntu/book-b200-20261119/deps/lib/python3.12/site-packages/nvidia/nvshmem/lib /home/ubuntu/book-b200-20261119/docs/part5/code/63_nvshmem_init_single_pe.cu -o /home/ubuntu/book-b200-20261119/results/part-0/63_nvshmem_init_single_pe/example -lnvshmem_host -lnvshmem_device -lcuda
+mpicxx: error while loading shared libraries: libopen-pal.so.40: cannot open shared object file: No such file or directory
+nvcc fatal   : Failed to preprocess host compiler properties.

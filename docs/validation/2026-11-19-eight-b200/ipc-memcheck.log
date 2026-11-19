@@ -1,0 +1,5 @@
+$ compute-sanitizer --tool memcheck --target-processes all --error-exitcode 3 /home/ubuntu/book-b200-20261119/results/part-2/17_ipc_mem_handle/example
+========= COMPUTE-SANITIZER
+Consumer: 4096 / 4096 exact payload values correct.
+PASS: two-process IPC memory, 4096 nonuniform values checked.
+========= ERROR SUMMARY: 0 errors

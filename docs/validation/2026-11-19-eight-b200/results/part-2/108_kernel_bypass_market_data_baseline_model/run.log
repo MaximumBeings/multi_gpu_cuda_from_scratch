@@ -1,0 +1,14 @@
+$ /home/ubuntu/book-b200-20261119/results/part-2/108_kernel_bypass_market_data_baseline_model/example
+Real cited Databento production figures (NVIDIA case study):
+- Sustained throughput: over 80 Gbps ("exceeds 80 Gbps")
+- Daily volume: over 2e+11 market updates/day ("over 200 billion market updates each day")
+- Real cited median network latency (kernel-bypass + DPDK on NVIDIA NICs): below 60 microseconds
+
+Derived (plain arithmetic on the real cited figures above):
+Average updates/second across a full day: 2.31e+06
+Bytes/second sustained at the real cited 80 Gbps figure: 1.00e+10
+Implied average bytes/update if 80 Gbps were sustained at this DAILY-AVERAGE update rate: 4320.0 bytes
+
+A honest flag on that last number: real market-data messages are typically tens to a few hundred bytes, not 4320 bytes -- so this arithmetic result is a mismatch, not a real average message size. It shows that the real cited "80 Gbps" figure describes sustained PEAK capacity, while the real cited "200 billion updates/day" figure is a DAILY AVERAGE across quiet and busy periods alike; dividing one by the other conflates two different real numbers that were never meant to describe the same moment. Reporting this mismatch honestly, rather than quietly presenting 4320 bytes as a real message size, matters more here than the arithmetic itself.
+
+This is the real, CURRENTLY-DEPLOYED starting point for everything this chapter builds on: kernel-bypass NIC processing (DPDK, hardware timestamping) gets market data from the wire into HOST memory at real sub-60-microsecond median latency, at real production scale -- but it stops at host memory. Nothing in this real, cited pipeline yet involves a GPU at all. Section 37.2 asks the honest question this chapter exists to answer: does Chapter 21's own GPUDirect RDMA extend this real pipeline the rest of the way, directly into GPU memory, for this specific workload today?

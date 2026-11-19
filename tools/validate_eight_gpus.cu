@@ -1,5 +1,5 @@
 // Real eight-device correctness audit; separate from the book's example sources.
-// Build: nvcc -std=c++17 -arch=sm_80 -O2 tools/validate_eight_gpus.cu -lnccl -pthread -o validate_eight_gpus
+// Build: nvcc -std=c++17 -arch=sm_80 -O2 tools/validate_eight_gpus.cu -lnccl -Xcompiler=-pthread -o validate_eight_gpus
 // Use the executing GPU's supported target for another architecture (e.g. sm_100).
 // Run: ./validate_eight_gpus
 // No throughput claim: all payloads are checked in full after completion.

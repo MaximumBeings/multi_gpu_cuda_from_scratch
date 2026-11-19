@@ -1,0 +1,24 @@
+$ /home/ubuntu/book-b200-20261119/mpi/usr/bin/mpirun --oversubscribe -np 8 /home/ubuntu/book-b200-20261119/results/retry-2/95_gpu_initiated_alltoall_and_put_demo/example
+--------------------------------------------------------------------------
+Sorry!  You were supposed to get help about:
+    unavailable
+But I couldn't open the help file:
+    /usr/lib/x86_64-linux-gnu/pmix2/share/pmix/help-pcompress.txt: No such file or directory.  Sorry!
+--------------------------------------------------------------------------
+PE 1 all-to-all: checked 8 source elements, errors=0
+PE 2 all-to-all: checked 8 source elements, errors=0
+PE 3 all-to-all: checked 8 source elements, errors=0
+PE 4 all-to-all: checked 8 source elements, errors=0
+PE 5 all-to-all: checked 8 source elements, errors=0
+PE 6 all-to-all: checked 8 source elements, errors=0
+PE 7 all-to-all: checked 8 source elements, errors=0
+PE 0 all-to-all: checked 8 source elements, errors=0
+PE 0 ring put: received=784 expected=784
+PE 7 ring put: received=783 expected=783
+PE 1 ring put: received=777 expected=777
+PE 2 ring put: received=778 expected=778
+PE 3 ring put: received=779 expected=779
+PE 4 ring put: received=780 expected=780
+PE 5 ring put: received=781 expected=781
+PE 6 ring put: received=782 expected=782
+VALIDATION PASS: 8 PEs, errors=0

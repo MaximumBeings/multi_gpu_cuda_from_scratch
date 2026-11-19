@@ -1,0 +1,1 @@
+$ g++ -std=c++17 -O2 /home/ubuntu/book-b200-20261119/docs/part3/code/42_pipeline_schedule.cpp -o /home/ubuntu/book-b200-20261119/results/part-3/42_pipeline_schedule/example

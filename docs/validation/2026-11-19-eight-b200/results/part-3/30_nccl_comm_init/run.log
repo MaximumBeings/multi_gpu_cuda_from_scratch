@@ -1,0 +1,2 @@
+$ /home/ubuntu/book-b200-20261119/results/part-3/30_nccl_comm_init/example
+API PROBE PASS: 8 devices, valid initialization/destruction and invalid argument checks, errors=0

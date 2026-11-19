@@ -13,7 +13,7 @@ Dataset: **2026-11-18-h100**. All **145 recorded source revisions compiled and e
 
 Rows without a per-program timestamp explicitly use their recorded run-batch start UTC. Hardware and tool metadata remain attached to each original run; combining matching sources from reruns does not redate earlier executions.
 
-This dataset covers the captured hardware and single-node configurations. Host-only models validate their own modeled arithmetic, not real network performance. It does not establish multi-node behavior, failure recovery under physical faults, or benchmark throughput. H100 and A100 evidence are published separately. B200 execution is planned; no B200 results are published. A100 execution does not establish B200 compatibility or results.
+This dataset covers the captured hardware and single-node configurations. Host-only models validate their own modeled arithmetic, not real network performance. It does not establish multi-node behavior, failure recovery under physical faults, or benchmark throughput. H100 and A100 evidence are published separately. The [separate November 19 B200 results](validation-b200.md) record 142 completed executions and three NVSHMEM timeouts. This earlier architecture dataset does not establish B200 compatibility or results.
 
 Six host-only models have since been corrected and compiled/executed locally ([98, 110 and 111](host-model-corrections.md); [96, 113 and 137](content-review-2026-11-19.md#new-local-cpu-execution-records)). The corrected IPC producer-completion revision (17) has a [separate successful November 19 H100 record](validation-h100-ipc.md). The records below preserve the earlier source revisions and their actual outputs.
 

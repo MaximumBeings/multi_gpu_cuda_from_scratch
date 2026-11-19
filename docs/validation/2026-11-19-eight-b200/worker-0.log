@@ -1,0 +1,43 @@
+executed_unverified docs/appendix/code/120_toolchain_version_check.cu
+executed_unverified docs/appendix/code/124_quiz_reassociation_cancellation.cpp
+dependency_blocked docs/appendix/code/128_nvshmem_api_reference.cu
+executed_unverified docs/appendix/code/132_round_count_vs_timing.cpp
+validation_pass docs/appendix/code/136_ddp_bucketed_allreduce.cu
+executed_unverified docs/appendix/code/140_topology_assumption_cost.cpp
+executed_unverified docs/appendix/code/hello_nccl.cu
+executed_unverified docs/part0/code/03_compute_wall.cpp
+executed_unverified docs/part0/code/07_multi_device_loop_pattern.cu
+validation_pass docs/part1/code/11_memcpy_peer.cu
+api_probe_pass docs/part1/code/15_cross_device_wait.cu
+executed_unverified docs/part1/code/19_ipc_handoff_simulation.cpp
+validation_pass docs/part2/code/23_naive_allreduce.cu
+validation_pass docs/part2/code/27_reducescatter_by_hand.cu
+api_probe_pass docs/part2/code/31_nccl_collectives_mapped.cu
+executed_unverified docs/part3/code/35_data_parallel_consistency_simulation.cpp
+executed_unverified docs/part3/code/39_column_parallel_linear.cu
+api_probe_pass docs/part3/code/43_pipeline_stage_sync.cu
+executed_unverified docs/part3/code/47_stencil_decomposition_simulation.cpp
+executed_unverified docs/part4/code/51_heterogeneous_capability_query.cu
+api_probe_pass docs/part4/code/55_nccl_async_detect_and_recover.cu
+dependency_blocked docs/part5/code/59_mpi_errhandler_return.c
+dependency_blocked docs/part5/code/63_nvshmem_init_single_pe.cu
+dependency_blocked docs/part5/code/67_nccl_captured_in_graph.cu
+validation_pass docs/part6/code/71_cublasxt_multi_gpu_gemm.cu
+executed_unverified docs/part6/code/75_tp_pp_combined_correctness_simulation.cpp
+executed_unverified docs/part6/code/79_nbody_vs_halo_communication_model.cpp
+executed_unverified docs/part6/code/83_direction_optimizing_and_2d_partitioning_model.cpp
+executed_unverified docs/part6/code/87_independent_tile_rendering_correctness_simulation.cpp
+executed_unverified docs/part6/code/91_rng_independence_and_reduction_topology_model.cpp
+executed_unverified docs/part7/code/102_fourcastnet_data_parallel_training_model.cpp
+executed_unverified docs/part7/code/106_netting_set_exposure_order_simulation.cpp
+executed_unverified docs/part7/code/110_gdrcopy_fixed_overhead_vs_latency_budget_model.cpp
+executed_unverified docs/part7/code/114_wgs_multi_gpu_motivation_model.cpp
+executed_unverified docs/part7/code/118_backprojection_zero_comm_and_real_scaling_arithmetic.cpp
+dependency_blocked docs/part7/code/95_gpu_initiated_alltoall_and_put_demo.cu
+executed_unverified docs/part7/code/99_embedding_capacity_and_parallelism_choice_model.cpp
+{
+  "api_probe_pass": 4,
+  "dependency_blocked": 5,
+  "executed_unverified": 23,
+  "validation_pass": 5
+}

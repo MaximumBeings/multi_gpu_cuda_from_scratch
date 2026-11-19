@@ -1,0 +1,1 @@
+$ g++ -std=c++17 -O2 /home/ubuntu/book-b200-20261119/docs/part3/code/44_bubble_and_pipelined_correctness.cpp -o /home/ubuntu/book-b200-20261119/results/part-1/44_bubble_and_pipelined_correctness/example

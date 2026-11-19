@@ -1,0 +1,1 @@
+$ g++ -std=c++17 -O2 /home/ubuntu/book-b200-20261119/docs/part7/code/119_forward_projection_communication_wall_cost_model.cpp -o /home/ubuntu/book-b200-20261119/results/part-1/119_forward_projection_communication_wall_cost_model/example

@@ -1,0 +1,2 @@
+$ /home/ubuntu/book-b200-20261119/results/part-2/hello_kernel/example
+hello_kernel: compiled with plain nvcc, one real (unlaunched) __global__ kernel present.

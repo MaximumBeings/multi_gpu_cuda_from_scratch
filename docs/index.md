@@ -56,3 +56,7 @@ The worked figures distinguish **logical values**, **ranks and device ordinals**
 Use [Appendix E](appendix/e-profiling-and-benchmarking-multi-gpu-communication.md) to define measurement boundaries and [Appendix G](appendix/g-common-failure-modes-deadlocks-silent-corruption-topology-mismatches.md) to trace a failed dependency. For every case study, predict the result of its small worked example before reading the full code.
 
 Every chapter develops intuition, complete implementations, worked examples, pitfalls and self-checks. All 145 programs have [H100](validation-h100.md) and [A100](validation-a100.md) execution records, with sample output beside the code. The eight-A100 supplement also checks all 56 ordered peer pairs, four collectives and three halo generations.
+
+## Additional eight-B200 results
+
+The [November 19 B200 pass](validation-b200.md) compiled all 145 current programs; 142 completed and three eight-rank NVSHMEM cases timed out. The independent eight-device harness passed all 56 peer pairs, four collective patterns and three halo generations. This is separate from the earlier all-source H100 execution record and does not establish cross-node behavior or performance.

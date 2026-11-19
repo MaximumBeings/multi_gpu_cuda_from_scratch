@@ -1,0 +1,22 @@
+$ /home/ubuntu/book-b200-20261119/results/part-2/69_gemm_memory_wall_model/example
+Single-device budget (Ch1's own real H100 SXM figure): 80 GB = 74.51 GiB
+
+GPT-3 FFN GEMM, small batch (M=12288 tokens)
+  M=12288 K=12288 N=49152 (fp32)
+  B (weight) alone = 2.25 GiB
+  A+B+C = 5.06 GiB -> FITS on one H100 SXM
+
+GPT-3 FFN forward, batch=512, seq=2048 (M=batch*seq)
+  M=1048576 K=12288 N=49152 (fp32)
+  B (weight) alone = 2.25 GiB
+  A+B+C = 242.25 GiB -> DOES NOT FIT on one H100 SXM
+
+A hypothetical 10x-larger FFN forward at the same batch/seq
+  M=1048576 K=122880 N=491520 (fp32)
+  B (weight) alone = 225.00 GiB
+  A+B+C = 2625.00 GiB -> DOES NOT FIT on one H100 SXM
+
+--- Minimum device count under even block distribution (capacity only) ---
+GPT-3 FFN GEMM, small batch (M=12288 tokens) -> minimum 1 device(s)
+GPT-3 FFN forward, batch=512, seq=2048 (M=batch*seq) -> minimum 4 device(s)
+A hypothetical 10x-larger FFN forward at the same batch/seq -> minimum 36 device(s)

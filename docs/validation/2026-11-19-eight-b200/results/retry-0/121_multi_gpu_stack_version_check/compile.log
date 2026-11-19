@@ -1,0 +1,1 @@
+$ mpicxx -std=c++17 -O2 /home/ubuntu/book-b200-20261119/docs/appendix/code/121_multi_gpu_stack_version_check.cpp -o /home/ubuntu/book-b200-20261119/results/retry-0/121_multi_gpu_stack_version_check/example -lnccl

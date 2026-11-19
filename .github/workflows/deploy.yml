@@ -30,6 +30,10 @@ jobs:
         run: python3 tools/verify_rerun.py
       - name: Verify corrected host models
         run: python3 tools/verify_host_corrections.py
+      - name: Verify mixed-outcome B200 execution evidence
+        run: |
+          python3 tools/verify_b200.py
+          python3 tools/test_b200_outcomes.py
       - name: Verify illustrations
         run: python3 tools/illustrations/validate.py
       - name: Verify worked lessons throughout the book

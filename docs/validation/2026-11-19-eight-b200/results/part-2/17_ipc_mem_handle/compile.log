@@ -1,0 +1,1 @@
+$ nvcc -std=c++17 -O2 -arch=sm_100 /home/ubuntu/book-b200-20261119/docs/part1/code/17_ipc_mem_handle.cu -o /home/ubuntu/book-b200-20261119/results/part-2/17_ipc_mem_handle/example

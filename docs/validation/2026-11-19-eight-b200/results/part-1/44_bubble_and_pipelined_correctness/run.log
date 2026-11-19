@@ -1,0 +1,33 @@
+$ /home/ubuntu/book-b200-20261119/results/part-1/44_bubble_and_pipelined_correctness/example
+Part A: bubble fraction (K-1)/(M+K-1), for real K values this
+book has already used, checked at GPipe's own empirical
+threshold M = 4xK:
+
+K (source)                        K      M=4xK   bubble frac.
+7B-class model (Ch13)             2          8         11.11%
+typical pipeline depth            4         16         15.79%
+typical pipeline depth            8         32         17.95%
+GPT-3 175B (Ch13)                35        140         19.54%
+
+Part B: running Chapter 13's own 8-layer network for 3 micro-batches
+through Section 15.1's interleaved K=4 pipeline schedule (totalTimeSteps=6):
+
+  t=0: device 0 processes micro-batch 0 (layers [0,2))
+  t=1: device 0 processes micro-batch 1 (layers [0,2))
+  t=1: device 1 processes micro-batch 0 (layers [2,4))
+  t=2: device 0 processes micro-batch 2 (layers [0,2))
+  t=2: device 1 processes micro-batch 1 (layers [2,4))
+  t=2: device 2 processes micro-batch 0 (layers [4,6))
+  t=3: device 1 processes micro-batch 2 (layers [2,4))
+  t=3: device 2 processes micro-batch 1 (layers [4,6))
+  t=3: device 3 processes micro-batch 0 (layers [6,8))
+  t=4: device 2 processes micro-batch 2 (layers [4,6))
+  t=4: device 3 processes micro-batch 1 (layers [6,8))
+  t=5: device 3 processes micro-batch 2 (layers [6,8))
+
+Comparing each micro-batch's PIPELINED result against Chapter 13's own UN-PIPELINED reference for the same input:
+  micro-batch 0, input (1.00, 1.00): reference = (0.3285223992, 0.2628870847), pipelined = (0.3285223992, 0.2628870847) -- PASS (bit-identical)
+  micro-batch 1, input (2.00, -1.00): reference = (0.3181013191, 0.2436102732), pipelined = (0.3181013191, 0.2436102732) -- PASS (bit-identical)
+  micro-batch 2, input (0.50, 3.00): reference = (0.3560831617, 0.3077149331), pipelined = (0.3560831617, 0.3077149331) -- PASS (bit-identical)
+
+All 3 micro-batch(es) bit-identical between the pipelined schedule and Chapter 13's own un-pipelined reference: PASS

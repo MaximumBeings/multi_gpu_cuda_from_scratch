@@ -1,0 +1,1 @@
+$ nvcc -std=c++17 -O2 -arch=sm_100 -ccbin mpicxx /home/ubuntu/book-b200-20261119/docs/part6/code/72_bucketed_gradient_allreduce.cu -o /home/ubuntu/book-b200-20261119/results/retry-1/72_bucketed_gradient_allreduce/example -lnccl

@@ -1,0 +1,4 @@
+$ /home/ubuntu/book-b200-20261119/results/part-2/61_gpudirect_rdma_query/example
+device 0 GPUDirectRDMA: supported=1 flushOptions=1 writesOrdering=100
+owner-scope flush API: no error (no external DMA was submitted)
+API PROBE PASS: queries and supported flush API only; no RDMA/NIC transfer validated, errors=0

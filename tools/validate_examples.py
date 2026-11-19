@@ -42,8 +42,9 @@ def cuda_paths(cuda):
     lib=pathlib.Path(os.environ.get('CUDA_LIBDIR') or (str(cuda/'lib64') if (cuda/'lib64').is_dir() else '/usr/lib/x86_64-linux-gnu'))
     return inc,lib
 def inventory():
+    # Exclude nested raw evidence trees from the standalone book inventory.
     rows=[]
-    for p in sorted(ROOT.glob('docs/**/code/*')):
+    for p in sorted(ROOT.glob('docs/*/code/*')):
         if p.suffix not in ('.cu','.cpp','.c'):continue
         text=p.read_text();headers=re.findall(r'^\s*#\s*include\s*[<"]([^>\"]+)',text,re.M)
         n=re.match(r'(\d+)_',p.name);number=int(n[1]) if n else None

@@ -1,0 +1,7 @@
+$ /home/ubuntu/book-b200-20261119/results/part-1/111_gnn_embedding_fraud_accuracy_model/example
+NVIDIA's TabFormer fraud workflow: XGBoost test AUPRC
+With GNN embeddings: 0.90; without embeddings: 0.79
+Absolute AUPRC gain: 0.11; relative metric gain: 13.9%
+MAG240M is a separate academic-paper graph benchmark, not the source of these fraud AUPRC values.
+AUPRC improvement is not a measured fraud-catch rate, false-positive reduction or dollar saving.
+MODEL CHECK PASS: AUPRC metric arithmetic and dataset attribution

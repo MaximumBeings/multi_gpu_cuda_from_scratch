@@ -1,0 +1,78 @@
+{
+  "started_utc": "2026-11-19T21:53:21.174470+00:00",
+  "finished_utc": "2026-11-19T21:55:24.328972+00:00",
+  "workers": [
+    {
+      "worker": 0,
+      "exit_code": 0
+    },
+    {
+      "worker": 1,
+      "exit_code": 0
+    },
+    {
+      "worker": 2,
+      "exit_code": 0
+    },
+    {
+      "worker": 3,
+      "exit_code": 0
+    }
+  ],
+  "status_counts": {
+    "executed_unverified": 91,
+    "dependency_blocked": 15,
+    "validation_pass": 26,
+    "api_probe_pass": 13
+  },
+  "extra": [
+    {
+      "name": "eight-compile",
+      "command": [
+        "nvcc",
+        "-std=c++17",
+        "-O2",
+        "-arch=sm_100",
+        "tools/validate_eight_gpus.cu",
+        "-lnccl",
+        "-pthread",
+        "-o",
+        "eight-gpu-check"
+      ],
+      "exit_code": 1,
+      "timed_out": false,
+      "seconds": 0.003957725000020673,
+      "started_utc": "2026-11-19T21:55:15.740299+00:00",
+      "finished_utc": "2026-11-19T21:55:15.744255+00:00"
+    },
+    {
+      "name": "eight-run",
+      "command": [
+        "./eight-gpu-check"
+      ],
+      "exit_code": null,
+      "launch_error": "[Errno 2] No such file or directory: './eight-gpu-check'",
+      "seconds": 0.000635767999995096,
+      "started_utc": "2026-11-19T21:55:15.744292+00:00",
+      "finished_utc": "2026-11-19T21:55:15.744929+00:00"
+    },
+    {
+      "name": "ipc-memcheck",
+      "command": [
+        "compute-sanitizer",
+        "--tool",
+        "memcheck",
+        "--target-processes",
+        "all",
+        "--error-exitcode",
+        "3",
+        "/home/ubuntu/book-b200-20261119/results/part-2/17_ipc_mem_handle/example"
+      ],
+      "exit_code": 0,
+      "timed_out": false,
+      "seconds": 8.583749866000005,
+      "started_utc": "2026-11-19T21:55:15.744967+00:00",
+      "finished_utc": "2026-11-19T21:55:24.328721+00:00"
+    }
+  ]
+}

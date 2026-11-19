@@ -36,7 +36,7 @@ class ApprovedDisplayTests(unittest.TestCase):
     def test_exact_registry_and_operational_identity(self):
         for name, edits in DISPLAY_EDITS.items():
             with self.subTest(source=name):
-                paths = list(ROOT.glob('docs/**/code/' + name))
+                paths = list(ROOT.glob('docs/*/code/' + name))
                 self.assertEqual(len(paths), 1)
                 raw = paths[0].read_text()
                 self.assertTrue(all(raw.count(old) == 1 for old, _ in edits))

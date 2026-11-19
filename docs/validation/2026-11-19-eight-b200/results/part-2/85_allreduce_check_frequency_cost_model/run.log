@@ -1,0 +1,28 @@
+$ /home/ubuntu/book-b200-20261119/results/part-2/85_allreduce_check_frequency_cost_model/example
+--- Per-ITERATION cost: halo exchange (Section 29.1's update step) ---
+Chapter 16's own real finding still holds here unchanged: each rank talks to exactly 2 fixed neighbors (top, bottom), exchanging NX doubles per side, REGARDLESS of P. This chapter's own 8-column grid (Section 29.1) means a fixed 2*8 = 16 doubles per rank per iteration, whether P is 2 or 4096 -- it never depends on P.
+
+--- Per-CHECK cost: global residual Allreduce (this chapter's new element) ---
+Unlike the halo exchange, an Allreduce's ROUND count (not its tiny 8-byte payload) is what dominates its cost for a single scalar, per this book's own Chapter 26 finding ("round count, not volume"). Two real algorithm choices, per this book's own Chapter 9/11 models:
+P        naive ring rounds: 2(P-1)    tree rounds: 2*ceil(log2(P))
+4        6                            4                           
+16       30                           8                           
+64       126                          12                          
+256      510                          16                          
+1024     2046                         20                          
+4096     8190                         24                          
+
+Even for this chapter's single-scalar residual norm, a naive ring Allreduce's round count still grows LINEARLY with P (same shape as Chapter 27's mandatory all-gather), while a tree Allreduce's grows only logarithmically -- confirming Chapter 11's own real reason production NCCL prefers tree/double-binary-tree algorithms for small messages at large P.
+
+--- Amortizing the check: NVIDIA's own real '-nccheck K' ---
+Checking convergence every K iterations (K=1 is NVIDIA's own real default) turns a FIXED per-check round cost into a total overhead that divides by K across a full solve of ITERS iterations. Using this chapter's own tree-round model at a representative P:
+
+Fixed for this table: ITERS = 1000 total Jacobi iterations, P = 1024 ranks, tree Allreduce = 20 rounds per check.
+
+K        # convergence checks total Allreduce rounds       overhead reduction
+1        1000                 20000                        1.0             x
+10       100                  2000                         10.0            x
+100      10                   200                          100.0           x
+1000     1                    20                           1000.0          x
+
+The reduction factor is exactly K, by construction -- the same shape as Chapter 25's own bucketing tradeoff, but for a collective's CALL FREQUENCY rather than its per-call MESSAGE SIZE. This is exactly why NVIDIA's own real repo ships a 'delayed norm execution' variant: 'GPUDirect P2P mappings for inter GPU communication with delayed norm execution' -- checking less often is a genuine, real, production optimization, not a hypothetical one.

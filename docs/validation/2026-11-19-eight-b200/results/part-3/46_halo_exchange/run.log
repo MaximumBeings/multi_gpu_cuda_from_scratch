@@ -1,0 +1,3 @@
+$ /home/ubuntu/book-b200-20261119/results/part-3/46_halo_exchange/example
+PASS: 4 GPUs, 3 halo generations; all interior/halo/boundary values verified.
+Scope: halo transport and boundary preservation, not a stencil-kernel benchmark.

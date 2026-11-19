@@ -1,0 +1,2 @@
+$ /home/ubuntu/book-b200-20261119/results/part-0/23_naive_allreduce/example
+PASS: naive host-reduce plus peer-broadcast all-reduce on 4 GPUs, all nonuniform output values checked.

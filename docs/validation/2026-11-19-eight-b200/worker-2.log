@@ -1,0 +1,42 @@
+executed_unverified docs/appendix/code/122_multi_device_runtime_api_check.cu
+validation_pass docs/appendix/code/126_nccl_collective_reference.cu
+api_probe_pass docs/appendix/code/130_cooperative_multi_device.cu
+api_probe_pass docs/appendix/code/134_nccl_debug_and_nsys.cu
+dependency_blocked docs/appendix/code/138_collective_order_deadlock.c
+executed_unverified docs/appendix/code/hello_kernel.cu
+executed_unverified docs/part0/code/01_device_query.cu
+executed_unverified docs/part0/code/05_peer_access_query.cu
+executed_unverified docs/part1/code/09_peer_access_setup.cu
+executed_unverified docs/part1/code/13_when_each_wins_model.cpp
+validation_pass docs/part1/code/17_ipc_mem_handle.cu
+validation_pass docs/part2/code/21_reduce_by_hand.cu
+executed_unverified docs/part2/code/25_ring_allreduce_simulation.cpp
+executed_unverified docs/part2/code/29_collectives_simulation.cpp
+validation_pass docs/part3/code/33_replica_setup.cu
+validation_pass docs/part3/code/37_layer_partition_activation_handoff.cu
+executed_unverified docs/part3/code/41_tensor_parallel_mlp_simulation.cpp
+executed_unverified docs/part3/code/45_domain_decomposition_row_range.cu
+validation_pass docs/part4/code/49_nccl_allreduce_as_barrier.cu
+executed_unverified docs/part4/code/53_makespan_simulation.cpp
+dependency_blocked docs/part5/code/57_mpi_ring_send_recv.c
+api_probe_pass docs/part5/code/61_gpudirect_rdma_query.cu
+dependency_blocked docs/part5/code/65_gpu_initiated_put.cu
+executed_unverified docs/part6/code/69_gemm_memory_wall_model.cpp
+executed_unverified docs/part6/code/73_distributed_sgd_convergence_simulation.cpp
+executed_unverified docs/part6/code/77_kv_cache_tp_scaling_model.cpp
+executed_unverified docs/part6/code/81_distributed_bfs_correctness_simulation.cpp
+executed_unverified docs/part6/code/85_allreduce_check_frequency_cost_model.cpp
+executed_unverified docs/part6/code/89_out_of_core_scene_scale_model.cpp
+executed_unverified docs/part7/code/100_embedding_alltoall_resharding_correctness_simulation.cpp
+executed_unverified docs/part7/code/104_distributed_fft_communication_cost_model.cpp
+executed_unverified docs/part7/code/108_kernel_bypass_market_data_baseline_model.cpp
+executed_unverified docs/part7/code/112_graph_partitioned_neighbor_fetch_correctness_simulation.cpp
+executed_unverified docs/part7/code/116_real_benchmark_scaling_efficiency_analysis.cpp
+executed_unverified docs/part7/code/93_moe_dispatch_combine_correctness_simulation.cpp
+executed_unverified docs/part7/code/97_phase_specific_tensor_parallelism_correctness_simulation.cpp
+{
+  "api_probe_pass": 3,
+  "dependency_blocked": 3,
+  "executed_unverified": 24,
+  "validation_pass": 6
+}

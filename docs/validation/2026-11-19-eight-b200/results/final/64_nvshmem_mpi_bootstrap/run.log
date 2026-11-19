@@ -1,0 +1,16 @@
+$ /home/ubuntu/book-b200-20261119/mpi/usr/bin/mpirun --oversubscribe -np 8 /home/ubuntu/book-b200-20261119/results/retry-1/64_nvshmem_mpi_bootstrap/example
+--------------------------------------------------------------------------
+Sorry!  You were supposed to get help about:
+    unavailable
+But I couldn't open the help file:
+    /usr/lib/x86_64-linux-gnu/pmix2/share/pmix/help-pcompress.txt: No such file or directory.  Sorry!
+--------------------------------------------------------------------------
+PE 6 of 8: MPI bootstrap, allocation and CUDA copy checked
+PE 7 of 8: MPI bootstrap, allocation and CUDA copy checked
+PE 0 of 8: MPI bootstrap, allocation and CUDA copy checked
+VALIDATION PASS: 8 PEs, errors=0
+PE 1 of 8: MPI bootstrap, allocation and CUDA copy checked
+PE 2 of 8: MPI bootstrap, allocation and CUDA copy checked
+PE 3 of 8: MPI bootstrap, allocation and CUDA copy checked
+PE 4 of 8: MPI bootstrap, allocation and CUDA copy checked
+PE 5 of 8: MPI bootstrap, allocation and CUDA copy checked
