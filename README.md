@@ -8,18 +8,21 @@ The corrected staged-MPI example (58) passed the November 18 two-H100 numerical 
 
 ## Recorded validation
 
-[H100 records](docs/validation-h100.md) cover two H100 GPUs; [A100 records](docs/validation-a100.md) cover an eight-A100 host with eight-process MPI runs. All 145 recorded source revisions compiled and executed in each pass. The historical datasets distinguish 33 numerical/transport checks, 13 API validations and 99 other executions; the November 18 rerun records 34, 13 and 98 respectively after the staged-MPI correction. Three subsequent host-only model corrections have [separate local execution records](docs/host-model-corrections.md). The A100 supplement also checks all 56 ordered peer-copy pairs, four eight-rank collective patterns and three halo generations. B200 results are pending actual hardware.
+[H100 records](docs/validation-h100.md) cover two H100 GPUs; [A100 records](docs/validation-a100.md) cover an eight-A100 host with eight-process MPI runs. All 145 recorded source revisions compiled and executed in each pass. The historical datasets distinguish 33 numerical/transport checks, 13 API validations and 99 other executions; the November 18 rerun records 34, 13 and 98 respectively after the staged-MPI correction. Three subsequent host-only model corrections have [separate local execution records](docs/host-model-corrections.md). The A100 supplement also checks all 56 ordered peer-copy pairs, four eight-rank collective patterns and three halo generations. The [eight-B200 results](docs/validation-b200.md) record 145 successful compilations, 142 completed executions and three unresolved eight-rank NVSHMEM timeouts. These timeouts are not validation passes; their cause has not yet been isolated.
 
 ## Build the website
 
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
-pip install -r requirements.txt
-mkdocs build --strict
+python -m pip install -r requirements.txt
+python tools/test_formatter_lookup.py
+python -m mkdocs build --strict
 python3 tools/verify_site_links.py
-mkdocs serve
+python -m mkdocs serve
 ```
+
+Use the same activated environment for installation and MkDocs on macOS and Linux. The pinned `clang-format` wheel contains its binary; the build hook locates that binary inside the installed Python package, so it does not require a global Homebrew installation or the environment’s scripts directory on `PATH`. To publish manually after validation, run `python -m mkdocs gh-deploy` from this environment. A system `mkdocs` command can select a different Python environment from the one where requirements were installed.
 
 ## Compile and execute examples
 

@@ -33,6 +33,8 @@ The incomplete sources are **64 — MPI bootstrap**, **65 — GPU-initiated put*
 
 The evidence does not isolate whether the remaining problem is initialization, cleanup, runtime-stack interaction or program behavior. It does not justify declaring either a numerical corruption bug or universal B200 incompatibility. The separate NVSHMEM all-to-all/put example **95 did complete with eight PEs** in the longer retry. Further diagnosis is pending; retries stopped to limit the expensive instance time.
 
+In each final retry, all eight PEs printed their expected payload or bootstrap checks and rank 0 printed `VALIDATION PASS: 8 PEs, errors=0`, but the MPI launch did not exit before the 60-second limit. These messages occur before `nvshmem_finalize()` and `MPI_Finalize()` in the sources. This narrows the observed failure to completion after the checks; the existing logs cannot identify which finalization call or rank stalled. They also contain a missing PMIx `help-pcompress.txt` diagnostic, which is evidence of an incomplete diagnostic-file installation, not proof that it caused the hang. A staged rerun with per-rank markers around both finalizers and a complete supported MPI installation is needed to distinguish runtime setup from program behavior. The previously supplied B200 SSH host was unreachable during the follow-up check, so no new GPU result is claimed.
+
 ## Independent eight-device harness
 
 Compiled UTC: `2026-11-19T21:56:10.332221+00:00`. Executed UTC: `2026-11-19T21:56:11.849784+00:00`. Compile/run exits: **0 / 0**.
