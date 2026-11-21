@@ -133,8 +133,12 @@ extra:
   social: []
 
 extra_css:
+  - stylesheets/image-viewer.css
   - stylesheets/illustrations.css
   - stylesheets/code.css
 
 hooks:
   - hooks/code_formatting.py
+
+extra_javascript:
+  - javascripts/image-viewer.js

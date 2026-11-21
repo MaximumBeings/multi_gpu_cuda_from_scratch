@@ -62,3 +62,5 @@ The web listings use `tools/approved_display.py` for an explicit filename-and-li
 ## Code listing presentation
 
 Website builds format C, C++ and CUDA listings with pinned clang-format 19.1.7: four-space indentation, 68-column layout and expanded control-flow blocks. The build rejects changes to lexical tokens, literals or comment contents. Only displayed listings are formatted; stored sources, execution hashes, commands and captured outputs remain unchanged. Long literals wrap visually without inserting copied newlines. Style settings are in `.clang-format`; the build hook is `hooks/code_formatting.py`.
+
+Linked diagrams open in an accessible overlay on the same page. Use Close, Escape or the backdrop to return to the chapter. The viewer also works after instant navigation between chapters.
